@@ -104,7 +104,7 @@ void P4PValue::store_struct(pvd::PVStructure* fld,
     size_t nfld = names.size();
 
     for(size_t i=0; i<nfld; i++) {
-        PyRef name(PyString_FromString(names[i].c_str()));
+        PyRef name(PyUnicode_FromString(names[i].c_str()));
 
         PyRef item(PyObject_GetItem(obj, name.get()));
 

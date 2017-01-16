@@ -139,6 +139,39 @@ class TestRawValue(unittest.TestCase):
         V.x = 'world'
         self.assertEqual(V.x, u'world')
 
+        # uses previously selected 'b'
+        V.x = 128;
+        self.assertEqual(V.x, u'128')
+
         #TODO: PVD bugs prevent this from working
         #V.x = ('a', None) # another way to clear
         #self.assertIsNone(V.x)
+
+    def testUnionArray(self):
+        V = _Value(_Type([
+            ('x', 'av'),
+            ('y', ('au', 'foo', [
+                ('a', 'i'),
+                ('b', 's'),
+            ])),
+        ]))
+
+        self.assertListEqual(V.x, [])
+        self.assertListEqual(V.y, [])
+
+        V.x = [1, 4.2, 'foo']
+        V.y = [2, 5.2, 'bar']
+
+        self.assertListEqual(V.x, [1, 4.2, u'foo'])
+        # magic field selection strikes to convert float -> int
+        self.assertListEqual(V.y, [2, 5, u'bar'])
+
+        V.y = [('a', 3),
+               ('b', 4.2),
+               ('b', 'baz')]
+
+        self.assertListEqual(V.y, [3, u'4.2', u'baz'])
+
+        # union array assignment ignores previous selections
+        V.y = [2, 5.2, 'bar']
+        self.assertListEqual(V.y, [2, 5, u'bar'])

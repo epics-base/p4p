@@ -123,24 +123,24 @@ void py2struct(pvd::FieldBuilderPtr& builder, PyObject *o)
 
         const char *key;
         PyObject *val;
-        if(!PyArg_ParseTuple(ent.get(), "sO;Expected list of tuples (str, object)", &key, &val))
+        if(!PyArg_ParseTuple(ent.get(), "sO;Expected list of tuples (str, object) or (str, str, object)", &key, &val))
             throw std::runtime_error("XXX");
 
         if(0) {}
 #if PY_MAJOR_VERSION < 3
-        else if(PyString_Check(val)) {
-            const char *spec = PyString_AsString(val);
+        else if(PyBytes_Check(val)) {
+            const char *spec = PyBytes_AsString(val);
             py2struct_plain(builder, key, spec);
 #endif
         } else if(PyUnicode_Check(val)) {
             PyRef str(PyUnicode_AsASCIIString(val));
-            const char *spec = PyBytes_AsString(val);
+            const char *spec = PyBytes_AsString(str.get());
             py2struct_plain(builder, key, spec);
 
         } else {
             const char *tkey, *tname;
             PyObject *members;
-            if(!PyArg_ParseTuple(val, "szO;Expected list of tuples (str, str, object)", &tkey, &tname, &members))
+            if(!PyArg_ParseTuple(val, "szO;Expected list of tuples (str, str, object) or (str, object)", &tkey, &tname, &members))
                 throw std::runtime_error("XXX");
 
             if(tkey[0]=='a') {
