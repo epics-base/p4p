@@ -76,6 +76,14 @@ struct PyString
     }
 };
 
+// release GIL
+struct PyUnlock
+{
+    PyThreadState *state;
+    PyUnlock() :state(PyEval_SaveThread()) {}
+    ~PyUnlock() { PyEval_RestoreThread(state); }
+};
+
 #define CATCH() catch(std::exception& e) { if(!PyErr_Occurred()) { PyErr_SetString(PyExc_RuntimeError, e.what()); } }
 
 #if 1
@@ -98,7 +106,7 @@ struct PyString
 
 void p4p_type_register(PyObject *mod);
 void p4p_value_register(PyObject *mod);
-
+void p4p_server_register(PyObject *mod);
 
 extern PyTypeObject* P4PType_type;
 // Extract Structure from P4PType

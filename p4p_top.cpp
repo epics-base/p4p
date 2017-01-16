@@ -19,6 +19,7 @@ PyMOD(_p4p)
 
         p4p_type_register(mod.get());
         p4p_value_register(mod.get());
+        p4p_server_register(mod.get());
 
         MODINIT_RET(mod.release());
     } catch(std::exception& e) {
