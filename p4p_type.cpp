@@ -7,45 +7,9 @@ namespace {
 
 namespace pvd = epics::pvData;
 
-struct P4PType {
-    PyObject_HEAD
+typedef PyClassWrapper<pvd::Structure::const_shared_pointer> P4PType;
 
-    PyObject *weak;
-
-    // we are playing some (I think safe) games here.
-    // all non-POD types must appear in sub-struct C
-    struct C_t {
-        pvd::Structure::const_shared_pointer S;
-    } C;
-    pvd::Structure::const_shared_pointer& S() { return C.S; }
-};
-
-PyObject* P4PType_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    try {
-        // we use python alloc instead of new here so that we could participate in GC
-        PyRef self(type->tp_alloc(type, 0));
-        P4PType *SELF = (P4PType*)self.get();
-
-        SELF->weak = NULL;
-
-        // The following can zero out the PyObject_HEAD members
-        //new (self.get()) P4PType();
-        // instead we only C++ initialize the sub-struct C
-        new (&SELF->C) P4PType::C_t();
-
-        return self.release();
-    } CATCH()
-    return NULL;
-}
-
-void P4PType_dtor(P4PType *self)
-{
-    try {
-        self->C.~C_t();
-    } CATCH()
-    Py_TYPE(self)->tp_free((PyObject*)self);
-}
+#define TRY P4PType::reference_type SELF = P4PType::unwrap(self); try
 
 struct c2t {
     char c;
@@ -169,12 +133,12 @@ void py2struct(pvd::FieldBuilderPtr& builder, PyObject *o)
     }
 }
 
-int P4PType_init(P4PType *self, PyObject *args, PyObject *kwds)
+int P4PType_init(PyObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *spec;
     const char *id = NULL;
     static const char *names[] = {"spec", "id", NULL};
-    try {
+    TRY {
         if(!PyArg_ParseTupleAndKeywords(args, kwds, "O|z", (char**)names, &spec, &id))
             return -1;
 
@@ -182,9 +146,9 @@ int P4PType_init(P4PType *self, PyObject *args, PyObject *kwds)
         if(id)
             builder->setId(id);
         py2struct(builder, spec);
-        self->S() = builder->createStructure();
+        SELF = builder->createStructure();
 
-        if(!self->S().get()) {
+        if(!SELF.get()) {
             PyErr_SetString(PyExc_ValueError, "Spec did not result in Structure");
             return -1;
         }
@@ -299,15 +263,15 @@ PyObject* struct2py(const pvd::StringArray& names,
     return list.release();
 }
 
-PyObject* P4PType_aspy(P4PType *self) {
-    try {
-        assert(self->S().get());
+PyObject* P4PType_aspy(PyObject *self) {
+    TRY {
+        assert(SELF.get());
 
-        const pvd::StringArray& names(self->S()->getFieldNames());
-        const pvd::FieldConstPtrArray& flds(self->S()->getFields());
+        const pvd::StringArray& names(SELF->getFieldNames());
+        const pvd::FieldConstPtrArray& flds(SELF->getFields());
 
         PyRef list(struct2py(names, flds));
-        std::string id(self->S()->getID());
+        std::string id(SELF->getID());
 
         return Py_BuildValue("szO", "s",
                              id.empty() ? NULL : id.c_str(),
@@ -322,66 +286,53 @@ static struct PyMethodDef P4PType_members[] = {
     {NULL}
 };
 
-int P4PType_traverse(P4PType *self, visitproc visit, void *arg)
+int P4PType_traverse(PyObject *self, visitproc visit, void *arg)
 {
     return 0;
 }
 
-int P4PType_clear(P4PType *self)
+int P4PType_clear(PyObject *self)
 {
     return 0;
 }
 
-} // namespace
-
-PyTypeObject P4PType_type = {
-    #if PY_MAJOR_VERSION >= 3
-        PyVarObject_HEAD_INIT(NULL, 0)
-    #else
-        PyObject_HEAD_INIT(NULL)
-        0,
-    #endif
+template<>
+PyTypeObject P4PType::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
     "_p4p.Type",
     sizeof(P4PType),
 };
 
+} // namespace
+
+PyTypeObject* P4PType_type = &P4PType::type;
+
 void p4p_type_register(PyObject *mod)
 {
-    P4PType_type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_GC;
-    P4PType_type.tp_new = (newfunc)&P4PType_new;
-    P4PType_type.tp_init = (initproc)&P4PType_init;
-    P4PType_type.tp_dealloc = (destructor)&P4PType_dtor;
-    P4PType_type.tp_traverse = (traverseproc)&P4PType_traverse;
-    P4PType_type.tp_clear = (inquiry)&P4PType_clear;
+    P4PType::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_GC;
+    P4PType::type.tp_new = &P4PType::tp_new;
+    P4PType::type.tp_init = &P4PType_init;
+    P4PType::type.tp_dealloc = &P4PType::tp_dealloc;
+    P4PType::type.tp_traverse = &P4PType_traverse;
+    P4PType::type.tp_clear = &P4PType_clear;
 
-    P4PType_type.tp_methods = P4PType_members;
+    P4PType::type.tp_methods = P4PType_members;
 
-    P4PType_type.tp_weaklistoffset = offsetof(P4PType, weak);
+    P4PType::type.tp_weaklistoffset = offsetof(P4PType, weak);
 
-    if(PyType_Ready(&P4PType_type))
+    if(PyType_Ready(&P4PType::type))
         throw std::runtime_error("failed to initialize P4PType_type");
 
-    Py_INCREF((PyObject*)&P4PType_type);
-    if(PyModule_AddObject(mod, "Type", (PyObject*)&P4PType_type)) {
-        Py_DECREF((PyObject*)&P4PType_type);
+    Py_INCREF((PyObject*)&P4PType::type);
+    if(PyModule_AddObject(mod, "Type", (PyObject*)&P4PType::type)) {
+        Py_DECREF((PyObject*)&P4PType::type);
         throw std::runtime_error("failed to add _p4p.Type");
     }
 }
 
 pvd::Structure::const_shared_pointer P4PType_unwrap(PyObject *obj)
 {
-    if(Py_TYPE(obj)!=&P4PType_type)
-        throw std::runtime_error("Not a _p4p.Type");
-    P4PType *ptype = (P4PType*)obj;
-    return ptype->S();
-}
-
-PyObject *P4PType_wrap(const pvd::Structure::const_shared_pointer& s)
-{
-    assert(s.get());
-    PyRef ret(P4PType_new(&P4PType_type, NULL, NULL));
-    ((P4PType*)ret.get())->S() = s;
-    return ret.release();
+    return P4PType::unwrap(obj);
 }
 
 epics::pvData::Field::const_shared_pointer P4PType_guess(PyObject *obj)

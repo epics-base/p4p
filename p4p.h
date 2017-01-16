@@ -100,17 +100,64 @@ void p4p_type_register(PyObject *mod);
 void p4p_value_register(PyObject *mod);
 
 
-extern PyTypeObject P4PType_type;
+extern PyTypeObject* P4PType_type;
 // Extract Structure from P4PType
 epics::pvData::Structure::const_shared_pointer P4PType_unwrap(PyObject *);
-// Wrap Structure in P4PType
-PyObject *P4PType_wrap(const epics::pvData::Structure::const_shared_pointer&);
 // Find a Field capable of storing the provided value
 epics::pvData::Field::const_shared_pointer P4PType_guess(PyObject *);
 
 
-extern PyTypeObject P4PValue_type;
+extern PyTypeObject* P4PValue_type;
 epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *);
 PyObject *P4PValue_wrap(PyTypeObject *type, const epics::pvData::PVStructure::shared_pointer&);
+
+
+template<class C>
+struct PyClassWrapper {
+    PyObject_HEAD
+
+    PyObject *weak;
+
+    typedef C value_type;
+    typedef C* pointer_type;
+    typedef C& reference_type;
+    C I;
+
+    static PyTypeObject type;
+
+    static PyObject* tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+        try {
+            // we use python alloc instead of new here so that we could participate in GC
+            PyRef self(type->tp_alloc(type, 0));
+            PyClassWrapper *SELF = (PyClassWrapper*)self.get();
+
+            SELF->weak = NULL;
+
+            // The following can zero out the PyObject_HEAD members
+            //new (self.get()) P4PType();
+            // instead we only C++ initialize the sub-struct C
+            new (&SELF->I) C();
+
+            return self.release();
+        } CATCH()
+        return NULL;
+
+    }
+
+    static void tp_dealloc(PyObject *raw) {
+        PyClassWrapper *self = (PyClassWrapper*)raw;
+        try {
+            self->I.~C();
+        } CATCH()
+        Py_TYPE(self)->tp_free((PyObject*)self);
+    }
+
+    static C& unwrap(PyObject *obj) {
+        assert(PyObject_TypeCheck(obj, &type));
+        PyClassWrapper *W = (PyClassWrapper*)obj;
+        return W->I;
+    }
+};
+
 
 #endif // P4P_H

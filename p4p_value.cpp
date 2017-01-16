@@ -12,15 +12,8 @@ namespace {
 
 namespace pvd = epics::pvData;
 
-struct P4PValue {
-    PyObject_HEAD
-
-    struct C_t {
-        pvd::PVStructure::shared_pointer V;
-    } C;
-    pvd::PVStructure::shared_pointer& V() { return C.V; }
-
-    //PyObject *weakrefs;
+struct Value {
+    pvd::PVStructure::shared_pointer V;
 
     void storefld(epics::pvData::PVField *fld,
                const epics::pvData::Field *ftype,
@@ -38,27 +31,9 @@ struct P4PValue {
                        const pvd::Field *ftype);
 };
 
-PyObject* P4PValue_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    try {
-        // we use python alloc instead of new here so that we could participate in GC
-        PyRef self(type->tp_alloc(type, 0));
-        P4PValue *SELF = (P4PValue*)self.get();
+typedef PyClassWrapper<Value> P4PValue;
 
-        new (&SELF->C) P4PValue::C_t();
-
-        return self.release();
-    } CATCH()
-    return NULL;
-}
-
-void P4PValue_dtor(P4PValue *self)
-{
-    try {
-        self->C.~C_t();
-    } CATCH()
-    Py_TYPE(self)->tp_free((PyObject*)self);
-}
+#define TRY P4PValue::reference_type SELF = P4PValue::unwrap(self); try
 
 struct npmap {
     NPY_TYPES npy;
@@ -93,9 +68,9 @@ NPY_TYPES ntype(pvd::ScalarType t) {
 //}
 
 
-void P4PValue::store_struct(pvd::PVStructure* fld,
-                            const pvd::Structure* ftype,
-                            PyObject *obj)
+void Value::store_struct(pvd::PVStructure* fld,
+                         const pvd::Structure* ftype,
+                         PyObject *obj)
 {
     const pvd::StringArray& names(ftype->getFieldNames());
     const pvd::FieldConstPtrArray& flds(ftype->getFields());
@@ -113,9 +88,9 @@ void P4PValue::store_struct(pvd::PVStructure* fld,
 }
 
 
-void P4PValue::store_union(pvd::PVUnion* fld,
-                           const pvd::Union* ftype,
-                           PyObject *obj)
+void Value::store_union(pvd::PVUnion* fld,
+                        const pvd::Union* ftype,
+                        PyObject *obj)
 {
     pvd::PVField::shared_pointer U;
 
@@ -132,7 +107,7 @@ void P4PValue::store_union(pvd::PVUnion* fld,
     } else if(ftype->isVariant()) {
         // assign variant with plain value or wrapped Structure
 
-        if(PyObject_TypeCheck(obj, &P4PValue_type)) {
+        if(PyObject_TypeCheck(obj, &P4PValue::type)) {
             fld->set(pvd::PVUnion::UNDEFINED_INDEX, P4PValue_unwrap(obj));
             return;
 
@@ -156,7 +131,7 @@ void P4PValue::store_union(pvd::PVUnion* fld,
             throw std::runtime_error("Bugs prevent clearing non-Variant Union");
             return;
 
-        } else if(PyObject_TypeCheck(val, &P4PValue_type)) {
+        } else if(PyObject_TypeCheck(val, &P4PValue::type)) {
             fld->set(select, P4PValue_unwrap(val));
             return;
 
@@ -195,9 +170,9 @@ void P4PValue::store_union(pvd::PVUnion* fld,
     fld->set(U);
 }
 
-void P4PValue::storefld(pvd::PVField* fld,
-                        const pvd::Field* ftype,
-                        PyObject *obj)
+void Value::storefld(pvd::PVField* fld,
+                     const pvd::Field* ftype,
+                     PyObject *obj)
 {
     switch(ftype->getType()) {
     case pvd::scalar: {
@@ -325,8 +300,8 @@ void P4PValue::storefld(pvd::PVField* fld,
     throw std::runtime_error("Storage of type not implemented");
 }
 
-PyObject *P4PValue::fetchfld(pvd::PVField *fld,
-                             const pvd::Field *ftype)
+PyObject *Value::fetchfld(pvd::PVField *fld,
+                          const pvd::Field *ftype)
 {
     switch(ftype->getType()) {
     case pvd::scalar: {
@@ -450,19 +425,19 @@ PyObject *P4PValue::fetchfld(pvd::PVField *fld,
     throw std::runtime_error("map for read not implemented");
 }
 
-int P4PValue_init(P4PValue *self, PyObject *args, PyObject *kwds)
+int P4PValue_init(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    try {
+    TRY {
         const char *names[] = {"type", "value", "clone", NULL};
         PyObject *type = NULL, *value = NULL;
-        P4PValue *clone = NULL;
+        PyObject *clone = NULL;
         if(!PyArg_ParseTupleAndKeywords(args, kwds, "|O!OO!", (char**)names,
-                                        &P4PType_type, &type,
+                                        P4PType_type, &type,
                                         &value,
-                                        &P4PValue_type, &clone))
+                                        P4PValue_type, &clone))
             return -1;
 
-        if(self->V()) {
+        if(SELF.V) {
             // magic construction w/ P4PValue_wrap()
 
         } else if(type) {
@@ -471,13 +446,13 @@ int P4PValue_init(P4PValue *self, PyObject *args, PyObject *kwds)
             pvd::PVStructure::shared_pointer V(pvd::getPVDataCreate()->createPVStructure(S));
 
             if(value) {
-                self->store_struct(V.get(), S.get(), value);
+                SELF.store_struct(V.get(), S.get(), value);
             }
 
-            self->V() = V;
+            SELF.V = V;
 
         } else if(clone) {
-            self->V() = clone->V();
+            SELF.V = P4PValue::unwrap(clone).V;
 
         } else {
             PyErr_SetString(PyExc_ValueError, "Value ctor requires type= or clone=");
@@ -489,15 +464,15 @@ int P4PValue_init(P4PValue *self, PyObject *args, PyObject *kwds)
     return -1;
 }
 
-int P4PValue_setattr(P4PValue *self, PyObject *name, PyObject *value)
+int P4PValue_setattr(PyObject *self, PyObject *name, PyObject *value)
 {
-    try {
+    TRY {
         PyString S(name);
-        pvd::PVFieldPtr fld = self->V()->getSubField(S.str());
+        pvd::PVFieldPtr fld = SELF.V->getSubField(S.str());
         if(!fld)
             return PyObject_GenericSetAttr((PyObject*)self, name, value);
 
-        self->storefld(fld.get(),
+        SELF.storefld(fld.get(),
                        fld->getField().get(),
                        value);
 
@@ -507,26 +482,26 @@ int P4PValue_setattr(P4PValue *self, PyObject *name, PyObject *value)
 
 }
 
-PyObject* P4PValue_getattr(P4PValue *self, PyObject *name)
+PyObject* P4PValue_getattr(PyObject *self, PyObject *name)
 {
-    try {
+    TRY {
         PyString S(name);
-        pvd::PVFieldPtr fld = self->V()->getSubField(S.str());
+        pvd::PVFieldPtr fld = SELF.V->getSubField(S.str());
         if(!fld)
             return PyObject_GenericGetAttr((PyObject*)self, name);
 
         if(fld->getField()->getType()==pvd::structure)
             return P4PValue_wrap(Py_TYPE(self), std::tr1::static_pointer_cast<pvd::PVStructure>(fld));
 
-        return self->fetchfld(fld.get(),
+        return SELF.fetchfld(fld.get(),
                               fld->getField().get());
     }CATCH()
     return NULL;
 }
 
-PyObject* P4PValue_toList(P4PValue *self, PyObject *args, PyObject *kwds)
+PyObject* P4PValue_toList(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    try {
+    TRY {
         const char *names[] = {"name", NULL};
         const char *name = NULL;
         if(!PyArg_ParseTupleAndKeywords(args, kwds, "|z", (char**)names, &name))
@@ -534,31 +509,31 @@ PyObject* P4PValue_toList(P4PValue *self, PyObject *args, PyObject *kwds)
 
         pvd::PVFieldPtr fld;
         if(name)
-            fld = self->V()->getSubField(name);
+            fld = SELF.V->getSubField(name);
         else
-            fld = self->V(); // name==NULL converts entire structure
+            fld = SELF.V; // name==NULL converts entire structure
 
         if(!fld) {
             PyErr_SetString(PyExc_KeyError, name ? name : "<null>"); // should never actually be null
             return NULL;
         }
 
-        return self->fetchfld(fld.get(),
+        return SELF.fetchfld(fld.get(),
                               fld->getField().get());
 
     }CATCH()
     return NULL;
 }
 
-PyObject *P4PValue_select(P4PValue *self, PyObject *args, PyObject *kwds)
+PyObject *P4PValue_select(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    try {
+    TRY {
         const char *names[] = {"name", "selector", NULL};
         const char *name, *sel = NULL;
         if(!PyArg_ParseTupleAndKeywords(args, kwds, "sz", (char**)names, &name, &sel))
             return NULL;
 
-        pvd::PVUnionPtr fld(self->V()->getSubField<pvd::PVUnion>(name));
+        pvd::PVUnionPtr fld(SELF.V->getSubField<pvd::PVUnion>(name));
         if(!fld)
             return PyErr_Format(PyExc_KeyError, "%s", name);
 
@@ -577,25 +552,25 @@ PyObject *P4PValue_select(P4PValue *self, PyObject *args, PyObject *kwds)
     return NULL;
 }
 
-Py_ssize_t P4PValue_len(P4PValue *self)
+Py_ssize_t P4PValue_len(PyObject *self)
 {
-    try {
-        return self->V()->getNumberFields();
+    TRY {
+        return SELF.V->getNumberFields();
     }CATCH()
     return -1;
 }
 
-int P4PValue_setitem(P4PValue *self, PyObject *name, PyObject *value)
+int P4PValue_setitem(PyObject *self, PyObject *name, PyObject *value)
 {
-    try {
+    TRY {
         PyString S(name);
-        pvd::PVFieldPtr fld = self->V()->getSubField(S.str());
+        pvd::PVFieldPtr fld = SELF.V->getSubField(S.str());
         if(!fld) {
             PyErr_SetString(PyExc_KeyError, S.str().c_str());
             return -1;
         }
 
-        self->storefld(fld.get(),
+        SELF.storefld(fld.get(),
                        fld->getField().get(),
                        value);
 
@@ -605,11 +580,11 @@ int P4PValue_setitem(P4PValue *self, PyObject *name, PyObject *value)
 
 }
 
-PyObject* P4PValue_getitem(P4PValue *self, PyObject *name)
+PyObject* P4PValue_getitem(PyObject *self, PyObject *name)
 {
-    try {
+    TRY {
         PyString S(name);
-        pvd::PVFieldPtr fld = self->V()->getSubField(S.str());
+        pvd::PVFieldPtr fld = SELF.V->getSubField(S.str());
         if(!fld) {
             PyErr_SetString(PyExc_KeyError, S.str().c_str());
             return NULL;
@@ -618,7 +593,7 @@ PyObject* P4PValue_getitem(P4PValue *self, PyObject *name)
         if(fld->getField()->getType()==pvd::structure)
             return P4PValue_wrap(Py_TYPE(self), std::tr1::static_pointer_cast<pvd::PVStructure>(fld));
 
-        return self->fetchfld(fld.get(),
+        return SELF.fetchfld(fld.get(),
                               fld->getField().get());
     }CATCH()
     return NULL;
@@ -638,56 +613,53 @@ static PyMethodDef P4PValue_methods[] = {
     {NULL}
 };
 
-} // namespace
-
-PyTypeObject P4PValue_type = {
-    #if PY_MAJOR_VERSION >= 3
-        PyVarObject_HEAD_INIT(NULL, 0)
-    #else
-        PyObject_HEAD_INIT(NULL)
-        0,
-    #endif
+template<>
+PyTypeObject P4PValue::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
     "_p4p.Value",
     sizeof(P4PValue),
 };
 
+} // namespace
+
+PyTypeObject* P4PValue_type = &P4PValue::type;
+
 void p4p_value_register(PyObject *mod)
 {
-    P4PValue_type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
-    P4PValue_type.tp_new = (newfunc)&P4PValue_new;
-    P4PValue_type.tp_init = (initproc)&P4PValue_init;
-    P4PValue_type.tp_dealloc = (destructor)&P4PValue_dtor;
-    P4PValue_type.tp_getattro = (getattrofunc)P4PValue_getattr;
-    P4PValue_type.tp_setattro = (setattrofunc)P4PValue_setattr;
+    P4PValue::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
+    P4PValue::type.tp_new = &P4PValue::tp_new;
+    P4PValue::type.tp_init = &P4PValue_init;
+    P4PValue::type.tp_dealloc = &P4PValue::tp_dealloc;
+    P4PValue::type.tp_getattro = &P4PValue_getattr;
+    P4PValue::type.tp_setattro = &P4PValue_setattr;
 
-    P4PValue_type.tp_as_mapping = &P4PValue_mapping;
+    P4PValue::type.tp_as_mapping = &P4PValue_mapping;
 
-    P4PValue_type.tp_methods = P4PValue_methods;
+    P4PValue::type.tp_methods = P4PValue_methods;
 
-    //P4PValue_type.tp_weaklistoffset = offsetof()
+    //P4PValue::type.tp_weaklistoffset = offsetof()
 
-    if(PyType_Ready(&P4PValue_type))
+    if(PyType_Ready(&P4PValue::type))
         throw std::runtime_error("failed to initialize P4PValue_type");
 
-    Py_INCREF((PyObject*)&P4PValue_type);
-    if(PyModule_AddObject(mod, "Value", (PyObject*)&P4PValue_type)) {
-        Py_DECREF((PyObject*)&P4PValue_type);
+    Py_INCREF((PyObject*)&P4PValue::type);
+    if(PyModule_AddObject(mod, "Value", (PyObject*)&P4PValue::type)) {
+        Py_DECREF((PyObject*)&P4PValue::type);
         throw std::runtime_error("failed to add _p4p.Value");
     }
 }
 
 epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *obj)
 {
-    if(!PyObject_TypeCheck(obj, &P4PValue_type))
+    if(!PyObject_TypeCheck(obj, &P4PValue::type))
         throw std::runtime_error("Not a _p4p.Value");
-    P4PValue *pval = (P4PValue*)obj;
-    return pval->V();
+    return P4PValue::unwrap(obj).V;
 }
 
 PyObject *P4PValue_wrap(PyTypeObject *type, const epics::pvData::PVStructure::shared_pointer& V)
 {
     assert(V.get());
-    assert(PyType_IsSubtype(type, &P4PValue_type));
+    assert(PyType_IsSubtype(type, &P4PValue::type));
 
     // magic construction of potentially derived type...
 
@@ -697,7 +669,7 @@ PyObject *P4PValue_wrap(PyTypeObject *type, const epics::pvData::PVStructure::sh
     PyRef ret(type->tp_new(type, args.get(), kws.get()));
 
     // inject value *before* __init__ of base or derived type runs
-    ((P4PValue*)ret.get())->V() = V;
+    P4PValue::unwrap(ret.get()).V = V;
 
     if(type->tp_init(ret.get(), args.get(), kws.get()))
         throw std::runtime_error("XXX");
