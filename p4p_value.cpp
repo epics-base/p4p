@@ -81,7 +81,14 @@ void Value::store_struct(pvd::PVStructure* fld,
     for(size_t i=0; i<nfld; i++) {
         PyRef name(PyUnicode_FromString(names[i].c_str()));
 
-        PyRef item(PyObject_GetItem(obj, name.get()));
+        PyRef item(PyObject_GetItem(obj, name.get()), allownull());
+        if(!item.get()) {
+            assert(PyErr_Occurred());
+            if(!PyErr_ExceptionMatches(PyExc_KeyError))
+                throw std::runtime_error("XXX");
+            PyErr_Clear();
+            continue;
+        }
 
         storefld(vals[i].get(), flds[i].get(), item.get());
     }
@@ -659,7 +666,8 @@ epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *obj)
 PyObject *P4PValue_wrap(PyTypeObject *type, const epics::pvData::PVStructure::shared_pointer& V)
 {
     assert(V.get());
-    assert(PyType_IsSubtype(type, &P4PValue::type));
+    if(!PyType_IsSubtype(type, &P4PValue::type))
+        throw std::runtime_error("Not a sub-class of _p4p.Value");
 
     // magic construction of potentially derived type...
 

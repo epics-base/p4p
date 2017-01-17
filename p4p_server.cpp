@@ -29,8 +29,10 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
         return -1;
 
     TRY {
-        if(provs)
+        if(provs) {
             SELF.providers = provs;
+            TRACE("Providers: "<<SELF.providers);
+        }
 
         pva::ConfigurationBuilder B;
 
@@ -48,6 +50,8 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
 
                 B.add(K.str(), V.str());
             }
+
+            B.push_map();
         } else {
             PyErr_Format(PyExc_ValueError, "conf=%s not valid", Py_TYPE(cdict)->tp_name);
             return -1;
@@ -67,6 +71,7 @@ PyObject* P4PServer_run(PyObject *self, PyObject *args, PyObject *kwds)
         return NULL;
 
     TRY {
+        TRACE("ENTER");
         if(SELF.server) {
             return PyErr_Format(PyExc_RuntimeError, "Already running");
         }
@@ -80,17 +85,22 @@ PyObject* P4PServer_run(PyObject *self, PyObject *args, PyObject *kwds)
 
         SELF.server = S;
 
+        TRACE("UNLOCK");
         {
             PyUnlock U; // release GIL
 
             S->run(0); // 0 == run forever (unless ->shutdown())
         }
+        TRACE("RELOCK");
 
         SELF.server.reset();
 
         S->destroy();
 
+        TRACE("EXIT");
+        Py_RETURN_NONE;
     }CATCH()
+    TRACE("ERROR");
     return NULL;
 }
 
@@ -102,8 +112,11 @@ PyObject* P4PServer_stop(PyObject *self, PyObject *args, PyObject *kwds)
 
     TRY {
         if(SELF.server) {
+            TRACE("SHUTDOWN");
             SELF.server->shutdown();
-        }
+        } else
+            TRACE("SKIP");
+        Py_RETURN_NONE;
     }CATCH()
     return NULL;
 }
@@ -129,7 +142,7 @@ int P4PServer_clear(PyObject *self)
 template<>
 PyTypeObject P4PServer::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p._Server",
+    "p4p._p4p.Server",
     sizeof(P4PServer),
 };
 
@@ -149,11 +162,11 @@ void p4p_server_register(PyObject *mod)
     P4PServer::type.tp_weaklistoffset = offsetof(P4PServer, weak);
 
     if(PyType_Ready(&P4PServer::type))
-        throw std::runtime_error("failed to initialize P4PServer_type");
+        throw std::runtime_error("failed to initialize p4p._p4p.Server");
 
     Py_INCREF((PyObject*)&P4PServer::type);
-    if(PyModule_AddObject(mod, "Type", (PyObject*)&P4PServer::type)) {
+    if(PyModule_AddObject(mod, "Server", (PyObject*)&P4PServer::type)) {
         Py_DECREF((PyObject*)&P4PServer::type);
-        throw std::runtime_error("failed to add _p4p.Type");
+        throw std::runtime_error("failed to add p4p._p4p.Server");
     }
 }

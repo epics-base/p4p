@@ -20,6 +20,8 @@ struct SB {
     }
 };
 
+struct PyExternalRef;
+
 struct borrow {};
 struct allownull {};
 struct PyRef {
@@ -35,6 +37,7 @@ struct PyRef {
         if(!o)
             throw std::runtime_error("Alloc failed");
     }
+    explicit PyRef(const PyExternalRef& o);
     ~PyRef() {
         Py_CLEAR(obj);
     }
@@ -55,6 +58,9 @@ struct PyRef {
         return o;
     }
     PyObject* get() const { return obj; }
+    void swap(PyRef& o) {
+        std::swap(obj, o.obj);
+    }
 };
 
 struct PyString
@@ -84,9 +90,36 @@ struct PyUnlock
     ~PyUnlock() { PyEval_RestoreThread(state); }
 };
 
+// acquire GIL
+struct PyLock
+{
+    PyGILState_STATE state;
+    PyLock() :state(PyGILState_Ensure()) {}
+    ~PyLock() { PyGILState_Release(state); }
+};
+
+// helper when a PyRef may be free'd outside python code
+// beware of lock ordering wrt. the GIL
+struct PyExternalRef {
+    PyRef ref;
+    PyExternalRef() {}
+    ~PyExternalRef() {
+        if(ref.get()) {
+            PyLock G;
+            ref.reset();
+        }
+    }
+    void swap(PyRef& o) {
+        ref.swap(o);
+    }
+    void swap(PyExternalRef& o) {
+        ref.swap(o.ref);
+    }
+};
+
 #define CATCH() catch(std::exception& e) { if(!PyErr_Occurred()) { PyErr_SetString(PyExc_RuntimeError, e.what()); } }
 
-#if 1
+#if 0
 #define TRACE(ARG) do{ std::cerr<<"TRACE "<<__FUNCTION__<<" "<<ARG<<"\n";} while(0)
 #else
 #define TRACE(ARG) do{ } while(0)
@@ -107,6 +140,9 @@ struct PyUnlock
 void p4p_type_register(PyObject *mod);
 void p4p_value_register(PyObject *mod);
 void p4p_server_register(PyObject *mod);
+
+extern struct PyMethodDef P4P_methods[];
+void p4p_server_provider_register(PyObject *mod);
 
 extern PyTypeObject* P4PType_type;
 // Extract Structure from P4PType
