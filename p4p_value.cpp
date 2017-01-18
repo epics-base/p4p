@@ -165,6 +165,8 @@ void Value::store_union(pvd::PVUnion* fld,
                 // try the next one
                 if(i+1==N)
                     throw; // or not
+                else if(PyErr_Occurred())
+                    PyErr_Clear();
             }
         }
         throw std::runtime_error("Unable to automatically select non-Variant Union field");
