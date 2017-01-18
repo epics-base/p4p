@@ -6,6 +6,8 @@ from threading import Thread
 
 from ._p4p import (Server as _Server,
                    installProvider,
+                   removeProvider,
+                   clearProviders,
                    )
 
 class Server(object):
@@ -13,7 +15,7 @@ class Server(object):
         self._S = _Server(*args, **kws)
         self._T = None
 
-    def run(self):
+    def start(self):
         if self._T is not None:
             raise RuntimeError("Already running")
         self._T = Thread(target=self._S.run)
