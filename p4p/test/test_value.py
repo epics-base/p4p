@@ -115,6 +115,12 @@ class TestRawValue(unittest.TestCase):
         V.x = u'test'
         self.assertEqual(V.x, u'test')
 
+        V.x = np.asarray([1, 2])
+        assert_aequal(V.x, np.asarray([1,2]))
+
+        V.x = np.asfarray([1, 2])
+        assert_aequal(V.x, np.asfarray([1,2]))
+
         #TODO: PVD bugs prevent this from working
         #V.x = None
         #self.assertIsNone(V.x)

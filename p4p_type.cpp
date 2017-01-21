@@ -3,6 +3,11 @@
 
 #include "p4p.h"
 
+#define NO_IMPORT_ARRAY
+#define PY_ARRAY_UNIQUE_SYMBOL P4P_PyArray_API
+//#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include <numpy/ndarrayobject.h>
+
 namespace {
 
 namespace pvd = epics::pvData;
@@ -348,8 +353,23 @@ epics::pvData::Field::const_shared_pointer P4PType_guess(PyObject *obj)
         return create->createScalar(pvd::pvDouble);
     } else if(PyBytes_Check(obj) || PyUnicode_Check(obj)) {
         return create->createScalar(pvd::pvString);
-    } else {
-        return epics::pvData::Field::const_shared_pointer();
+    } else if(PyArray_Check(obj)) {
+        switch(PyArray_TYPE(obj)) {
+#define CASE(NTYPE, PTYPE) case NTYPE: return create->createScalarArray(PTYPE);
+        CASE(NPY_BOOL, pvd::pvBoolean) // bool stored as one byte
+        CASE(NPY_BYTE, pvd::pvByte)
+        CASE(NPY_SHORT, pvd::pvShort)
+        CASE(NPY_INT, pvd::pvInt)
+        CASE(NPY_LONG, pvd::pvLong)
+        CASE(NPY_UBYTE, pvd::pvUByte)
+        CASE(NPY_USHORT, pvd::pvUShort)
+        CASE(NPY_UINT, pvd::pvUInt)
+        CASE(NPY_ULONG, pvd::pvULong)
+        CASE(NPY_FLOAT, pvd::pvFloat)
+        CASE(NPY_DOUBLE, pvd::pvDouble)
+#undef CASE
+        }
     }
-    // TODO: guess for ndarray, list, and dict
+    return epics::pvData::Field::const_shared_pointer();
+    // TODO: guess for  list and dict
 }

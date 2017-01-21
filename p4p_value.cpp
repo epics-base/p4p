@@ -122,7 +122,7 @@ void Value::store_union(pvd::PVUnion* fld,
             // TODO: allow guess to be replaced
             pvd::Field::const_shared_pointer UT(P4PType_guess(obj));
             if(!UT)
-                throw std::runtime_error("Unable to map PVD type for Variant Union storage");
+                throw std::runtime_error(SB()<<"Unable to map "<<Py_TYPE(obj)->tp_name<<" for Variant Union storage");
             U = pvd::getPVDataCreate()->createPVField(UT);
             // fall down to assignment
         }
