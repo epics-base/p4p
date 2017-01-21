@@ -41,7 +41,6 @@ class RPCDispatcherBase(object):
             return self # no per-channel tracking needed
 
     def rpc(self, response, request):
-        # {'function':'rpcname', 'names':['name', ...], 'values':['val', ...]}
         _log.debug("RPC call %s", request)
 
         try:
@@ -52,7 +51,12 @@ class RPCDispatcherBase(object):
             R = fn(**args)
 
             if not isinstance(R, Value):
-                R = self.Value(rtype, R)
+                try:
+                    R = self.Value(rtype, R)
+                except:
+                    _log.exception("Error encoding %s as %s", R, rtype)
+                    response.done(error="Error encoding reply")
+                    return
             _log.debug("RPC reply %s -> %s", request, R)
             response.done(R)
 
