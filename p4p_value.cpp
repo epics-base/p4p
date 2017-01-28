@@ -561,6 +561,29 @@ PyObject *P4PValue_select(PyObject *self, PyObject *args, PyObject *kwds)
     return NULL;
 }
 
+PyObject *P4PValue_get(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    TRY {
+        const char *name;
+        PyObject *defval = Py_None;
+        if(!PyArg_ParseTuple(args, "s|O", &name, &defval))
+            return NULL;
+
+        pvd::PVFieldPtr fld = SELF.V->getSubField(name);
+        if(!fld) {
+            Py_INCREF(defval);
+            return defval;
+        }
+
+        if(fld->getField()->getType()==pvd::structure)
+            return P4PValue_wrap(Py_TYPE(self), std::tr1::static_pointer_cast<pvd::PVStructure>(fld));
+
+        return SELF.fetchfld(fld.get(),
+                              fld->getField().get());
+    }CATCH()
+    return NULL;
+}
+
 Py_ssize_t P4PValue_len(PyObject *self)
 {
     TRY {
@@ -619,6 +642,8 @@ static PyMethodDef P4PValue_methods[] = {
      "Transform wrapped Structure into a list of tuples."},
     {"select", (PyCFunction)&P4PValue_select, METH_VARARGS|METH_KEYWORDS,
      "pre-select/clear Union"},
+    {"get", (PyCFunction)&P4PValue_get, METH_VARARGS,
+     "Fetch a field value, or a default if it does not exist"},
     {NULL}
 };
 

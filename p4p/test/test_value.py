@@ -47,6 +47,27 @@ class TestRawValue(unittest.TestCase):
         self.assertEqual(V.sval, u'world')
         self.assertEqual(V['sval'], u'world')
 
+    def testFieldAccess(self):
+        V = _Value(_Type([
+            ('ival', 'i'),
+            ('dval', 'd'),
+            ('sval', 's'),
+        ]), {
+            'ival':42,
+            'dval':4.2,
+            'sval':'hello',
+        })
+
+        self.assertEqual(100, V.get('foo', 100))
+        self.assertIsNone(V.get('foo'))
+
+        self.assertRaises(KeyError, V.__getitem__, 'foo')
+        self.assertRaises(AttributeError, getattr, V, 'foo')
+
+        self.assertRaises(KeyError, V.__setitem__, 'foo', 5)
+        self.assertRaises(AttributeError, setattr, V, 'foo', 5)
+
+
     def testArray(self):
         V = _Value(_Type([
             ('ival', 'ai'),
