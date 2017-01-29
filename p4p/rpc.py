@@ -1,7 +1,9 @@
 
 import logging, inspect
-from functools import wraps
+from functools import wraps, partial
 _log = logging.getLogger(__name__)
+
+from Queue import Queue, Full, Empty
 
 from .wrapper import Value, Type
 
@@ -32,11 +34,38 @@ def rpc(rtype=None):
 class RemoteError(RuntimeError):
     pass
 
+class WorkQueue(object):
+    _stopit = object()
+    def __init__(self, maxsize=5):
+        self._Q = Queue(maxsize=maxsize)
+    def push(self, callable):
+        self._Q.put_nowait(callable) # throws Queue.Full
+    def interrupt(self):
+        self._Q.put(self._stopit)
+    def handle(self):
+        while True:
+            # TODO: Queue.get() (and anything using thread.allocate_lock
+            #       ignores signals :(  so timeout periodically the allow delivery
+            #callable = self._Q.get()
+            try:
+                callable = self._Q.get(True, 1.0)
+            except Empty:
+                continue
+            try:
+                if callable is self._stopit:
+                    break
+                callable()
+            except:
+                _log.exception("Error from WorkQueue")
+            finally:
+                self._Q.task_done()
+
 class RPCDispatcherBase(object):
     # wrapper to use for request Structures
     Value = Value
 
-    def __init__(self, target=None, channels=set()):
+    def __init__(self, queue, target=None, channels=set()):
+        self.queue = queue
         self.target = target
         self.channels = set(channels)
         M = self.methods = {}
@@ -59,7 +88,13 @@ class RPCDispatcherBase(object):
 
     def rpc(self, response, request):
         _log.debug("RPC call %s", request)
+        try:
+            self.queue.push(partial(self._handle, response, request))
+        except Full:
+            _log.warn("RPC call queue overflow")
+            response.done(error="Too many concurrent RPC calls")
 
+    def _handle(self, response, request):
         try:
             name, args = self.getMethodNameArgs(request)
             fn = self.methods[name]
@@ -100,8 +135,8 @@ class NTURIDispatcher(RPCDispatcherBase):
       int result 3
     """
 
-    def __init__(self, prefix=None, **kws):
-        RPCDispatcherBase.__init__(self, **kws)
+    def __init__(self, queue, prefix=None, **kws):
+        RPCDispatcherBase.__init__(self, queue, **kws)
         self.prefix = prefix
         self.methods = dict([(prefix+meth, fn) for meth, fn in self.methods.items()])
         self.channels = set(self.methods.keys())
@@ -113,8 +148,8 @@ class NTURIDispatcher(RPCDispatcherBase):
 
 class MASARDispatcher(RPCDispatcherBase):
 
-    def __init__(self, **kws):
-        RPCDispatcherBase.__init__(self, **kws)
+    def __init__(self, queue, **kws):
+        RPCDispatcherBase.__init__(self, queue, **kws)
         _log.debug("MASAR pv %s methods %s", self.channels, self.methods)
 
     def getMethodNameArgs(self, request):
