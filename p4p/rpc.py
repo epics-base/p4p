@@ -1,13 +1,30 @@
 
 import logging, inspect
+from functools import wraps
 _log = logging.getLogger(__name__)
 
 from .wrapper import Value, Type
 
 def rpc(rtype=None):
-    if not isinstance(rtype, Type):
+    wrap = None
+    if isinstance(rtype, Type):
+        pass
+    elif isinstance(type, (list, tuple)):
         rtype = Type(rtype)
+    elif hasattr(rtype, 'type'):
+        wrap = rtype.wrap
+        rtype = rtype.type
+    else:
+        raise TypeError("Not supported")
+
     def wrapper(fn):
+        if wrap is not None:
+            orig = fn
+            @wraps(orig)
+            def wrapper(*args, **kws):
+                return wrap(orig(*args, **kws))
+            fn = wrapper
+
         fn._reply_Type = rtype
         return fn
     return wrapper
