@@ -99,19 +99,28 @@ class NTTable(object):
         self.type = self.buildType(C, extra=extra)
 
     def wrap(self, values):
+        cols = dict([(L, []) for L in self.labels])
         try:
-            if not hasattr(values, '__getitem__'):
-                values = list(values)
             # unzip list of dict
+            for V in values:
+                for L in self.labels:
+                    try:
+                        cols[L].append(V[L])
+                    except (IndexError, KeyError):
+                        pass
+            # allow omit empty columns
+            for L in self.labels:
+                V = cols[L]
+                if len(V)==0:
+                    del cols[L]
+
             try:
                 return Value(self.type, {
                     'labels': self.labels,
-                    'value': dict(
-                        [(col, map(itemgetter(col), values)) for col in self.labels]
-                    ),
+                    'value': cols,
                 })
             except:
-                _log.error("Failed to encode '%s' with %s", values, self.labels)
+                _log.error("Failed to encode '%s' with %s", cols, self.labels)
                 raise
         except:
             if hasattr(values[0], 'keys'):
