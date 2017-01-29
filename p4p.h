@@ -201,6 +201,10 @@ struct PyClassWrapper {
         PyClassWrapper *W = (PyClassWrapper*)obj;
         return W->I;
     }
+
+    static PyObject *wrap(C* self) {
+        return (PyObject*)((char*)self - offsetof(PyClassWrapper, I));
+    }
 };
 
 

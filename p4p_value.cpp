@@ -205,7 +205,7 @@ void Value::storefld(pvd::PVField* fld,
             F->putFrom(V);
 
         } else {
-            throw std::runtime_error(SB()<<"Can't assign scalar from "<<Py_TYPE(obj)->tp_name);
+            throw std::runtime_error(SB()<<"Can't assign scalar field "<<fld->getFullName()<<" with "<<Py_TYPE(obj)->tp_name);
         }
     }
         return;
@@ -236,7 +236,7 @@ void Value::storefld(pvd::PVField* fld,
                     vec.push_back(std::string(PyBytes_AS_STRING(B.get()), PyBytes_GET_SIZE(B.get())));
 
                 } else {
-                    throw std::runtime_error(SB()<<"Can't assign "<<Py_TYPE(I.get())->tp_name);
+                    throw std::runtime_error(SB()<<"Can't assign string array element "<<fld->getFullName()<<" with "<<Py_TYPE(I.get())->tp_name);
                 }
             }
 
@@ -366,8 +366,10 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
 
             PyRef pyarr(PyArray_New(&PyArray_Type, 1, &dim, npy, NULL, (void*)arr.data(),
                                     esize, NPY_ARRAY_CARRAY_RO, NULL));
-            Py_INCREF((PyObject*)this);
-            ((PyArrayObject*)pyarr.get())->base = (PyObject*)this; // TODO: wrong object
+
+            PyObject *self = P4PValue::wrap(this);
+            Py_INCREF(self);
+            ((PyArrayObject*)pyarr.get())->base = self;
 
             return pyarr.release();
         }
