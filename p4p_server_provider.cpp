@@ -290,7 +290,7 @@ PyServerProvider::createChannel(std::string const & channelName,
                                                    pva::ChannelRequester::shared_pointer const & channelRequester,
                                                    short priority, std::string const & address)
 {
-    TRACE("ENTER");
+    TRACE("ENTER "<<channelRequester->getRequesterName());
     pva::Channel::shared_pointer ret;
     try {
         PyLock G;
@@ -375,6 +375,7 @@ PyObject* p4p_remove_provider(PyObject *junk, PyObject *args, PyObject *kwds)
         return NULL;
 
     try {
+        TRACE("Clear "<<name);
         if(!pyproviders)
             return PyErr_Format(PyExc_KeyError, "Provider %s not registered", name);
 
@@ -402,6 +403,7 @@ PyObject* p4p_remove_all(PyObject *junk, PyObject *args, PyObject *kwds)
         return NULL;
 
     try {
+        TRACE("Clear");
         if(pyproviders) delete pyproviders;
 
         Py_RETURN_NONE;
@@ -450,8 +452,6 @@ void p4p_server_provider_register(PyObject *mod)
 
     PyServerRPC::Reply::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_GC;
     // No new or init.  This type can't be created by python code
-    //PyServerRPC::Reply::type.tp_new = &PyServerRPC::Reply::tp_new;
-    //PyServerRPC::Reply::type.tp_init = &P4PType_init;
     PyServerRPC::Reply::type.tp_dealloc = &PyServerRPC::reply_dealloc;
     PyServerRPC::Reply::type.tp_traverse = &PyServerRPC_traverse;
     PyServerRPC::Reply::type.tp_clear = &PyServerRPC_clear;
