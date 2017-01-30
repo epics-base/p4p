@@ -3,7 +3,10 @@ import logging, inspect
 from functools import wraps, partial
 _log = logging.getLogger(__name__)
 
-from Queue import Queue, Full, Empty
+try:
+    from Queue import Queue, Full, Empty
+except ImportError:
+    from queue import Queue, Full, Empty
 
 from .wrapper import Value, Type
 

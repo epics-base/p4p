@@ -95,9 +95,9 @@ void py2struct(pvd::FieldBuilderPtr& builder, PyObject *o)
         if(!PyArg_ParseTuple(ent.get(), "sO;Expected list of tuples (str, object) or (str, str, object)", &key, &val))
             throw std::runtime_error("XXX");
 
-        if(0) {}
+        if(0) {
 #if PY_MAJOR_VERSION < 3
-        else if(PyBytes_Check(val)) {
+        } else if(PyBytes_Check(val)) {
             const char *spec = PyBytes_AsString(val);
             py2struct_plain(builder, key, spec);
 #endif
@@ -345,8 +345,10 @@ epics::pvData::Field::const_shared_pointer P4PType_guess(PyObject *obj)
     pvd::FieldCreatePtr create(pvd::getFieldCreate());
 
     if(0) {
+#if PY_MAJOR_VERSION < 3
     } else if(PyInt_Check(obj)) {
         return create->createScalar(pvd::pvInt);
+#endif
     } else if(PyLong_Check(obj)) {
         return create->createScalar(pvd::pvLong);
     } else if(PyFloat_Check(obj)) {

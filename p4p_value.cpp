@@ -188,8 +188,10 @@ void Value::storefld(pvd::PVField* fld,
         pvd::PVScalar* F = static_cast<pvd::PVScalar*>(fld);
         if(PyBool_Check(obj)) {
             F->putFrom<pvd::boolean>(obj==Py_True);
+#if PY_MAJOR_VERSION < 3
         } else if(PyInt_Check(obj)) {
             F->putFrom(PyInt_AsLong(obj));
+#endif
         } else if(PyLong_Check(obj)) {
             F->putFrom(PyLong_AsLong(obj));
         } else if(PyFloat_Check(obj)) {
@@ -325,7 +327,11 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
         case pvd::pvShort:
         case pvd::pvUShort:
         case pvd::pvInt:
+#if PY_MAJOR_VERSION < 3
             return PyInt_FromLong(F->getAs<pvd::int32>());
+#else
+            return PyLong_FromLong(F->getAs<pvd::int32>());
+#endif
         case pvd::pvUInt:
         case pvd::pvLong:
         case pvd::pvULong:
