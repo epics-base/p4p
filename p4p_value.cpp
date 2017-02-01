@@ -248,7 +248,7 @@ void Value::storefld(pvd::PVField* fld,
             NPY_TYPES nptype(ntype(etype));
 
             PyRef V(PyArray_FromAny(obj, PyArray_DescrFromType(nptype), 0, 0,
-                                    NPY_ARRAY_CARRAY_RO, NULL));
+                                    NPY_CARRAY_RO, NULL));
 
             if(PyArray_NDIM(V.get())!=1)
                 throw std::runtime_error("Only 1-d array can be assigned");
@@ -371,7 +371,7 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
             npy_intp dim = arr.size()/esize;
 
             PyRef pyarr(PyArray_New(&PyArray_Type, 1, &dim, npy, NULL, (void*)arr.data(),
-                                    esize, NPY_ARRAY_CARRAY_RO, NULL));
+                                    esize, NPY_CARRAY_RO, NULL));
 
             PyObject *base = P4PArray_make(arr);
             ((PyArrayObject*)pyarr.get())->base = base;
