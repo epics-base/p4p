@@ -158,4 +158,4 @@ class MASARDispatcher(RPCDispatcherBase):
     def getMethodNameArgs(self, request):
         # all through a single PV, method name in request
         # {'function':'rpcname', 'name':['name', ...], 'value':['val', ...]}
-        return request.function, dict(zip(request.name, request.value))
+        return request.function, dict(zip(request.get('name',[]), request.get('value',[])))
