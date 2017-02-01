@@ -29,6 +29,7 @@ PyMOD(_p4p)
 
         p4p_type_register(mod.get());
         p4p_value_register(mod.get());
+        p4p_array_register(mod.get());
         p4p_server_register(mod.get());
         p4p_server_provider_register(mod.get());
 

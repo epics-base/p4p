@@ -10,6 +10,7 @@ LOADABLE_LIBRARY_HOST += _p4p
 _p4p_SRCS += p4p_top.cpp
 _p4p_SRCS += p4p_type.cpp
 _p4p_SRCS += p4p_value.cpp
+_p4p_SRCS += p4p_array.cpp
 _p4p_SRCS += p4p_server.cpp
 _p4p_SRCS += p4p_server_provider.cpp
 

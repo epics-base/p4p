@@ -119,7 +119,7 @@ struct PyExternalRef {
 
 #define CATCH() catch(std::exception& e) { if(!PyErr_Occurred()) { PyErr_SetString(PyExc_RuntimeError, e.what()); } }
 
-#if 0
+#if 1
 #define TRACE(ARG) do{ std::cerr<<"TRACE "<<__FUNCTION__<<" "<<ARG<<"\n";} while(0)
 #else
 #define TRACE(ARG) do{ } while(0)
@@ -140,6 +140,7 @@ struct PyExternalRef {
 void p4p_type_register(PyObject *mod);
 void p4p_value_register(PyObject *mod);
 void p4p_server_register(PyObject *mod);
+void p4p_array_register(PyObject *mod);
 
 extern struct PyMethodDef P4P_methods[];
 void p4p_server_provider_register(PyObject *mod);
@@ -150,6 +151,10 @@ epics::pvData::Structure::const_shared_pointer P4PType_unwrap(PyObject *);
 // Find a Field capable of storing the provided value
 epics::pvData::Field::const_shared_pointer P4PType_guess(PyObject *);
 
+typedef epics::pvData::shared_vector<const void> array_type;
+extern PyTypeObject* P4PArray_type;
+PyObject* P4PArray_make(const array_type& v);
+const array_type& P4PArray_extract(PyObject* o);
 
 extern PyTypeObject* P4PValue_type;
 epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *);

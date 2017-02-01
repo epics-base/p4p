@@ -373,9 +373,8 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
             PyRef pyarr(PyArray_New(&PyArray_Type, 1, &dim, npy, NULL, (void*)arr.data(),
                                     esize, NPY_ARRAY_CARRAY_RO, NULL));
 
-            PyObject *self = P4PValue::wrap(this);
-            Py_INCREF(self);
-            ((PyArrayObject*)pyarr.get())->base = self;
+            PyObject *base = P4PArray_make(arr);
+            ((PyArrayObject*)pyarr.get())->base = base;
 
             return pyarr.release();
         }
