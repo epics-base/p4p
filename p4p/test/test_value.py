@@ -202,3 +202,32 @@ class TestRawValue(unittest.TestCase):
         # union array assignment ignores previous selections
         V.y = [2, 5.2, 'bar']
         self.assertListEqual(V.y, [2, 5, u'bar'])
+
+    def testUnionArrayStruct(self):
+        S= _Value(_Type([
+            ('x', 'i'),
+        ]), {
+            'x': 42,
+        })
+
+        V = _Value(_Type([
+            ('y', 'av'),
+        ]), {
+            'y': [S],
+        })
+
+        # attribute/item access returns union array w/ struct as list of Value
+        X = V.y
+
+        self.assertIsInstance(X, list)
+        self.assertIsInstance(X[0], _Value)
+        self.assertEqual(len(X), 1)
+
+        # returns union array w/ struct as list of list of tuples
+        Y = V.tolist()
+
+        self.assertListEqual(Y, [
+            ('y', [[
+                ('x', 42),
+            ]]),
+        ])

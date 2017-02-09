@@ -28,7 +28,7 @@ struct Value {
                       PyObject *obj);
 
     PyObject *fetchfld(pvd::PVField *fld,
-                       const pvd::Field *ftype);
+                       const pvd::Field *ftype, bool unpackstruct);
 };
 
 typedef PyClassWrapper<Value> P4PValue;
@@ -312,7 +312,8 @@ void Value::storefld(pvd::PVField* fld,
 }
 
 PyObject *Value::fetchfld(pvd::PVField *fld,
-                          const pvd::Field *ftype)
+                          const pvd::Field *ftype,
+                          bool unpackstruct)
 {
     switch(ftype->getType()) {
     case pvd::scalar: {
@@ -384,21 +385,28 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
         pvd::PVStructure* F = static_cast<pvd::PVStructure*>(fld);
         const pvd::Structure *T = static_cast<const pvd::Structure*>(ftype);
 
-        const pvd::StringArray& names(T->getFieldNames());
-        const pvd::FieldConstPtrArray& flds(T->getFields());
-        const pvd::PVFieldPtrArray& vals(F->getPVFields());
+        if(unpackstruct) {
+            const pvd::StringArray& names(T->getFieldNames());
+            const pvd::FieldConstPtrArray& flds(T->getFields());
+            const pvd::PVFieldPtrArray& vals(F->getPVFields());
 
-        PyRef list(PyList_New(vals.size()));
+            PyRef list(PyList_New(vals.size()));
 
-        for(size_t i=0; i<vals.size(); i++) {
-            PyRef val(fetchfld(vals[i].get(), flds[i].get()));
+            for(size_t i=0; i<vals.size(); i++) {
+                PyRef val(fetchfld(vals[i].get(), flds[i].get(), unpackstruct));
 
-            PyRef item(Py_BuildValue("sO", names[i].c_str(), val.get()));
+                PyRef item(Py_BuildValue("sO", names[i].c_str(), val.get()));
 
-            PyList_SET_ITEM(list.get(), i, item.release());
+                PyList_SET_ITEM(list.get(), i, item.release());
+            }
+
+            return list.release();
+
+        } else {
+            PyObject *self = P4PValue::wrap(this);
+            return P4PValue_wrap(Py_TYPE(self), std::tr1::static_pointer_cast<pvd::PVStructure>(F->shared_from_this()));
+
         }
-
-        return list.release();
     }
         break;
     case pvd::structureArray:
@@ -411,7 +419,7 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
         if(!val)
             Py_RETURN_NONE;
         else
-            return fetchfld(val.get(), val->getField().get());
+            return fetchfld(val.get(), val->getField().get(), unpackstruct);
     }
         break;
     case pvd::unionArray: {
@@ -428,7 +436,7 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
             if(!arr[i] || !(val=arr[i]->get())) {
                 ent.reset(Py_None, borrow());
             } else {
-                ent.reset(fetchfld(val.get(), val->getField().get()));
+                ent.reset(fetchfld(val.get(), val->getField().get(), unpackstruct));
             }
 
             PyList_SET_ITEM(list.get(), i, ent.release());
@@ -506,11 +514,10 @@ PyObject* P4PValue_getattr(PyObject *self, PyObject *name)
         if(!fld)
             return PyObject_GenericGetAttr((PyObject*)self, name);
 
-        if(fld->getField()->getType()==pvd::structure)
-            return P4PValue_wrap(Py_TYPE(self), std::tr1::static_pointer_cast<pvd::PVStructure>(fld));
-
+        // return sub-struct as Value
         return SELF.fetchfld(fld.get(),
-                              fld->getField().get());
+                              fld->getField().get(),
+                             false);
     }CATCH()
     return NULL;
 }
@@ -534,8 +541,10 @@ PyObject* P4PValue_toList(PyObject *self, PyObject *args, PyObject *kwds)
             return NULL;
         }
 
+        // return sub-struct as list of tuple
         return SELF.fetchfld(fld.get(),
-                              fld->getField().get());
+                              fld->getField().get(),
+                             true);
 
     }CATCH()
     return NULL;
@@ -582,11 +591,10 @@ PyObject *P4PValue_get(PyObject *self, PyObject *args, PyObject *kwds)
             return defval;
         }
 
-        if(fld->getField()->getType()==pvd::structure)
-            return P4PValue_wrap(Py_TYPE(self), std::tr1::static_pointer_cast<pvd::PVStructure>(fld));
-
+        // return sub-struct as Value
         return SELF.fetchfld(fld.get(),
-                              fld->getField().get());
+                              fld->getField().get(),
+                             false);
     }CATCH()
     return NULL;
 }
@@ -629,11 +637,10 @@ PyObject* P4PValue_getitem(PyObject *self, PyObject *name)
             return NULL;
         }
 
-        if(fld->getField()->getType()==pvd::structure)
-            return P4PValue_wrap(Py_TYPE(self), std::tr1::static_pointer_cast<pvd::PVStructure>(fld));
-
+        // return sub-struct as Value
         return SELF.fetchfld(fld.get(),
-                              fld->getField().get());
+                              fld->getField().get(),
+                             false);
     }CATCH()
     return NULL;
 }
