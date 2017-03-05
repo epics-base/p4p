@@ -1,0 +1,27 @@
+# RELEASE - Location of external support modules
+#
+# IF YOU CHANGE this file or any file it includes you must
+# do a "gnumake rebuild" in the application's top level directory.
+#
+# The build process does not check dependencies against files
+# that are outside this application, thus you should also do a
+# "gnumake rebuild" in the top level directory after EPICS_BASE
+# or any other external module pointed to below is rebuilt.
+#
+# Host- or target-specific settings can be given in files named
+#  RELEASE.$(EPICS_HOST_ARCH).Common
+#  RELEASE.Common.$(T_A)
+#  RELEASE.$(EPICS_HOST_ARCH).$(T_A)
+
+TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
+
+# EPICS V4 Developers: Do not edit the locations in this file!
+#
+# To create a file RELEASE.local in this directory
+#     copy ExampleRELEASE.local to RELEASE.local
+#     edit RELEASE.local
+#     rebuild 
+
+-include $(TOP)/configure/RELEASE.local
+-include $(TOP)/../RELEASE.local
+-include $(TOP)/../../RELEASE.local
