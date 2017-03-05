@@ -14,6 +14,7 @@ _p4p_SRCS += p4p_array.cpp
 _p4p_SRCS += p4p_server.cpp
 _p4p_SRCS += p4p_server_provider.cpp
 
+_p4p_SRCS += p4p_client.cpp
 
 _p4p_LIBS += pvAccess pvData Com
 
