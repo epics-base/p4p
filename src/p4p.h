@@ -129,7 +129,7 @@ struct PyExternalRef {
 
 #define CATCH() catch(std::exception& e) { if(!PyErr_Occurred()) { PyErr_SetString(PyExc_RuntimeError, e.what()); } }
 
-#if 1
+#if 0
 #define TRACE(ARG) do{ std::cerr<<"TRACE "<<__FUNCTION__<<" "<<ARG<<"\n";} while(0)
 #else
 #define TRACE(ARG) do{ } while(0)

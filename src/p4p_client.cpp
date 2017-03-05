@@ -132,7 +132,8 @@ int Context::py_init(PyObject *self, PyObject *args, PyObject *kws)
         // note that we create our own provider.
         // we are greedy and don't want to share (also we can destroy channels at will)
         ctxt->provider = pva::getChannelProviderRegistry()->createProvider(pname);
-        std::cerr<<"IN "<<__FUNCTION__<<" "<<ctxt->provider<<"\n";
+
+        TRACE("Context init");
 
         SELF.swap(ctxt);
 
@@ -183,6 +184,7 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
 
         PyChannel::unwrap(ret.get()).swap(req);
 
+        TRACE("Channel "<<cname<<" "<<chan);
         return ret.release();
     } CATCH()
     return NULL;
@@ -190,7 +192,7 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
 
 void Context::close()
 {
-    std::cout<<"In "<<__FUNCTION__<<"\n";
+    TRACE("Context close");
     if(provider) {
         provider.reset();
         Context::channels_t chans;
@@ -207,7 +209,6 @@ void Context::close()
 PyObject *Context::py_close(PyObject *self)
 {
     TRY {
-        std::cout<<"In "<<__FUNCTION__<<"\n";
         SELF->close();
         Py_RETURN_NONE;
     } CATCH()
@@ -275,6 +276,8 @@ PyObject* Channel::py_get(PyObject *self, PyObject *args, PyObject *kws)
         if(!SELF->channel)
             return PyErr_Format(PyExc_RuntimeError, "Channel closed");
 
+        TRACE("Channel get "<<SELF->channel->getChannelName());
+
         GetOp::shared_pointer reqop(new GetOp(SELF));
         reqop->cb.reset(cb, borrow());
         reqop->req = buildRequest(req);
@@ -306,6 +309,7 @@ PyObject* Channel::py_name(PyObject *self)
 void Channel::channelCreated(const pvd::Status& status, pva::Channel::shared_pointer const & channel)
 {
     //TODO: can/do client contexts signal any errors here?
+    TRACE(channel->getChannelName()<<" "<<status);
     if(!status.isOK()) {
         std::cout<<"Warning: unexpected in "<<__FUNCTION__<<" "<<status<<"\n";
     }
@@ -314,6 +318,7 @@ void Channel::channelCreated(const pvd::Status& status, pva::Channel::shared_poi
 
 void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, pva::Channel::ConnectionState connectionState)
 {
+    TRACE(channel->getChannelName()<<" "<<connectionState);
     PyLock L;
     switch(connectionState) {
     case pva::Channel::NEVER_CONNECTED:
@@ -390,17 +395,14 @@ PyObject* OpBase::py_cancel(PyObject *self)
 void GetOp::restart(const GetOp::shared_pointer& self)
 {
     pva::ChannelGet::shared_pointer temp;
+    temp.swap(op);
     {
         PyUnlock U;
-        try {
-            temp = channel->channel->createChannelGet(self, req);
-        } catch(std::runtime_error& e) {
-            // TODO: what will happen if channel not connected?
-            std::cout<<"Warning "<<__PRETTY_FUNCTION__<<" : "<<e.what()<<"\n";
-        } catch(std::exception& e) {
-            std::cout<<"Error "<<__PRETTY_FUNCTION__<<" : "<<e.what()<<"\n";
-            return; // orphan
-        }
+        if(temp)
+            temp->destroy();
+
+        temp = channel->channel->createChannelGet(self, req);
+        TRACE("start get "<<temp);
     }
     op = temp;
     channel->ops.insert(self);
@@ -443,8 +445,11 @@ void GetOp::channelGetConnect(
     pvd::Structure::const_shared_pointer const & structure)
 {
     // assume createChannelGet() return non-NULL
-    if(!status.isOK()) {
+    TRACE("get start "<<channel->channel->getChannelName()<<" "<<status);
+    if(!status.isSuccess()) {
         std::cerr<<__FUNCTION__<<" oops "<<status<<"\n";
+    } else {
+        channelGet->get();
     }
 }
 
@@ -455,6 +460,7 @@ void GetOp::getDone(
     pvd::BitSet::shared_pointer const & bitSet)
 {
     PyLock L;
+    TRACE("get complete "<<channel->channel->getChannelName()<<" with "<<cb.get());
     if(!cb.get()) return;
     PyRef V;
 
@@ -480,7 +486,7 @@ void GetOp::getDone(
 static PyMethodDef Context_methods[] = {
     {"channel", (PyCFunction)&Context::py_channel, METH_VARARGS|METH_KEYWORDS,
      "Return a Channel"},
-    {"channel", (PyCFunction)&Context::py_close, METH_NOARGS,
+    {"close", (PyCFunction)&Context::py_close, METH_NOARGS,
      "Close this Context"},
     {"providers", (PyCFunction)&Context::py_providers, METH_NOARGS|METH_STATIC,
      "Return a list of all currently registered provider names"},
