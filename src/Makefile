@@ -22,11 +22,13 @@ PY += p4p/__init__.py
 PY += p4p/wrapper.py
 PY += p4p/rpc.py
 PY += p4p/server.py
+PY += p4p/client.py
 PY += p4p/nt.py
 
 PY += p4p/test/__init__.py
 PY += p4p/test/test_type.py
 PY += p4p/test/test_value.py
+PY += p4p/test/test_client.py
 
 include $(TOP)/configure/RULES
 include $(TOP)/configure/RULES_PY

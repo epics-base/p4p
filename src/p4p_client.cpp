@@ -3,10 +3,14 @@
 #include <set>
 #include <iostream>
 
+#include <stdlib.h>
+
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 
 #include <pv/pvAccess.h>
+#include <pv/clientFactory.h>
+#include <pv/caProvider.h>
 
 #include "p4p.h"
 
@@ -29,7 +33,9 @@ struct Context {
     channels_t channels;
 
     Context() {}
-    ~Context() {}
+    ~Context() { close(); }
+
+    void close();
 
     static int       py_init(PyObject *self, PyObject *args, PyObject *kws);
     static PyObject *py_channel(PyObject *self, PyObject *args, PyObject *kws);
@@ -56,6 +62,7 @@ struct Channel : public pva::ChannelRequester {
     virtual void channelStateChange(pva::Channel::shared_pointer const & channel, pva::Channel::ConnectionState connectionState);
 
     static PyObject *py_get(PyObject *self, PyObject *args, PyObject *kws);
+    static PyObject *py_name(PyObject *self);
 };
 
 struct OpBase {
@@ -122,7 +129,10 @@ int Context::py_init(PyObject *self, PyObject *args, PyObject *kws)
             return -1;
 
         Context::shared_pointer ctxt(new Context);
-        ctxt->provider = pva::getChannelProviderRegistry()->getProvider(pname);
+        // note that we create our own provider.
+        // we are greedy and don't want to share (also we can destroy channels at will)
+        ctxt->provider = pva::getChannelProviderRegistry()->createProvider(pname);
+        std::cerr<<"IN "<<__FUNCTION__<<" "<<ctxt->provider<<"\n";
 
         SELF.swap(ctxt);
 
@@ -178,18 +188,27 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
     return NULL;
 }
 
+void Context::close()
+{
+    std::cout<<"In "<<__FUNCTION__<<"\n";
+    if(provider) {
+        provider.reset();
+        Context::channels_t chans;
+        chans.swap(channels);
+        {
+            PyUnlock U;
+            for(Context::channels_t::const_iterator it=chans.begin(), end=chans.end(); it!=end; ++it)
+                it->second->destroy();
+            chans.clear();
+        }
+    }
+}
+
 PyObject *Context::py_close(PyObject *self)
 {
     TRY {
-        if(SELF->provider) {
-            SELF->provider.reset();
-            Context::channels_t chans;
-            chans.swap(SELF->channels);
-            {
-                PyUnlock U;
-                chans.clear(); // may result in I/O
-            }
-        }
+        std::cout<<"In "<<__FUNCTION__<<"\n";
+        SELF->close();
         Py_RETURN_NONE;
     } CATCH()
     return NULL;
@@ -208,7 +227,7 @@ PyObject*  Context::py_providers(PyObject *junk)
         for(size_t i=0; i<names->size(); i++) {
             PyRef name(PyString_FromString((*names)[i].c_str()));
 
-            PyList_SET_ITEM(ret.get(), i, name.get());
+            PyList_SET_ITEM(ret.get(), i, name.release());
         }
 
         return ret.release();
@@ -270,6 +289,17 @@ PyObject* Channel::py_get(PyObject *self, PyObject *args, PyObject *kws)
 
         return ret.release();
     }CATCH()
+    return NULL;
+}
+
+PyObject* Channel::py_name(PyObject *self)
+{
+    TRY {
+        if(!SELF->channel)
+            return PyErr_Format(PyExc_RuntimeError, "Channel closed");
+
+        return PyString_FromString(SELF->channel->getChannelName().c_str());
+    }CATCH();
     return NULL;
 }
 
@@ -465,6 +495,8 @@ PyTypeObject PyContext::type = {
 };
 
 static PyMethodDef Channel_methods[] = {
+    {"getName", (PyCFunction)&Channel::py_name, METH_NOARGS,
+     "Channel name (aka PV name)"},
     {"get", (PyCFunction)&Channel::py_get, METH_VARARGS|METH_KEYWORDS,
      "get(callback, request=None)\n\nInitiate a new get() operation.\n"
      "The provided callback must be a callable object, which will be called with a single argument.\n"
@@ -496,6 +528,10 @@ PyTypeObject PyOp::type = {
 
 void p4p_client_register(PyObject *mod)
 {
+
+    pva::ClientFactory::start();
+    pva::ca::CAClientFactory::start();
+
     PyContext::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
     PyContext::type.tp_new = &PyContext::tp_new;
     PyContext::type.tp_init = &Context::py_init;
@@ -515,7 +551,6 @@ void p4p_client_register(PyObject *mod)
 
     PyChannel::type.tp_flags = Py_TPFLAGS_DEFAULT;
     PyChannel::type.tp_new = &PyChannel::tp_new;
-    PyChannel::type.tp_init = &Context::py_init;
     PyChannel::type.tp_dealloc = &PyChannel::tp_dealloc;
 
     PyChannel::type.tp_methods = Channel_methods;
@@ -532,7 +567,6 @@ void p4p_client_register(PyObject *mod)
 
     PyOp::type.tp_flags = Py_TPFLAGS_DEFAULT;
     PyOp::type.tp_new = &PyOp::tp_new;
-    PyOp::type.tp_init = &Context::py_init;
     PyOp::type.tp_dealloc = &PyOp::tp_dealloc;
 
     PyOp::type.tp_methods = OpBase_methods;
