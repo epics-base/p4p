@@ -27,6 +27,9 @@ struct allownull {};
 struct PyRef {
     PyObject *obj;
     PyRef() :obj(0) {}
+    PyRef(const PyRef& o) :obj(o.obj) {
+        Py_XINCREF(obj);
+    }
     explicit PyRef(PyObject *o, const allownull&) :obj(o) {}
     explicit PyRef(PyObject *o, const borrow&) :obj(o) {
         if(!o)
@@ -40,6 +43,13 @@ struct PyRef {
     explicit PyRef(const PyExternalRef& o);
     ~PyRef() {
         Py_CLEAR(obj);
+    }
+    PyRef& operator=(const PyRef& rhs) {
+        Py_XINCREF(rhs.obj);
+        PyObject *temp = obj;
+        obj = rhs.obj;
+        Py_XDECREF(temp);
+        return *this;
     }
     void reset(PyObject *o=0) {
         std::swap(obj, o);
@@ -141,6 +151,7 @@ void p4p_type_register(PyObject *mod);
 void p4p_value_register(PyObject *mod);
 void p4p_server_register(PyObject *mod);
 void p4p_array_register(PyObject *mod);
+void p4p_client_register(PyObject *mod);
 
 extern struct PyMethodDef P4P_methods[];
 void p4p_server_provider_register(PyObject *mod);
