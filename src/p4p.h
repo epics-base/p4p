@@ -206,6 +206,8 @@ struct PyClassWrapper {
 
     static void tp_dealloc(PyObject *raw) {
         PyClassWrapper *self = (PyClassWrapper*)raw;
+        if(self->weak)
+            PyObject_ClearWeakRefs(raw);
         try {
             self->I.~C();
         } CATCH()

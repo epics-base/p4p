@@ -2,6 +2,7 @@
 #include <map>
 #include <set>
 #include <iostream>
+#include <typeinfo>
 
 #include <stdlib.h>
 
@@ -9,6 +10,7 @@
 #include <epicsGuard.h>
 
 #include <pv/pvAccess.h>
+#include <pv/logger.h>
 #include <pv/clientFactory.h>
 #include <pv/caProvider.h>
 
@@ -42,6 +44,7 @@ struct Context {
     static PyObject *py_close(PyObject *self);
 
     static PyObject *py_providers(PyObject *junk);
+    static PyObject *py_set_debug(PyObject *junk, PyObject *args, PyObject *kws);
 };
 
 struct Channel : public pva::ChannelRequester {
@@ -72,7 +75,10 @@ struct OpBase {
     pvd::PVStructure::shared_pointer req;
 
     OpBase(const Channel::shared_pointer& ch) :channel(ch) {}
-    virtual ~OpBase() { cancel(); }
+    virtual ~OpBase() {
+        PyLock L;
+        cancel();
+    }
 
     // pva::Channel life-cycle callbacks
     //  called to (re)start operation
@@ -80,14 +86,68 @@ struct OpBase {
     //  channel lost connection
     virtual void lostConn(const OpBase::shared_pointer& self) {}
     //  channel destoryed or user cancel
-    virtual bool cancel() {return false;}
+    virtual bool cancel() {
+        if(!channel) return false;
+        bool found = false;
+        for(Channel::operations_t::iterator it = channel->ops.begin(), end = channel->ops.end(); it!=end; ++it)
+        {
+            if(it->get()==this) {
+                found = true;
+                channel->ops.erase(it);
+                break;
+            }
+        }
+        return found;
+    }
+
+    // called with GIL locked
+    void destroy() { cancel(); }
 
     static PyObject *py_cancel(PyObject *self);
+    static int py_traverse(PyObject *self, visitproc visit, void *arg);
+    static int py_clear(PyObject *self);
+    virtual int traverse(visitproc visit, void *arg)=0;
+    virtual void clear()=0;
 };
 
+template<typename T>
+struct TheDestroyer { // raaawwwrr!
+    typedef std::tr1::shared_ptr<T> pointer_t;
+    pointer_t ref;
+
+    TheDestroyer() :ref() {}
+    ~TheDestroyer() {
+        if(ref) {
+            ref->destroy();
+            if(!ref.unique()) {
+                std::cerr<<"Destoryer'd ref did not release all references: "<<typeid(ref.get()).name()<<"\n";
+            }
+        }
+    }
+
+    T& operator*() const { return *ref; }
+    T* operator->() const { return ref.get(); }
+    TheDestroyer& operator=(const pointer_t& p) {
+        ref = p;
+        return *this;
+    }
+};
+
+/* Ownership and lifetime constraits
+ *
+ * PVA requires the use of shared_ptr.
+ * Some of our objects (OpBase) will hold PyObject*s.
+ *   Such objects must Py_DECREF under the GIL.
+ *   Must participate in cyclic GC
+ * We want to ensure that OpBase is cancel()d if collected before completion
+ *
+ * For types w/o PyObject* or dtor actions, just wrap a shared_ptr w/o special handling
+ *
+ * For others, need to ensure that python dtor cancel()s and clears PyRef
+ */
 typedef PyClassWrapper<Context::shared_pointer> PyContext;
 typedef PyClassWrapper<Channel::shared_pointer> PyChannel;
-typedef PyClassWrapper<OpBase::shared_pointer > PyOp;
+typedef PyClassWrapper<TheDestroyer<OpBase> > PyOp;
 
 struct GetOp : public OpBase, public pva::ChannelGetRequester {
     POINTER_DEFINITIONS(GetOp);
@@ -97,6 +157,21 @@ struct GetOp : public OpBase, public pva::ChannelGetRequester {
 
     GetOp(const Channel::shared_pointer& ch) :OpBase(ch) {}
     virtual ~GetOp() {}
+
+    virtual int traverse(visitproc visit, void *arg)
+    {
+        if(cb.get())
+            Py_VISIT(cb.get());
+        return 0;
+    }
+
+    virtual void clear()
+    {
+        // ~= Py_CLEAR(cb)
+        PyRef tmp;
+        cb.swap(tmp);
+        tmp.reset();
+    }
 
     virtual void restart(const GetOp::shared_pointer &self);
     virtual void lostConn(const GetOp::shared_pointer& self);
@@ -115,8 +190,17 @@ struct GetOp : public OpBase, public pva::ChannelGetRequester {
         pvd::PVStructure::shared_pointer const & pvStructure,
         pvd::BitSet::shared_pointer const & bitSet);
 };
+/*
+struct PutOp : public OpBase, public pva::ChannelPutRequester {
+    POINTER_DEFINITIONS(PutOp);
 
+    pva::ChannelPut::shared_pointer op;
+    PyRef val;
 
+    PutOp(const Channel::shared_pointer& ch) :OpBase(ch) {}
+    virtual ~PutOp() {}
+};
+*/
 #define TRY PyContext::reference_type SELF = PyContext::unwrap(self); try
 
 
@@ -232,6 +316,21 @@ PyObject*  Context::py_providers(PyObject *junk)
         }
 
         return ret.release();
+    }CATCH()
+    return NULL;
+}
+
+PyObject*  Context::py_set_debug(PyObject *junk, PyObject *args, PyObject *kws)
+{
+    try {
+        int lvl = pva::logLevelError;
+        static const char* names[] = {"level", NULL};
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "|i", (char**)&names, &lvl))
+            return NULL;
+
+        pva::pvAccessSetLogLevel((pva::pvAccessLogLevel)lvl);
+
+        Py_RETURN_NONE;
     }CATCH()
     return NULL;
 }
@@ -377,15 +476,28 @@ void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, p
 PyObject* OpBase::py_cancel(PyObject *self)
 {
     TRY {
-        bool canceled = SELF->channel.get() && SELF->cancel();
-        SELF->channel.reset();
-        if(canceled)
-            Py_RETURN_TRUE;
-        else
-            Py_RETURN_FALSE;
+        bool cancelled = SELF->channel.get() && SELF->cancel();
 
+        return PyBool_FromLong(cancelled);
     } CATCH()
     return NULL;
+}
+
+int OpBase::py_traverse(PyObject *self, visitproc visit, void *arg)
+{
+    TRY {
+        return SELF->traverse(visit, arg);
+    } CATCH()
+    return -1;
+}
+
+int OpBase::py_clear(PyObject *self)
+{
+    TRY {
+        SELF->clear();
+        return 0;
+    } CATCH()
+    return -1;
 }
 
 
@@ -394,6 +506,7 @@ PyObject* OpBase::py_cancel(PyObject *self)
 
 void GetOp::restart(const GetOp::shared_pointer& self)
 {
+    if(!channel) return;
     pva::ChannelGet::shared_pointer temp;
     temp.swap(op);
     {
@@ -410,6 +523,7 @@ void GetOp::restart(const GetOp::shared_pointer& self)
 
 void GetOp::lostConn(const shared_pointer &self)
 {
+    if(!channel) return;
     channel->ops.insert(self);
     if(op) {
         pva::ChannelGet::shared_pointer temp;
@@ -424,7 +538,10 @@ void GetOp::lostConn(const shared_pointer &self)
 
 bool GetOp::cancel()
 {
+    OpBase::cancel();
     bool canceled = cb.get();
+    channel.reset();
+    cb.reset();
 
     if(op) {
         pva::ChannelGet::shared_pointer temp;
@@ -449,6 +566,7 @@ void GetOp::channelGetConnect(
     if(!status.isSuccess()) {
         std::cerr<<__FUNCTION__<<" oops "<<status<<"\n";
     } else {
+        // may call getDone() recursively
         channelGet->get();
     }
 }
@@ -490,6 +608,8 @@ static PyMethodDef Context_methods[] = {
      "Close this Context"},
     {"providers", (PyCFunction)&Context::py_providers, METH_NOARGS|METH_STATIC,
      "Return a list of all currently registered provider names"},
+    {"set_debug", (PyCFunction)&Context::py_set_debug, METH_VARARGS|METH_KEYWORDS|METH_STATIC,
+     "Set PVA debug level"},
     {NULL}
 };
 
@@ -530,13 +650,22 @@ PyTypeObject PyOp::type = {
     sizeof(PyOp),
 };
 
+void unfactory()
+{
+    pva::ca::CAClientFactory::stop();
+    pva::ClientFactory::stop();
+}
+
 } // namespace
 
 void p4p_client_register(PyObject *mod)
 {
+    // TODO: traverse, visit for *Op (with stored PyRef)
 
     pva::ClientFactory::start();
     pva::ca::CAClientFactory::start();
+
+    Py_AtExit(&unfactory);
 
     PyContext::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
     PyContext::type.tp_new = &PyContext::tp_new;
@@ -574,6 +703,9 @@ void p4p_client_register(PyObject *mod)
     PyOp::type.tp_flags = Py_TPFLAGS_DEFAULT;
     PyOp::type.tp_new = &PyOp::tp_new;
     PyOp::type.tp_dealloc = &PyOp::tp_dealloc;
+    PyOp::type.tp_traverse = &OpBase::py_traverse;
+    PyOp::type.tp_clear = &OpBase::py_clear;
+    PyOp::type.tp_weaklistoffset = offsetof(PyOp, weak);
 
     PyOp::type.tp_methods = OpBase_methods;
 
@@ -585,4 +717,5 @@ void p4p_client_register(PyObject *mod)
         Py_DECREF((PyObject*)&PyOp::type);
         throw std::runtime_error("failed to add p4p._p4p.Operation");
     }
+
 }

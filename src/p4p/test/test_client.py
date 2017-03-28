@@ -33,6 +33,21 @@ class TestPVA(unittest.TestCase):
             _X[0] = V
         op = chan.get(fn)
 
-        op.cancel()
+        self.assertTrue(op.cancel())
+
+        self.assertIsNone(_X[0])
+
+    def testGetAbortGC(self):
+        chan = self.ctxt.channel("completelyInvalidChannelName")
+        _X = [None]
+        def fn(V):
+            _X[0] = V
+        op = chan.get(fn)
+
+        W =  weakref.ref(op)
+        del op
+        gc.collect()
+
+        self.assertIsNone(W())
 
         self.assertIsNone(_X[0])

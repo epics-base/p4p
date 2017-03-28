@@ -1,4 +1,6 @@
 
+#include <pv/logger.h>
+
 #include "p4p.h"
 
 //TODO: drop support for numpy 1.6 (found in debian <=7)
@@ -33,6 +35,15 @@ PyMOD(_p4p)
         p4p_server_register(mod.get());
         p4p_server_provider_register(mod.get());
         p4p_client_register(mod.get());
+
+        PyModule_AddIntConstant(mod.get(), "logLevelAll", epics::pvAccess::logLevelAll);
+        PyModule_AddIntConstant(mod.get(), "logLevelTrace", epics::pvAccess::logLevelTrace);
+        PyModule_AddIntConstant(mod.get(), "logLevelDebug", epics::pvAccess::logLevelDebug);
+        PyModule_AddIntConstant(mod.get(), "logLevelInfo", epics::pvAccess::logLevelInfo);
+        PyModule_AddIntConstant(mod.get(), "logLevelWarn", epics::pvAccess::logLevelWarn);
+        PyModule_AddIntConstant(mod.get(), "logLevelError", epics::pvAccess::logLevelError);
+        PyModule_AddIntConstant(mod.get(), "logLevelFatal", epics::pvAccess::logLevelFatal);
+        PyModule_AddIntConstant(mod.get(), "logLevelOff", epics::pvAccess::logLevelOff);
 
         MODINIT_RET(mod.release());
     } catch(std::exception& e) {
