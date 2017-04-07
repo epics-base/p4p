@@ -82,9 +82,9 @@ struct OpBase {
 
     // pva::Channel life-cycle callbacks
     //  called to (re)start operation
-    virtual void restart(const OpBase::shared_pointer& self) {}
+    virtual void restart(const OpBase::shared_pointer& self) =0;
     //  channel lost connection
-    virtual void lostConn(const OpBase::shared_pointer& self) {}
+    virtual void lostConn(const OpBase::shared_pointer& self) =0;
     //  channel destoryed or user cancel
     virtual bool cancel() {
         if(!channel) return false;
@@ -173,8 +173,8 @@ struct GetOp : public OpBase, public pva::ChannelGetRequester {
         tmp.reset();
     }
 
-    virtual void restart(const GetOp::shared_pointer &self);
-    virtual void lostConn(const GetOp::shared_pointer& self);
+    virtual void restart(const OpBase::shared_pointer &self);
+    virtual void lostConn(const OpBase::shared_pointer& self);
     virtual bool cancel();
 
     virtual std::string getRequesterName() { return "p4p.Op"; }
@@ -383,13 +383,27 @@ PyObject* Channel::py_get(PyObject *self, PyObject *args, PyObject *kws)
 
         SELF->ops.insert(reqop);
 
-        reqop->restart(reqop);
+        //TODO: PVA provider lets us start get() when not connected
+        //      CA provider fails.
+        //      Race with connection test?
 
-        PyRef ret(PyOp::type.tp_new(&PyOp::type, args, kws));
+        if(SELF->channel->isConnected()) {
+            TRACE("Issue get");
+            reqop->restart(reqop);
+        } else {
+            TRACE("Wait for connect");
+        }
 
-        PyOp::unwrap(ret.get()) = reqop;
+        try {
+            PyRef ret(PyOp::type.tp_new(&PyOp::type, args, kws));
 
-        return ret.release();
+            PyOp::unwrap(ret.get()) = reqop;
+
+            return ret.release();
+        }catch(...) {
+            reqop->op->destroy();
+            throw;
+        }
     }CATCH()
     return NULL;
 }
@@ -417,8 +431,8 @@ void Channel::channelCreated(const pvd::Status& status, pva::Channel::shared_poi
 
 void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, pva::Channel::ConnectionState connectionState)
 {
-    TRACE(channel->getChannelName()<<" "<<connectionState);
     PyLock L;
+    TRACE(channel->getChannelName()<<" "<<connectionState<<" #ops="<<ops.size());
     switch(connectionState) {
     case pva::Channel::NEVER_CONNECTED:
         break; // should never happen
@@ -428,7 +442,9 @@ void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, p
         temp.swap(ops);
 
         for(operations_t::const_iterator it = temp.begin(), end = temp.end(); it!=end; ++it) {
+            TRACE("CONN "<<(*it));
             if(!(*it)) continue; // shouldn't happen, but guard against it anyway
+            TRACE("CONN2 "<<(*it));
             try {
                 (*it)->restart(*it);
                 // restart() should re-add itself to ops
@@ -504,8 +520,9 @@ int OpBase::py_clear(PyObject *self)
 
 
 
-void GetOp::restart(const GetOp::shared_pointer& self)
+void GetOp::restart(const OpBase::shared_pointer& self)
 {
+    TRACE("channel="<<channel.get());
     if(!channel) return;
     pva::ChannelGet::shared_pointer temp;
     temp.swap(op);
@@ -514,14 +531,14 @@ void GetOp::restart(const GetOp::shared_pointer& self)
         if(temp)
             temp->destroy();
 
-        temp = channel->channel->createChannelGet(self, req);
+        temp = channel->channel->createChannelGet(std::tr1::static_pointer_cast<GetOp>(self), req);
         TRACE("start get "<<temp);
     }
     op = temp;
     channel->ops.insert(self);
 }
 
-void GetOp::lostConn(const shared_pointer &self)
+void GetOp::lostConn(const OpBase::shared_pointer &self)
 {
     if(!channel) return;
     channel->ops.insert(self);
@@ -578,7 +595,7 @@ void GetOp::getDone(
     pvd::BitSet::shared_pointer const & bitSet)
 {
     PyLock L;
-    TRACE("get complete "<<channel->channel->getChannelName()<<" with "<<cb.get());
+    TRACE("get complete "<<channel->channel->getChannelName()<<" for "<<cb.get()<<" with "<<status);
     if(!cb.get()) return;
     PyRef V;
 

@@ -13,7 +13,6 @@ _all_contexts = WeakSet()
 
 def _cleanup_contexts():
     contexts = list(_all_contexts)
-    print("cleanup context", contexts)
     for ctxt in contexts:
         ctxt.close()
 
