@@ -10,3 +10,4 @@ atexit.register(clearProviders)
 class Value(_Value):
     def __repr__(self):
         return '<Value: %s>'%self.tolist()
+    id = property(_Value.getID)

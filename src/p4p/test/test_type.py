@@ -143,3 +143,10 @@ class TestRawType(unittest.TestCase):
         if T is not None:
             print("Not Dead!", T, gc.get_referrers(T))
         self.assertIsNone(T)
+
+    def testStructID(self):
+        T = _Type([('a', 'I')])
+        self.assertEqual(T.getID(), "structure")
+
+        T = _Type([('a', 'I')], id="foo")
+        self.assertEqual(T.getID(), "foo")

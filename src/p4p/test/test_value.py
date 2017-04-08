@@ -8,6 +8,7 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal as assert_aequal
 
 from .._p4p import (Type as _Type, Value as _Value)
+from ..wrapper import Value
 
 class TestRawValue(unittest.TestCase):
     def testScalar(self):
@@ -231,3 +232,11 @@ class TestRawValue(unittest.TestCase):
                 ('x', 42),
             ]]),
         ])
+
+    def testStructID(self):
+        V = Value(_Type([('a', 'I')]))
+        self.assertEqual(V.getID(), "structure")
+
+        V = Value(_Type([('a', 'I')], id="foo"))
+        self.assertEqual(V.getID(), "foo")
+        self.assertEqual(V.id, "foo")

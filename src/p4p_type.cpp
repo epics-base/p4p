@@ -268,6 +268,15 @@ PyObject* struct2py(const pvd::StringArray& names,
     return list.release();
 }
 
+PyObject* P4PType_id(PyObject *self) {
+    TRY {
+        assert(SELF.get());
+
+        return PyString_FromString(SELF->getID().c_str());
+    }CATCH()
+    return NULL;
+}
+
 PyObject* P4PType_aspy(PyObject *self) {
     TRY {
         assert(SELF.get());
@@ -286,6 +295,8 @@ PyObject* P4PType_aspy(PyObject *self) {
 }
 
 static struct PyMethodDef P4PType_members[] = {
+    {"getID", (PyCFunction)P4PType_id, METH_NOARGS,
+     "Return Structure ID"},
     {"aspy", (PyCFunction)P4PType_aspy, METH_NOARGS,
      "Return spec for this PVD Structure"},
     {NULL}

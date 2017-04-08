@@ -577,7 +577,7 @@ PyObject *P4PValue_select(PyObject *self, PyObject *args, PyObject *kwds)
     return NULL;
 }
 
-PyObject *P4PValue_get(PyObject *self, PyObject *args, PyObject *kwds)
+PyObject *P4PValue_get(PyObject *self, PyObject *args)
 {
     TRY {
         const char *name;
@@ -595,6 +595,14 @@ PyObject *P4PValue_get(PyObject *self, PyObject *args, PyObject *kwds)
         return SELF.fetchfld(fld.get(),
                               fld->getField().get(),
                              false);
+    }CATCH()
+    return NULL;
+}
+
+PyObject *P4PValue_id(PyObject *self)
+{
+    TRY {
+        return PyString_FromString(SELF.V->getStructure()->getID().c_str());
     }CATCH()
     return NULL;
 }
@@ -658,6 +666,8 @@ static PyMethodDef P4PValue_methods[] = {
      "pre-select/clear Union"},
     {"get", (PyCFunction)&P4PValue_get, METH_VARARGS,
      "Fetch a field value, or a default if it does not exist"},
+    {"getID", (PyCFunction)&P4PValue_id, METH_NOARGS,
+     "Return Structure ID"},
     {NULL}
 };
 
