@@ -4,7 +4,7 @@ from __future__ import print_function
 import unittest
 import weakref, gc
 
-from ..client import Context
+from ..client.raw import Context
 
 class TestProviders(unittest.TestCase):
     def tearDown(self):

@@ -10,11 +10,11 @@ try:
 except ImportError:
     from queue import Queue, Full, Empty
 
-from ._p4p import (Context as _Context,
+from .._p4p import (Context as _Context,
                    Channel as _Channel)
-from ._p4p import logLevelDebug
+from .._p4p import logLevelDebug
 
-from .wrapper import Value
+from ..wrapper import Value
 
 __all__ = (
     'Context',
