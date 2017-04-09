@@ -208,6 +208,9 @@ struct PyClassWrapper {
         PyClassWrapper *self = (PyClassWrapper*)raw;
         if(self->weak)
             PyObject_ClearWeakRefs(raw);
+        PyTypeObject *klass = Py_TYPE(raw);
+        if(klass->tp_clear)
+            (klass->tp_clear)(raw);
         try {
             self->I.~C();
         } CATCH()
