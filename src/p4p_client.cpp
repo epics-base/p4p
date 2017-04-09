@@ -44,6 +44,7 @@ struct Context {
 
     static PyObject *py_providers(PyObject *junk);
     static PyObject *py_set_debug(PyObject *junk, PyObject *args, PyObject *kws);
+    static PyObject *py_makeRequest(PyObject *junk, PyObject *args);
 };
 
 struct Channel : public pva::ChannelRequester {
@@ -387,6 +388,22 @@ PyObject*  Context::py_set_debug(PyObject *junk, PyObject *args, PyObject *kws)
     return NULL;
 }
 
+PyObject* Context::py_makeRequest(PyObject *junk, PyObject *args)
+{
+    try {
+        const char *req;
+        if(!PyArg_ParseTuple(args, "s", &req))
+            return NULL;
+
+        pvd::PVStructure::shared_pointer str(pvd::CreateRequest::create()->createRequest(req));
+
+        PyRef ret(P4PValue_wrap(P4PValue_type, str));
+
+        return ret.release();
+    }CATCH()
+    return NULL;
+}
+
 pvd::PVStructure::shared_pointer buildRequest(PyObject *req)
 {
     pvd::PVStructure::shared_pointer opts;
@@ -398,11 +415,15 @@ pvd::PVStructure::shared_pointer buildRequest(PyObject *req)
      *
      */
     if(req==Py_None) {
-        // create an empty struct... argh!!!!
-        opts = pvd::getPVDataCreate()->createPVStructure(pvd::getFieldCreate()->createFieldBuilder()->createStructure());
+        // create {'field':{}} to get everything
+        opts = pvd::getPVDataCreate()->createPVStructure(pvd::getFieldCreate()->createFieldBuilder()
+                                                         ->addNestedStructure("field")
+                                                         ->endNested()
+                                                         ->createStructure());
 
     } else if(PyString_Check(req)) {
-        throw std::runtime_error("pvRequest parsing not implemented");
+        PyString S(req);
+        opts = pvd::CreateRequest::create()->createRequest(S.str());
 
     } else {
         opts = P4PValue_unwrap(req);
@@ -430,7 +451,7 @@ int Channel::py_init(PyObject *self, PyObject *args, PyObject *kws)
 PyObject* Channel::py_get(PyObject *self, PyObject *args, PyObject *kws)
 {
     TRY {
-        static const char *names[] = {"callback", "request"};
+        static const char *names[] = {"callback", "request", NULL};
         PyObject *cb, *req = Py_None;
         if(!PyArg_ParseTupleAndKeywords(args, kws, "O|O", (char**)names, &cb, &req))
             return NULL;
@@ -485,6 +506,12 @@ PyObject* Channel::py_put(PyObject *self, PyObject *args, PyObject *kws)
         if(!PyCallable_Check(cb))
             return PyErr_Format(PyExc_ValueError, "callable required, not %s", Py_TYPE(cb)->tp_name);
 
+        if(PyObject_IsSubclass(val, (PyObject*)P4PValue_type)) { /* ok */ }
+        else if(PyCallable_Check(val)) { /* ok */ }
+        else {
+            return PyErr_Format(PyExc_ValueError, "put value must be Value or callable which returns Value");
+        }
+
         if(!SELF->channel)
             return PyErr_Format(PyExc_RuntimeError, "Channel closed");
 
@@ -492,6 +519,7 @@ PyObject* Channel::py_put(PyObject *self, PyObject *args, PyObject *kws)
 
         PutOp::shared_pointer reqop(new PutOp(SELF));
         reqop->cb.reset(cb, borrow());
+        reqop->value.reset(val, borrow());
         reqop->req = buildRequest(req);
 
         if(SELF->channel->isConnected()) {
@@ -539,6 +567,7 @@ PyObject *Channel::py_close(PyObject *self)
                 chan.reset();
             }
         }
+        Py_RETURN_NONE;
     }CATCH();
     return NULL;
 }
@@ -813,7 +842,28 @@ void PutOp::channelPutConnect(
         pvd::PVStructure::shared_pointer val;
         {
             PyLock L;
-            //TODO: get val (and bitset?)
+            try {
+                PyRef temp;
+                temp.swap(value);
+                if(!temp.get()) {
+                    TRACE("no value!?!?!");
+                    return;
+                }
+                //TODO: bitset?
+                if(!PyObject_IsSubclass(temp.get(), (PyObject*)P4PValue_type)) {
+                    // assume callable
+                    PyRef ptype(P4PType_wrap(P4PType_type, structure));
+                    PyRef val(PyObject_CallFunctionObjArgs(temp.get(), ptype.get(), NULL));
+                    temp.swap(val);
+                }
+            }catch(std::exception& e) {
+                if(PyErr_Occurred()) {
+                    PyErr_Print();
+                    PyErr_Clear();
+                }
+                std::cerr<<"Error in channelPutConnect value builder\n";
+                return;
+            }
         }
         pvd::BitSet::shared_pointer mask(new pvd::BitSet(1));
         mask->set(0);
@@ -859,6 +909,8 @@ static PyMethodDef Context_methods[] = {
      "Return a list of all currently registered provider names"},
     {"set_debug", (PyCFunction)&Context::py_set_debug, METH_VARARGS|METH_KEYWORDS|METH_STATIC,
      "Set PVA debug level"},
+    {"makeRequest", (PyCFunction)&Context::py_makeRequest, METH_VARARGS|METH_STATIC,
+     "makeRequet(\"field(value)\")\n\nParse pvRequest string"},
     {NULL}
 };
 

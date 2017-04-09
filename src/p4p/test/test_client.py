@@ -6,6 +6,20 @@ import weakref, gc
 
 from ..client.raw import Context
 
+class TestRequest(unittest.TestCase):
+    def testEmpty(self):
+        self.assertListEqual(Context.makeRequest("").tolist(), [])
+
+    def testValue(self):
+        self.assertListEqual(Context.makeRequest("field(value)").tolist(),
+            [('field', [('value', [])])]
+        )
+
+    def testAll(self):
+        self.assertListEqual(Context.makeRequest("field()").tolist(),
+            [('field', [])]
+        )
+
 class TestProviders(unittest.TestCase):
     def tearDown(self):
         gc.collect() # try to provoke any crashes here so they can be associated with this testcase

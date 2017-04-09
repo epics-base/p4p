@@ -24,7 +24,9 @@ PY += p4p/rpc.py
 PY += p4p/server.py
 PY += p4p/nt.py
 PY += p4p/client/__init__.py
+PY += p4p/client/cli.py
 PY += p4p/client/raw.py
+PY += p4p/client/thread.py
 
 PY += p4p/test/__init__.py
 PY += p4p/test/test_type.py

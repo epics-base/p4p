@@ -158,6 +158,7 @@ void p4p_server_provider_register(PyObject *mod);
 
 extern PyTypeObject* P4PType_type;
 // Extract Structure from P4PType
+PyObject* P4PType_wrap(PyTypeObject *type, const epics::pvData::Structure::const_shared_pointer &);
 epics::pvData::Structure::const_shared_pointer P4PType_unwrap(PyObject *);
 // Find a Field capable of storing the provided value
 epics::pvData::Field::const_shared_pointer P4PType_guess(PyObject *);

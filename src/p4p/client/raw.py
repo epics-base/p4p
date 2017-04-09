@@ -35,9 +35,10 @@ class Context(_Context):
         self._channels = set()
 
     def close(self):
-        for ch in self._channels:
-            ch.close()
-        self._channels = None
+        if self._channels is not None:
+            for ch in self._channels:
+                ch.close()
+            self._channels = None
         _Context.close(self)
 
     def channel(self, name):
@@ -55,48 +56,3 @@ def _cleanup_contexts():
         ctxt.close()
 
 atexit.register(_cleanup_contexts)
-
-
-def getargs():
-    from argparse import ArgumentParser
-    A = ArgumentParser()
-    A.add_argument('pv', nargs='*', help="PV names")
-    A.add_argument('-P','--provider',default='pva')
-    A.add_argument('-d','--debug', action='store_true')
-    A.add_argument('-t','--timeout', type=float, default=5.0)
-    return A.parse_args()
-
-def main(args):
-    if args.debug:
-        Context.set_debug(logLevelDebug)
-    ctxt = Context(args.provider)
-    chans = []
-
-    Q = Queue(maxsize=len(args.pv))
-    for pv in args.pv:
-        chan = ctxt.channel(pv)
-        def got(V, pv=pv):
-            try:
-                Q.put_nowait((pv, V))
-            except:
-                _log.exception("Error w/ result")
-        op = chan.get(got)
-        chans.append(chan) # keep Channel alive
-
-    err = 0
-    for n in range(len(args.pv)):
-        pv, V = Q.get(timeout=args.timeout)
-        if isinstance(V, Exception):
-            print pv, V
-            err = 1
-        else:
-            print pv, V.tolist()
-
-    del chans
-
-    sys.exit(err)
-
-if __name__=='__main__':
-    args = getargs()
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
-    main(args)

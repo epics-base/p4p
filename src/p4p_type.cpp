@@ -346,6 +346,29 @@ void p4p_type_register(PyObject *mod)
     }
 }
 
+PyObject* P4PType_wrap(PyTypeObject *type, const epics::pvData::Structure::const_shared_pointer& S)
+{
+    assert(S.get());
+    if(!PyType_IsSubtype(type, &P4PType::type))
+        throw std::runtime_error("Not a sub-class of _p4p.Type");
+
+    // magic construction of potentially derived type...
+
+    PyRef args(PyTuple_New(0));
+    PyRef kws(PyDict_New());
+
+    PyRef ret(type->tp_new(type, args.get(), kws.get()));
+
+    // inject value *before* __init__ of base or derived type runs
+    P4PType::unwrap(ret.get()) = S;
+
+    if(type->tp_init(ret.get(), args.get(), kws.get()))
+        throw std::runtime_error("XXX");
+
+    return ret.release();
+
+}
+
 pvd::Structure::const_shared_pointer P4PType_unwrap(PyObject *obj)
 {
     return P4PType::unwrap(obj);
