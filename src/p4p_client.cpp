@@ -395,7 +395,11 @@ PyObject* Context::py_makeRequest(PyObject *junk, PyObject *args)
         if(!PyArg_ParseTuple(args, "s", &req))
             return NULL;
 
-        pvd::PVStructure::shared_pointer str(pvd::CreateRequest::create()->createRequest(req));
+        // OMG, would a simple function w/ 'throw' be so much to ask for!?!?!
+        pvd::CreateRequest::shared_pointer create(pvd::CreateRequest::create());
+        pvd::PVStructure::shared_pointer str(create->createRequest(req));
+        if(!str)
+            throw std::runtime_error(SB()<<"Error parsing pvRequest: "<<create->getMessage());
 
         PyRef ret(P4PValue_wrap(P4PValue_type, str));
 
@@ -423,7 +427,14 @@ pvd::PVStructure::shared_pointer buildRequest(PyObject *req)
 
     } else if(PyString_Check(req)) {
         PyString S(req);
-        opts = pvd::CreateRequest::create()->createRequest(S.str());
+        std::string R(S.str());
+        if(R.empty())
+            R = "field()"; // ensure some sane default (get everything)
+
+        pvd::CreateRequest::shared_pointer create(pvd::CreateRequest::create());
+        opts = create->createRequest(R);
+        if(!opts)
+            throw std::runtime_error(SB()<<"Error parsing pvRequest \""<<R<<"\" : "<<create->getMessage());
 
     } else {
         opts = P4PValue_unwrap(req);
@@ -685,7 +696,7 @@ void GetOp::restart(const OpBase::shared_pointer& self)
             temp->destroy();
 
         temp = channel->channel->createChannelGet(std::tr1::static_pointer_cast<GetOp>(self), req);
-        TRACE("start get "<<temp<<" refs="<<self.use_count());
+        TRACE("start get "<<temp<<" refs="<<self.use_count()<<" req="<<req);
     }
     op = temp;
     channel->ops.insert(self);
@@ -738,7 +749,9 @@ void GetOp::channelGetConnect(
     // assume createChannelGet() return non-NULL
     TRACE("get start "<<channel->channel->getChannelName()<<" "<<status);
     if(!status.isSuccess()) {
-        std::cerr<<__FUNCTION__<<" oops "<<status<<"\n";
+        PyLock L;
+        PyRef E(PyObject_CallFunction(PyExc_RuntimeError, (char*)"s", status.getMessage().c_str()));
+        call_cb(E.get());
     } else {
         channelGet->lastRequest();
         // may call getDone() recursively

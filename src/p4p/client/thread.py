@@ -59,7 +59,7 @@ class Context(object):
                         done.put_nowait((value, i))
                     except:
                         _log.exception("Error queuing result %s", value)
-                _log.debug('get %s', name)
+                _log.debug('get %s w/ %s', name, req)
                 ops[i] = ch.get(cb, request=req)
 
             for _n in range(len(names)):

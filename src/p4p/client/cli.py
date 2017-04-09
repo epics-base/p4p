@@ -10,12 +10,13 @@ _log = logging.getLogger(__name__)
 from . import thread
 
 def op_get(ctxt, args):
-    results = ctxt.get(args.names, throw=False)
+    reqests = [args.request]*len(args.names)
+    results = ctxt.get(args.names, reqests, throw=False)
     ret= 0
     for name, val in izip(args.names, results):
         if isinstance(val, Exception):
             ret = 1
-            print(name, val)
+            print(name, 'Error:', val)
         else:
             print(name, val.tolist())
     sys.exit(ret)

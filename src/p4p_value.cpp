@@ -522,6 +522,19 @@ PyObject* P4PValue_getattr(PyObject *self, PyObject *name)
     return NULL;
 }
 
+PyObject* P4PValue_str(PyObject *self)
+{
+    TRY {
+
+        std::ostringstream strm;
+        strm<<SELF.V;
+
+        return PyString_FromString(strm.str().c_str());
+    }CATCH()
+    return NULL;
+}
+
+
 PyObject* P4PValue_toList(PyObject *self, PyObject *args, PyObject *kwds)
 {
     TRY {
@@ -690,6 +703,7 @@ void p4p_value_register(PyObject *mod)
     P4PValue::type.tp_dealloc = &P4PValue::tp_dealloc;
     P4PValue::type.tp_getattro = &P4PValue_getattr;
     P4PValue::type.tp_setattro = &P4PValue_setattr;
+    P4PValue::type.tp_str = &P4PValue_str;
 
     P4PValue::type.tp_as_mapping = &P4PValue_mapping;
 

@@ -11,6 +11,24 @@ from .._p4p import (Type as _Type, Value as _Value)
 from ..wrapper import Value
 
 class TestRawValue(unittest.TestCase):
+    def testToString(self):
+        V = _Value(_Type([
+            ('ival', 'i'),
+            ('dval', 'd'),
+            ('sval', 's'),
+        ]), {
+            'ival':42,
+            'dval':4.2,
+            'sval':'hello',
+        })
+
+        self.assertEqual(str(V),
+                         '''structure 
+    int ival 42
+    double dval 4.2
+    string sval hello
+''')
+        
     def testScalar(self):
         V = _Value(_Type([
             ('ival', 'i'),
