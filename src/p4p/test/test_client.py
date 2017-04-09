@@ -51,3 +51,24 @@ class TestPVA(unittest.TestCase):
         self.assertIsNone(W())
 
         self.assertIsNone(_X[0])
+
+    def testGCCycle(self):
+        chan = self.ctxt.channel("completelyInvalidChannelName")
+
+        chan = self.ctxt.channel("completelyInvalidChannelName")
+        _X = [None]
+        def fn(V):
+            _X[0] = V
+        op = chan.get(fn)
+
+        fn._cycle = op # create cycle: op -> fn -> fn.__dict__ -> op
+
+        self.assertIn(fn.__dict__, gc.get_referrers(op))
+
+        W =  weakref.ref(op)
+        del op, fn
+        gc.collect()
+
+        self.assertIsNone(W())
+
+        self.assertIsNone(_X[0])

@@ -231,7 +231,7 @@ struct PutOp : public OpBase, public pva::ChannelPutRequester {
         int ret = OpBase::traverse(visit, arg);
         if(!ret && value.get())
             Py_VISIT(value.get());
-        return 0;
+        return ret;
     }
 
     virtual void clear()
@@ -934,7 +934,7 @@ void p4p_client_register(PyObject *mod)
     }
 
 
-    PyOp::type.tp_flags = Py_TPFLAGS_DEFAULT;
+    PyOp::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_GC;
     PyOp::type.tp_new = &PyOp::tp_new;
     PyOp::type.tp_dealloc = &PyOp::tp_dealloc;
     PyOp::type.tp_traverse = &OpBase::py_traverse;
