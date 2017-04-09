@@ -711,6 +711,7 @@ void GetOp::channelGetConnect(
     if(!status.isSuccess()) {
         std::cerr<<__FUNCTION__<<" oops "<<status<<"\n";
     } else {
+        channelGet->lastRequest();
         // may call getDone() recursively
         channelGet->get();
     }
@@ -747,7 +748,7 @@ void GetOp::getDone(
 void PutOp::restart(const OpBase::shared_pointer& self)
 {
     TRACE("channel="<<channel.get());
-    if(!channel) return;
+    if(!channel || sent) return;
     pva::ChannelPut::shared_pointer temp;
     temp.swap(op);
     {
@@ -775,12 +776,15 @@ void PutOp::lostConn(const OpBase::shared_pointer &self)
         temp->destroy();
         temp.reset();
     }
+    if(sent) {
+        PyRef err(PyObject_CallFunction(PyExc_RuntimeError, "s", "Connection lost before put acknowledged"));
+        call_cb(err.get());
+    }
 }
 
 bool PutOp::cancel()
 {
-    OpBase::cancel();
-    bool canceled = cb.get();
+    bool canceled = OpBase::cancel();
     sent=true;
 
     if(op) {
@@ -813,8 +817,11 @@ void PutOp::channelPutConnect(
         }
         pvd::BitSet::shared_pointer mask(new pvd::BitSet(1));
         mask->set(0);
+        channelPut->lastRequest();
         // may call putDone() recursively
         channelPut->put(val, mask);
+        // no going back now...
+        sent = true;
     }
 }
 
@@ -822,7 +829,24 @@ void PutOp::putDone(
     const pvd::Status& status,
     pva::ChannelPut::shared_pointer const & channelPut)
 {
+    TRACE("status="<<status);
+    if(!cb.get()) return;
+    PyRef V;
 
+    if(status.isSuccess()) {
+        V.reset(Py_None, borrow());
+    } else {
+        // build Exception instance
+        // TODO: create RemoteError type
+        V.reset(PyObject_CallFunction(PyExc_RuntimeError, (char*)"s", status.getMessage().c_str()));
+    }
+
+    if(!V.get()) {
+        PyErr_Print();
+        PyErr_Clear();
+    } else {
+        call_cb(V.get());
+    }
 }
 
 

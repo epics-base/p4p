@@ -14,11 +14,14 @@ from ._p4p import (Context as _Context,
                    Channel as _Channel)
 from ._p4p import logLevelDebug
 
+from .wrapper import Value
+
 __all__ = (
     'Context',
 )
 
 class Channel(_Channel):
+    Value = Value
     name = property(_Channel.getName)
 
 class Context(_Context):
