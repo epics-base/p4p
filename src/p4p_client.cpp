@@ -880,6 +880,12 @@ void PutOp::channelPutConnect(
                     return;
                 }
                 val = P4PValue_unwrap(temp.get());
+                if(val->getStructure()!=structure) {
+                    //TODO: attempt safe copy
+                    PyRef err(PyObject_CallFunction(PyExc_NotImplementedError, "s", "channelPutConnect() safe copy unimplemneted"));
+                    call_cb(err.get());
+                    return;
+                }
             }catch(std::exception& e) {
                 PyErr_Print();
                 PyErr_Clear();

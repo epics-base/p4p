@@ -90,7 +90,7 @@ class Context(object):
                 requests = [requests]
 
         if requests is None:
-            requests = []
+            requests = [None]*len(names)
 
         assert len(names)==len(requests), (names, requests)
         assert len(names)==len(values), (names, values)
@@ -102,7 +102,7 @@ class Context(object):
 
         try:
             for i,(name, value, req) in enumerate(izip(names, values, requests)):
-                if value[:1]=='{':
+                if isinstance(value, (bytes, unicode)) and value[:1]=='{':
                     try:
                         value = json.loads(value)
                     except ValueError:
@@ -114,17 +114,16 @@ class Context(object):
                 def vb(type, value=value, i=i):
                     print 'foo', type
                     try:
-                        if isinstance(value, str):
+                        if isinstance(value, dict):
+                            V = self.Value(type, value)
+                        else:
                             V = self.Value(type, {})
                             V.value = value # will try to cast str -> *
-                        else: # assume dict
-                            V = self.Value(type, value)
                         return V
                     except Exception as E:
-                        try:
-                            done.put_nowait((E, i))
-                        except:
-                            _log.exception("Error building put value %s", value)
+                        _log.exception("Error building put value %s", value)
+                        done.put_nowait((E, i))
+                        raise E
 
                 # completion callback
                 def cb(value, i=i):
