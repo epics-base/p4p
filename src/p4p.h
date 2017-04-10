@@ -71,6 +71,16 @@ struct PyRef {
     void swap(PyRef& o) {
         std::swap(obj, o.obj);
     }
+    struct CollectReturn {
+        PyObject *V;
+        PyRef& R;
+        CollectReturn(PyRef& R) :V(0), R(R) {}
+        ~CollectReturn() {
+            R.reset(V);
+        }
+        PyObject **get() { return &V; }
+    };
+    CollectReturn collect() { return CollectReturn(*this); }
 };
 
 struct PyString

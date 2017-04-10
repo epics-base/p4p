@@ -10,8 +10,8 @@ _log = logging.getLogger(__name__)
 from . import thread
 
 def op_get(ctxt, args):
-    reqests = [args.request]*len(args.names)
-    results = ctxt.get(args.names, reqests, throw=False)
+    requests = [args.request]*len(args.names)
+    results = ctxt.get(args.names, requests, throw=False)
     ret= 0
     for name, val in izip(args.names, results):
         if isinstance(val, Exception):
@@ -22,6 +22,8 @@ def op_get(ctxt, args):
     sys.exit(ret)
 
 def op_put(ctxt, args):
+    requests = [args.request]*len(args.names)
+
     names, values = [], []
     for pair in args.names:
         N, sep, V = pair.partition('=')
@@ -30,6 +32,23 @@ def op_put(ctxt, args):
             sys.exit(1)
         elif V is None:
             V = ''
+        N = N.strip()
+        names.append(N)
+        values.append(V)
+
+    results = ctxt.put(names, values, requests, throw=False)
+
+    ret= 0
+    for name, val in izip(args.names, results):
+        if isinstance(val, Exception):
+            ret = 1
+            print(name, 'Error:', val)
+        elif val is None:
+            print(name, 'ok')
+        else:
+            print(name, val.tolist())
+    sys.exit(ret)
+
 
 def getargs():
     from argparse import ArgumentParser

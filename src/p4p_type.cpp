@@ -144,6 +144,9 @@ int P4PType_init(PyObject *self, PyObject *args, PyObject *kwds)
     const char *id = NULL;
     static const char *names[] = {"spec", "id", NULL};
     TRY {
+        if(SELF.get())
+            return 0; // magic case when called from P4PType_wrap()
+
         if(!PyArg_ParseTupleAndKeywords(args, kwds, "O|z", (char**)names, &spec, &id))
             return -1;
 
@@ -294,11 +297,34 @@ PyObject* P4PType_aspy(PyObject *self) {
     return NULL;
 }
 
+PyObject* P4PType_has(PyObject *self, PyObject *args, PyObject *kws) {
+    TRY {
+        static const char *names[] = {"name", "type", NULL};
+        const char *fname;
+        PyObject *ftype = Py_None;
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "s|O", (char**)names, &fname, &ftype))
+            return NULL;
+
+        pvd::Field::const_shared_pointer fld(SELF->getField(fname));
+        if(!fld)
+            Py_RETURN_FALSE;
+
+        if(ftype!=Py_None) {
+            return PyErr_Format(PyExc_NotImplementedError, "field type matching not implemented");
+        }
+
+        Py_RETURN_TRUE;
+    } CATCH()
+    return NULL;
+}
+
 static struct PyMethodDef P4PType_members[] = {
     {"getID", (PyCFunction)P4PType_id, METH_NOARGS,
      "Return Structure ID"},
     {"aspy", (PyCFunction)P4PType_aspy, METH_NOARGS,
      "Return spec for this PVD Structure"},
+    {"has", (PyCFunction)P4PType_has, METH_VARARGS|METH_KEYWORDS,
+     "has('name', type=None)\n\nTest structure member presense"},
     {NULL}
 };
 

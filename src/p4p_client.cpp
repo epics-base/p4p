@@ -509,15 +509,15 @@ PyObject* Channel::py_get(PyObject *self, PyObject *args, PyObject *kws)
 PyObject* Channel::py_put(PyObject *self, PyObject *args, PyObject *kws)
 {
     TRY {
-        static const char *names[] = {"callback", "value", "request"};
+        static const char *names[] = {"callback", "value", "request", NULL};
         PyObject *cb, *val, *req = Py_None;
-        if(!PyArg_ParseTupleAndKeywords(args, kws, "OO!|O", (char**)names, &cb, P4PValue_type, &val, &req))
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "OO|O", (char**)names, &cb, &val, &req))
             return NULL;
 
         if(!PyCallable_Check(cb))
             return PyErr_Format(PyExc_ValueError, "callable required, not %s", Py_TYPE(cb)->tp_name);
 
-        if(PyObject_IsSubclass(val, (PyObject*)P4PValue_type)) { /* ok */ }
+        if(PyObject_IsInstance(val, (PyObject*)P4PValue_type)) { /* ok */ }
         else if(PyCallable_Check(val)) { /* ok */ }
         else {
             return PyErr_Format(PyExc_ValueError, "put value must be Value or callable which returns Value");
@@ -538,6 +538,7 @@ PyObject* Channel::py_put(PyObject *self, PyObject *args, PyObject *kws)
             reqop->restart(reqop);
         } else {
             TRACE("Wait for connect");
+            SELF->ops.insert(reqop);
         }
 
         try {
@@ -617,7 +618,7 @@ void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, p
             }
         }
     }
-        break;
+        return;
     case pva::Channel::DISCONNECTED:
     {
         operations_t temp;
@@ -631,7 +632,7 @@ void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, p
             }
         }
     }
-        break;
+        return;
     case pva::Channel::DESTROYED:
     {
         operations_t temp;
@@ -645,8 +646,9 @@ void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, p
             }
         }
     }
-        break;
+        return;
     }
+    std::cerr<<"channelStateChange(\""<<channel->getChannelName()<<"\", "<<connectionState<<") unexpected state\n";
 }
 
 
@@ -789,7 +791,7 @@ void GetOp::getDone(
 
 void PutOp::restart(const OpBase::shared_pointer& self)
 {
-    TRACE("channel="<<channel.get());
+    TRACE("channel="<<channel.get()<<" sent="<<sent);
     if(!channel || sent) return;
     pva::ChannelPut::shared_pointer temp;
     temp.swap(op);
@@ -848,6 +850,7 @@ void PutOp::channelPutConnect(
     pva::ChannelPut::shared_pointer const & channelPut,
     pvd::Structure::const_shared_pointer const & structure)
 {
+    //TODO: sync. outside of PyLock
     TRACE("put start "<<channel->channel->getChannelName()<<" "<<status);
     if(!status.isSuccess()) {
         std::cerr<<__FUNCTION__<<" oops "<<status<<"\n";
@@ -863,23 +866,31 @@ void PutOp::channelPutConnect(
                     return;
                 }
                 //TODO: bitset?
-                if(!PyObject_IsSubclass(temp.get(), (PyObject*)P4PValue_type)) {
+                if(!PyObject_IsInstance(temp.get(), (PyObject*)P4PValue_type)) {
                     // assume callable
                     PyRef ptype(P4PType_wrap(P4PType_type, structure));
                     PyRef val(PyObject_CallFunctionObjArgs(temp.get(), ptype.get(), NULL));
                     temp.swap(val);
                 }
-            }catch(std::exception& e) {
-                if(PyErr_Occurred()) {
-                    PyErr_Print();
-                    PyErr_Clear();
+                if(!PyObject_IsInstance(temp.get(), (PyObject*)P4PValue_type)) {
+                    std::ostringstream msg;
+                    msg<<"Can't put type \""<<Py_TYPE(temp.get())->tp_name<<"\", only Value";
+                    PyRef err(PyObject_CallFunction(PyExc_ValueError, "s", msg.str().c_str()));
+                    call_cb(err.get());
+                    return;
                 }
-                std::cerr<<"Error in channelPutConnect value builder\n";
+                val = P4PValue_unwrap(temp.get());
+            }catch(std::exception& e) {
+                PyErr_Print();
+                PyErr_Clear();
+                std::cerr<<"Error in channelPutConnect value builder: "<<e.what()<<"\n";
                 return;
             }
         }
+        assert(!!val);
         pvd::BitSet::shared_pointer mask(new pvd::BitSet(1));
         mask->set(0);
+        TRACE("send "<<channelPut->getChannel()->getChannelName()<<" mask="<<*mask<<" value="<<val);
         channelPut->lastRequest();
         // may call putDone() recursively
         channelPut->put(val, mask);
@@ -892,6 +903,7 @@ void PutOp::putDone(
     const pvd::Status& status,
     pva::ChannelPut::shared_pointer const & channelPut)
 {
+    PyLock L;
     TRACE("status="<<status);
     if(!cb.get()) return;
     PyRef V;
@@ -907,6 +919,7 @@ void PutOp::putDone(
     if(!V.get()) {
         PyErr_Print();
         PyErr_Clear();
+        std::cerr<<"Error in putDone\n";
     } else {
         call_cb(V.get());
     }

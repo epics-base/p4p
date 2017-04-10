@@ -3,6 +3,7 @@ import logging
 _log = logging.getLogger(__name__)
 
 from itertools import izip
+import json
 
 try:
     from Queue import Queue, Full, Empty
@@ -10,8 +11,10 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from . import raw
+from ..wrapper import Value
 
 class Context(object):
+    Value = Value
     def __init__(self, *args, **kws):
         self._ctxt = raw.Context(*args, **kws)
 
@@ -58,7 +61,7 @@ class Context(object):
                     try:
                         done.put_nowait((value, i))
                     except:
-                        _log.exception("Error queuing result %s", value)
+                        _log.exception("Error queuing get result %s", value)
                 _log.debug('get %s w/ %s', name, req)
                 ops[i] = ch.get(cb, request=req)
 
@@ -89,23 +92,51 @@ class Context(object):
         if requests is None:
             requests = []
 
+        assert len(names)==len(requests), (names, requests)
+        assert len(names)==len(values), (names, values)
+
         # use Queue instead of Event to allow KeyboardInterrupt
         done = Queue(maxsize=len(names))
         result = [None]*len(names)
         ops = [None]*len(names)
 
         try:
-            for i,(name, req) in enumerate(izip(names, requests)):
+            for i,(name, value, req) in enumerate(izip(names, values, requests)):
+                if value[:1]=='{':
+                    try:
+                        value = json.loads(value)
+                    except ValueError:
+                        raise ValueError("Unable to interpret '%s' as json"%value)
+
                 ch = self.channel(name)
+
+                # callback to build PVD Value from PY value
+                def vb(type, value=value, i=i):
+                    print 'foo', type
+                    try:
+                        if isinstance(value, str):
+                            V = self.Value(type, {})
+                            V.value = value # will try to cast str -> *
+                        else: # assume dict
+                            V = self.Value(type, value)
+                        return V
+                    except Exception as E:
+                        try:
+                            done.put_nowait((E, i))
+                        except:
+                            _log.exception("Error building put value %s", value)
+
+                # completion callback
                 def cb(value, i=i):
+                    print 'bar', type
                     try:
                         done.put_nowait((value, i))
                     except:
-                        _log.exception("Error queuing result %s", value)
-                ops[i] = ch.put(cb, req)
+                        _log.exception("Error queuing put result %s", value)
+                ops[i] = ch.put(cb, vb, request=req)
 
             for _n in range(len(names)):
-                value, i = cb.get(timeout=timeout)
+                value, i = done.get(timeout=timeout)
                 if throw and isinstance(value, Exception):
                     raise value
                 result[i] = value
