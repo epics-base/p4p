@@ -47,25 +47,31 @@ struct Context {
     static PyObject *py_makeRequest(PyObject *junk, PyObject *args);
 };
 
-struct Channel : public pva::ChannelRequester {
+struct Channel {
     POINTER_DEFINITIONS(Channel);
+
+    struct Req : public pva::ChannelRequester {
+        POINTER_DEFINITIONS(Req);
+
+        Channel::weak_pointer owner;
+        Req(const Channel::shared_pointer& o) : owner(o) {}
+        virtual ~Req() {}
+
+        virtual std::string getRequesterName() { return "p4p.Channel"; }
+
+        virtual void channelCreated(const pvd::Status& status, pva::Channel::shared_pointer const & channel);
+        virtual void channelStateChange(pva::Channel::shared_pointer const & channel, pva::Channel::ConnectionState connectionState);
+    };
 
     pva::Channel::shared_pointer channel;
 
     typedef std::set<std::tr1::shared_ptr<OpBase> > operations_t;
     operations_t ops;
 
-    Channel() {}
-    virtual ~Channel() {}
-
-    virtual std::string getRequesterName() { return "p4p.Channel"; }
-
-    virtual void channelCreated(const pvd::Status& status, pva::Channel::shared_pointer const & channel);
-    virtual void channelStateChange(pva::Channel::shared_pointer const & channel, pva::Channel::ConnectionState connectionState);
-
     static int py_init(PyObject *self, PyObject *args, PyObject *kws);
     static PyObject *py_get(PyObject *self, PyObject *args, PyObject *kws);
     static PyObject *py_put(PyObject *self, PyObject *args, PyObject *kws);
+    static PyObject *py_rpc(PyObject *self, PyObject *args, PyObject *kws);
     static PyObject *py_name(PyObject *self);
     static PyObject *py_close(PyObject *self);
 };
@@ -73,9 +79,14 @@ struct Channel : public pva::ChannelRequester {
 struct OpBase {
     POINTER_DEFINITIONS(OpBase);
 
-    Channel::shared_pointer channel; // Channel
+    Channel::shared_pointer channel;
     pvd::PVStructure::shared_pointer req;
+    // completion callback
     PyRef cb;
+    // put value
+    PyRef pyvalue;
+    // rpc value
+    pvd::PVStructure::shared_pointer pvvalue;
 
     OpBase(const Channel::shared_pointer& ch) :channel(ch) {}
     virtual ~OpBase() {
@@ -131,62 +142,52 @@ struct OpBase {
     {
         if(cb.get())
             Py_VISIT(cb.get());
+        if(pyvalue.get())
+            Py_VISIT(pyvalue.get());
         return 0;
     }
 
     virtual void clear()
     {
         // ~= Py_CLEAR(cb)
-        PyRef tmp;
-        cb.swap(tmp);
-        tmp.reset();
-    }
-};
-
-template<typename T>
-struct TheDestroyer { // raaawwwrr!
-    typedef std::tr1::shared_ptr<T> pointer_t;
-    pointer_t ref;
-
-    TheDestroyer() :ref() {}
-    ~TheDestroyer() {
-        typedef PyClassWrapper<TheDestroyer<T> > Py;
-        if(ref) {
-            ref->destroy();
-            if(!ref.unique()) {
-                std::cerr<<"Destoryer'd ref did not release all references: type="<<typeid(ref.get()).name()
-                         <<" ptrcnt="<<ref.use_count()
-                         <<" pycnt="<<Py_REFCNT(Py::wrap(this))<<"\n";
-            }
+        {
+            PyRef tmp;
+            cb.swap(tmp);
+        }
+        {
+            PyRef tmp;
+            pyvalue.swap(tmp);
         }
     }
-
-    T& operator*() const { return *ref; }
-    T* operator->() const { return ref.get(); }
-    TheDestroyer& operator=(const pointer_t& p) {
-        ref = p;
-        return *this;
-    }
 };
 
-/* Ownership and lifetime constraits
- *
- * PVA requires the use of shared_ptr.
- * Some of our objects (OpBase) will hold PyObject*s.
- *   Such objects must Py_DECREF under the GIL.
- *   Must participate in cyclic GC
- * We want to ensure that OpBase is cancel()d if collected before completion
- *
- * For types w/o PyObject* or dtor actions, just wrap a shared_ptr w/o special handling
- *
- * For others, need to ensure that python dtor cancel()s and clears PyRef
- */
-typedef PyClassWrapper<Context::shared_pointer> PyContext;
-typedef PyClassWrapper<Channel::shared_pointer> PyChannel;
-typedef PyClassWrapper<TheDestroyer<OpBase> > PyOp;
+typedef PyClassWrapper<Context> PyContext;
+typedef PyClassWrapper<std::tr1::shared_ptr<Channel> > PyChannel;
+typedef PyClassWrapper<std::tr1::shared_ptr<OpBase> > PyOp;
 
-struct GetOp : public OpBase, public pva::ChannelGetRequester {
+struct GetOp : public OpBase {
     POINTER_DEFINITIONS(GetOp);
+
+    struct Req : public pva::ChannelGetRequester {
+        POINTER_DEFINITIONS(Req);
+
+        GetOp::weak_pointer owner;
+        Req(const GetOp::shared_pointer& o) : owner(o) {}
+        virtual ~Req() {}
+
+        virtual std::string getRequesterName() { return "p4p.GetOp"; }
+
+        virtual void channelGetConnect(
+            const pvd::Status& status,
+            pva::ChannelGet::shared_pointer const & channelGet,
+            pvd::Structure::const_shared_pointer const & structure);
+
+        virtual void getDone(
+            const pvd::Status& status,
+            pva::ChannelGet::shared_pointer const & channelGet,
+            pvd::PVStructure::shared_pointer const & pvStructure,
+            pvd::BitSet::shared_pointer const & bitSet);
+    };
 
     pva::ChannelGet::shared_pointer op;
 
@@ -196,26 +197,38 @@ struct GetOp : public OpBase, public pva::ChannelGetRequester {
     virtual void restart(const OpBase::shared_pointer &self);
     virtual void lostConn(const OpBase::shared_pointer& self);
     virtual bool cancel();
-
-    virtual std::string getRequesterName() { return "p4p.GetOp"; }
-
-    virtual void channelGetConnect(
-        const pvd::Status& status,
-        pva::ChannelGet::shared_pointer const & channelGet,
-        pvd::Structure::const_shared_pointer const & structure);
-
-    virtual void getDone(
-        const pvd::Status& status,
-        pva::ChannelGet::shared_pointer const & channelGet,
-        pvd::PVStructure::shared_pointer const & pvStructure,
-        pvd::BitSet::shared_pointer const & bitSet);
 };
 
-struct PutOp : public OpBase, public pva::ChannelPutRequester {
+struct PutOp : public OpBase {
     POINTER_DEFINITIONS(PutOp);
 
+    struct Req : public pva::ChannelPutRequester {
+        POINTER_DEFINITIONS(Req);
+
+        PutOp::weak_pointer owner;
+        Req(const PutOp::shared_pointer& o) : owner(o) {}
+        virtual ~Req() {}
+
+        virtual std::string getRequesterName() { return "p4p.PutOp"; }
+
+        virtual void channelPutConnect(
+            const pvd::Status& status,
+            pva::ChannelPut::shared_pointer const & channelPut,
+            pvd::Structure::const_shared_pointer const & structure);
+
+        virtual void putDone(
+            const pvd::Status& status,
+            pva::ChannelPut::shared_pointer const & channelPut);
+
+        virtual void getDone(
+            const pvd::Status& status,
+            pva::ChannelPut::shared_pointer const & channelPut,
+            pvd::PVStructure::shared_pointer const & pvStructure,
+            pvd::BitSet::shared_pointer const & bitSet)
+        { /* no used */ }
+    };
+
     pva::ChannelPut::shared_pointer op;
-    PyRef value;
     // sent once the network op may have gone out.
     // the point at which we can't retry safely
     bool sent;
@@ -226,41 +239,41 @@ struct PutOp : public OpBase, public pva::ChannelPutRequester {
     virtual void restart(const OpBase::shared_pointer &self);
     virtual void lostConn(const OpBase::shared_pointer& self);
     virtual bool cancel();
+};
 
-    virtual int traverse(visitproc visit, void *arg)
-    {
-        int ret = OpBase::traverse(visit, arg);
-        if(!ret && value.get())
-            Py_VISIT(value.get());
-        return ret;
-    }
+struct RPCOp : public OpBase {
+    POINTER_DEFINITIONS(RPCOp);
 
-    virtual void clear()
-    {
-        OpBase::clear();
-        // ~= Py_CLEAR(cb)
-        PyRef tmp;
-        value.swap(tmp);
-        tmp.reset();
-    }
+    struct Req : public pva::ChannelRPCRequester {
+        POINTER_DEFINITIONS(Req);
 
-    virtual std::string getRequesterName() { return "p4p.PutOp"; }
+        RPCOp::weak_pointer owner;
+        Req(const RPCOp::shared_pointer& o) : owner(o) {}
+        virtual ~Req() {}
 
-    virtual void channelPutConnect(
-        const pvd::Status& status,
-        pva::ChannelPut::shared_pointer const & channelPut,
-        pvd::Structure::const_shared_pointer const & structure);
+        virtual std::string getRequesterName() { return "p4p.PutOp"; }
 
-    virtual void putDone(
-        const pvd::Status& status,
-        pva::ChannelPut::shared_pointer const & channelPut);
+        virtual void channelRPCConnect(
+            const pvd::Status& status,
+            pva::ChannelRPC::shared_pointer const & channelRPC);
 
-    virtual void getDone(
-        const pvd::Status& status,
-        pva::ChannelPut::shared_pointer const & channelPut,
-        pvd::PVStructure::shared_pointer const & pvStructure,
-        pvd::BitSet::shared_pointer const & bitSet)
-    { /* no used */ }
+        virtual void requestDone(
+            const pvd::Status& status,
+            pva::ChannelRPC::shared_pointer const & channelRPC,
+            pvd::PVStructure::shared_pointer const & pvResponse);
+    };
+
+    pva::ChannelRPC::shared_pointer op;
+    // sent once the network op may have gone out.
+    // the point at which we can't retry safely
+    bool sent;
+
+    RPCOp(const Channel::shared_pointer& ch) :OpBase(ch), sent(false) {}
+    virtual ~RPCOp() {}
+
+    virtual void restart(const OpBase::shared_pointer &self);
+    virtual void lostConn(const OpBase::shared_pointer& self);
+    virtual bool cancel();
 };
 
 #define TRY PyContext::reference_type SELF = PyContext::unwrap(self); try
@@ -274,15 +287,15 @@ int Context::py_init(PyObject *self, PyObject *args, PyObject *kws)
         if(!PyArg_ParseTupleAndKeywords(args, kws, "s", (char**)names, &pname))
             return -1;
 
-        Context::shared_pointer ctxt(new Context);
-        // note that we create our own provider.
+        // we create our own provider.
         // we are greedy and don't want to share (also we can destroy channels at will)
-        ctxt->provider = pva::getChannelProviderRegistry()->createProvider(pname);
+        SELF.provider = pva::getChannelProviderRegistry()->createProvider(pname);
         //TODO: create w/ Configuration
 
         TRACE("Context init");
 
-        SELF.swap(ctxt);
+        if(!SELF.provider)
+            throw std::logic_error("createProvider returns NULL");
 
         return 0;
     } CATCH()
@@ -297,7 +310,7 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
         if(!PyArg_ParseTupleAndKeywords(args, kws, "s", (char**)names, &cname))
             return NULL;
 
-        if(!SELF->provider)
+        if(!SELF.provider)
             return PyErr_Format(PyExc_RuntimeError, "Context has been closed");
 
         PyRef klass(PyObject_GetAttrString(self, "Channel"));
@@ -305,7 +318,8 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
             return PyErr_Format(PyExc_RuntimeError, "self.Channel not valid");
         PyTypeObject *chanklass = (PyTypeObject*)klass.get();
 
-        Channel::shared_pointer req(new Channel);
+        Channel::shared_pointer pychan(new Channel);
+        Channel::Req::shared_pointer pyreq(new Channel::Req(pychan));
 
         pva::Channel::shared_pointer chan;
 
@@ -313,17 +327,17 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
 
         {
             PyUnlock U;
-            chan = SELF->provider->createChannel(chanName, req);
+            chan = SELF.provider->createChannel(chanName, pyreq);
         }
 
         if(!chan)
             return PyErr_Format(PyExc_RuntimeError, "Failed to create channel '%s'", cname);
 
-        req->channel = chan;
+        pychan->channel = chan;
 
         PyRef ret(chanklass->tp_new(chanklass, args, kws));
 
-        PyChannel::unwrap(ret.get()).swap(req);
+        PyChannel::unwrap(ret.get()).swap(pychan);
 
         if(chanklass->tp_init && chanklass->tp_init(ret.get(), args, kws))
             throw std::runtime_error("Error Channel.__init__");
@@ -346,7 +360,7 @@ void Context::close()
 PyObject *Context::py_close(PyObject *self)
 {
     TRY {
-        SELF->close();
+        SELF.close();
         Py_RETURN_NONE;
     } CATCH()
     return NULL;
@@ -530,11 +544,55 @@ PyObject* Channel::py_put(PyObject *self, PyObject *args, PyObject *kws)
 
         PutOp::shared_pointer reqop(new PutOp(SELF));
         reqop->cb.reset(cb, borrow());
-        reqop->value.reset(val, borrow());
+        reqop->pyvalue.reset(val, borrow());
         reqop->req = buildRequest(req);
 
         if(SELF->channel->isConnected()) {
             TRACE("Issue put");
+            reqop->restart(reqop);
+        } else {
+            TRACE("Wait for connect");
+            SELF->ops.insert(reqop);
+        }
+
+        try {
+            PyRef ret(PyOp::type.tp_new(&PyOp::type, args, kws));
+
+            PyOp::unwrap(ret.get()) = reqop;
+
+            return ret.release();
+        }catch(...) {
+            reqop->op->destroy();
+            SELF->ops.erase(reqop);
+            throw;
+        }
+    }CATCH()
+    return NULL;
+}
+
+PyObject* Channel::py_rpc(PyObject *self, PyObject *args, PyObject *kws)
+{
+    TRY {
+        static const char *names[] = {"callback", "value", "request", NULL};
+        PyObject *cb, *val, *req = Py_None;
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "OO!|O", (char**)names, &cb, P4PValue_type, &val, &req))
+            return NULL;
+
+        if(!PyCallable_Check(cb))
+            return PyErr_Format(PyExc_ValueError, "callable required, not %s", Py_TYPE(cb)->tp_name);
+
+        if(!SELF->channel)
+            return PyErr_Format(PyExc_RuntimeError, "Channel closed");
+
+        TRACE("Channel rpc "<<SELF->channel->getChannelName());
+
+        RPCOp::shared_pointer reqop(new RPCOp(SELF));
+        reqop->cb.reset(cb, borrow());
+        reqop->pvvalue = P4PValue_unwrap(val);
+        reqop->req = buildRequest(req);
+
+        if(SELF->channel->isConnected()) {
+            TRACE("Issue rpc");
             reqop->restart(reqop);
         } else {
             TRACE("Wait for connect");
@@ -584,7 +642,7 @@ PyObject *Channel::py_close(PyObject *self)
     return NULL;
 }
 
-void Channel::channelCreated(const pvd::Status& status, pva::Channel::shared_pointer const & channel)
+void Channel::Req::channelCreated(const pvd::Status& status, pva::Channel::shared_pointer const & channel)
 {
     //TODO: can/do client contexts signal any errors here?
     TRACE(channel->getChannelName()<<" "<<status);
@@ -594,17 +652,20 @@ void Channel::channelCreated(const pvd::Status& status, pva::Channel::shared_poi
     (void)channel;
 }
 
-void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, pva::Channel::ConnectionState connectionState)
+void Channel::Req::channelStateChange(pva::Channel::shared_pointer const & channel, pva::Channel::ConnectionState connectionState)
 {
+    Channel::shared_pointer op(owner.lock());
+    if(!op)
+        return;
     PyLock L;
-    TRACE(channel->getChannelName()<<" "<<connectionState<<" #ops="<<ops.size());
+    TRACE(channel->getChannelName()<<" "<<connectionState<<" #ops="<<op->ops.size());
     switch(connectionState) {
     case pva::Channel::NEVER_CONNECTED:
         break; // should never happen
     case pva::Channel::CONNECTED:
     {
         operations_t temp;
-        temp.swap(ops);
+        temp.swap(op->ops);
 
         for(operations_t::const_iterator it = temp.begin(), end = temp.end(); it!=end; ++it) {
             TRACE("CONN "<<(*it));
@@ -622,7 +683,7 @@ void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, p
     case pva::Channel::DISCONNECTED:
     {
         operations_t temp;
-        temp.swap(ops);
+        temp.swap(op->ops);
         for(operations_t::const_iterator it = temp.begin(), end = temp.end(); it!=end; ++it) {
             if(!(*it)) continue; // shouldn't happen, but guard against it anyway
             try {
@@ -636,7 +697,7 @@ void Channel::channelStateChange(pva::Channel::shared_pointer const & channel, p
     case pva::Channel::DESTROYED:
     {
         operations_t temp;
-        temp.swap(ops);
+        temp.swap(op->ops);
         for(operations_t::const_iterator it = temp.begin(), end = temp.end(); it!=end; ++it) {
             if(!(*it)) continue; // shouldn't happen, but guard against it anyway
             try {
@@ -691,13 +752,14 @@ void GetOp::restart(const OpBase::shared_pointer& self)
     TRACE("channel="<<channel.get()<<" refs="<<self.use_count());
     if(!channel) return;
     pva::ChannelGet::shared_pointer temp;
+    GetOp::Req::shared_pointer pyreq(new GetOp::Req(std::tr1::static_pointer_cast<GetOp>(self)));
     temp.swap(op);
     {
         PyUnlock U;
         if(temp)
             temp->destroy();
 
-        temp = channel->channel->createChannelGet(std::tr1::static_pointer_cast<GetOp>(self), req);
+        temp = channel->channel->createChannelGet(pyreq, req);
         TRACE("start get "<<temp<<" refs="<<self.use_count()<<" req="<<req);
     }
     op = temp;
@@ -743,17 +805,20 @@ bool GetOp::cancel()
     return canceled;
 }
 
-void GetOp::channelGetConnect(
+void GetOp::Req::channelGetConnect(
     const pvd::Status& status,
     pva::ChannelGet::shared_pointer const & channelGet,
     pvd::Structure::const_shared_pointer const & structure)
 {
-    // assume createChannelGet() return non-NULL
-    TRACE("get start "<<channel->channel->getChannelName()<<" "<<status);
+    GetOp::shared_pointer op(owner.lock());
+    if(!op)
+        return;
+
+    TRACE("get start "<<channelGet->getChannel()->getChannelName()<<" "<<status);
     if(!status.isSuccess()) {
         PyLock L;
         PyRef E(PyObject_CallFunction(PyExc_RuntimeError, (char*)"s", status.getMessage().c_str()));
-        call_cb(E.get());
+        op->call_cb(E.get());
     } else {
         channelGet->lastRequest();
         // may call getDone() recursively
@@ -761,15 +826,19 @@ void GetOp::channelGetConnect(
     }
 }
 
-void GetOp::getDone(
+void GetOp::Req::getDone(
     const pvd::Status& status,
     pva::ChannelGet::shared_pointer const & channelGet,
     pvd::PVStructure::shared_pointer const & pvStructure,
     pvd::BitSet::shared_pointer const & bitSet)
 {
+    GetOp::shared_pointer op(owner.lock());
+    if(!op)
+        return;
     PyLock L;
-    TRACE("get complete "<<channel->channel->getChannelName()<<" for "<<cb.get()<<" with "<<status);
-    if(!cb.get()) return;
+
+    TRACE("get complete "<<channelGet->getChannel()->getChannelName()<<" for "<<op->cb.get()<<" with "<<status);
+    if(!op->cb.get()) return;
     PyRef V;
 
     if(status.isSuccess()) {
@@ -785,7 +854,7 @@ void GetOp::getDone(
         PyErr_Print();
         PyErr_Clear();
     } else {
-        call_cb(V.get());
+        op->call_cb(V.get());
     }
 }
 
@@ -794,13 +863,14 @@ void PutOp::restart(const OpBase::shared_pointer& self)
     TRACE("channel="<<channel.get()<<" sent="<<sent);
     if(!channel || sent) return;
     pva::ChannelPut::shared_pointer temp;
+    PutOp::Req::shared_pointer pyreq(new PutOp::Req(std::tr1::static_pointer_cast<PutOp>(self)));
     temp.swap(op);
     {
         PyUnlock U;
         if(temp)
             temp->destroy();
 
-        temp = channel->channel->createChannelPut(std::tr1::static_pointer_cast<PutOp>(self), req);
+        temp = channel->channel->createChannelPut(pyreq, req);
         TRACE("start put "<<temp);
     }
     op = temp;
@@ -845,22 +915,28 @@ bool PutOp::cancel()
     return canceled;
 }
 
-void PutOp::channelPutConnect(
+void PutOp::Req::channelPutConnect(
     const pvd::Status& status,
     pva::ChannelPut::shared_pointer const & channelPut,
     pvd::Structure::const_shared_pointer const & structure)
 {
-    //TODO: sync. outside of PyLock
-    TRACE("put start "<<channel->channel->getChannelName()<<" "<<status);
+    PutOp::shared_pointer op(owner.lock());
+    if(!op)
+        return;
+
+    TRACE("put start "<<channelPut->getChannel()->getChannelName()<<" "<<status);
+
     if(!status.isSuccess()) {
-        std::cerr<<__FUNCTION__<<" oops "<<status<<"\n";
+        PyLock L;
+        PyRef err(PyObject_CallFunction(PyExc_RuntimeError, "s", status.getMessage().c_str()));
+        op->call_cb(err.get());
     } else {
         pvd::PVStructure::shared_pointer val;
         {
             PyLock L;
             try {
                 PyRef temp;
-                temp.swap(value);
+                temp.swap(op->pyvalue);
                 if(!temp.get()) {
                     TRACE("no value!?!?!");
                     return;
@@ -876,14 +952,14 @@ void PutOp::channelPutConnect(
                     std::ostringstream msg;
                     msg<<"Can't put type \""<<Py_TYPE(temp.get())->tp_name<<"\", only Value";
                     PyRef err(PyObject_CallFunction(PyExc_ValueError, "s", msg.str().c_str()));
-                    call_cb(err.get());
+                    op->call_cb(err.get());
                     return;
                 }
                 val = P4PValue_unwrap(temp.get());
                 if(val->getStructure()!=structure) {
                     //TODO: attempt safe copy
                     PyRef err(PyObject_CallFunction(PyExc_NotImplementedError, "s", "channelPutConnect() safe copy unimplemneted"));
-                    call_cb(err.get());
+                    op->call_cb(err.get());
                     return;
                 }
             }catch(std::exception& e) {
@@ -901,17 +977,21 @@ void PutOp::channelPutConnect(
         // may call putDone() recursively
         channelPut->put(val, mask);
         // no going back now...
-        sent = true;
+        op->sent = true;
     }
 }
 
-void PutOp::putDone(
+void PutOp::Req::putDone(
     const pvd::Status& status,
     pva::ChannelPut::shared_pointer const & channelPut)
 {
+    PutOp::shared_pointer op(owner.lock());
+    if(!op)
+        return;
+
     PyLock L;
     TRACE("status="<<status);
-    if(!cb.get()) return;
+    if(!op->cb.get()) return;
     PyRef V;
 
     if(status.isSuccess()) {
@@ -927,10 +1007,116 @@ void PutOp::putDone(
         PyErr_Clear();
         std::cerr<<"Error in putDone\n";
     } else {
-        call_cb(V.get());
+        op->call_cb(V.get());
     }
 }
 
+void RPCOp::restart(const OpBase::shared_pointer& self)
+{
+    TRACE("channel="<<channel.get()<<" sent="<<sent);
+    if(!channel || sent) return;
+    pva::ChannelRPC::shared_pointer temp;
+    RPCOp::Req::shared_pointer pyreq(new RPCOp::Req(std::tr1::static_pointer_cast<RPCOp>(self)));
+    temp.swap(op);
+    {
+        PyUnlock U;
+        if(temp)
+            temp->destroy();
+
+        temp = channel->channel->createChannelRPC(pyreq, req);
+        TRACE("start RPC "<<temp);
+    }
+    op = temp;
+    channel->ops.insert(self);
+}
+
+void RPCOp::lostConn(const OpBase::shared_pointer &self)
+{
+    if(!channel) return;
+    channel->ops.insert(self);
+    if(op) {
+        pva::ChannelRPC::shared_pointer temp;
+        temp.swap(op);
+
+        PyUnlock U;
+
+        temp->destroy();
+        temp.reset();
+    }
+    if(sent) {
+        PyRef err(PyObject_CallFunction(PyExc_RuntimeError, "s", "Connection lost before put acknowledged"));
+        call_cb(err.get());
+    }
+}
+
+bool RPCOp::cancel()
+{
+    bool canceled = OpBase::cancel();
+    sent=true;
+
+    if(op) {
+        canceled = true;
+        pva::ChannelRPC::shared_pointer temp;
+        temp.swap(op);
+
+        PyUnlock U;
+
+        temp->destroy();
+        temp.reset();
+    }
+
+    return canceled;
+}
+
+void RPCOp::Req::channelRPCConnect(
+    const pvd::Status& status,
+    pva::ChannelRPC::shared_pointer const & channelRPC)
+{
+    RPCOp::shared_pointer op(owner.lock());
+    if(!op)
+        return;
+
+    TRACE("rpc start "<<channelRPC->getChannel()->getChannelName()<<" "<<status);
+
+    if(!status.isSuccess()) {
+        PyLock L;
+        PyRef err(PyObject_CallFunction(PyExc_RuntimeError, "s", status.getMessage().c_str()));
+        op->call_cb(err.get());
+    } else {
+        pvd::PVStructure::shared_pointer val;
+        {
+            PyLock L;
+            op->pvvalue.swap(val);
+        }
+
+        if(val) {
+            channelRPC->lastRequest();
+            channelRPC->request(val);
+        }
+    }
+}
+
+void RPCOp::Req::requestDone(
+    const pvd::Status& status,
+    pva::ChannelRPC::shared_pointer const & channelRPC,
+    pvd::PVStructure::shared_pointer const & pvResponse)
+{
+    RPCOp::shared_pointer op(owner.lock());
+    if(!op)
+        return;
+
+    TRACE("rpc done "<<channelRPC->getChannel()->getChannelName()<<" "<<status);
+
+    PyLock L;
+
+    if(!status.isSuccess()) {
+        PyRef err(PyObject_CallFunction(PyExc_RuntimeError, "s", status.getMessage().c_str()));
+        op->call_cb(err.get());
+    } else {
+        PyRef val(P4PValue_wrap(P4PValue_type, pvResponse));
+        op->call_cb(val.get());
+    }
+}
 
 static PyMethodDef Context_methods[] = {
     {"channel", (PyCFunction)&Context::py_channel, METH_VARARGS|METH_KEYWORDS,
@@ -942,7 +1128,7 @@ static PyMethodDef Context_methods[] = {
     {"set_debug", (PyCFunction)&Context::py_set_debug, METH_VARARGS|METH_KEYWORDS|METH_STATIC,
      "Set PVA debug level"},
     {"makeRequest", (PyCFunction)&Context::py_makeRequest, METH_VARARGS|METH_STATIC,
-     "makeRequet(\"field(value)\")\n\nParse pvRequest string"},
+     "makeRequest(\"field(value)\")\n\nParse pvRequest string"},
     {NULL}
 };
 
