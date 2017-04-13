@@ -150,16 +150,13 @@ PyTypeObject P4PServer::type = {
 
 void p4p_server_register(PyObject *mod)
 {
+    P4PServer::buildType();
     P4PServer::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_GC;
-    P4PServer::type.tp_new = &P4PServer::tp_new;
     P4PServer::type.tp_init = &P4PServer_init;
-    P4PServer::type.tp_dealloc = &P4PServer::tp_dealloc;
     P4PServer::type.tp_traverse = &P4PServer_traverse;
     P4PServer::type.tp_clear = &P4PServer_clear;
 
     P4PServer::type.tp_methods = P4PServer_methods;
-
-    P4PServer::type.tp_weaklistoffset = offsetof(P4PServer, weak);
 
     if(PyType_Ready(&P4PServer::type))
         throw std::runtime_error("failed to initialize p4p._p4p.Server");

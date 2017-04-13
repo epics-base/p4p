@@ -351,16 +351,13 @@ PyTypeObject* P4PType_type = &P4PType::type;
 
 void p4p_type_register(PyObject *mod)
 {
+    P4PType::buildType();
     P4PType::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_GC;
-    P4PType::type.tp_new = &P4PType::tp_new;
     P4PType::type.tp_init = &P4PType_init;
-    P4PType::type.tp_dealloc = &P4PType::tp_dealloc;
     P4PType::type.tp_traverse = &P4PType_traverse;
     P4PType::type.tp_clear = &P4PType_clear;
 
     P4PType::type.tp_methods = P4PType_members;
-
-    P4PType::type.tp_weaklistoffset = offsetof(P4PType, weak);
 
     if(PyType_Ready(&P4PType::type))
         throw std::runtime_error("failed to initialize P4PType_type");

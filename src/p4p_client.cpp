@@ -1006,11 +1006,9 @@ void p4p_client_register(PyObject *mod)
 
     Py_AtExit(&unfactory);
 
+    PyContext::buildType();
     PyContext::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
-    PyContext::type.tp_new = &PyContext::tp_new;
     PyContext::type.tp_init = &Context::py_init;
-    PyContext::type.tp_dealloc = &PyContext::tp_dealloc;
-    PyContext::type.tp_weaklistoffset = offsetof(PyContext, weak);
 
     PyContext::type.tp_methods = Context_methods;
 
@@ -1024,11 +1022,9 @@ void p4p_client_register(PyObject *mod)
     }
 
 
+    PyChannel::buildType();
     PyChannel::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
-    PyChannel::type.tp_new = &PyChannel::tp_new;
     PyChannel::type.tp_init = &Channel::py_init;
-    PyChannel::type.tp_dealloc = &PyChannel::tp_dealloc;
-    PyChannel::type.tp_weaklistoffset = offsetof(PyChannel, weak);
 
     PyChannel::type.tp_methods = Channel_methods;
 
@@ -1042,12 +1038,10 @@ void p4p_client_register(PyObject *mod)
     }
 
 
+    PyOp::buildType();
     PyOp::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_GC;
-    PyOp::type.tp_new = &PyOp::tp_new;
-    PyOp::type.tp_dealloc = &PyOp::tp_dealloc;
     PyOp::type.tp_traverse = &OpBase::py_traverse;
     PyOp::type.tp_clear = &OpBase::py_clear;
-    PyOp::type.tp_weaklistoffset = offsetof(PyOp, weak);
 
     PyOp::type.tp_methods = OpBase_methods;
 

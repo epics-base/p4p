@@ -195,6 +195,13 @@ struct PyClassWrapper {
     C I;
 
     static PyTypeObject type;
+    static void buildType() {
+        type.tp_flags = Py_TPFLAGS_DEFAULT;
+        type.tp_new = &tp_new;
+        type.tp_dealloc = &tp_dealloc;
+
+        type.tp_weaklistoffset = offsetof(PyClassWrapper, weak);
+    }
 
     static PyObject* tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
         try {

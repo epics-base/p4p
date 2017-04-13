@@ -697,10 +697,9 @@ PyTypeObject* P4PValue_type = &P4PValue::type;
 
 void p4p_value_register(PyObject *mod)
 {
+    P4PValue::buildType();
     P4PValue::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
-    P4PValue::type.tp_new = &P4PValue::tp_new;
     P4PValue::type.tp_init = &P4PValue_init;
-    P4PValue::type.tp_dealloc = &P4PValue::tp_dealloc;
     P4PValue::type.tp_getattro = &P4PValue_getattr;
     P4PValue::type.tp_setattro = &P4PValue_setattr;
     P4PValue::type.tp_str = &P4PValue_str;
@@ -708,8 +707,6 @@ void p4p_value_register(PyObject *mod)
     P4PValue::type.tp_as_mapping = &P4PValue_mapping;
 
     P4PValue::type.tp_methods = P4PValue_methods;
-
-    //P4PValue::type.tp_weaklistoffset = offsetof()
 
     if(PyType_Ready(&P4PValue::type))
         throw std::runtime_error("failed to initialize P4PValue_type");
