@@ -363,7 +363,7 @@ PyObject*  Context::py_providers(PyObject *junk)
         PyRef ret(PyList_New(names->size()));
 
         for(size_t i=0; i<names->size(); i++) {
-            PyRef name(PyString_FromString((*names)[i].c_str()));
+            PyRef name(PyUnicode_FromString((*names)[i].c_str()));
 
             PyList_SET_ITEM(ret.get(), i, name.release());
         }
@@ -425,7 +425,7 @@ pvd::PVStructure::shared_pointer buildRequest(PyObject *req)
                                                          ->endNested()
                                                          ->createStructure());
 
-    } else if(PyString_Check(req)) {
+    } else if(PyBytes_Check(req) || PyUnicode_Check(req)) {
         PyString S(req);
         std::string R(S.str());
         if(R.empty())
@@ -562,7 +562,7 @@ PyObject* Channel::py_name(PyObject *self)
         if(!SELF->channel)
             return PyErr_Format(PyExc_RuntimeError, "Channel closed");
 
-        return PyString_FromString(SELF->channel->getChannelName().c_str());
+        return PyUnicode_FromString(SELF->channel->getChannelName().c_str());
     }CATCH();
     return NULL;
 }

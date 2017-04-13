@@ -529,7 +529,7 @@ PyObject* P4PValue_str(PyObject *self)
         std::ostringstream strm;
         strm<<SELF.V;
 
-        return PyString_FromString(strm.str().c_str());
+        return PyUnicode_FromString(strm.str().c_str());
     }CATCH()
     return NULL;
 }
@@ -615,7 +615,7 @@ PyObject *P4PValue_get(PyObject *self, PyObject *args)
 PyObject *P4PValue_id(PyObject *self)
 {
     TRY {
-        return PyString_FromString(SELF.V->getStructure()->getID().c_str());
+        return PyUnicode_FromString(SELF.V->getStructure()->getID().c_str());
     }CATCH()
     return NULL;
 }

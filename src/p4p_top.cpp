@@ -14,7 +14,7 @@ static struct PyModuleDef p4pymodule = {
     "_p4p",
     NULL,
     -1,
-    NULL
+    P4P_methods,
 };
 #endif
 

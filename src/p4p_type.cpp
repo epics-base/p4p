@@ -275,7 +275,7 @@ PyObject* P4PType_id(PyObject *self) {
     TRY {
         assert(SELF.get());
 
-        return PyString_FromString(SELF->getID().c_str());
+        return PyUnicode_FromString(SELF->getID().c_str());
     }CATCH()
     return NULL;
 }
