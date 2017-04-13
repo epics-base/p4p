@@ -1150,6 +1150,10 @@ static PyMethodDef Channel_methods[] = {
      "put(callback, value, request=None)\n\nInitiate a new put() operation.\n"
      "The provided callback must be a callable object, which will be called with a single argument.\n"
      "Either None or an Exception."},
+    {"rpc", (PyCFunction)&Channel::py_rpc, METH_VARARGS|METH_KEYWORDS,
+     "rpc(callback, value, request=None)\n\nInitiate a new rpc() operation.\n"
+     "The provided callback must be a callable object, which will be called with a single argument.\n"
+     "Either None or an Exception."},
     {"close", (PyCFunction)&Channel::py_close, METH_NOARGS,
       "close()\n\nDispose of channel."},
     {NULL}

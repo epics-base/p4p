@@ -5,6 +5,7 @@ import unittest
 import weakref, gc
 
 from ..client.raw import Context
+from ..wrapper import Value, Type
 
 class TestRequest(unittest.TestCase):
     def testEmpty(self):
@@ -68,8 +69,6 @@ class TestPVA(unittest.TestCase):
 
     def testGCCycle(self):
         chan = self.ctxt.channel("completelyInvalidChannelName")
-
-        chan = self.ctxt.channel("completelyInvalidChannelName")
         _X = [None]
         def fn(V):
             _X[0] = V
@@ -81,6 +80,26 @@ class TestPVA(unittest.TestCase):
 
         W =  weakref.ref(op)
         del op, fn
+        gc.collect()
+
+        self.assertIsNone(W())
+
+        self.assertIsNone(_X[0])
+
+    def testRPCAbort(self):
+        P = Value(Type([
+            ('value', 'i'),
+        ]), {
+            'value': 42,
+        })
+        chan = self.ctxt.channel("completelyInvalidChannelName")
+        _X = [None]
+        def fn(V):
+            _X[0] = V
+        op = chan.rpc(fn, P)
+
+        W =  weakref.ref(op)
+        del op
         gc.collect()
 
         self.assertIsNone(W())

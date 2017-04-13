@@ -177,3 +177,19 @@ class Context(object):
         except:
             [op and op.cancel() for op in ops]
             raise
+
+    def rpc(self, name, value, request=None, timeout=5.0, throw=True):
+        # use Queue instead of Event to allow KeyboardInterrupt
+        done = Queue(maxsize=1)
+
+        ch = self._channel(name)
+        op = ch.rpc(done.put_nowait, value, request)
+        try:
+            result = done.get(timeout=timeout)
+            if throw and isinstance(result, Exception):
+                raise result
+
+            return result
+        except:
+            op.cancel()
+            raise
