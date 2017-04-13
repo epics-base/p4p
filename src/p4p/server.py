@@ -14,6 +14,7 @@ class Server(object):
     def __init__(self, *args, **kws):
         self._S = _Server(*args, **kws)
         self._T = None
+        self.conf = self._S.conf
 
     def start(self):
         if self._T is not None:

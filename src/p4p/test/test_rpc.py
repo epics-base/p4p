@@ -18,6 +18,14 @@ class TestService(object):
 
 class TestRPC(unittest.TestCase):
     def setUp(self):
+        conf = {
+            'EPICS_PVAS_INTF_ADDR_LIST':'127.0.0.1',
+            'EPICS_PVA_ADDR_LIST':'127.0.0.1',
+            'EPICS_PVA_AUTO_ADDR_LIST':'0',
+            'EPICS_PVA_SERVER_PORT':'0',
+            'EPICS_PVA_BROADCAST_PORT':'0',
+        }
+
         # random PV prefix
         # TODO: network isolation
         self.prefix = 'rpctest:%u:'%random.randint(0, 1024)
@@ -32,7 +40,8 @@ class TestRPC(unittest.TestCase):
         self._dispatch = weakref.ref(dispatch)
         installProvider("TestRPC", dispatch)
 
-        self.server = Server(providers="TestRPC")
+        self.server = Server(providers="TestRPC", conf=conf, useenv=False)
+        print("conf", self.server.conf(client=True, server=False))
         self.server.start()
 
         self._QT = threading.Thread(name="TestRPC Q", target=self._Q.handle)
@@ -63,7 +72,7 @@ class TestRPC(unittest.TestCase):
                 'rhs': 1,
             },
         })
-        ctxt = Context('pva')
+        ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False))
         sum = ctxt.rpc(self.prefix+'add', args)
         self.assertEqual(sum.value, 2.0)
 
@@ -83,6 +92,6 @@ class TestRPC(unittest.TestCase):
                 'rhs': 2,
             },
         })
-        ctxt = Context('pva')
+        ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False))
         sum = ctxt.rpc(self.prefix+'add', args)
         self.assertEqual(sum.value, 3.0)

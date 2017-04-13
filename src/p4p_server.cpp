@@ -2,6 +2,7 @@
 #include <stddef.h>
 
 #include <pv/serverContext.h>
+#include <pv/typeCast.h>
 
 #include "p4p.h"
 
@@ -14,6 +15,8 @@ struct Server {
     std::string providers;
     pva::Configuration::shared_pointer conf;
     pva::ServerContextImpl::shared_pointer server;
+    bool started;
+    Server() :started(false) {}
 };
 
 typedef PyClassWrapper<Server> P4PServer;
@@ -59,23 +62,6 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
 
         SELF.conf = B.build();
 
-        return 0;
-    }CATCH()
-    return -1;
-}
-
-PyObject* P4PServer_run(PyObject *self, PyObject *args, PyObject *kwds)
-{
-    const char *names[] = {NULL};
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "", (char**)names))
-        return NULL;
-
-    TRY {
-        TRACE("ENTER");
-        if(SELF.server) {
-            return PyErr_Format(PyExc_RuntimeError, "Already running");
-        }
-
         pva::ServerContextImpl::shared_pointer S(pva::ServerContextImpl::create(SELF.conf));
 
         if(!SELF.providers.empty())
@@ -84,6 +70,23 @@ PyObject* P4PServer_run(PyObject *self, PyObject *args, PyObject *kwds)
         S->initialize(pva::getChannelProviderRegistry());
 
         SELF.server = S;
+
+        return 0;
+    }CATCH()
+    return -1;
+}
+
+PyObject* P4PServer_run(PyObject *self)
+{
+    TRY {
+        TRACE("ENTER");
+
+        if(SELF.started) {
+            return PyErr_Format(PyExc_RuntimeError, "Already running");
+        }
+        SELF.started = true;
+
+        pva::ServerContextImpl::shared_pointer S(SELF.server);
 
         TRACE("UNLOCK");
         {
@@ -104,12 +107,8 @@ PyObject* P4PServer_run(PyObject *self, PyObject *args, PyObject *kwds)
     return NULL;
 }
 
-PyObject* P4PServer_stop(PyObject *self, PyObject *args, PyObject *kwds)
+PyObject* P4PServer_stop(PyObject *self)
 {
-    const char *names[] = {NULL};
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "", (char**)names))
-        return NULL;
-
     TRY {
         if(SELF.server) {
             TRACE("SHUTDOWN");
@@ -121,11 +120,64 @@ PyObject* P4PServer_stop(PyObject *self, PyObject *args, PyObject *kwds)
     return NULL;
 }
 
+PyObject* P4PServer_conf(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *client = Py_False, *server = Py_True;
+    const char *names[] = {"server", "client", NULL};
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "|OO", (char**)names, &server, &client))
+        return NULL;
+
+    TRY {
+        if(!SELF.server)
+            return PyErr_Format(PyExc_RuntimeError, "Server already stopped");
+
+        PyRef ret(PyDict_New());
+
+#define SET(KEY, VAL) PyDict_SetItemString(ret.get(), KEY, PyUnicode_FromString(VAL))
+
+        if(PyObject_IsTrue(server)) {
+
+            // EPICS_PVAS_INTF_ADDR_LIST not exposed :(
+
+            SET("EPICS_PVAS_BEACON_ADDR_LIST", SELF.server->getBeaconAddressList().c_str());
+            SET("EPICS_PVAS_AUTO_BEACON_ADDR_LIST",
+                                 SELF.server->isAutoBeaconAddressList() ? "YES" : "NO");
+            SET("EPICS_PVAS_BEACON_PERIOD", pvd::castUnsafe<std::string>(SELF.server->getBeaconPeriod()).c_str());
+            SET("EPICS_PVAS_SERVER_PORT", pvd::castUnsafe<std::string>(SELF.server->getServerPort()).c_str());
+            SET("EPICS_PVAS_BROADCAST_PORT", pvd::castUnsafe<std::string>(SELF.server->getBroadcastPort()).c_str());
+            SET("EPICS_PVAS_MAX_ARRAY_BYTES", pvd::castUnsafe<std::string>(SELF.server->getReceiveBufferSize()).c_str());
+            SET("EPICS_PVAS_PROVIDER_NAMES", SELF.server->getChannelProviderName().c_str());
+
+        }
+
+        if(PyObject_IsTrue(client)) {
+
+            SET("EPICS_PVA_ADDR_LIST", SELF.server->getBeaconAddressList().c_str());
+            SET("EPICS_PVA_AUTO_ADDR_LIST",
+                                 SELF.server->isAutoBeaconAddressList() ? "YES" : "NO");
+            SET("EPICS_PVA_BEACON_PERIOD", pvd::castUnsafe<std::string>(SELF.server->getBeaconPeriod()).c_str());
+            SET("EPICS_PVA_SERVER_PORT", pvd::castUnsafe<std::string>(SELF.server->getServerPort()).c_str());
+            SET("EPICS_PVA_BROADCAST_PORT", pvd::castUnsafe<std::string>(SELF.server->getBroadcastPort()).c_str());
+            SET("EPICS_PVA_MAX_ARRAY_BYTES", pvd::castUnsafe<std::string>(SELF.server->getReceiveBufferSize()).c_str());
+            SET("EPICS_PVA_PROVIDER_NAMES", SELF.server->getChannelProviderName().c_str());
+
+        }
+
+#undef SET
+
+        return ret.release();
+    }CATCH()
+    return NULL;
+}
+
 static PyMethodDef P4PServer_methods[] = {
-    {"run", (PyCFunction)&P4PServer_run, METH_VARARGS|METH_KEYWORDS,
+    {"run", (PyCFunction)&P4PServer_run, METH_NOARGS,
      "Run server (blocking)"},
-    {"stop", (PyCFunction)&P4PServer_stop, METH_VARARGS|METH_KEYWORDS,
+    {"stop", (PyCFunction)&P4PServer_stop, METH_NOARGS,
      "break from blocking run()"},
+    {"conf", (PyCFunction)&P4PServer_conf, METH_VARARGS|METH_KEYWORDS,
+     "conf(server=True, client=False)\n\n"
+     "Return actual Server configuration.  Use client and/or server key names."},
     {NULL}
 };
 

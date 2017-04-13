@@ -14,6 +14,7 @@
 #include <pv/logger.h>
 #include <pv/clientFactory.h>
 #include <pv/caProvider.h>
+#include <pv/configuration.h>
 
 #include "p4p.h"
 
@@ -282,15 +283,43 @@ struct RPCOp : public OpBase {
 int Context::py_init(PyObject *self, PyObject *args, PyObject *kws)
 {
     TRY {
-        static const char* names[] = {"provider", NULL};
+        static const char* names[] = {"provider", "conf", "useenv", NULL};
         const char *pname;
-        if(!PyArg_ParseTupleAndKeywords(args, kws, "s", (char**)names, &pname))
+        PyObject *cdict = Py_None, *useenv = Py_True;
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "s|OO", (char**)names, &pname, &cdict, &useenv))
             return -1;
+
+        pva::ConfigurationBuilder B;
+
+        if(PyObject_IsTrue(useenv))
+            B.push_env();
+
+        if(cdict==Py_None) {
+            // nothing
+        } else if(PyDict_Check(cdict)) {
+            Py_ssize_t I = 0;
+            PyObject *key, *value;
+
+            while(PyDict_Next(cdict, &I, &key, &value)) {
+                PyString K(key), V(value);
+
+                B.add(K.str(), V.str());
+            }
+
+            B.push_map();
+        } else {
+            PyErr_Format(PyExc_ValueError, "conf=%s not valid", Py_TYPE(cdict)->tp_name);
+            return -1;
+        }
 
         // we create our own provider.
         // we are greedy and don't want to share (also we can destroy channels at will)
+#if 0
+        // No way to apply custom config :P
         SELF.provider = pva::getChannelProviderRegistry()->createProvider(pname);
-        //TODO: create w/ Configuration
+#else
+        SELF.provider = pva::getChannelProviderRegistry()->createProvider(pname, B.build());
+#endif
 
         TRACE("Context init");
 
