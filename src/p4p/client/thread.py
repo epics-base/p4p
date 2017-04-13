@@ -14,13 +14,25 @@ from . import raw
 from ..wrapper import Value
 
 class Context(object):
+    """Context(provider)
+
+    @param provider A Provider name.  Try "pva" or Context.providers() for a complete list.
+
+    The method of this Context will block the calling thread until completion or timeout
+    """
     Value = Value
+
+    providers = raw.Context.providers
+    set_debug = raw.Context.set_debug
+
     def __init__(self, *args, **kws):
         self._ctxt = raw.Context(*args, **kws)
 
         self._channels = {}
 
     def close(self):
+        """Force close all Channels and cancel all Operations
+        """
         self._channels = None
         self._ctxt.close()
 
@@ -37,6 +49,24 @@ class Context(object):
             return ch
 
     def get(self, names, requests=None, timeout=5.0, throw=True):
+        """Fetch current value of some number of PVs.
+        
+        @param names A single name string or list of name strings
+        @param requests None or a Value to qualify this request
+        @param timeout Operation timeout in seconds
+        @param throw When true, operation error throws an exception.
+                     If False then the Exception is returned instead of the Value
+
+        @returns A Value or Exception, or list of same
+
+        When invoked with a single name then returns is a single value.
+        When invoked with a list of names, then returns a list of values
+
+        >>> ctxt = Context('pva')
+        >>> V = ctxt.get('pv:name')
+        >>> A, B = ctxt.get(['pv:1', 'pv:2'])
+        >>>
+        """
         singlepv = isinstance(names, (bytes, unicode))
         if singlepv:
             names = [names]
