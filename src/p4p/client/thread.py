@@ -29,7 +29,7 @@ class Context(object):
     def __exit__(self,A,B,C):
         self.close()
 
-    def channel(self, name):
+    def _channel(self, name):
         try:
             return self._channels[name]
         except KeyError:
@@ -56,7 +56,7 @@ class Context(object):
         try:
             for i,(name, req) in enumerate(izip(names, requests)):
                 _log.debug('gext %s', name)
-                ch = self.channel(name)
+                ch = self._channel(name)
                 def cb(value, i=i):
                     try:
                         done.put_nowait((value, i))
@@ -108,7 +108,7 @@ class Context(object):
                     except ValueError:
                         raise ValueError("Unable to interpret '%s' as json"%value)
 
-                ch = self.channel(name)
+                ch = self._channel(name)
 
                 # callback to build PVD Value from PY value
                 def vb(type, value=value, i=i):
