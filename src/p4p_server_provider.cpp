@@ -45,7 +45,9 @@ struct PyServerProvider :
         TRACE("ENTER "<<channelName);
         pva::ChannelFind::shared_pointer ret;
         try {
-            // TODO: cache results for a short time to reduce calls
+            // TODO: cache results for a short time to reduce calls?
+            //       keep channel list if c++?
+            //       coelese requests into batches for py?
 
             PyLock G;
 
