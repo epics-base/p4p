@@ -444,7 +444,7 @@ int Context::py_init(PyObject *self, PyObject *args, PyObject *kws)
 
         // we create our own provider.
         // we are greedy and don't want to share (also we can destroy channels at will)
-#if 0
+#if 1
         // No way to apply custom config :P
         SELF.provider = pva::getChannelProviderRegistry()->createProvider(pname);
 #else
