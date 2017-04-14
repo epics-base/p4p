@@ -105,3 +105,39 @@ class TestPVA(unittest.TestCase):
         self.assertIsNone(W())
 
         self.assertIsNone(_X[0])
+
+    def testMonAbort(self):
+        chan = self.ctxt.channel("completelyInvalidChannelName")
+
+        canery = object()
+        _X = [canery]
+        def evt(V):
+            _X[0] = V
+
+        op = chan.monitor(evt)
+
+        op.close()
+
+        self.assertIs(_X[0], canery)
+
+    def testMonCycle(self):
+        chan = self.ctxt.channel("completelyInvalidChannelName")
+
+        canery = object()
+        _X = [canery]
+        def evt(V):
+            _X[0] = V
+
+        op = chan.monitor(evt)
+
+        evt._cycle = op # op -> evt -> evt.__dict__ -> op
+
+        self.assertIn(evt.__dict__, gc.get_referrers(op))
+
+        W =  weakref.ref(op)
+        del op, evt
+        gc.collect()
+
+        self.assertIsNone(W())
+
+        self.assertIs(_X[0], canery)

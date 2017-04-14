@@ -66,21 +66,54 @@ struct Channel {
 
     pva::Channel::shared_pointer channel;
 
-    typedef std::set<std::tr1::shared_ptr<OpBase> > operations_t;
+    struct Op {
+        POINTER_DEFINITIONS(Op);
+        Channel::shared_pointer channel;
+        Op(const Channel::shared_pointer& ch) :channel(ch) {}
+        virtual ~Op() {
+            PyLock L;
+            cancel();
+        }
+        // pva::Channel life-cycle callbacks
+        //  called to (re)start operation
+        virtual void restart(const Op::shared_pointer& self) =0;
+        //  channel lost connection
+        virtual void lostConn(const Op::shared_pointer& self) =0;
+        //  channel destoryed or user cancel
+        virtual bool cancel() {
+            TRACE("chan="<<channel.get()<<" "<<typeid(this).name());
+            if(!channel) return false;
+            bool found = false;
+            for(Channel::operations_t::iterator it = channel->ops.begin(), end = channel->ops.end(); it!=end; ++it)
+            {
+                if(it->get()==this) {
+                    found = true;
+                    TRACE("remove "<<it->use_count());
+                    channel->ops.erase(it);
+                    break;
+                }
+            }
+            channel.reset();
+            return found;
+        }
+    };
+
+    typedef std::set<Op::shared_pointer> operations_t;
     operations_t ops;
 
     static int py_init(PyObject *self, PyObject *args, PyObject *kws);
     static PyObject *py_get(PyObject *self, PyObject *args, PyObject *kws);
     static PyObject *py_put(PyObject *self, PyObject *args, PyObject *kws);
     static PyObject *py_rpc(PyObject *self, PyObject *args, PyObject *kws);
+    static PyObject *py_monitor(PyObject *self, PyObject *args, PyObject *kws);
     static PyObject *py_name(PyObject *self);
     static PyObject *py_close(PyObject *self);
 };
 
-struct OpBase {
+// base for one-shot operations
+struct OpBase : public Channel::Op {
     POINTER_DEFINITIONS(OpBase);
 
-    Channel::shared_pointer channel;
     pvd::PVStructure::shared_pointer req;
     // completion callback
     PyRef cb;
@@ -89,11 +122,8 @@ struct OpBase {
     // rpc value
     pvd::PVStructure::shared_pointer pvvalue;
 
-    OpBase(const Channel::shared_pointer& ch) :channel(ch) {}
-    virtual ~OpBase() {
-        PyLock L;
-        cancel();
-    }
+    OpBase(const Channel::shared_pointer& ch) :Channel::Op(ch) {}
+    virtual ~OpBase() {}
 
     void call_cb(PyObject *obj) {
         PyRef temp;
@@ -108,28 +138,10 @@ struct OpBase {
         }
     }
 
-    // pva::Channel life-cycle callbacks
-    //  called to (re)start operation
-    virtual void restart(const OpBase::shared_pointer& self) =0;
-    //  channel lost connection
-    virtual void lostConn(const OpBase::shared_pointer& self) =0;
-    //  channel destoryed or user cancel
     virtual bool cancel() {
-        TRACE("chan="<<channel.get()<<" "<<typeid(this).name());
-        if(!channel) return false;
-        bool found = false;
-        for(Channel::operations_t::iterator it = channel->ops.begin(), end = channel->ops.end(); it!=end; ++it)
-        {
-            if(it->get()==this) {
-                found = true;
-                TRACE("remove "<<it->use_count());
-                channel->ops.erase(it);
-                break;
-            }
-        }
-        channel.reset();
+        bool ret = Channel::Op::cancel();
         cb.reset();
-        return found;
+        return ret;
     }
 
     // called with GIL locked
@@ -138,33 +150,151 @@ struct OpBase {
     static PyObject *py_cancel(PyObject *self);
     static int py_traverse(PyObject *self, visitproc visit, void *arg);
     static int py_clear(PyObject *self);
+};
 
-    virtual int traverse(visitproc visit, void *arg)
-    {
-        if(cb.get())
-            Py_VISIT(cb.get());
-        if(pyvalue.get())
-            Py_VISIT(pyvalue.get());
-        return 0;
+struct MonitorOp : Channel::Op {
+    POINTER_DEFINITIONS(MonitorOp);
+
+    struct Req : public pva::MonitorRequester {
+        POINTER_DEFINITIONS(Req);
+
+        MonitorOp::weak_pointer owner;
+        Req(const MonitorOp::shared_pointer& o) : owner(o) {}
+        virtual ~Req() {}
+
+        virtual std::string getRequesterName() { return "p4p.MonitorOp"; }
+
+        virtual void monitorConnect(pvd::Status const & status,
+            pvd::MonitorPtr const & monitor, pvd::StructureConstPtr const & structure)
+        {
+            TRACE("status="<<status);
+            MonitorOp::shared_pointer op(owner);
+            if(!op)
+                return;
+            PyLock L;
+            if(op->done)
+                return;
+            if(status.isSuccess()) {
+                monitor->start();
+                TRACE("start() "<<op->event.get());
+            }
+
+            if(!status.isSuccess()) {
+                PyRef err(PyObject_CallFunction(PyExc_RuntimeError, "s", status.getMessage().c_str()));
+                op->call_cb(err.get());
+                op->event.reset();
+                TRACE("error");
+            } else {
+                op->empty = true;
+            }
+        }
+
+        virtual void monitorEvent(pvd::MonitorPtr const & monitor)
+        {
+            TRACE("");
+            MonitorOp::shared_pointer op(owner);
+            if(!op)
+                return;
+            PyLock L;
+            op->empty = false;
+            PyRef val(Py_None, borrow());
+            op->call_cb(val.get());
+            TRACE("notified");
+        }
+
+        virtual void unlisten(pvd::MonitorPtr const & monitor)
+        {
+            TRACE("");
+            MonitorOp::shared_pointer op(owner);
+            if(!op)
+                return;
+            PyLock L;
+            op->done = true;
+            PyRef val(Py_None, borrow());
+            op->call_cb(val.get());
+        }
+    };
+
+    MonitorOp(const Channel::shared_pointer& ch) :Channel::Op(ch), empty(true), done(false) {}
+    ~MonitorOp() {
+        // TODO: call_cb() w/ done?
     }
 
-    virtual void clear()
-    {
-        // ~= Py_CLEAR(cb)
-        {
-            PyRef tmp;
-            cb.swap(tmp);
-        }
-        {
-            PyRef tmp;
-            pyvalue.swap(tmp);
+    pva::Monitor::shared_pointer op;
+    pvd::PVStructure::shared_pointer pvReq;
+
+    // error/non-empty callback
+    PyRef event;
+    bool empty, done;
+
+    void call_cb(PyObject *obj) {
+        if(!event.get()) return;
+        PyObject *junk = PyObject_CallFunctionObjArgs(event.get(), obj, NULL);
+        if(junk) {
+            Py_DECREF(junk);
+        } else {
+            PyErr_Print();
+            PyErr_Clear();
         }
     }
+
+    virtual void restart(const Op::shared_pointer& self)
+    {
+        TRACE("done="<<done);
+        if(!channel || done) return;
+        Req::shared_pointer req(new Req(std::tr1::static_pointer_cast<MonitorOp>(self)));
+        pva::Monitor::shared_pointer mon;
+        {
+            PyUnlock U;
+
+            mon = channel->channel->createMonitor(req, pvReq);
+        }
+        op.swap(mon);
+        channel->ops.insert(self);
+    }
+
+    virtual void lostConn(const Op::shared_pointer& self)
+    {
+        TRACE("done="<<done);
+        if(channel && !done)
+            channel->ops.insert(self);
+        pva::Monitor::shared_pointer mon;
+        op.swap(mon);
+        if(mon) {
+            PyUnlock U;
+
+            mon->stop();
+            mon->destroy();
+            mon.reset();
+        }
+    }
+
+    virtual bool cancel() {
+        TRACE("cancel");
+        bool ret = Channel::Op::cancel();
+        event.release();
+        done = true;
+        if(op) {
+            op->stop();
+            op->destroy();
+        }
+        TRACE(ret);
+        return ret;
+    }
+
+    static PyObject *py_close(PyObject *self);
+    static PyObject *py_empty(PyObject *self);
+    static PyObject *py_done(PyObject *self);
+    static PyObject *py_pop(PyObject *self);
+
+    static int py_traverse(PyObject *self, visitproc visit, void *arg);
+    static int py_clear(PyObject *self);
 };
 
 typedef PyClassWrapper<Context> PyContext;
 typedef PyClassWrapper<std::tr1::shared_ptr<Channel> > PyChannel;
 typedef PyClassWrapper<std::tr1::shared_ptr<OpBase> > PyOp;
+typedef PyClassWrapper<std::tr1::shared_ptr<MonitorOp> > PyMonitorOp;
 
 struct GetOp : public OpBase {
     POINTER_DEFINITIONS(GetOp);
@@ -195,8 +325,8 @@ struct GetOp : public OpBase {
     GetOp(const Channel::shared_pointer& ch) :OpBase(ch) {}
     virtual ~GetOp() {}
 
-    virtual void restart(const OpBase::shared_pointer &self);
-    virtual void lostConn(const OpBase::shared_pointer& self);
+    virtual void restart(const Channel::Op::shared_pointer &self);
+    virtual void lostConn(const Channel::Op::shared_pointer& self);
     virtual bool cancel();
 };
 
@@ -237,8 +367,8 @@ struct PutOp : public OpBase {
     PutOp(const Channel::shared_pointer& ch) :OpBase(ch), sent(false) {}
     virtual ~PutOp() {}
 
-    virtual void restart(const OpBase::shared_pointer &self);
-    virtual void lostConn(const OpBase::shared_pointer& self);
+    virtual void restart(const Channel::Op::shared_pointer &self);
+    virtual void lostConn(const Channel::Op::shared_pointer& self);
     virtual bool cancel();
 };
 
@@ -272,8 +402,8 @@ struct RPCOp : public OpBase {
     RPCOp(const Channel::shared_pointer& ch) :OpBase(ch), sent(false) {}
     virtual ~RPCOp() {}
 
-    virtual void restart(const OpBase::shared_pointer &self);
-    virtual void lostConn(const OpBase::shared_pointer& self);
+    virtual void restart(const Channel::Op::shared_pointer &self);
+    virtual void lostConn(const Channel::Op::shared_pointer& self);
     virtual bool cancel();
 };
 
@@ -643,6 +773,49 @@ PyObject* Channel::py_rpc(PyObject *self, PyObject *args, PyObject *kws)
     return NULL;
 }
 
+PyObject* Channel::py_monitor(PyObject *self, PyObject *args, PyObject *kws)
+{
+    TRY {
+        static const char *names[] = {"callback", "request", NULL};
+        PyObject *cb, *req = Py_None;
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "O|O", (char**)names, &cb, &req))
+            return NULL;
+
+        if(!PyCallable_Check(cb))
+            return PyErr_Format(PyExc_ValueError, "callable required, not %s", Py_TYPE(cb)->tp_name);
+
+        if(!SELF->channel)
+            return PyErr_Format(PyExc_RuntimeError, "Channel closed");
+
+        TRACE("Channel monitor "<<SELF->channel->getChannelName()<<" cb="<<cb);
+
+        MonitorOp::shared_pointer reqop(new MonitorOp(SELF));
+        reqop->event.reset(cb, borrow());
+        reqop->pvReq = buildRequest(req);
+
+        if(SELF->channel->isConnected()) {
+            TRACE("Issue monitor");
+            reqop->restart(reqop);
+        } else {
+            TRACE("Wait for connect");
+            SELF->ops.insert(reqop);
+        }
+
+        try {
+            PyRef ret(PyOp::type.tp_new(&PyMonitorOp::type, args, kws));
+
+            PyMonitorOp::unwrap(ret.get()) = reqop;
+
+            return ret.release();
+        }catch(...) {
+            reqop->op->destroy();
+            SELF->ops.erase(reqop);
+            throw;
+        }
+    }CATCH()
+    return NULL;
+}
+
 PyObject* Channel::py_name(PyObject *self)
 {
     TRY {
@@ -758,7 +931,10 @@ PyObject* OpBase::py_cancel(PyObject *self)
 int OpBase::py_traverse(PyObject *self, visitproc visit, void *arg)
 {
     TRY {
-        return SELF->traverse(visit, arg);
+        if(SELF->cb.get())
+            Py_VISIT(SELF->cb.get());
+        if(SELF->pyvalue.get())
+            Py_VISIT(SELF->pyvalue.get());
     } CATCH()
     return -1;
 }
@@ -766,17 +942,120 @@ int OpBase::py_traverse(PyObject *self, visitproc visit, void *arg)
 int OpBase::py_clear(PyObject *self)
 {
     TRY {
-        SELF->clear();
+        // ~= Py_CLEAR(cb)
+        {
+            PyRef tmp;
+            SELF->cb.swap(tmp);
+        }
+        {
+            PyRef tmp;
+            SELF->pyvalue.swap(tmp);
+        }
         return 0;
     } CATCH()
     return -1;
 }
 
 
+#undef TRY
+#define TRY PyMonitorOp::reference_type SELF = PyMonitorOp::unwrap(self); try
+
+PyObject *MonitorOp::py_close(PyObject *self)
+{
+    TRY {
+        TRACE("cancel subscription");
+        SELF->event.reset();
+        if(SELF->op) {
+            SELF->op->stop();
+            SELF->op->destroy();
+        }
+        SELF->op.reset();
+
+        Py_RETURN_NONE;
+    }CATCH()
+    return NULL;
+}
+
+PyObject *MonitorOp::py_empty(PyObject *self)
+{
+    TRY {
+        TRACE(SELF->empty);
+        if(SELF->empty)
+            Py_RETURN_TRUE;
+        else
+            Py_RETURN_FALSE;
+
+    }CATCH()
+    return NULL;
+}
+
+PyObject *MonitorOp::py_done(PyObject *self)
+{
+    TRY {
+        TRACE(SELF->done);
+        if(SELF->done)
+            Py_RETURN_TRUE;
+        else
+            Py_RETURN_FALSE;
+
+    }CATCH()
+    return NULL;
+}
+
+PyObject *MonitorOp::py_pop(PyObject *self)
+{
+    TRY {
+        if(!SELF->op)
+            Py_RETURN_NONE;
+
+        pva::MonitorElementPtr elem(SELF->op->poll());
+        SELF->empty = !elem;
+        if(!elem) {
+            TRACE("Empty");
+            Py_RETURN_NONE;
+        }
+        try {
+
+            pvd::PVStructure::shared_pointer& E = elem->pvStructurePtr;
+
+            pvd::PVStructure::shared_pointer V(pvd::getPVDataCreate()->createPVStructure(E->getStructure()));
+            V->copyUnchecked(*E);
+
+            SELF->op->release(elem);
+
+            TRACE("event="<<V);
+            return P4PValue_wrap(P4PValue_type, V);
+        } catch(...){
+            SELF->op->release(elem);
+            throw;
+        }
+
+    }CATCH()
+    return NULL;
+}
+
+int MonitorOp::py_traverse(PyObject *self, visitproc visit, void *arg)
+{
+    TRY {
+        if(SELF->event.get())
+            Py_VISIT(SELF->event.get());
+        return 0;
+    }CATCH()
+    return -1;
+}
+int MonitorOp::py_clear(PyObject *self)
+{
+    TRY {
+        TRACE("sub clear");
+        PyRef tmp;
+        SELF->event.swap(tmp);
+        return 0;
+    }CATCH()
+    return -1;
+}
 
 
-
-void GetOp::restart(const OpBase::shared_pointer& self)
+void GetOp::restart(const Channel::Op::shared_pointer& self)
 {
     TRACE("channel="<<channel.get()<<" refs="<<self.use_count());
     if(!channel) return;
@@ -795,10 +1074,10 @@ void GetOp::restart(const OpBase::shared_pointer& self)
     channel->ops.insert(self);
 }
 
-void GetOp::lostConn(const OpBase::shared_pointer &self)
+void GetOp::lostConn(const Channel::Op::shared_pointer &self)
 {
-    if(!channel) return;
-    channel->ops.insert(self);
+    if(channel)
+        channel->ops.insert(self);
     if(op) {
         pva::ChannelGet::shared_pointer temp;
         temp.swap(op);
@@ -887,7 +1166,7 @@ void GetOp::Req::getDone(
     }
 }
 
-void PutOp::restart(const OpBase::shared_pointer& self)
+void PutOp::restart(const Channel::Op::shared_pointer& self)
 {
     TRACE("channel="<<channel.get()<<" sent="<<sent);
     if(!channel || sent) return;
@@ -906,10 +1185,9 @@ void PutOp::restart(const OpBase::shared_pointer& self)
     channel->ops.insert(self);
 }
 
-void PutOp::lostConn(const OpBase::shared_pointer &self)
+void PutOp::lostConn(const Channel::Op::shared_pointer &self)
 {
     if(!channel) return;
-    channel->ops.insert(self);
     if(op) {
         pva::ChannelPut::shared_pointer temp;
         temp.swap(op);
@@ -922,6 +1200,8 @@ void PutOp::lostConn(const OpBase::shared_pointer &self)
     if(sent) {
         PyRef err(PyObject_CallFunction(PyExc_RuntimeError, "s", "Connection lost before put acknowledged"));
         call_cb(err.get());
+    } else {
+        channel->ops.insert(self);
     }
 }
 
@@ -1040,7 +1320,7 @@ void PutOp::Req::putDone(
     }
 }
 
-void RPCOp::restart(const OpBase::shared_pointer& self)
+void RPCOp::restart(const Channel::Op::shared_pointer& self)
 {
     TRACE("channel="<<channel.get()<<" sent="<<sent);
     if(!channel || sent) return;
@@ -1059,7 +1339,7 @@ void RPCOp::restart(const OpBase::shared_pointer& self)
     channel->ops.insert(self);
 }
 
-void RPCOp::lostConn(const OpBase::shared_pointer &self)
+void RPCOp::lostConn(const Channel::Op::shared_pointer &self)
 {
     if(!channel) return;
     channel->ops.insert(self);
@@ -1183,6 +1463,10 @@ static PyMethodDef Channel_methods[] = {
      "rpc(callback, value, request=None)\n\nInitiate a new rpc() operation.\n"
      "The provided callback must be a callable object, which will be called with a single argument.\n"
      "Either None or an Exception."},
+    {"monitor", (PyCFunction)&Channel::py_monitor, METH_VARARGS|METH_KEYWORDS,
+     "monitor(callback, request=None)\n\nInitiate a new rpc() operation.\n"
+     "The provided callback must be a callable object, which will be called with a single argument.\n"
+     "Either None or an Exception."},
     {"close", (PyCFunction)&Channel::py_close, METH_NOARGS,
       "close()\n\nDispose of channel."},
     {NULL}
@@ -1206,6 +1490,25 @@ PyTypeObject PyOp::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "p4p._p4p.Operation",
     sizeof(PyOp),
+};
+
+static PyMethodDef PyMonitorOp_methods[] = {
+    {"close", (PyCFunction)&MonitorOp::py_close, METH_NOARGS,
+     "Cancel subscription."},
+    {"empty", (PyCFunction)&MonitorOp::py_empty, METH_NOARGS,
+     "Would pop() return a value?"},
+    {"done", (PyCFunction)&MonitorOp::py_done, METH_NOARGS,
+     "Has the last subscription update been received?  Check after pop() returns None."},
+    {"pop", (PyCFunction)&MonitorOp::py_pop, METH_NOARGS,
+     "Pull an entry from the subscription queue.  return None if empty"},
+    {NULL}
+};
+
+template<>
+PyTypeObject PyMonitorOp::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "p4p._p4p.Subscription",
+    sizeof(PyMonitorOp),
 };
 
 void unfactory()
@@ -1271,6 +1574,22 @@ void p4p_client_register(PyObject *mod)
     if(PyModule_AddObject(mod, "Operation", (PyObject*)&PyOp::type)) {
         Py_DECREF((PyObject*)&PyOp::type);
         throw std::runtime_error("failed to add p4p._p4p.Operation");
+    }
+
+    PyMonitorOp::buildType();
+    PyMonitorOp::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_GC;
+    PyMonitorOp::type.tp_traverse = &MonitorOp::py_traverse;
+    PyMonitorOp::type.tp_clear = &MonitorOp::py_clear;
+
+    PyMonitorOp::type.tp_methods = PyMonitorOp_methods;
+
+    if(PyType_Ready(&PyMonitorOp::type))
+        throw std::runtime_error("failed to initialize PyMonitorOp");
+
+    Py_INCREF((PyObject*)&PyMonitorOp::type);
+    if(PyModule_AddObject(mod, "Subscription", (PyObject*)&PyMonitorOp::type)) {
+        Py_DECREF((PyObject*)&PyOp::type);
+        throw std::runtime_error("failed to add p4p._p4p.Subscription");
     }
 
 }

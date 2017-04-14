@@ -1,9 +1,12 @@
 
+from __future__ import print_function
+
 import logging
 _log = logging.getLogger(__name__)
 
 from itertools import izip
-import json
+from functools import partial
+import json, threading
 
 try:
     from Queue import Queue, Full, Empty
@@ -12,6 +15,7 @@ except ImportError:
 
 from . import raw
 from ..wrapper import Value
+from ..rpc import WorkQueue
 
 class Context(object):
     """Context(provider)
@@ -26,15 +30,34 @@ class Context(object):
     set_debug = raw.Context.set_debug
 
     def __init__(self, *args, **kws):
+        self._Qmax = kws.pop('maxsize', 0)
         self._ctxt = raw.Context(*args, **kws)
 
         self._channels = {}
 
+        # lazy start threaded WorkQueue
+        self._Q, self._T = None, None
+
+    def _queue(self):
+        if self._Q is None:
+            Q = WorkQueue(maxsize=self._Qmax)
+            T = threading.Thread(name='p4p Context worker', target=Q.handle)
+            T.start()
+            self._Q, self._T = Q, T
+        return self._Q
+
     def close(self):
         """Force close all Channels and cancel all Operations
         """
+        if self._Q is not None:
+            self._Q.interrupt()
+            self._T.join()
+            self._Q, self._T = None, None
         self._channels = None
         self._ctxt.close()
+
+    def __del__(self):
+        self.close()
 
     def __enter__(self):
         return self
@@ -142,7 +165,6 @@ class Context(object):
 
                 # callback to build PVD Value from PY value
                 def vb(type, value=value, i=i):
-                    print 'foo', type
                     try:
                         if isinstance(value, dict):
                             V = self.Value(type, value)
@@ -157,7 +179,6 @@ class Context(object):
 
                 # completion callback
                 def cb(value, i=i):
-                    print 'bar', type
                     try:
                         done.put_nowait((value, i))
                     except:
@@ -192,4 +213,55 @@ class Context(object):
             return result
         except:
             op.cancel()
+            raise
+
+    class Subscription(object):
+        def __init__(self, ctxt, name, cb):
+            self.name, self._S, self._cb = name, None, cb
+            self._Q = ctxt._queue()
+        def close(self):
+            if self._S is not None:
+                self._S.close()
+                self._S = None
+        @property
+        def done(self):
+            return self._S is None or self._S.done()
+        @property
+        def empty(self):
+            return self._S is None or self._S.empty()
+        def _event(self, E):
+            try:
+                #TODO: ensure ordering of error and data events
+                _log.debug('Subscription wakeup for %s with %s', self.name, E)
+                self._inprog = True
+                self._Q.push(partial(self._handle, E))
+            except:
+                _log.exception("Lost Subscription update: %s", E)
+        def _handle(self, E):
+            try:
+                if E is not None:
+                    self._cb(E)
+                    return
+                while True:
+                    E = self._S.pop()
+                    if E is None:
+                        break
+                    self._cb(E)
+                if self._S.done():
+                    _log.debug("Subscription complete")
+                    self.close()
+                    self._cb(None)
+            except:
+                _log.exception("Error processing Subscription event: %s", E)
+                self.close()
+
+    def monitor(self, name, cb, request=None):
+        R = self.Subscription(self, name, cb)
+        ch = self._channel(name)
+
+        R._S = ch.monitor(R._event, request)
+        try:
+            return R
+        except:
+            S.close()
             raise

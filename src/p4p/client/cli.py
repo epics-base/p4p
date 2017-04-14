@@ -1,7 +1,7 @@
 
 from __future__ import print_function
 
-import sys
+import sys, time
 from itertools import izip
 
 import logging
@@ -49,6 +49,25 @@ def op_put(ctxt, args):
             print(name, val.tolist())
     sys.exit(ret)
 
+def op_monitor(ctxt, args):
+
+    subs = []
+    ret = 0
+    for name in args.names:
+        def show(val, name=name):
+            if isinstance(val, Exception):
+                ret = 1
+                print(name, 'Error:', val)
+            else:
+                print(name, val.tolist())
+        subs.append(ctxt.monitor(name, show, args.request))
+
+    try:
+        while True:
+            time.sleep(10)
+    except KeyboardInterrupt:
+        ret = 1
+    sys.exit(ret)
 
 def getargs():
     from argparse import ArgumentParser
@@ -67,6 +86,10 @@ def getargs():
     PP = SP.add_parser('put')
     PP.add_argument('names', nargs='*')
     PP.set_defaults(func=op_put)
+
+    PP = SP.add_parser('monitor')
+    PP.add_argument('names', nargs='*')
+    PP.set_defaults(func=op_monitor)
 
     return P.parse_args()
 
