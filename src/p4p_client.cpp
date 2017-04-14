@@ -1433,8 +1433,11 @@ static PyMethodDef Context_methods[] = {
     {"close", (PyCFunction)&Context::py_close, METH_NOARGS,
      "Close this Context"},
     {"providers", (PyCFunction)&Context::py_providers, METH_NOARGS|METH_STATIC,
-     "Return a list of all currently registered provider names"},
+     "providers() -> ['name', ...]\n"
+     ":returns: A list of all currently registered provider names.\n\n"
+     "A staticmethod."},
     {"set_debug", (PyCFunction)&Context::py_set_debug, METH_VARARGS|METH_KEYWORDS|METH_STATIC,
+     "set_debug(lvl)\n\n"
      "Set PVA debug level"},
     {"makeRequest", (PyCFunction)&Context::py_makeRequest, METH_VARARGS|METH_STATIC,
      "makeRequest(\"field(value)\")\n\nParse pvRequest string"},

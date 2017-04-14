@@ -453,7 +453,7 @@ int P4PValue_init(PyObject *self, PyObject *args, PyObject *kwds)
 {
     TRY {
         const char *names[] = {"type", "value", "clone", NULL};
-        PyObject *type = NULL, *value = NULL;
+        PyObject *type = NULL, *value = Py_None;
         PyObject *clone = NULL;
         if(!PyArg_ParseTupleAndKeywords(args, kwds, "|O!OO!", (char**)names,
                                         P4PType_type, &type,
@@ -469,7 +469,7 @@ int P4PValue_init(PyObject *self, PyObject *args, PyObject *kwds)
 
             pvd::PVStructure::shared_pointer V(pvd::getPVDataCreate()->createPVStructure(S));
 
-            if(value) {
+            if(value!=Py_None) {
                 SELF.store_struct(V.get(), S.get(), value);
             }
 

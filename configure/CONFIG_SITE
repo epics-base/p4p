@@ -42,4 +42,3 @@ CROSS_COMPILER_TARGET_ARCHS =
 PY_VER ?= 2.7
 
 #PY_VER:=2.7-dbg
-#PYTHON:=python2.7-dbg

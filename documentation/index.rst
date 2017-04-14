@@ -11,7 +11,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   p4p
+   values
+   client
 
 Indices and tables
 ==================

@@ -133,7 +133,7 @@ class NTURIDispatcher(RPCDispatcherBase):
             return {'result': int(a)+int(b)}
     >>> installProvider("arbitrary", NTURIDispatcher(target=Summer(), prefix="pv:prefix:"))
 
-    $ eget -s pv:prefix:add -a a=1 -a b=2
+      $ eget -s pv:prefix:add -a a=1 -a b=2
     ....
       int result 3
     """

@@ -14,13 +14,68 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from . import raw
-from ..wrapper import Value
+from ..wrapper import Value, Type
 from ..rpc import WorkQueue
+from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
+                    logLevelInfo, logLevelWarn, logLevelError,
+                    logLevelFatal, logLevelOff)
+
+__all__ = [
+    'Context',
+    'Value',
+    'Type',
+]
+
+class Subscription(object):
+    """An active subscription.
+    """
+    def __init__(self, ctxt, name, cb):
+        self.name, self._S, self._cb = name, None, cb
+        self._Q = ctxt._queue()
+    def close(self):
+        """Close subscription.
+        """
+        if self._S is not None:
+            self._S.close()
+            self._S = None
+    @property
+    def done(self):
+        'Has all data for this subscription been received?'
+        return self._S is None or self._S.done()
+    @property
+    def empty(self):
+        'Is data pending in event queue?'
+        return self._S is None or self._S.empty()
+    def _event(self, E):
+        try:
+            #TODO: ensure ordering of error and data events
+            _log.debug('Subscription wakeup for %s with %s', self.name, E)
+            self._inprog = True
+            self._Q.push(partial(self._handle, E))
+        except:
+            _log.exception("Lost Subscription update: %s", E)
+    def _handle(self, E):
+        try:
+            if E is not None:
+                self._cb(E)
+                return
+            while True:
+                E = self._S.pop()
+                if E is None:
+                    break
+                self._cb(E)
+            if self._S.done():
+                _log.debug("Subscription complete")
+                self.close()
+                self._cb(None)
+        except:
+            _log.exception("Error processing Subscription event: %s", E)
+            self.close()
 
 class Context(object):
-    """Context(provider)
+    """Context(providerName, conf=None, useenv=True)
 
-    @param provider A Provider name.  Try "pva" or Context.providers() for a complete list.
+    :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
 
     The method of this Context will block the calling thread until completion or timeout
     """
@@ -74,13 +129,12 @@ class Context(object):
     def get(self, names, requests=None, timeout=5.0, throw=True):
         """Fetch current value of some number of PVs.
         
-        @param names A single name string or list of name strings
-        @param requests None or a Value to qualify this request
-        @param timeout Operation timeout in seconds
-        @param throw When true, operation error throws an exception.
-                     If False then the Exception is returned instead of the Value
+        :param names: A single name string or list of name strings
+        :param requests: None or a Value to qualify this request
+        :param float timeout: Operation timeout in seconds
+        :param bool throw: When true, operation error throws an exception.  If False then the Exception is returned instead of the Value
 
-        @returns A Value or Exception, or list of same
+        :returns: A Value or Exception, or list of same
 
         When invoked with a single name then returns is a single value.
         When invoked with a list of names, then returns a list of values
@@ -135,6 +189,32 @@ class Context(object):
             raise
 
     def put(self, names, values, requests=None, timeout=5.0, throw=True):
+        """Write a new value of some number of PVs.
+        
+        :param names: A single name string or list of name strings
+        :param values: A single value or a list of values
+        :param requests: None or a Value to qualify this request
+        :param float timeout: Operation timeout in seconds
+        :param bool throw: When true, operation error throws an exception.
+                     If False then the Exception is returned instead of the Value
+
+        :returns: A None or Exception, or list of same
+
+        When invoked with a single name then returns is a single value.
+        When invoked with a list of names, then returns a list of values
+
+        >>> ctxt = Context('pva')
+        >>> ctxt.put('pv:name', 5.0)
+        >>> ctxt.put(['pv:1', 'pv:2'], [1.0, 2.0])
+        >>> ctxt.put('pv:name', {'value':5})
+        >>>
+
+        The provided value(s) will be automatically coearsed to the target type.
+        If this is not possible then an Exception is raised/returned.
+
+        Unless the provided value is a dict, it is assumed to be a plan value
+        and an attempt is made to store it in '.value' field.
+        """
         singlepv = isinstance(names, (bytes, unicode))
         if singlepv:
             names = [names]
@@ -200,7 +280,32 @@ class Context(object):
             raise
 
     def rpc(self, name, value, request=None, timeout=5.0, throw=True):
-        # use Queue instead of Event to allow KeyboardInterrupt
+        """Perform a Remote Procedure Call (RPC) operation
+
+        :param str name: PV name string
+        :param Value value: Arguments.  Must be Value instance
+        :param request: None or a Value to qualify this request
+        :param float timeout: Operation timeout in seconds
+        :param bool throw: When true, operation error throws an exception.
+                     If False then the Exception is returned instead of the Value
+
+        :returns: A Value or Exception
+
+        When invoked with a single name then returns is a single value.
+        When invoked with a list of names, then returns a list of values
+
+        >>> ctxt = Context('pva')
+        >>> ctxt.put('pv:name', 5.0)
+        >>> ctxt.put(['pv:1', 'pv:2'], [1.0, 2.0])
+        >>> ctxt.put('pv:name', {'value':5})
+        >>>
+
+        The provided value(s) will be automatically coearsed to the target type.
+        If this is not possible then an Exception is raised/returned.
+
+        Unless the provided value is a dict, it is assumed to be a plan value
+        and an attempt is made to store it in '.value' field.
+        """
         done = Queue(maxsize=1)
 
         ch = self._channel(name)
@@ -215,47 +320,16 @@ class Context(object):
             op.cancel()
             raise
 
-    class Subscription(object):
-        def __init__(self, ctxt, name, cb):
-            self.name, self._S, self._cb = name, None, cb
-            self._Q = ctxt._queue()
-        def close(self):
-            if self._S is not None:
-                self._S.close()
-                self._S = None
-        @property
-        def done(self):
-            return self._S is None or self._S.done()
-        @property
-        def empty(self):
-            return self._S is None or self._S.empty()
-        def _event(self, E):
-            try:
-                #TODO: ensure ordering of error and data events
-                _log.debug('Subscription wakeup for %s with %s', self.name, E)
-                self._inprog = True
-                self._Q.push(partial(self._handle, E))
-            except:
-                _log.exception("Lost Subscription update: %s", E)
-        def _handle(self, E):
-            try:
-                if E is not None:
-                    self._cb(E)
-                    return
-                while True:
-                    E = self._S.pop()
-                    if E is None:
-                        break
-                    self._cb(E)
-                if self._S.done():
-                    _log.debug("Subscription complete")
-                    self.close()
-                    self._cb(None)
-            except:
-                _log.exception("Error processing Subscription event: %s", E)
-                self.close()
+    Subscription = Subscription
 
     def monitor(self, name, cb, request=None):
+        """Create a subscription.
+        
+        :param str name: PV name string
+        :param callable cb: Processing callback
+        :param request: None or a Value to qualify this request
+        :returns: a :py:class:`Subscription` instance
+        """
         R = self.Subscription(self, name, cb)
         ch = self._channel(name)
 
