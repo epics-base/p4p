@@ -1,0 +1,21 @@
+sudo: false
+dist: trusty
+language: python
+compiler:
+  - gcc
+addons:
+  apt:
+    packages:
+    - libreadline6-dev
+    - libncurses5-dev
+    - perl
+install:
+ - pip install -r requirements-${PROF}.txt
+ - ./build-deps.sh
+script:
+ - make -j2
+ - make nose
+matrix:
+  include:
+  - python: "2.7"
+    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8

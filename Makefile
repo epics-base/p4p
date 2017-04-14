@@ -11,6 +11,8 @@ include $(TOP)/configure/RULES_TOP
 
 UNINSTALL_DIRS += $(INSTALL_LOCATION)/python$(PY_VER)
 
+nose:
+	PYTHONPATH="$(PWD)/python$(PY_VER)/$(EPICS_HOST_ARCH)" python$(PY_VER) -m nose.core -P p4p
 
 sphinx:
 	PYTHONPATH="$(PWD)/python$(PY_VER)/$(EPICS_HOST_ARCH)" make -C documentation html
@@ -18,4 +20,4 @@ sphinx:
 sphinx-commit: sphinx
 	./commit-gh.sh documentation/_build/html
 
-.PHONY: sphinx sphinx-commit
+.PHONY: nose sphinx sphinx-commit
