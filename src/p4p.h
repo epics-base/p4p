@@ -157,6 +157,13 @@ struct PyExternalRef {
 #define PyMOD(NAME) PyMODINIT_FUNC init##NAME (void)
 #endif
 
+#if PY_MAJOR_VERSION < 3
+// quiet some warnings about implict const char* -> char* cast
+// for API functions.  These are corrected in py >= 3.x
+#define PyObject_CallFunction(O, FMT, ...) PyObject_CallFunction(O, (char*)(FMT), __VA_ARGS__)
+#define PyObject_CallMethod(O, METH, FMT, ...) PyObject_CallMethod(O, (char*)(METH), (char*)(FMT), __VA_ARGS__)
+#endif
+
 void p4p_type_register(PyObject *mod);
 void p4p_value_register(PyObject *mod);
 void p4p_server_register(PyObject *mod);
