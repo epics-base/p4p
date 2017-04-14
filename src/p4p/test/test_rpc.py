@@ -18,16 +18,16 @@ class TestService(object):
 
 class TestRPC(unittest.TestCase):
     def setUp(self):
-        conf = {
-            'EPICS_PVAS_INTF_ADDR_LIST':'127.0.0.1',
-            'EPICS_PVA_ADDR_LIST':'127.0.0.1',
-            'EPICS_PVA_AUTO_ADDR_LIST':'0',
-            'EPICS_PVA_SERVER_PORT':'0',
-            'EPICS_PVA_BROADCAST_PORT':'0',
-        }
+        # TODO: need PVA API change before we can run w/ network isolation
+#        conf = {
+#            'EPICS_PVAS_INTF_ADDR_LIST':'127.0.0.1',
+#            'EPICS_PVA_ADDR_LIST':'127.0.0.1',
+#            'EPICS_PVA_AUTO_ADDR_LIST':'0',
+#            'EPICS_PVA_SERVER_PORT':'0',
+#            'EPICS_PVA_BROADCAST_PORT':'0',
+#        }
 
         # random PV prefix
-        # TODO: network isolation
         self.prefix = 'rpctest:%u:'%random.randint(0, 1024)
 
         service = TestService()
@@ -40,7 +40,7 @@ class TestRPC(unittest.TestCase):
         self._dispatch = weakref.ref(dispatch)
         installProvider("TestRPC", dispatch)
 
-        self.server = Server(providers="TestRPC", conf=conf, useenv=False)
+        self.server = Server(providers="TestRPC") #, conf=conf, useenv=False)
         print("conf", self.server.conf(client=True, server=False))
         self.server.start()
 
