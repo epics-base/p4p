@@ -162,8 +162,8 @@ class TestRawValue(unittest.TestCase):
         assert_aequal(V.x, np.asfarray([1,2]))
 
         #TODO: PVD bugs prevent this from working
-        #V.x = None
-        #self.assertIsNone(V.x)
+        V.x = None
+        self.assertIsNone(V.x)
 
     def testDisUnion(self):
         V = _Value(_Type([
@@ -190,8 +190,8 @@ class TestRawValue(unittest.TestCase):
         self.assertEqual(V.x, u'128')
 
         #TODO: PVD bugs prevent this from working
-        #V.x = ('a', None) # another way to clear
-        #self.assertIsNone(V.x)
+        V.x = None # another way to clear
+        self.assertIsNone(V.x)
 
     def testUnionArray(self):
         V = _Value(_Type([

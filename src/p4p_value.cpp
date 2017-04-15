@@ -104,11 +104,17 @@ void Value::store_union(pvd::PVUnion* fld,
     if(obj==Py_None) {
         // assign any Union w/ None to clear
 
-        //BUG: can't clear variant union this way :P
-        //F->select(pvd::PVUnion::UNDEFINED_INDEX);
-        //BUG: can't clear variant this way either :{
-        //fld->set(pvd::PVUnion::UNDEFINED_INDEX, pvd::PVFieldPtr());
-        throw std::runtime_error("Bugs prevent clearing Variant Union");
+        // This will fail with pvDataCPP <= 6.0.0
+        // due to a bug
+#ifdef PVDATA_VERSION_INT
+#if PVDATA_VERSION_INT >= VERSION_INT(7, 0, 0, 0)
+        fld->set(pvd::PVUnion::UNDEFINED_INDEX, pvd::PVFieldPtr());
+#else
+        throw std::runtime_error("Clear PVUnion is broken is pvData < 7.0.0");
+#endif
+#else
+        throw std::runtime_error("Clear PVUnion is broken is pvData < 7.0.0");
+#endif
         return;
 
     } else if(ftype->isVariant()) {
@@ -133,13 +139,14 @@ void Value::store_union(pvd::PVUnion* fld,
         if(!PyArg_ParseTuple(obj, "sO;Assignment of non-variant union w/ (str, val).", &select, &val))
             throw std::runtime_error("XXX");
 
-        if(val==Py_None) {
-            //fld->set(pvd::PVUnion::UNDEFINED_INDEX, pvd::PVFieldPtr());
-            throw std::runtime_error("Bugs prevent clearing non-Variant Union");
-            return;
+        U = fld->select(select);
 
-        } else if(PyObject_TypeCheck(val, &P4PValue::type)) {
-            fld->set(select, P4PValue_unwrap(val));
+        if(PyObject_TypeCheck(val, &P4PValue::type)) {
+            pvd::PVStructure::shared_pointer V(P4PValue_unwrap(val));
+            if(V->getField().get()==U->getField().get())
+                fld->set(V); // store exact
+            else if(U->getField()->getType()==pvd::structure)
+                std::tr1::static_pointer_cast<pvd::PVStructure>(U)->copy(*V); // copy similar
             return;
 
         } else {
