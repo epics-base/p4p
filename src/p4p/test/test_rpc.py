@@ -54,6 +54,7 @@ class TestRPC(unittest.TestCase):
         self._QT.join()
 
         removeProvider("TestRPC")
+        gc.collect()
         self.assertIsNone(self._dispatch())
 
     def testAdd(self):
