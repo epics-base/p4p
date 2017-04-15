@@ -9,6 +9,7 @@ from numpy.testing import assert_array_almost_equal as assert_aequal
 
 from .._p4p import (Type as _Type, Value as _Value)
 from ..wrapper import Value
+from .. import pvdVersion
 
 class TestRawValue(unittest.TestCase):
     def testToString(self):
@@ -161,9 +162,10 @@ class TestRawValue(unittest.TestCase):
         V.x = np.asfarray([1, 2])
         assert_aequal(V.x, np.asfarray([1,2]))
 
-        #TODO: PVD bugs prevent this from working
-        V.x = None
-        self.assertIsNone(V.x)
+        # clearing unions is broken prior to 7.0.0
+        if pvdVersion()>=(7,0,0,0):
+            V.x = None
+            self.assertIsNone(V.x)
 
     def testDisUnion(self):
         V = _Value(_Type([
@@ -189,9 +191,10 @@ class TestRawValue(unittest.TestCase):
         V.x = 128;
         self.assertEqual(V.x, u'128')
 
-        #TODO: PVD bugs prevent this from working
-        V.x = None # another way to clear
-        self.assertIsNone(V.x)
+        # clearing unions is broken prior to 7.0.0
+        if pvdVersion()>=(7,0,0,0):
+            V.x = None # another way to clear
+            self.assertIsNone(V.x)
 
     def testUnionArray(self):
         V = _Value(_Type([
