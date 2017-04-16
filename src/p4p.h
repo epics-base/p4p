@@ -8,6 +8,7 @@
 #include <Python.h>
 
 #include <pv/pvIntrospect.h>
+#include <pv/bitSet.h>
 #include <pv/pvData.h>
 
 struct SB {
@@ -187,7 +188,10 @@ const array_type& P4PArray_extract(PyObject* o);
 
 extern PyTypeObject* P4PValue_type;
 epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *);
-PyObject *P4PValue_wrap(PyTypeObject *type, const epics::pvData::PVStructure::shared_pointer&);
+std::tr1::shared_ptr<epics::pvData::BitSet> P4PValue_unwrap_bitset(PyObject *);
+PyObject *P4PValue_wrap(PyTypeObject *type,
+                        const epics::pvData::PVStructure::shared_pointer&,
+                        const epics::pvData::BitSet::shared_pointer& = epics::pvData::BitSet::shared_pointer());
 
 
 template<class C>

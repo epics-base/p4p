@@ -1021,10 +1021,17 @@ PyObject *MonitorOp::py_pop(PyObject *self)
             pvd::PVStructure::shared_pointer V(pvd::getPVDataCreate()->createPVStructure(E->getStructure()));
             V->copyUnchecked(*E);
 
+            pvd::BitSet::shared_pointer M;
+            if(elem->changedBitSet) {
+                M.reset(new pvd::BitSet);
+                *M = *elem->changedBitSet;
+            }
+            // TODO: overrunBitSet??
+
             SELF->op->release(elem);
 
             TRACE("event="<<V);
-            return P4PValue_wrap(P4PValue_type, V);
+            return P4PValue_wrap(P4PValue_type, V, M);
         } catch(...){
             SELF->op->release(elem);
             throw;

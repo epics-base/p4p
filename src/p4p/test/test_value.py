@@ -261,3 +261,73 @@ class TestRawValue(unittest.TestCase):
         V = Value(_Type([('a', 'I')], id="foo"))
         self.assertEqual(V.getID(), "foo")
         self.assertEqual(V.id, "foo")
+
+    def testBitSet(self):
+        A= _Value(_Type([
+            ('x', 'i'),
+            ('y', 'i'),
+        ]), {
+        })
+        # initially all un-"changed" (at default)
+
+        self.assertSetEqual(A.asSet(), set())
+        self.assertFalse(A.changed())
+        self.assertFalse(A.changed('x'))
+        self.assertFalse(A.changed('y'))
+        self.assertRaises(KeyError, A.changed, 'invalid')
+
+        A.mark('x')
+
+        self.assertSetEqual(A.asSet(), {'x'})
+        self.assertFalse(A.changed())
+        self.assertTrue(A.changed('x'))
+        self.assertFalse(A.changed('y'))
+
+        A.mark('x', False)
+
+        self.assertSetEqual(A.asSet(), set())
+        self.assertFalse(A.changed())
+        self.assertFalse(A.changed('x'))
+        self.assertFalse(A.changed('y'))
+
+    def testBitSetRecurse(self):
+        A= _Value(_Type([
+            ('x', 'i'),
+            ('y', 'i'),
+            ('z', ('s', None, [
+                ('a', 'i'),
+                ('b', 'i'),
+            ])),
+        ]), {
+        })
+
+        self.assertSetEqual(A.asSet(), set())
+        self.assertFalse(A.changed())
+        self.assertFalse(A.changed('x'))
+        self.assertFalse(A.changed('y'))
+        self.assertFalse(A.changed('z.a'))
+        self.assertFalse(A.changed('z.b'))
+
+        A.mark('y')
+        A.mark('z.a')
+        self.assertSetEqual(A.asSet(), {'y', 'z.a'})
+        self.assertFalse(A.changed())
+        self.assertFalse(A.changed('x'))
+        self.assertTrue(A.changed('y'))
+        self.assertTrue(A.changed('z.a'))
+        self.assertFalse(A.changed('z.b'))
+
+        Z = A.z # A and Z share fields and bitset
+        self.assertTrue(Z.changed('a'))
+        self.assertFalse(Z.changed('b'))
+
+        Z.mark('a', False)
+        Z.mark('b', True)
+
+        self.assertFalse(A.changed())
+        self.assertFalse(A.changed('x'))
+        self.assertTrue(A.changed('y'))
+        self.assertFalse(A.changed('z.a'))
+        self.assertTrue(A.changed('z.b'))
+        self.assertFalse(Z.changed('a'))
+        self.assertTrue(Z.changed('b'))
