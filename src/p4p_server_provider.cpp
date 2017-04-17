@@ -157,35 +157,36 @@ struct PyServerRPC : public pva::ChannelRPC,
 
     typedef PyClassWrapper<ReplyData> Reply;
 
-    PyServerChannel::weak_pointer chan;
-    pva::ChannelRPCRequester::weak_pointer requester;
-    bool inprog;
+    PyServerChannel::shared_pointer chan;
+    pva::ChannelRPCRequester::shared_pointer requester;
+    bool active;
 
     PyServerRPC(const PyServerChannel::shared_pointer& c,
-                const pva::ChannelRPCRequester::shared_pointer& r) :chan(c), requester(r), inprog(false) {}
+                const pva::ChannelRPCRequester::shared_pointer& r) :chan(c), requester(r), active(true) {}
     virtual ~PyServerRPC() {}
 
     virtual void lock() {}
     virtual void unlock() {}
-    virtual void destroy() {}
+    virtual void destroy() {cancel();}
 
-    virtual pva::Channel::shared_pointer getChannel() { return pva::Channel::shared_pointer(chan); }
+    virtual pva::Channel::shared_pointer getChannel() { return chan; }
 
-    virtual void cancel() {}
+    virtual void cancel() {
+        PyLock L;
+        active = false;
+        //TODO: notify in progress ops?
+    }
     virtual void lastRequest() {}
 
     virtual void request(pvd::PVStructure::shared_pointer const & pvArgument)
     {
         TRACE("ENTER");
-        PyServerChannel::shared_pointer C(chan.lock());
-        pva::ChannelRPCRequester::shared_pointer R(requester.lock());
-        if(!C || !R) return;
 
         bool createdReply = false;
         PyLock G;
         try {
 
-            PyRef wrapper(PyObject_GetAttrString(C->handler.ref.get(), "Value"));
+            PyRef wrapper(PyObject_GetAttrString(chan->handler.ref.get(), "Value"));
             if(!PyType_Check(wrapper.get()))
                 throw std::runtime_error("handler.Value is not a Type");
 
@@ -199,7 +200,7 @@ struct PyServerRPC : public pva::ChannelRPC,
 
             Reply::unwrap(rep.get()).rpc = shared_from_this();
 
-            PyRef junk(PyObject_CallMethod(C->handler.ref.get(), "rpc", "OO", rep.get(), req.get()));
+            PyRef junk(PyObject_CallMethod(chan->handler.ref.get(), "rpc", "OO", rep.get(), req.get()));
 
             TRACE("SUCCESS");
         } catch(std::exception& e) {
@@ -207,13 +208,18 @@ struct PyServerRPC : public pva::ChannelRPC,
                 PyErr_Print();
                 PyErr_Clear();
             }
-            if(!createdReply)
+            if(!createdReply) {
+                pva::ChannelRPCRequester::shared_pointer R(requester);
+                PyUnlock U;
                 R->requestDone(pvd::Status(pvd::Status::STATUSTYPE_ERROR, e.what()),
                                shared_from_this(),
                                pvd::PVStructurePtr());
+            }
             TRACE("ERROR "<<(createdReply ? "DELEGATE" : "SENT"));
         }
     }
+
+    // python methods of the ReplyData class
 
     static void reply_dealloc(PyObject *raw) {
         try {
@@ -221,11 +227,11 @@ struct PyServerRPC : public pva::ChannelRPC,
             Reply::reference_type SELF = Reply::unwrap(raw);
             if(!SELF.sent) {
                 TRACE("SEND ERROR");
-                pva::ChannelRPCRequester::shared_pointer R(SELF.rpc->requester.lock());
-                if(R)
-                    R->requestDone(pvd::Status(pvd::Status::STATUSTYPE_ERROR, "No Reply"),
-                                   SELF.rpc,
-                                   pvd::PVStructurePtr());
+                pva::ChannelRPCRequester::shared_pointer R(SELF.rpc->requester);
+                PyUnlock U;
+                R->requestDone(pvd::Status(pvd::Status::STATUSTYPE_ERROR, "No Reply"),
+                               SELF.rpc,
+                               pvd::PVStructurePtr());
             }
         } catch(std::exception& e) {
             std::cerr<<"Error in RPC reply dtor "<<e.what()<<"\n";
@@ -246,12 +252,10 @@ struct PyServerRPC : public pva::ChannelRPC,
         TRACE("ENTER");
         Reply::reference_type SELF = Reply::unwrap(self);
         try {
-            pva::ChannelRPCRequester::shared_pointer R(SELF.rpc->requester.lock());
+            pva::ChannelRPCRequester::shared_pointer R(SELF.rpc->requester);
 
-            if(!R) {
-                // requester is gone (server lost connection)
-                // no-op
-
+            if(!SELF.rpc->active) {
+                // cancelled by client, no-op
             } else if(SELF.sent) {
                 return PyErr_Format(PyExc_TypeError, "done() already called");
 
@@ -266,15 +270,17 @@ struct PyServerRPC : public pva::ChannelRPC,
                     return PyErr_Format(PyExc_ValueError, "RPC results must be Value");
                 }
 
+                SELF.sent = true;
+                PyUnlock U;
                 R->requestDone(pvd::Status::Ok,
                                SELF.rpc,
                                value);
-                SELF.sent = true;
             } else if(error) {
+                SELF.sent = true;
+                PyUnlock U;
                 R->requestDone(pvd::Status(pvd::Status::STATUSTYPE_ERROR, error),
                                        SELF.rpc,
                                        pvd::PVStructurePtr());
-                SELF.sent = true;
             } else {
                 return PyErr_Format(PyExc_ValueError, "done() needs reply= or error=");
             }
