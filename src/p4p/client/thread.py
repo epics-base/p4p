@@ -26,6 +26,11 @@ __all__ = [
     'Type',
 ]
 
+class TimeoutError(RuntimeError):
+    def __init__(self):
+        RuntimeError.__init__(self, 'Timeout')
+Timeout = TimeoutError()
+
 class Subscription(object):
     """An active subscription.
     """
@@ -166,7 +171,7 @@ class Context(object):
 
         # use Queue instead of Event to allow KeyboardInterrupt
         done = Queue(maxsize=len(names))
-        result = [None]*len(names)
+        result = [Timeout]*len(names)
         ops = [None]*len(names)
 
         try:
@@ -182,7 +187,12 @@ class Context(object):
                 ops[i] = ch.get(cb, request=req)
 
             for _n in range(len(names)):
-                value, i = done.get(timeout=timeout)
+                try:
+                    value, i = done.get(timeout=timeout)
+                except Empty:
+                    if throw:
+                        raise Timeout
+                    break
                 _log.debug('got %s %s', names[i], value)
                 if throw and isinstance(value, Exception):
                     raise value
@@ -193,9 +203,8 @@ class Context(object):
                 return result[0]
             else:
                 return result
-        except:
+        finally:
             [op and op.cancel() for op in ops]
-            raise
 
     def put(self, names, values, requests=None, timeout=5.0, throw=True):
         """Write a new value of some number of PVs.
@@ -239,7 +248,7 @@ class Context(object):
 
         # use Queue instead of Event to allow KeyboardInterrupt
         done = Queue(maxsize=len(names))
-        result = [None]*len(names)
+        result = [Timeout]*len(names)
         ops = [None]*len(names)
 
         try:
@@ -275,7 +284,12 @@ class Context(object):
                 ops[i] = ch.put(cb, vb, request=req)
 
             for _n in range(len(names)):
-                value, i = done.get(timeout=timeout)
+                try:
+                    value, i = done.get(timeout=timeout)
+                except Empty:
+                    if throw:
+                        raise Timeout
+                    break
                 if throw and isinstance(value, Exception):
                     raise value
                 result[i] = value
@@ -284,9 +298,8 @@ class Context(object):
                 return result[0]
             else:
                 return result
-        except:
+        finally:
             [op and op.cancel() for op in ops]
-            raise
 
     def rpc(self, name, value, request=None, timeout=5.0, throw=True):
         """Perform a Remote Procedure Call (RPC) operation
@@ -320,7 +333,10 @@ class Context(object):
         ch = self._channel(name)
         op = ch.rpc(done.put_nowait, value, request)
         try:
-            result = done.get(timeout=timeout)
+            try:
+                result = done.get(timeout=timeout)
+            except Empty:
+                result = Timeout
             if throw and isinstance(result, Exception):
                 raise result
 
