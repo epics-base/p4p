@@ -43,6 +43,8 @@ class WorkQueue(object):
         self._Q = Queue(maxsize=maxsize)
     def push(self, callable):
         self._Q.put_nowait(callable) # throws Queue.Full
+    def push_wait(self, callable):
+        self._Q.put(callable)
     def interrupt(self):
         self._Q.put(self._stopit)
     def handle(self):

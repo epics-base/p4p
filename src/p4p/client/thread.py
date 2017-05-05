@@ -36,7 +36,13 @@ class Subscription(object):
         """Close subscription.
         """
         if self._S is not None:
+            E = threading.Event()
+            # after .close() self._event should never be called
             self._S.close()
+            # now wait for any pending calls to self._handle
+            # TODO: detect when called from worker and avoid deadlock
+            self._Q.push_wait(E.set)
+            E.wait()
             self._S = None
     @property
     def done(self):
@@ -48,6 +54,7 @@ class Subscription(object):
         return self._S is None or self._S.empty()
     def _event(self, E):
         try:
+            assert self._S is not None, self._S
             #TODO: ensure ordering of error and data events
             _log.debug('Subscription wakeup for %s with %s', self.name, E)
             self._inprog = True
@@ -66,11 +73,13 @@ class Subscription(object):
                 self._cb(E)
             if self._S.done():
                 _log.debug("Subscription complete")
-                self.close()
+                self._S.close()
+                self._S = None
                 self._cb(None)
         except:
             _log.exception("Error processing Subscription event: %s", E)
-            self.close()
+            self._S.close()
+            self._S = None
 
 class Context(object):
     """Context(providerName, conf=None, useenv=True)

@@ -67,6 +67,7 @@ def op_monitor(ctxt, args):
             time.sleep(10)
     except KeyboardInterrupt:
         ret = 1
+    [S.close() for S in subs]
     sys.exit(ret)
 
 def getargs():
