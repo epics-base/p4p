@@ -965,11 +965,13 @@ PyObject *MonitorOp::py_close(PyObject *self)
     TRY {
         TRACE("cancel subscription");
         SELF->event.reset();
-        if(SELF->op) {
-            SELF->op->stop();
-            SELF->op->destroy();
+        pva::Monitor::shared_pointer op;
+        SELF->op.swap(op);
+        if(op) {
+            PyUnlock U;
+            op->stop();
+            op->destroy();
         }
-        SELF->op.reset();
 
         Py_RETURN_NONE;
     }CATCH()
