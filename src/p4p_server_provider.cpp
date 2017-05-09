@@ -1,4 +1,7 @@
 
+#include <map>
+
+#include <time.h>
 #include <stddef.h>
 
 #include <pv/serverContext.h>
@@ -12,6 +15,9 @@ namespace pva = epics::pvAccess;
 
 struct PyServerChannel;
 
+const unsigned maxCache = 100;
+const unsigned expireIn = 5;
+
 struct PyServerProvider :
         public pva::ChannelProviderFactory,
         public pva::ChannelFind,
@@ -24,6 +30,12 @@ struct PyServerProvider :
 
     PyExternalRef provider;
     std::string provider_name;
+
+    // cache negative search results (names we don't have)
+    // map name -> expiration time
+    typedef std::map<std::string, timespec> search_cache_t;
+    search_cache_t search_cache;
+    epicsMutex search_cache_lock;
 
     virtual std::string getFactoryName() { return provider_name; }
     virtual ChannelProvider::shared_pointer sharedInstance() {
@@ -42,23 +54,52 @@ struct PyServerProvider :
     virtual pva::ChannelFind::shared_pointer channelFind(std::string const & channelName,
             pva::ChannelFindRequester::shared_pointer const & channelFindRequester)
     {
+        timespec now = {0,0};
+        clock_gettime(CLOCK_MONOTONIC_COARSE, &now);
         TRACE("ENTER "<<channelName);
         pva::ChannelFind::shared_pointer ret;
         try {
-            // TODO: cache results for a short time to reduce calls?
-            //       keep channel list if c++?
-            //       coelese requests into batches for py?
+            // To reduce load we maintain a cache of failed name searches
+            // which we don't repeat too often
 
-            PyLock G;
+            search_cache_t::iterator it;
+            {
+                Guard G(search_cache_lock);
+                it = search_cache.find(channelName);
+                if(it!=search_cache.end() && it->second.tv_sec < now.tv_sec) {
+                    // stale entry
+                    search_cache.erase(it);
+                    it = search_cache.end();
+                }
+            }
 
-            PyRef grab(PyObject_CallMethod(provider.ref.get(), "testChannel", "s", channelName.c_str()), allownull());
-            if(!grab.get()) {
-                PyErr_Print();
-                PyErr_Clear();
-                channelFindRequester->channelFindResult(pvd::Status(pvd::Status::STATUSTYPE_ERROR, "Logic Error"),
+            if(it!=search_cache.end()) {
+                TRACE("HIT "<<channelName);
+                channelFindRequester->channelFindResult(pvd::Status::Ok,
                                                         ret, false);
+                return ret;
+            }
 
-            } else if(PyObject_IsTrue(grab.get())) {
+            bool found;
+            {
+                PyLock G;
+    
+                PyRef grab(PyObject_CallMethod(provider.ref.get(), "testChannel", "s", channelName.c_str()), allownull());
+                if(!grab.get()) {
+                    PyErr_Print();
+                    PyErr_Clear();
+                    found = false;
+
+                } else if(PyObject_IsTrue(grab.get())) {
+                    found = true;
+
+                } else {
+                    found = false;
+                }
+            }
+
+
+            if(found) {
                 ret = shared_from_this();
                 channelFindRequester->channelFindResult(pvd::Status::Ok,
                                                         ret, true);
@@ -66,9 +107,22 @@ struct PyServerProvider :
             } else {
                 channelFindRequester->channelFindResult(pvd::Status::Ok,
                                                         ret, false);
+
+                now.tv_sec+=expireIn;
+
+                {
+                    Guard G(search_cache_lock);
+                    if(search_cache.size()>=maxCache) {
+                        // instead of a proper LRU cache, just drop when it gets too big
+                        TRACE("CLEAR");
+                        search_cache.clear();
+                    }
+                    TRACE("ADD "<<channelName);
+                    search_cache.insert(std::make_pair(channelName, now));
+                }
             }
         } catch(std::exception& e) {
-            channelFindRequester->channelFindResult(pvd::Status(pvd::Status::STATUSTYPE_ERROR, e.what()),
+            channelFindRequester->channelFindResult(pvd::Status::Ok,
                                                     ret, false);
         }
         TRACE("EXIT "<<(ret ? "Claim" : "Ignore"));
