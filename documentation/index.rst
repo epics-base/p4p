@@ -3,16 +3,21 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to P4P's documentation!
-===============================
+PVAccess for Python (P4P)
+=========================
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
+   building
    values
+   nt
    client
+   server
+   rpc
+   internal
 
 Indices and tables
 ==================

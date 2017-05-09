@@ -173,6 +173,12 @@ API Reference
 
         Same as __setattr__
 
+    .. automethod:: changed
+
+    .. automethod:: mark
+
+    .. automethod:: asSet
+
 .. autoclass:: Type
 
     .. automethod:: getID
@@ -180,3 +186,12 @@ API Reference
     .. automethod:: aspy
 
     .. automethod:: has
+
+Relation to C++ API
+-------------------
+
+For those familiar with the pvDataCPP API.
+A :py:class:`Type` wraps a Structure.
+:py:class:`Value` wraps a
+PVStructure and an associated BitSet describing which fields have been
+initialized.

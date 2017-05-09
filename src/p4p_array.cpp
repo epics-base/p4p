@@ -49,6 +49,8 @@ void p4p_array_register(PyObject *mod)
 
     //P4PArray::type.tp_weaklistoffset = offsetof()
 
+    P4PArray::type.tp_doc = "Holder for a shared_array<> being shared w/ numpy";
+
     if(PyType_Ready(&P4PArray::type))
         throw std::runtime_error("failed to initialize P4PArray_type");
 

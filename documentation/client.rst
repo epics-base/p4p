@@ -1,5 +1,5 @@
-PVA Client Blocking API
-=======================
+Client Blocking API
+===================
 
 .. currentmodule:: p4p.client.thread
 

@@ -1,2 +1,11 @@
 
+Mapping to/from NT
+
+Track BitSet of initialized fields.  changed and overun from monitors.
+
 PyServerProvider::channelFind() call python for each channel.  Slow on a busy network...
+
+server provider support:
+  get
+  put
+  monitor

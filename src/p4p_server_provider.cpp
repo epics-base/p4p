@@ -572,6 +572,8 @@ PyObject* p4p_pva_version(PyObject *junk)
 
 static struct PyMethodDef PyServerRPC_methods[] = {
     {"done", (PyCFunction)PyServerRPC::reply_done, METH_VARARGS|METH_KEYWORDS,
+     "done(reply=Value)\n"
+     "done(error=\"oops\")\n"
      "Complete RPC call with reply data or error message"},
     {NULL}
 };
@@ -597,8 +599,10 @@ PyTypeObject PyServerRPC::Reply::type = {
 
 struct PyMethodDef P4P_methods[] = {
     {"installProvider", (PyCFunction)p4p_add_provider, METH_VARARGS|METH_KEYWORDS,
+     "installProvider(\"name\", provider)\n"
      "Install a new Server Channel provider"},
     {"removeProvider", (PyCFunction)p4p_remove_provider, METH_VARARGS|METH_KEYWORDS,
+     "removeProvider(\"name\")\n"
      "Remove a previously added Server Channel provider"},
     {"clearProviders", (PyCFunction)p4p_remove_all, METH_VARARGS|METH_KEYWORDS,
      "Remove all Server Channel providers"},

@@ -7,10 +7,25 @@ from operator import itemgetter
 from .wrapper import Type, Value
 
 class NTScalar(object):
+    """Describes a single scalar or array of scalar values and associated meta-data
+    
+    >>> stype = NTScalar.buildType('d') # scalar double
+    >>> V = Value(stype, {'value': 4.2})
+
+    >>> stype = NTScalar.buildType('ad') # vector double
+    >>> V = Value(stype, {'value': [4.2, 4.3]})
+    """
     Value = Value
+
     @staticmethod
     def buildType(valtype, extra=[]):
-        return Type(id="epics:nt/NTScalar:1.0",
+        """Build a Type
+        
+        :param valtype str: A type code to be used with the 'value' field.
+        :param extra list: A list of tuples describing additional non-standard fields
+        :returns: A :py:class:`Type`
+        """
+        return Type(id="epics:nt/NTScalarArray:1.0" if valtype[:1]=='a' else "epics:nt/NTScalar:1.0",
                     spec=[
             ('value', valtype),
             ('alarm', ('s', None, [
@@ -40,9 +55,18 @@ class NTScalar(object):
             })
 
 class NTMultiChannel(object):
+    """Describes a structure holding the equivalent of a number of NTScalar
+    """
     Value = Value
     @staticmethod
     def buildType(valtype, extra=[]):
+        """Build a Type
+        
+        :param valtype str: A type code to be used with the 'value' field.  Must be an array
+        :param extra list: A list of tuples describing additional non-standard fields
+        :returns: A :py:class:`Type`
+        """
+        assert valtype[:1]=='a', 'valtype must be an array'
         return Type(id="epics:nt/NTMultiChannel:1.0",
                     spec=[
             ('value', valtype),
@@ -68,9 +92,22 @@ class NTMultiChannel(object):
         ]+extra)
 
 class NTTable(object):
+    """A generic table
+
+    >>> table = NTTable.buildType(columns=[
+        ('columnA', 'ai'),
+        ('columnB', 'as'),
+    ])
+    """
     Value = Value
     @staticmethod
     def buildType(columns=[], extra=[]):
+        """Build a table
+        
+        :param columns list: List of columns
+        :param extra list: A list of tuples describing additional non-standard fields
+        :returns: A :py:class:`Type`
+        """
         return Type(id="epics:nt/NTTable:1.0",
                     spec=[
             ('labels', 'as'),
@@ -99,6 +136,14 @@ class NTTable(object):
         self.type = self.buildType(C, extra=extra)
 
     def wrap(self, values):
+        """Pack an iterable of dict into a Value
+        
+        >>> T=NTTable([('A', 'ai'), ('B', 'as')])
+        >>> V = T.wrap([
+            {'A':42, 'B':'one'},
+            {'A':43, 'B':'two'},
+        ])
+        """
         cols = dict([(L, []) for L in self.labels])
         try:
             # unzip list of dict

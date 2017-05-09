@@ -11,6 +11,15 @@ except ImportError:
 from .wrapper import Value, Type
 
 def rpc(rtype=None):
+    """Decorator marks a proxy method for export.
+
+    :param type: A :py:class:`Type` which the RPC will return
+
+    >>> class Example(object):
+        @rpc(NTScalar.buildType('d'))
+        def add(self, lhs, rhs):
+            return {'value':float(lhs)+flost(rhs)}
+    """
     wrap = None
     if isinstance(rtype, Type):
         pass
@@ -35,7 +44,7 @@ def rpc(rtype=None):
     return wrapper
 
 class RemoteError(RuntimeError):
-    pass
+    "Throw with an error message which will be passed back to the caller"
 
 class WorkQueue(object):
     _stopit = object()
@@ -134,8 +143,10 @@ class NTURIDispatcher(RPCDispatcherBase):
             return {'result': int(a)+int(b)}
     >>> installProvider("arbitrary", NTURIDispatcher(target=Summer(), prefix="pv:prefix:"))
 
+    Making a call with the CLI 'eget' utility::
+
       $ eget -s pv:prefix:add -a a=1 -a b=2
-    ....
+      ....
       int result 3
     """
 
