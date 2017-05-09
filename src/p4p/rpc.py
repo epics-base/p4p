@@ -137,17 +137,24 @@ class RPCDispatcherBase(object):
 class NTURIDispatcher(RPCDispatcherBase):
     """RPC dispatcher using NTURI (a al. eget)
 
+    Method names are prefixed with a fixed string.
+
+    >>> queue = WorkQueue()
     >>> class Summer(object):
         @rpc([('result', 'i')])
         def add(self, a=None, b=None):
             return {'result': int(a)+int(b)}
-    >>> installProvider("arbitrary", NTURIDispatcher(target=Summer(), prefix="pv:prefix:"))
+    >>> installProvider("arbitrary", NTURIDispatcher(queue, target=Summer(), prefix="pv:prefix:"))
 
     Making a call with the CLI 'eget' utility::
 
       $ eget -s pv:prefix:add -a a=1 -a b=2
       ....
       int result 3
+
+    :param queue WorkQueue: A WorkQueue to which RPC calls will be added
+    :param prefix str: PV name prefix used by RPC methods
+    :param target: The object which has the RPC calls
     """
 
     def __init__(self, queue, prefix=None, **kws):
@@ -161,6 +168,8 @@ class NTURIDispatcher(RPCDispatcherBase):
         # {'schema':'pva', 'path':'pvname', 'query':{'var':'val', ...}}
         return request.path, dict(request.query.tolist())
 
+# legecy for MASAR only
+# do not use in new code
 class MASARDispatcher(RPCDispatcherBase):
 
     def __init__(self, queue, **kws):
