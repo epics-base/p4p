@@ -444,7 +444,7 @@ int Context::py_init(PyObject *self, PyObject *args, PyObject *kws)
 
         // we create our own provider.
         // we are greedy and don't want to share (also we can destroy channels at will)
-#if 1
+#if 0
         // No way to apply custom config :P
         SELF.provider = pva::getChannelProviderRegistry()->createProvider(pname);
 #else
@@ -971,6 +971,7 @@ PyObject *MonitorOp::py_close(PyObject *self)
             PyUnlock U;
             op->stop();
             op->destroy();
+            op.reset();
         }
 
         Py_RETURN_NONE;
