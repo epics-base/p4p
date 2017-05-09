@@ -317,9 +317,7 @@ class Context(object):
         When invoked with a list of names, then returns a list of values
 
         >>> ctxt = Context('pva')
-        >>> ctxt.put('pv:name', 5.0)
-        >>> ctxt.put(['pv:1', 'pv:2'], [1.0, 2.0])
-        >>> ctxt.put('pv:name', {'value':5})
+        >>> ctxt.rpc('pv:name:add', {'A':5, 'B'; 6})
         >>>
 
         The provided value(s) will be automatically coearsed to the target type.

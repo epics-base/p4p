@@ -50,12 +50,11 @@ class WorkQueue(object):
     def handle(self):
         while True:
             # TODO: Queue.get() (and anything using thread.allocate_lock
-            #       ignores signals :(  so timeout periodically the allow delivery
-            #callable = self._Q.get()
+            #       ignores signals :(  so timeout periodically to allow delivery
             try:
                 callable = self._Q.get(True, 1.0)
             except Empty:
-                continue
+                continue # retry on timeout
             try:
                 if callable is self._stopit:
                     break
