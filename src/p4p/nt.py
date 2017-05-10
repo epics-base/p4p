@@ -73,8 +73,8 @@ class NTScalar(object):
         return Type(id="epics:nt/NTScalarArray:1.0" if isarray else "epics:nt/NTScalar:1.0",
                     spec=F)
 
-    def __init__(self, valtype='d'):
-        self.type = self.buildType(valtype)
+    def __init__(self, valtype='d', **kws):
+        self.type = self.buildType(valtype, **kws)
 
     def wrap(self, value):
         if isinstance(value, dict):
