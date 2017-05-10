@@ -2,7 +2,10 @@
 from __future__ import print_function
 
 import sys, time
-from itertools import izip
+try:
+    from itertools import izip
+except ImportError:
+    izip = zip
 
 import logging
 _log = logging.getLogger(__name__)

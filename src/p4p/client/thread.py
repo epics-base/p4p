@@ -4,7 +4,10 @@ from __future__ import print_function
 import logging
 _log = logging.getLogger(__name__)
 
-from itertools import izip
+try:
+    from itertools import izip
+except ImportError:
+    izip = zip
 from functools import partial
 import json, threading
 
