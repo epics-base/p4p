@@ -45,9 +45,9 @@ To explicitly specify a particular version.::
 Alternately, the full path of the interpreter can be used. ::
 
    make distclean
-   make PYTHON=python3.4
+   make PYTHON=/usr/bin/python3.4
 
-For convience PYTHON can also be set in configure/CONFIG_SITE
+For convenience PYTHON can also be set in configure/CONFIG_SITE
 
 Building EPICS dependencies
 ---------------------------
