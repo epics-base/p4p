@@ -6,13 +6,13 @@ ifeq ($(PYTHON),)
 $(error Must set PYTHON to select a python version)
 endif
 
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_$(PYTHON).$(EPICS_HOST_ARCH).Common
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_$(PYTHON).Common.$(T_A)
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_$(PYTHON).$(EPICS_HOST_ARCH).$(T_A)
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_PY.$(EPICS_HOST_ARCH).Common
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_PY.Common.$(T_A)
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_PY.$(EPICS_HOST_ARCH).$(T_A)
 
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_$(PYTHON).$(EPICS_HOST_ARCH).Common
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_$(PYTHON).Common.$(T_A)
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_$(PYTHON).$(EPICS_HOST_ARCH).$(T_A)
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_PY.$(EPICS_HOST_ARCH).Common
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_PY.Common.$(T_A)
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_PY.$(EPICS_HOST_ARCH).$(T_A)
 
 ifneq ($(PY_OK),YES)
 $(error No usable configuration for $(PYTHON))
