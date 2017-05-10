@@ -140,42 +140,42 @@ class Context(object):
             self._channels[name] = ch = self._ctxt.channel(name)
             return ch
 
-    def get(self, names, requests=None, timeout=5.0, throw=True):
+    def get(self, name, request=None, timeout=5.0, throw=True):
         """Fetch current value of some number of PVs.
         
-        :param names: A single name string or list of name strings
-        :param requests: None or a Value to qualify this request
+        :param name: A single name string or list of name strings
+        :param request: None or a Value to qualify this request
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.  If False then the Exception is returned instead of the Value
 
         :returns: A Value or Exception, or list of same
 
         When invoked with a single name then returns is a single value.
-        When invoked with a list of names, then returns a list of values
+        When invoked with a list of name, then returns a list of values
 
         >>> ctxt = Context('pva')
         >>> V = ctxt.get('pv:name')
         >>> A, B = ctxt.get(['pv:1', 'pv:2'])
         >>>
         """
-        singlepv = isinstance(names, (bytes, unicode))
+        singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
-            names = [names]
-            if requests is not None:
-                requests = [requests]
+            name = [name]
+            if request is not None:
+                request = [request]
 
-        if requests is None:
-            requests = [None]*len(names)
+        if request is None:
+            request = [None]*len(name)
 
-        assert len(names)==len(requests), (names, requests)
+        assert len(name)==len(request), (name, request)
 
         # use Queue instead of Event to allow KeyboardInterrupt
-        done = Queue(maxsize=len(names))
-        result = [Timeout]*len(names)
-        ops = [None]*len(names)
+        done = Queue(maxsize=len(name))
+        result = [Timeout]*len(name)
+        ops = [None]*len(name)
 
         try:
-            for i,(name, req) in enumerate(izip(names, requests)):
+            for i,(name, req) in enumerate(izip(name, request)):
                 _log.debug('gext %s', name)
                 ch = self._channel(name)
                 def cb(value, i=i):
@@ -186,14 +186,14 @@ class Context(object):
                 _log.debug('get %s w/ %s', name, req)
                 ops[i] = ch.get(cb, request=req)
 
-            for _n in range(len(names)):
+            for _n in range(len(name)):
                 try:
                     value, i = done.get(timeout=timeout)
                 except Empty:
                     if throw:
                         raise Timeout
                     break
-                _log.debug('got %s %s', names[i], value)
+                _log.debug('got %s %s', name[i], value)
                 if throw and isinstance(value, Exception):
                     raise value
                 result[i] = value
@@ -206,12 +206,12 @@ class Context(object):
         finally:
             [op and op.cancel() for op in ops]
 
-    def put(self, names, values, requests=None, timeout=5.0, throw=True):
+    def put(self, name, values, request=None, timeout=5.0, throw=True):
         """Write a new value of some number of PVs.
         
-        :param names: A single name string or list of name strings
+        :param name: A single name string or list of name strings
         :param values: A single value or a list of values
-        :param requests: None or a Value to qualify this request
+        :param request: None or a Value to qualify this request
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.
                      If False then the Exception is returned instead of the Value
@@ -219,7 +219,7 @@ class Context(object):
         :returns: A None or Exception, or list of same
 
         When invoked with a single name then returns is a single value.
-        When invoked with a list of names, then returns a list of values
+        When invoked with a list of name, then returns a list of values
 
         >>> ctxt = Context('pva')
         >>> ctxt.put('pv:name', 5.0)
@@ -233,26 +233,26 @@ class Context(object):
         Unless the provided value is a dict, it is assumed to be a plan value
         and an attempt is made to store it in '.value' field.
         """
-        singlepv = isinstance(names, (bytes, unicode))
+        singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
-            names = [names]
+            name = [name]
             values = [values]
-            if requests is not None:
-                requests = [requests]
+            if request is not None:
+                request = [request]
 
-        if requests is None:
-            requests = [None]*len(names)
+        if request is None:
+            request = [None]*len(name)
 
-        assert len(names)==len(requests), (names, requests)
-        assert len(names)==len(values), (names, values)
+        assert len(name)==len(request), (name, request)
+        assert len(name)==len(values), (name, values)
 
         # use Queue instead of Event to allow KeyboardInterrupt
-        done = Queue(maxsize=len(names))
-        result = [Timeout]*len(names)
-        ops = [None]*len(names)
+        done = Queue(maxsize=len(name))
+        result = [Timeout]*len(name)
+        ops = [None]*len(name)
 
         try:
-            for i,(name, value, req) in enumerate(izip(names, values, requests)):
+            for i,(name, value, req) in enumerate(izip(name, values, request)):
                 if isinstance(value, (bytes, unicode)) and value[:1]=='{':
                     try:
                         value = json.loads(value)
@@ -283,7 +283,7 @@ class Context(object):
                         _log.exception("Error queuing put result %s", value)
                 ops[i] = ch.put(cb, vb, request=req)
 
-            for _n in range(len(names)):
+            for _n in range(len(name)):
                 try:
                     value, i = done.get(timeout=timeout)
                 except Empty:
