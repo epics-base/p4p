@@ -7,9 +7,14 @@
 
 #include <Python.h>
 
+#include <epicsMutex.h>
+#include <epicsGuard.h>
 #include <pv/pvIntrospect.h>
 #include <pv/bitSet.h>
 #include <pv/pvData.h>
+
+typedef epicsGuard<epicsMutex> Guard;
+typedef epicsGuardRelease<epicsMutex> UnGuard;
 
 struct SB {
     std::ostringstream strm;
