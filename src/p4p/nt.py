@@ -18,15 +18,18 @@ class NTScalar(object):
     Value = Value
 
     @staticmethod
-    def buildType(valtype, extra=[]):
+    def buildType(valtype, extra=[], display=False, control=False, valueAlarm=False):
         """Build a Type
         
         :param valtype str: A type code to be used with the 'value' field.
         :param extra list: A list of tuples describing additional non-standard fields
+        :param display bool: Include optional fields for display meta-data
+        :param control bool: Include optional fields for control meta-data
+        :param valueAlarm bool: Include optional fields for alarm level meta-data
         :returns: A :py:class:`Type`
         """
-        return Type(id="epics:nt/NTScalarArray:1.0" if valtype[:1]=='a' else "epics:nt/NTScalar:1.0",
-                    spec=[
+        isarray = valtype[:1]=='a'
+        F = [
             ('value', valtype),
             ('alarm', ('s', None, [
                 ('severity', 'i'),
@@ -38,7 +41,37 @@ class NTScalar(object):
                 ('nanoseconds', 'i'),
                 ('userTag', 'i'),
             ])),
-        ]+extra)
+        ]
+        if display and valtype not in '?su':
+            F.extend([
+                ('limitLow', valtype[-1:]),
+                ('limitHigh', valtype[-1:]),
+                ('description', 's'),
+                ('format', 's'),
+                ('units', 's'),
+            ])
+        if control and valtype not in '?su':
+            F.extend([
+                ('limitLow', valtype[-1:]),
+                ('limitHigh', valtype[-1:]),
+                ('minStep', valtype[-1:]),
+            ])
+        if valueAlarm and valtype not in '?su':
+            F.extend([
+                ('active', '?'),
+                ('lowAlarmLimit', valtype[-1:]),
+                ('lowWarningLimit', valtype[-1:]),
+                ('highWarningLimit', valtype[-1:]),
+                ('highAlarmLimit', valtype[-1:]),
+                ('lowAlarmSeverity', 'i'),
+                ('lowWarningSeverity', 'i'),
+                ('highWarningSeverity', 'i'),
+                ('highAlarmSeverity', 'i'),
+                ('hysteresis', 'd'),
+            ])
+        F.extend(extra)
+        return Type(id="epics:nt/NTScalarArray:1.0" if isarray else "epics:nt/NTScalar:1.0",
+                    spec=F)
 
     def __init__(self, valtype='d'):
         self.type = self.buildType(valtype)
