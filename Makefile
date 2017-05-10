@@ -11,13 +11,16 @@ include $(TOP)/configure/RULES_TOP
 
 UNINSTALL_DIRS += $(INSTALL_LOCATION)/python$(PY_VER)
 
-nose:
-	PYTHONPATH="$(PWD)/python$(PY_VER)/$(EPICS_HOST_ARCH)" python$(PY_VER) -m nose.core -P p4p
+# jump to a sub-directory where CONFIG_PY has been included
+# can't include CONFIG_PY here as it may not exist yet
+nose sphinx:
+	$(MAKE) -C src/O.$(EPICS_HOST_ARCH) $@
 
-sphinx:
-	PYTHONPATH="$(PWD)/python$(PY_VER)/$(EPICS_HOST_ARCH)" make -C documentation html
+sphinx-clean:
+	$(MAKE) -C documentation clean
 
 sphinx-commit: sphinx
+	touch documentation/_build/html/.nojekyll
 	./commit-gh.sh documentation/_build/html
 
-.PHONY: nose sphinx sphinx-commit
+.PHONY: nose sphinx sphinx-commit sphinx-clean

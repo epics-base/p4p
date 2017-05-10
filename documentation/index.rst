@@ -6,6 +6,8 @@
 PVAccess for Python (P4P)
 =========================
 
+Source can be found at https://github.com/mdavidsaver/p4p
+
 Contents:
 
 .. toctree::

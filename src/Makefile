@@ -36,3 +36,16 @@ PY += p4p/test/test_rpc.py
 
 include $(TOP)/configure/RULES
 include $(TOP)/configure/RULES_PY
+
+ifneq (,$(T_A))
+nose:
+	PYTHONPATH="$(abspath $(PWD))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose.core -P p4p
+
+# bounce back down to the sphinx generated Makefile
+# aren't Makefiles fun...
+sphinx:
+	PYTHONPATH="$(abspath $(PWD))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(MAKE) -C $(TOP)/documentation html
+
+endif
+
+.PHONY: nose sphinx

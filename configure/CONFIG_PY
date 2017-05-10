@@ -2,23 +2,21 @@ ifneq ($(T_A),)
 
 PYMODULE ?= YES
 
-ifeq ($(PY_VER),)
-$(error Must set PY_VER to select a python version)
+ifeq ($(PYTHON),)
+$(error Must set PYTHON to select a python version)
 endif
 
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_PY$(PY_VER).$(EPICS_HOST_ARCH).Common
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_PY$(PY_VER).Common.$(T_A)
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_PY$(PY_VER).$(EPICS_HOST_ARCH).$(T_A)
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_$(PYTHON).$(EPICS_HOST_ARCH).Common
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_$(PYTHON).Common.$(T_A)
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_$(PYTHON).$(EPICS_HOST_ARCH).$(T_A)
 
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_PY$(PY_VER).$(EPICS_HOST_ARCH).Common
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_PY$(PY_VER).Common.$(T_A)
--include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_PY$(PY_VER).$(EPICS_HOST_ARCH).$(T_A)
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_$(PYTHON).$(EPICS_HOST_ARCH).Common
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_$(PYTHON).Common.$(T_A)
+-include $(dir $(lastword $(MAKEFILE_LIST)))/os/CONFIG_SITE_$(PYTHON).$(EPICS_HOST_ARCH).$(T_A)
 
 ifneq ($(PY_OK),YES)
-$(error No usable configuration for python$(PY_VER))
+$(error No usable configuration for $(PYTHON))
 endif
-
-PYTHON ?= python$(PY_VER)
 
 SHRLIB_DEPLIB_DIRS += $(PY_LIBDIRS)
 PROD_DEPLIB_DIRS += $(PY_LIBDIRS)
@@ -27,12 +25,14 @@ INCLUDES += $(PY_INCDIRS:%=-I%)
 
 ifeq ($(HAVE_NUMPY),YES)
 TARGET_CPPFLAGS += -DHAVE_NUMPY
+else
+$(error numpy required)
 endif
 
 #LIB_SYS_LIBS += python$(PY_LD_VER)
 #PROD_SYS_LIBS += python$(PY_LD_VER)
 
-PY_INSTALL_DIR = $(INSTALL_LOCATION)/python$(PY_VER)/$(T_A)
+PY_INSTALL_DIR = $(INSTALL_LOCATION)/python$(PY_LD_VER)/$(T_A)
 
 # Python loadables have no prefix (eg 'pymod.so')
 # and are installed alongsize .py files

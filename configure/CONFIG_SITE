@@ -39,6 +39,4 @@ CROSS_COMPILER_TARGET_ARCHS =
 -include $(TOP)/../CONFIG.local
 
 # default if not set
-PY_VER ?= 2.7
-
-#PY_VER:=2.7-dbg
+PYTHON ?= python

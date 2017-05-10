@@ -40,9 +40,14 @@ By default P4P will build using 'python' found in the system search path.
 To explicitly specify a particular version.::
 
    make distclean
-   make PY_VER=3.4
+   make PYTHON=python3.4
 
-This version can also be set in configure/CONFIG_SITE
+Alternately, the full path of the interpreter can be used. ::
+
+   make distclean
+   make PYTHON=python3.4
+
+For convience PYTHON can also be set in configure/CONFIG_SITE
 
 Building EPICS dependencies
 ---------------------------

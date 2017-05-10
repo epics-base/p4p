@@ -13,8 +13,8 @@ install:
  - pip install -r requirements-${PROF}.txt
  - ./build-deps.sh
 script:
- - make -j2
- - make nose
+ - make PYTHON=`which python` -j2
+ - make PYTHON=`which python` nose
 matrix:
   include:
   - python: "2.7"
