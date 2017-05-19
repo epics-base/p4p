@@ -90,11 +90,22 @@ class Subscription(object):
             self._S = None
 
 class Context(object):
-    """Context(providerName, conf=None, useenv=True)
+    """Context(provider, conf=None, useenv=True)
 
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
+    :param conf dict: Configuration to pass to provider.  Depends on provider selected.
+    :param useenv bool: Allow the provider to use configuration from the process environment.
 
-    The method of this Context will block the calling thread until completion or timeout
+    The methods of this Context will block the calling thread until completion or timeout
+
+    The meaning, and allowed keys, of the configuration dictionary depend on the provider.
+
+    The "pva" provider understands the following keys:
+
+    * EPICS_PVA_ADDR_LIST
+    * EPICS_PVA_AUTO_ADDR_LIST
+    * EPICS_PVA_SERVER_PORT
+    * EPICS_PVA_BROADCAST_PORT
     """
     Value = Value
 
