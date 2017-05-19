@@ -96,6 +96,11 @@ void py2struct(pvd::FieldBuilderPtr& builder, PyObject *o)
             throw std::runtime_error("XXX");
 
         if(0) {
+        } else if(PyObject_IsInstance(val, (PyObject*)P4PType_type)) {
+            pvd::StructureConstPtr sub(P4PType_unwrap(val));
+
+            builder->add(key, sub);
+
 #if PY_MAJOR_VERSION < 3
         } else if(PyBytes_Check(val)) {
             const char *spec = PyBytes_AsString(val);

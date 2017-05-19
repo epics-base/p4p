@@ -6,6 +6,18 @@ import time
 from operator import itemgetter
 from .wrapper import Type, Value
 
+# common sub-structs
+timeStamp = Type(id='time_t', spec=[
+    ('secondsPastEpoch', 'l'),
+    ('nanoseconds', 'i'),
+    ('userTag', 'i'),
+])
+alarm = Type(id='alarm_t', spec=[
+    ('severity', 'i'),
+    ('status', 'i'),
+    ('message', 's'),
+])
+
 class NTScalar(object):
     """Describes a single scalar or array of scalar values and associated meta-data
     
@@ -31,43 +43,41 @@ class NTScalar(object):
         isarray = valtype[:1]=='a'
         F = [
             ('value', valtype),
-            ('alarm', ('s', None, [
-                ('severity', 'i'),
-                ('status', 'i'),
-                ('message', 's'),
-            ])),
-            ('timeStamp', ('s', None, [
-                ('secondsPastEpoch', 'l'),
-                ('nanoseconds', 'i'),
-                ('userTag', 'i'),
-            ])),
+            ('alarm', alarm),
+            ('timeStamp', timeStamp),
         ]
         if display and valtype not in '?su':
             F.extend([
-                ('limitLow', valtype[-1:]),
-                ('limitHigh', valtype[-1:]),
-                ('description', 's'),
-                ('format', 's'),
-                ('units', 's'),
+                ('display', ('s', None, [
+                    ('limitLow', valtype[-1:]),
+                    ('limitHigh', valtype[-1:]),
+                    ('description', 's'),
+                    ('format', 's'),
+                    ('units', 's'),
+                ])),
             ])
         if control and valtype not in '?su':
             F.extend([
-                ('limitLow', valtype[-1:]),
-                ('limitHigh', valtype[-1:]),
-                ('minStep', valtype[-1:]),
+                ('display', ('s', None, [
+                    ('limitLow', valtype[-1:]),
+                    ('limitHigh', valtype[-1:]),
+                    ('minStep', valtype[-1:]),
+                ])),
             ])
         if valueAlarm and valtype not in '?su':
             F.extend([
-                ('active', '?'),
-                ('lowAlarmLimit', valtype[-1:]),
-                ('lowWarningLimit', valtype[-1:]),
-                ('highWarningLimit', valtype[-1:]),
-                ('highAlarmLimit', valtype[-1:]),
-                ('lowAlarmSeverity', 'i'),
-                ('lowWarningSeverity', 'i'),
-                ('highWarningSeverity', 'i'),
-                ('highAlarmSeverity', 'i'),
-                ('hysteresis', 'd'),
+                ('valueAlarm', ('s', None, [
+                    ('active', '?'),
+                    ('lowAlarmLimit', valtype[-1:]),
+                    ('lowWarningLimit', valtype[-1:]),
+                    ('highWarningLimit', valtype[-1:]),
+                    ('highAlarmLimit', valtype[-1:]),
+                    ('lowAlarmSeverity', 'i'),
+                    ('lowWarningSeverity', 'i'),
+                    ('highWarningSeverity', 'i'),
+                    ('highAlarmSeverity', 'i'),
+                    ('hysteresis', 'd'),
+                ])),
             ])
         F.extend(extra)
         return Type(id="epics:nt/NTScalarArray:1.0" if isarray else "epics:nt/NTScalar:1.0",
@@ -105,16 +115,8 @@ class NTMultiChannel(object):
             ('value', valtype),
             ('channelName', 'as'),
             ('descriptor', 's'),
-            ('alarm', ('s', None, [
-                ('severity', 'i'),
-                ('status', 'i'),
-                ('message', 's'),
-            ])),
-            ('timeStamp', ('s', None, [
-                ('secondsPastEpoch', 'l'),
-                ('nanoseconds', 'i'),
-                ('userTag', 'i'),
-            ])),
+            ('alarm', alarm),
+            ('timeStamp', timeStamp),
             ('severity', 'ai'),
             ('status', 'ai'),
             ('message', 'as'),
@@ -146,16 +148,8 @@ class NTTable(object):
             ('labels', 'as'),
             ('value', ('s', None, columns)),
             ('descriptor', 's'),
-            ('alarm', ('s', None, [
-                ('severity', 'i'),
-                ('status', 'i'),
-                ('message', 's'),
-            ])),
-            ('timeStamp', ('s', None, [
-                ('secondsPastEpoch', 'l'),
-                ('nanoseconds', 'i'),
-                ('userTag', 'i'),
-            ])),
+            ('alarm', alarm),
+            ('timeStamp', timeStamp),
         ]+extra)
 
     def __init__(self, columns=[], extra=[]):
