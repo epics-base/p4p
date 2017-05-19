@@ -125,6 +125,7 @@ struct PyServerProvider :
         } catch(std::exception& e) {
             channelFindRequester->channelFindResult(pvd::Status::Ok,
                                                     ret, false);
+            std::cerr<<"Unhandled exception in channelFind(): "<<e.what()<<"\n";
         }
         TRACE("EXIT "<<(ret ? "Claim" : "Ignore"));
         return ret;
