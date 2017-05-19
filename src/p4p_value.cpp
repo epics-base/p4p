@@ -837,6 +837,15 @@ PyTypeObject P4PValue::type = {
     sizeof(P4PValue),
 };
 
+const char value_doc[] =     "Value(type, value=None)\n"
+        "\n"
+        "Structured value container. Supports dict-list and object-list access\n"
+        "\n"
+        ":param Type type: A :py:class:`Type` describing the structure\n"
+        ":param dict value: Initial values to populate the Value\n"
+        ;
+
+
 } // namespace
 
 PyTypeObject* P4PValue_type = &P4PValue::type;
@@ -844,6 +853,7 @@ PyTypeObject* P4PValue_type = &P4PValue::type;
 void p4p_value_register(PyObject *mod)
 {
     P4PValue::buildType();
+    P4PValue::type.tp_doc = value_doc;
     P4PValue::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
     P4PValue::type.tp_init = &P4PValue_init;
     P4PValue::type.tp_getattro = &P4PValue_getattr;

@@ -260,7 +260,6 @@ class TestRawValue(unittest.TestCase):
 
         V = Value(_Type([('a', 'I')], id="foo"))
         self.assertEqual(V.getID(), "foo")
-        self.assertEqual(V.id, "foo")
 
     def testBitSet(self):
         A= _Value(_Type([

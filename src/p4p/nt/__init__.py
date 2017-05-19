@@ -4,98 +4,24 @@ _log = logging.getLogger(__name__)
 
 import time
 from operator import itemgetter
-from .wrapper import Type, Value
+from ..wrapper import Type, Value
+from .common import timeStamp, alarm
+from .scalar import NTScalar
 
-# common sub-structs
-timeStamp = Type(id='time_t', spec=[
-    ('secondsPastEpoch', 'l'),
-    ('nanoseconds', 'i'),
-    ('userTag', 'i'),
-])
-alarm = Type(id='alarm_t', spec=[
-    ('severity', 'i'),
-    ('status', 'i'),
-    ('message', 's'),
-])
+__all__ = [
+    'NTScalar',
+    'NTMultiChannel',
+    'NTTable',
+]
 
-class NTScalar(object):
-    """Describes a single scalar or array of scalar values and associated meta-data
-    
-    >>> stype = NTScalar.buildType('d') # scalar double
-    >>> V = Value(stype, {'value': 4.2})
-
-    >>> stype = NTScalar.buildType('ad') # vector double
-    >>> V = Value(stype, {'value': [4.2, 4.3]})
-    """
-    Value = Value
-
-    @staticmethod
-    def buildType(valtype, extra=[], display=False, control=False, valueAlarm=False):
-        """Build a Type
-        
-        :param valtype str: A type code to be used with the 'value' field.
-        :param extra list: A list of tuples describing additional non-standard fields
-        :param display bool: Include optional fields for display meta-data
-        :param control bool: Include optional fields for control meta-data
-        :param valueAlarm bool: Include optional fields for alarm level meta-data
-        :returns: A :py:class:`Type`
-        """
-        isarray = valtype[:1]=='a'
-        F = [
-            ('value', valtype),
-            ('alarm', alarm),
-            ('timeStamp', timeStamp),
-        ]
-        if display and valtype not in '?su':
-            F.extend([
-                ('display', ('s', None, [
-                    ('limitLow', valtype[-1:]),
-                    ('limitHigh', valtype[-1:]),
-                    ('description', 's'),
-                    ('format', 's'),
-                    ('units', 's'),
-                ])),
-            ])
-        if control and valtype not in '?su':
-            F.extend([
-                ('display', ('s', None, [
-                    ('limitLow', valtype[-1:]),
-                    ('limitHigh', valtype[-1:]),
-                    ('minStep', valtype[-1:]),
-                ])),
-            ])
-        if valueAlarm and valtype not in '?su':
-            F.extend([
-                ('valueAlarm', ('s', None, [
-                    ('active', '?'),
-                    ('lowAlarmLimit', valtype[-1:]),
-                    ('lowWarningLimit', valtype[-1:]),
-                    ('highWarningLimit', valtype[-1:]),
-                    ('highAlarmLimit', valtype[-1:]),
-                    ('lowAlarmSeverity', 'i'),
-                    ('lowWarningSeverity', 'i'),
-                    ('highWarningSeverity', 'i'),
-                    ('highAlarmSeverity', 'i'),
-                    ('hysteresis', 'd'),
-                ])),
-            ])
-        F.extend(extra)
-        return Type(id="epics:nt/NTScalarArray:1.0" if isarray else "epics:nt/NTScalar:1.0",
-                    spec=F)
-
-    def __init__(self, valtype='d', **kws):
-        self.type = self.buildType(valtype, **kws)
-
-    def wrap(self, value):
-        if isinstance(value, dict):
-            return self.Value(self.type, value)
-        else:
-            return self.Value(self.type, {
-                'value': value,
-                'timeStamp': {
-                    'secondsPastEpoch': time.time(),
-                },
-            })
+_default_unwrap = {
+    "epics:nt/NTScalar:1.0":NTScalar.unwrap,
+    "epics:nt/NTScalarArray:1.0":NTScalar.unwrap,
+}
+_default_wrap = {
+    "epics:nt/NTScalar:1.0":NTScalar.wrap,
+    "epics:nt/NTScalarArray:1.0":NTScalar.wrap,
+}
 
 class NTMultiChannel(object):
     """Describes a structure holding the equivalent of a number of NTScalar

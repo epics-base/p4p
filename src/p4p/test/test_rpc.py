@@ -73,7 +73,7 @@ class TestRPC(unittest.TestCase):
                 'rhs': 1,
             },
         })
-        ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False))
+        ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False), unwrap=False)
         sum = ctxt.rpc(self.prefix+'add', args)
         self.assertEqual(sum.value, 2.0)
 
@@ -93,6 +93,6 @@ class TestRPC(unittest.TestCase):
                 'rhs': 2,
             },
         })
-        ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False))
+        ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False), unwrap=False)
         sum = ctxt.rpc(self.prefix+'add', args)
         self.assertEqual(sum.value, 3.0)

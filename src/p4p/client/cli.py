@@ -10,6 +10,7 @@ except ImportError:
 import logging
 _log = logging.getLogger(__name__)
 
+from .. import Value
 from . import thread
 
 def op_get(ctxt, args):
@@ -20,8 +21,10 @@ def op_get(ctxt, args):
         if isinstance(val, Exception):
             ret = 1
             print(name, 'Error:', val)
-        else:
+        elif isinstance(val, Value):
             print(name, val.tolist())
+        else:
+            print(name, val)
     sys.exit(ret)
 
 def op_put(ctxt, args):
@@ -61,8 +64,10 @@ def op_monitor(ctxt, args):
             if isinstance(val, Exception):
                 ret = 1
                 print(name, 'Error:', val)
-            else:
+            elif isinstance(val, Value):
                 print(name, val.tolist())
+            else:
+                print(name, val)
         subs.append(ctxt.monitor(name, show, args.request))
 
     try:
@@ -80,6 +85,7 @@ def getargs():
     P.add_argument('-w', '--timeout', type=float, default=5.0)
     P.add_argument('-p', '--provider', default='pva')
     P.add_argument('-d','--debug', action='store_true')
+    P.add_argument('--raw', action='store_false', default=None)
 
     SP = P.add_subparsers()
 
@@ -98,7 +104,7 @@ def getargs():
     return P.parse_args()
 
 def main(args):
-    with thread.Context(args.provider) as ctxt:
+    with thread.Context(args.provider, unwrap=args.raw) as ctxt:
         args.func(ctxt, args)
 
 if __name__=='__main__':

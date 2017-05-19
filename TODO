@@ -1,9 +1,12 @@
 
 Mapping to/from NT
+  Wrap/unwrap values to/from Context
 
 Track BitSet of initialized fields.  changed and overun from monitors.
 
-PyServerProvider::channelFind() call python for each channel.  Slow on a busy network...
+Support custom Value sub-class for each Context?
+
+support structure array
 
 server provider support:
   get

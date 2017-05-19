@@ -22,6 +22,7 @@ from ..rpc import WorkQueue
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                     logLevelInfo, logLevelWarn, logLevelError,
                     logLevelFatal, logLevelOff)
+from ..nt import _default_wrap, _default_unwrap
 
 __all__ = [
     'Context',
@@ -38,6 +39,7 @@ class Subscription(object):
     """An active subscription.
     """
     def __init__(self, ctxt, name, cb):
+        self._dounwrap = ctxt._dounwrap
         self.name, self._S, self._cb = name, None, cb
         self._Q = ctxt._queue()
     def close(self):
@@ -78,6 +80,7 @@ class Subscription(object):
                 E = self._S.pop()
                 if E is None:
                     break
+                E = self._dounwrap(E)
                 self._cb(E)
             if self._S.done():
                 _log.debug("Subscription complete")
@@ -95,6 +98,8 @@ class Context(object):
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
     :param conf dict: Configuration to pass to provider.  Depends on provider selected.
     :param useenv bool: Allow the provider to use configuration from the process environment.
+    :param maxsize int: Size of internal work queue used for monitor callbacks
+    :param unwrap: Controls :ref:`unwrap`.  Set False to disable
 
     The methods of this Context will block the calling thread until completion or timeout
 
@@ -113,13 +118,30 @@ class Context(object):
     set_debug = raw.Context.set_debug
 
     def __init__(self, *args, **kws):
+        _log.debug("thread.Context with %s %s", args, kws)
         self._Qmax = kws.pop('maxsize', 0)
+        unwrap = kws.pop('unwrap', None)
+        if unwrap is None:
+            self._unwrap = _default_unwrap
+        elif not unwrap:
+            self._unwrap = {}
+        elif isinstance(unwrap, dict):
+            self._unwrap = _default_unwrap.copy()
+            self._unwrap.update(unwrap)
+        else:
+            raise ValueError("unwrap must be None, False, or dict, not %s"%unwrap)
         self._ctxt = raw.Context(*args, **kws)
 
         self._channels = {}
 
         # lazy start threaded WorkQueue
         self._Q, self._T = None, None
+
+    def _dounwrap(self, val):
+        fn = self._unwrap.get(val.getID())
+        if fn:
+            val = fn(val)
+        return val
 
     def _queue(self):
         if self._Q is None:
@@ -189,15 +211,15 @@ class Context(object):
         ops = [None]*len(name)
 
         try:
-            for i,(name, req) in enumerate(izip(name, request)):
-                _log.debug('gext %s', name)
-                ch = self._channel(name)
+            for i,(N, req) in enumerate(izip(name, request)):
+                _log.debug('gext %s', N)
+                ch = self._channel(N)
                 def cb(value, i=i):
                     try:
                         done.put_nowait((value, i))
                     except:
                         _log.exception("Error queuing get result %s", value)
-                _log.debug('get %s w/ %s', name, req)
+                _log.debug('get %s w/ %s', N, req)
                 ops[i] = ch.get(cb, request=req)
 
             for _n in range(len(name)):
@@ -212,13 +234,17 @@ class Context(object):
                     raise value
                 result[i] = value
 
-
-            if singlepv:
-                return result[0]
-            else:
-                return result
         finally:
             [op and op.cancel() for op in ops]
+
+        print('XYZ', self._unwrap, result)
+        result = [self._dounwrap(R) for R in result]
+
+        print('XYZ', result)
+        if singlepv:
+            return result[0]
+        else:
+            return result
 
     def put(self, name, values, request=None, timeout=5.0, throw=True):
         """Write a new value of some number of PVs.
@@ -352,7 +378,7 @@ class Context(object):
             if throw and isinstance(result, Exception):
                 raise result
 
-            return result
+            return self._dounwrap(result)
         except:
             op.cancel()
             raise
