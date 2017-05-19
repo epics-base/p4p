@@ -62,18 +62,19 @@ struct PyServerProvider :
             // To reduce load we maintain a cache of failed name searches
             // which we don't repeat too often
 
-            search_cache_t::iterator it;
+            bool hit;
             {
                 Guard G(search_cache_lock);
-                it = search_cache.find(channelName);
+                search_cache_t::iterator it = search_cache.find(channelName);
                 if(it!=search_cache.end() && it->second.tv_sec < now.tv_sec) {
                     // stale entry
                     search_cache.erase(it);
                     it = search_cache.end();
                 }
+                hit = it != search_cache.end();
             }
 
-            if(it!=search_cache.end()) {
+            if(hit) {
                 TRACE("HIT "<<channelName);
                 channelFindRequester->channelFindResult(pvd::Status::Ok,
                                                         ret, false);
