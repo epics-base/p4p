@@ -3,10 +3,10 @@ RPC Server Helpers
 
 .. currentmodule:: p4p.rpc
 
-Basic Usage
------------
+Server Example
+--------------
 
-Remote Procedure Calls are made through the methods of a "target" object.
+Remote Procedure Calls are received by the methods of a "target" object.
 This is any class which has method decorated with :py:func:`rpc`.
 
 For example: ::
@@ -43,10 +43,35 @@ This can be tested using the "eget" utility from the pvAccessCPP module.
         alarm_t alarm NO_ALARM NO_STATUS <no message>
         time_t timeStamp 2017-05-20T08:14:31.917 0
 
+Client Example
+--------------
+
+Remote Procedure calls are make through the :meth:`~p4p.client.thread.Context.rpc` method of a :class:`~p4p.client.thread.Context`.
+To assist in encoding arguments, a proxy object can be created with the :func:`rpcproxy` decorator.
+A proxy for the preceeding example would be: ::
+
+    from p4p.rpc import rpcproxy, rpccall
+    @rpcproxy
+    class MyProxy(object):
+        @rpccall('%sadd')
+        def add(lhs='d', rhs='d'):
+            pass
+
+This proxy must be associated with a Context. ::
+
+    from p4p.client.thread import Context
+    ctxt = Context('pva')
+    proxy = MyProxy(context=ctxt, format='pv:call')
+    print proxy.add(1, 1)
+
 API Reference
 -------------
 
 .. autofunction:: rpc
+
+.. autofunction:: rpcproxy
+
+.. autofunction:: rpccall
 
 .. autofunction:: quickRPCServer
 

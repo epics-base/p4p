@@ -5,7 +5,7 @@ import unittest, random, weakref, gc, threading
 from ..wrapper import Value, Type
 from ..client.thread import Context
 from ..server import Server, installProvider, removeProvider
-from ..rpc import NTURIDispatcher, WorkQueue, rpc
+from ..rpc import NTURIDispatcher, WorkQueue, rpc, rpccall, rpcproxy
 from ..nt import NTScalar, NTURI
 
 class TestService(object):
@@ -78,3 +78,83 @@ class TestRPC(unittest.TestCase):
         ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False), unwrap=False)
         sum = ctxt.rpc(self.prefix+'add', args)
         self.assertEqual(sum.value, 3.0)
+
+class TestProxy(unittest.TestCase):
+    class MockContext(object):
+        def rpc(self, *args, **kws):
+            return args, kws
+
+    @rpcproxy
+    class MyProxy(object):
+        def __init__(self, myarg=5):
+            self.myarg = myarg
+
+        @rpccall('%sfoo')
+        def bar(A='i', B='s'):
+            pass
+
+        @rpccall('%sbaz')
+        def another(X='s', Y='i'):
+            pass
+
+    def setUp(self):
+        ctxt = self.MockContext()
+        self.proxy = self.MyProxy(myarg=3, context=ctxt, format='pv:')
+        self.assertEqual(self.proxy.myarg, 3)
+        self.assertIs(self.proxy.context, ctxt)
+
+    def test_call1(self):
+        args, kws = self.proxy.bar(4, 'one')
+
+        print(args, kws)
+        self.assertEqual(args[0], 'pv:foo')
+        self.assertListEqual(args[1].tolist(), [
+            ('scheme', u''),
+            ('authority', u''),
+            ('path', u'pv:foo'),
+            ('query', [('A', 4), ('B', u'one')])
+        ])
+        self.assertEqual(len(args), 2)
+        self.assertDictEqual(kws, {'request': None, 'throw': True, 'timeout': 3.0})
+
+    def test_call2(self):
+        args, kws = self.proxy.bar(4, B='one')
+
+        print(args, kws)
+        self.assertEqual(args[0], 'pv:foo')
+        self.assertListEqual(args[1].tolist(), [
+            ('scheme', u''),
+            ('authority', u''),
+            ('path', u'pv:foo'),
+            ('query', [('A', 4), ('B', u'one')])
+        ])
+        self.assertEqual(len(args), 2)
+        self.assertDictEqual(kws, {'request': None, 'throw': True, 'timeout': 3.0})
+
+    def test_call3(self):
+        args, kws = self.proxy.bar(4)
+
+        print(args, kws)
+        self.assertEqual(args[0], 'pv:foo')
+        self.assertListEqual(args[1].tolist(), [
+            ('scheme', u''),
+            ('authority', u''),
+            ('path', u'pv:foo'),
+            ('query', [('A', 4), ('B', u'')])
+        ])
+        self.assertEqual(len(args), 2)
+        self.assertDictEqual(kws, {'request': None, 'throw': True, 'timeout': 3.0})
+
+    def test_call4(self):
+        args, kws = self.proxy.another('one', Y=2)
+
+        print(args, kws)
+        self.assertEqual(args[0], 'pv:baz')
+        self.assertListEqual(args[1].tolist(), [
+            ('scheme', u''),
+            ('authority', u''),
+            ('path', u'pv:baz'),
+            ('query', [('X', u'one'), ('Y', 2)])
+        ])
+        self.assertEqual(len(args), 2)
+        self.assertDictEqual(kws, {'request': None, 'throw': True, 'timeout': 3.0})

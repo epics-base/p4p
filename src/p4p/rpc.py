@@ -11,12 +11,15 @@ from threading import Thread
 
 __all__ = [
     'rpc',
+    'rpccall',
+    'rpcproxy',
     'RemoteError',
     'WorkQueue',
     'NTURIDispatcher',
 ]
 
 from .wrapper import Value, Type
+from .nt import NTURI
 
 def rpc(rtype=None):
     """Decorator marks a proxy method for export.
@@ -29,7 +32,7 @@ def rpc(rtype=None):
             return {'value':float(lhs)+flost(rhs)}
     """
     wrap = None
-    if isinstance(rtype, Type):
+    if rtype is None or isinstance(rtype, Type):
         pass
     elif isinstance(type, (list, tuple)):
         rtype = Type(rtype)
@@ -47,6 +50,19 @@ def rpc(rtype=None):
                 return wrap(orig(*args, **kws))
             fn = wrapper2
 
+        fn._reply_Type = rtype
+        return fn
+    return wrapper
+
+def rpccall(pvname, rtype=None, request=None):
+    """Decorator marks a client proxy method.
+    
+    The method to be decorated must have all keyword arguments,
+    where the keywords are type code strings or :class:`~p4p.Type`.
+    """
+    def wrapper(fn):
+        fn._call_PV = pvname
+        fn._call_Request = request
         fn._reply_Type = rtype
         return fn
     return wrapper
@@ -239,3 +255,58 @@ def quickRPCServer(provider, prefix, target,
                 server.stop()
     finally:
         removeProvider(provider)
+
+class RPCProxyBase(object):
+    """Base class for automatically generated proxy classes
+    """
+    context = None
+    timeout = 3.0
+    scheme = ''
+    authority = ''
+    throw = True
+
+def _wrapMethod(K, V):
+    pv, req = V._call_PV, V._call_Request
+    S = inspect.getargspec(V)
+
+    if S.varargs is not None or S.keywords is not None:
+        raise TypeError("vararg not supported for proxy method %s"%K)
+
+    if len(S.args)!=len(S.defaults):
+        raise TypeError("proxy method %s must specify types for all arguments"%K)
+
+    NT = NTURI(zip(S.args, S.defaults))
+
+    @wraps(V)
+    def mcall(self, *args, **kws):
+        pvname = pv%self.format
+        pos = dict(zip(S.args[:len(args)], args))
+        pos.update(kws)
+        uri = NT.wrap(pvname, pos, scheme=self.scheme, authority=self.authority)
+        return self.context.rpc(pvname, uri, request=req, timeout=self.timeout, throw=self.throw)
+
+    return mcall
+
+def rpcproxy(spec):
+    """Decorator to enable this class to proxy RPC client calls
+    
+    The decorator class constructor takes one additional arugment "context"
+    which should by a :class:`~p4p.client.thread.Context`.
+    
+       @rpcproxy
+       class MyProxy(object):
+           @rpccall("%s:add")
+           def add(lhs='d', rhs='d'):
+               pass
+    """
+    def _proxyinit(self, context=None, format={}, **kws):
+        assert context is not None, context
+        self.context = context
+        self.format = format
+        spec.__init__(self, **kws)
+    obj = {'__init__':_proxyinit}
+        
+    for K,V in inspect.getmembers(spec, lambda M:hasattr(M, '_call_PV')):
+        obj[K] = _wrapMethod(K, V)
+
+    return type(spec.__name__, (RPCProxyBase, spec), obj)
