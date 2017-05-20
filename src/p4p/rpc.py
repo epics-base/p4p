@@ -8,6 +8,13 @@ try:
 except ImportError:
     from queue import Queue, Full, Empty
 
+__all__ = [
+    'rpc',
+    'RemoteError',
+    'WorkQueue',
+    'NTURIDispatcher',
+]
+
 from .wrapper import Value, Type
 
 def rpc(rtype=None):
