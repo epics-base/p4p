@@ -5,7 +5,13 @@
 #include <algorithm>
 #include <stdexcept>
 
+#ifdef READONLY
+// don't want def from shareLib.h
+#  undef READONLY
+#endif
+
 #include <Python.h>
+#include <structmember.h>
 
 #include <epicsMutex.h>
 #include <epicsGuard.h>

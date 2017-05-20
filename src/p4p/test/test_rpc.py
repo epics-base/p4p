@@ -64,6 +64,7 @@ class TestRPC(unittest.TestCase):
             'rhs': 1,
         }, scheme='pva')
         ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False), unwrap=False)
+        self.assertEqual(ctxt.name, 'pva')
         sum = ctxt.rpc(self.prefix+'add', args)
         self.assertEqual(sum.value, 2.0)
 

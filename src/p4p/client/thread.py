@@ -114,6 +114,9 @@ class Context(object):
     """
     Value = Value
 
+    name = ''
+    "Provider name string"
+
     providers = raw.Context.providers
     set_debug = raw.Context.set_debug
 
@@ -131,6 +134,7 @@ class Context(object):
         else:
             raise ValueError("unwrap must be None, False, or dict, not %s"%unwrap)
         self._ctxt = raw.Context(*args, **kws)
+        self.name = self._ctxt.name
 
         self._channels = {}
 

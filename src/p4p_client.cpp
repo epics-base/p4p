@@ -34,8 +34,10 @@ struct Context {
 
     pva::ChannelProvider::shared_pointer provider;
 
-    Context() {}
-    ~Context() { close(); }
+    char *name;
+
+    Context() :name(NULL) {}
+    ~Context() { close(); free(name); }
 
     void close();
 
@@ -455,6 +457,8 @@ int Context::py_init(PyObject *self, PyObject *args, PyObject *kws)
 
         if(!SELF.provider)
             throw std::logic_error("createProvider returns NULL");
+
+        SELF.name = strdup(pname);
 
         return 0;
     } CATCH()
@@ -1454,6 +1458,11 @@ static PyMethodDef Context_methods[] = {
     {NULL}
 };
 
+static PyMemberDef Context_members[] = {
+    {"name", T_STRING, offsetof(PyContext,I)+offsetof(Context, name), READONLY, "Provider name"},
+    {NULL}
+};
+
 template<>
 PyTypeObject PyContext::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -1546,6 +1555,7 @@ void p4p_client_register(PyObject *mod)
     PyContext::type.tp_init = &Context::py_init;
 
     PyContext::type.tp_methods = Context_methods;
+    PyContext::type.tp_members = Context_members;
 
     if(PyType_Ready(&PyContext::type))
         throw std::runtime_error("failed to initialize PyContext");

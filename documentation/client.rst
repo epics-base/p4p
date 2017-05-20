@@ -73,6 +73,8 @@ API Reference
 
 .. autoclass:: Context
 
+    .. autoattribute:: name
+
     .. automethod:: close
 
     .. automethod:: get
