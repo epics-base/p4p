@@ -151,7 +151,11 @@ API Reference
 
     .. automethod:: tolist
 
+    .. automethod:: items
+
     .. automethod:: getID
+
+    .. automethod:: type
 
     .. automethod:: get
 

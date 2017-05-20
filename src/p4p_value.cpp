@@ -859,12 +859,10 @@ PyMappingMethods P4PValue_mapping = {
 
 static PyMethodDef P4PValue_methods[] = {
     {"tolist", (PyCFunction)&P4PValue_toList, METH_VARARGS,
-     "tolist()\n"
-     "tolist(\"fld\")\n\n"
+     "tolist( [\"fld\"] )\n\n"
      "Recursively transform into a list of tuples."},
     {"items", (PyCFunction)&P4PValue_items, METH_VARARGS,
-     "items()\n"
-     "items(\"fld\")\n\n"
+     "items( [\"fld\"] )\n\n"
      "Transform into a list of tuples.  Not recursive"},
     {"select", (PyCFunction)&P4PValue_select, METH_VARARGS|METH_KEYWORDS,
      "pre-select/clear Union"},
@@ -873,8 +871,7 @@ static PyMethodDef P4PValue_methods[] = {
     {"getID", (PyCFunction)&P4PValue_id, METH_NOARGS,
      "Return Structure ID string"},
     {"type", (PyCFunction)&P4PValue_gettype, METH_VARARGS,
-     "type()\n"
-     "type(\"fld\")\n"
+     "type( [\"fld\"] )\n"
      "\n"
      ":param field str: None or the name of a sub-structure\n"
      ":returns: The :class:`~p4p.Type` describing this Value."},
