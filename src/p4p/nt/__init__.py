@@ -37,8 +37,8 @@ class NTMultiChannel(object):
     def buildType(valtype, extra=[]):
         """Build a Type
         
-        :param valtype str: A type code to be used with the 'value' field.  Must be an array
-        :param extra list: A list of tuples describing additional non-standard fields
+        :param str valtype: A type code to be used with the 'value' field.  Must be an array
+        :param list extra: A list of tuples describing additional non-standard fields
         :returns: A :py:class:`Type`
         """
         assert valtype[:1]=='a', 'valtype must be an array'
@@ -71,8 +71,8 @@ class NTTable(object):
     def buildType(columns=[], extra=[]):
         """Build a table
         
-        :param columns list: List of columns
-        :param extra list: A list of tuples describing additional non-standard fields
+        :param list columns: List of columns
+        :param list extra: A list of tuples describing additional non-standard fields
         :returns: A :py:class:`Type`
         """
         return Type(id="epics:nt/NTTable:1.0",
@@ -119,7 +119,7 @@ class NTTable(object):
                     del cols[L]
 
             try:
-                return Value(self.type, {
+                return self.Value(self.type, {
                     'labels': self.labels,
                     'value': cols,
                 })
@@ -151,3 +151,34 @@ class NTTable(object):
         for rval in izip(*cols):
             # zip together column names and row values
             yield OrderedDict(zip(lbl, rval))
+
+class NTURI(object):
+    @staticmethod
+    def buildType(args):
+        """Build NTURI
+
+        :param list args: A list of tuples of query argument name and type code.
+        """
+        return Type(id="epics:nt/NTURI:1.0", spec=[
+            ('scheme', 's'),
+            ('authority', 's'),
+            ('path', 's'),
+            ('query', ('s', None, args)),
+        ])
+    def __init__(self, args):
+        self.type = self.buildType(args)
+
+    def wrap(self, path, args, scheme='', authority=''):
+        return Value(self.type, {
+            'scheme':scheme,
+            'authority':authority,
+            'path':path,
+            'query': args,
+        })
+
+    _typeMap = {
+        float: 'd',
+        int: 'l',
+        bytes: 's',
+        unicode: 's',
+    }

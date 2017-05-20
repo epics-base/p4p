@@ -71,11 +71,11 @@ class NTScalar(object):
     def buildType(valtype, extra=[], display=False, control=False, valueAlarm=False):
         """Build a Type
         
-        :param valtype str: A type code to be used with the 'value' field.
-        :param extra list: A list of tuples describing additional non-standard fields
-        :param display bool: Include optional fields for display meta-data
-        :param control bool: Include optional fields for control meta-data
-        :param valueAlarm bool: Include optional fields for alarm level meta-data
+        :param str valtype: A type code to be used with the 'value' field.
+        :param list extra: A list of tuples describing additional non-standard fields
+        :param bool display: Include optional fields for display meta-data
+        :param bool control: Include optional fields for control meta-data
+        :param bool valueAlarm: Include optional fields for alarm level meta-data
         :returns: A :py:class:`Type`
         """
         isarray = valtype[:1]=='a'

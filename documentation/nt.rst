@@ -35,6 +35,20 @@ The value must be a callable which takes one argument,
 which is a :class:`~p4p.Value`.
 
 For example.
+A simplified version of the default NTScalar unwrapping (which preserves meta-data)
+would be. ::
+
+   >>> C=Context('pva', unwrap={"epics:nt/NTScalar:1.0":lambda V:V.value})
+   >>> C.get('pv:counter')
+   5
+
+Which extracts the 'value' field and discards all others.
+
+To unwrap NTTable as an iterator of :class:`OrderedDict`. ::
+
+   >>> C=Context('pva', unwrap={"epics:nt/NTTable:1.0":p4p.nt.NTTable.unwrap})
+   >>> for row in C.rpc('pv:name', ....):
+        print(row)
 
 API Reference
 -------------
@@ -52,6 +66,14 @@ API Reference
     .. automethod:: buildType
 
 .. autoclass:: NTTable
+
+    .. automethod:: buildType
+
+    .. automethod:: wrap
+
+    .. automethod:: unwrap
+
+.. autoclass:: NTURI
 
     .. automethod:: buildType
 

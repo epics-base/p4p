@@ -173,7 +173,7 @@ class NTURIDispatcher(RPCDispatcherBase):
 
     def getMethodNameArgs(self, request):
         # {'schema':'pva', 'path':'pvname', 'query':{'var':'val', ...}}
-        return request.path, dict(request.query.tolist())
+        return request.path, dict(request.query.items())
 
 # legecy for MASAR only
 # do not use in new code

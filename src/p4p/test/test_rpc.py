@@ -6,7 +6,7 @@ from ..wrapper import Value, Type
 from ..client.thread import Context
 from ..server import Server, installProvider, removeProvider
 from ..rpc import NTURIDispatcher, WorkQueue, rpc
-from ..nt import NTScalar
+from ..nt import NTScalar, NTURI
 
 class TestService(object):
    @rpc(NTScalar.buildType('d'))
@@ -58,41 +58,25 @@ class TestRPC(unittest.TestCase):
         self.assertIsNone(self._dispatch())
 
     def testAdd(self):
-        args = Value(Type([
-            ('schema', 's'),
-            ('path', 's'),
-            ('query', ('s', None, [
-                ('lhs', 'd'),
-                ('rhs', 'd'),
-            ])),
-        ]), {
-            'schema': 'pva',
-            'path': self.prefix+'add',
-            'query': {
-                'lhs': 1,
-                'rhs': 1,
-            },
-        })
+        args = NTURI([
+            ('lhs', 'd'),
+            ('rhs', 'd'),
+        ]).wrap(self.prefix+'add', {
+            'lhs': 1,
+            'rhs': 1,
+        }, scheme='pva')
         ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False), unwrap=False)
         sum = ctxt.rpc(self.prefix+'add', args)
         self.assertEqual(sum.value, 2.0)
 
     def testAdd3(self):
-        args = Value(Type([
-            ('schema', 's'),
-            ('path', 's'),
-            ('query', ('s', None, [
-                ('lhs', 'd'),
-                ('rhs', 'd'),
-            ])),
-        ]), {
-            'schema': 'pva',
-            'path': self.prefix+'add',
-            'query': {
-                'lhs': 1,
-                'rhs': 2,
-            },
-        })
+        args = NTURI([
+            ('lhs', 'd'),
+            ('rhs', 'd'),
+        ]).wrap(self.prefix+'add', {
+            'lhs': 1,
+            'rhs': 2,
+        }, scheme='pva')
         ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False), unwrap=False)
         sum = ctxt.rpc(self.prefix+'add', args)
         self.assertEqual(sum.value, 3.0)
