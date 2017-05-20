@@ -564,6 +564,46 @@ PyObject* P4PValue_str(PyObject *self)
     return NULL;
 }
 
+PyObject* P4PValue_repr(PyObject *self)
+{
+    TRY {
+        PyRef args(PyDict_New());
+        {
+            std::string id(SELF.V->getStructure()->getID());
+            PyRef S(PyUnicode_FromString(id.c_str()));
+            PyObject *X = Py_None;
+            if(!id.empty())
+                X = S.get();
+            if(PyDict_SetItemString(args.get(), "id", X))
+                return NULL;
+        }
+
+        pvd::PVFieldPtr val(SELF.V->getSubField("value"));
+        if(!val) {
+            val = SELF.V->getSubField(SELF.V->getFieldOffset()+1);
+        }
+
+        if(val) {
+            PyRef S(PyUnicode_FromString(val->getFullName().c_str()));
+            if(PyDict_SetItemString(args.get(), "name", S.get()))
+                return NULL;
+
+            PyRef V(SELF.fetchfld(val.get(), val->getField().get(), pvd::BitSetPtr(), true));
+            if(PyDict_SetItemString(args.get(), "val", V.get()))
+                return NULL;
+
+        } else {
+            if(PyDict_SetItemString(args.get(), "name", Py_None))
+                return NULL;
+            if(PyDict_SetItemString(args.get(), "val", Py_None))
+                return NULL;
+        }
+
+        PyRef fmt(PyUnicode_FromString("Value(id:%(id)s, %(name)s:%(val)s)"));
+        return PyUnicode_Format(fmt.get(), args.get());
+    }CATCH()
+    return NULL;
+}
 
 PyObject* P4PValue_toList(PyObject *self, PyObject *args)
 {
@@ -865,10 +905,13 @@ static PyMethodDef P4PValue_methods[] = {
      "items( [\"fld\"] )\n\n"
      "Transform into a list of tuples.  Not recursive"},
     {"select", (PyCFunction)&P4PValue_select, METH_VARARGS|METH_KEYWORDS,
+     "select(\"fld\", \"member\")\n"
      "pre-select/clear Union"},
     {"get", (PyCFunction)&P4PValue_get, METH_VARARGS,
+     "get(\"fld\", [default])\n"
      "Fetch a field value, or a default if it does not exist"},
     {"getID", (PyCFunction)&P4PValue_id, METH_NOARGS,
+     "getID()\n"
      "Return Structure ID string"},
     {"type", (PyCFunction)&P4PValue_gettype, METH_VARARGS,
      "type( [\"fld\"] )\n"
@@ -880,7 +923,7 @@ static PyMethodDef P4PValue_methods[] = {
      "changed(field) -> bool\n\n"
      "Test if field are marked as changed."},
     {"mark", (PyCFunction)&P4PValue_mark, METH_VARARGS|METH_KEYWORDS,
-     "mark(field, val=True)\n\n"
+     "mark(\"fld\", val=True)\n\n"
      "set/clear field as changed"},
     {"asSet", (PyCFunction)&P4PValue_asSet, METH_NOARGS,
      "asSet() -> set(['...'])\n\n"
@@ -891,7 +934,7 @@ static PyMethodDef P4PValue_methods[] = {
 template<>
 PyTypeObject P4PValue::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.Value",
+    "p4p.Value",
     sizeof(P4PValue),
 };
 
@@ -917,6 +960,7 @@ void p4p_value_register(PyObject *mod)
     P4PValue::type.tp_getattro = &P4PValue_getattr;
     P4PValue::type.tp_setattro = &P4PValue_setattr;
     P4PValue::type.tp_str = &P4PValue_str;
+    P4PValue::type.tp_repr = &P4PValue_repr;
 
     P4PValue::type.tp_as_mapping = &P4PValue_mapping;
 

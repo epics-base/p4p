@@ -293,6 +293,19 @@ class TestRawValue(unittest.TestCase):
         V = Value(_Type([('a', 'I')], id="foo"))
         self.assertEqual(V.getID(), "foo")
 
+    def testRepr(self):
+        V = Value(_Type([('a', 'I')]))
+        self.assertEqual(repr(V), 'Value(id:structure, a:0)')
+        
+        V = Value(_Type([('a', 'I'), ('value', 'd')]))
+        self.assertEqual(repr(V), 'Value(id:structure, value:0.0)')
+
+        V = Value(_Type([('a', 'I')], id='foo'))
+        self.assertEqual(repr(V), 'Value(id:foo, a:0)')
+        
+        V = Value(_Type([('a', 'I'), ('value', 'd')], id='foo'))
+        self.assertEqual(repr(V), 'Value(id:foo, value:0.0)')
+
     def testBitSet(self):
         A= _Value(_Type([
             ('x', 'i'),

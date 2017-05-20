@@ -21,8 +21,6 @@ def op_get(ctxt, args):
         if isinstance(val, Exception):
             ret = 1
             print(name, 'Error:', val)
-        elif isinstance(val, Value):
-            print(name, val.tolist())
         else:
             print(name, val)
     sys.exit(ret)
@@ -64,8 +62,6 @@ def op_monitor(ctxt, args):
             if isinstance(val, Exception):
                 ret = 1
                 print(name, 'Error:', val)
-            elif isinstance(val, Value):
-                print(name, val.tolist())
             else:
                 print(name, val)
         subs.append(ctxt.monitor(name, show, args.request))
