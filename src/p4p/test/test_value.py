@@ -137,6 +137,25 @@ class TestRawValue(unittest.TestCase):
         self.assertEqual(V['str']['a'], 1)
         self.assertEqual(V['str.a'], 1)
 
+        self.assertEqual(V.type().aspy(),
+            ('s', 'structure', [
+                ('ival', 'i'),
+                ('str', ('s', 'foo', [
+                    ('a', 'i'),
+                    ('b', 'i'),
+                ])),
+            ]),
+        )
+
+        self.assertEqual(V.type('str').aspy(),
+            ('s', 'foo', [
+                ('a', 'i'),
+                ('b', 'i'),
+            ]),
+        )
+
+        self.assertRaises(KeyError, V.type, 'invalid')
+
     def testVariantUnion(self):
         V = _Value(_Type([
             ('x', 'v'),

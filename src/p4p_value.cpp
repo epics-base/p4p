@@ -656,6 +656,31 @@ PyObject *P4PValue_id(PyObject *self)
     return NULL;
 }
 
+PyObject *P4PValue_gettype(PyObject *self, PyObject *args)
+{
+    TRY {
+        const char *name = NULL;
+        if(!PyArg_ParseTuple(args, "|z", &name))
+            return NULL;
+        pvd::StructureConstPtr T;
+        if(!name) {
+            T = SELF.V->getStructure();
+        } else {
+            pvd::PVFieldPtr F(SELF.V->getSubField(name));
+            if(!F)
+                return PyErr_Format(PyExc_KeyError, "No field %s", name);
+            pvd::FieldConstPtr FT(F->getField());
+            if(FT->getType()==pvd::structure) {
+                T = std::tr1::static_pointer_cast<const pvd::Structure>(FT);
+            } else {
+                return PyErr_Format(PyExc_KeyError, "Can't extract type of non-struct field %s", name);
+            }
+        }
+        return P4PType_wrap(P4PType_type, T);
+    }CATCH()
+    return NULL;
+}
+
 PyObject* P4PValue_changed(PyObject *self, PyObject *args, PyObject *kws)
 {
     static const char* names[] = {"field", NULL};
@@ -816,7 +841,13 @@ static PyMethodDef P4PValue_methods[] = {
     {"get", (PyCFunction)&P4PValue_get, METH_VARARGS,
      "Fetch a field value, or a default if it does not exist"},
     {"getID", (PyCFunction)&P4PValue_id, METH_NOARGS,
-     "Return Structure ID"},
+     "Return Structure ID string"},
+    {"type", (PyCFunction)&P4PValue_gettype, METH_VARARGS,
+     "type()\n"
+     "type(\"fld\")\n"
+     "\n"
+     ":param field str: None or the name of a sub-structure\n"
+     ":returns: The :class:`~p4p.Type` describing this Value."},
     // bitset
     {"changed", (PyCFunction)&P4PValue_changed, METH_VARARGS|METH_KEYWORDS,
      "changed(field) -> bool\n\n"
