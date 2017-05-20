@@ -26,6 +26,11 @@ class Server(object):
         self._T = None
         self.conf = self._S.conf
 
+    def __enter__(self):
+        return self
+    def __exit__(self, A, B, C):
+        self.stop()
+
     def start(self):
         "Start running the PVA server"
         if self._T is not None:

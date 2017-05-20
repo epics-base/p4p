@@ -9,11 +9,9 @@ from ..rpc import NTURIDispatcher, WorkQueue, rpc
 from ..nt import NTScalar, NTURI
 
 class TestService(object):
-   @rpc(NTScalar.buildType('d'))
+   @rpc(NTScalar('d'))
    def add(self, lhs, rhs):
-        return {
-            'value': float(lhs)+float(rhs),
-        }
+        return float(lhs)+float(rhs)
 
 
 class TestRPC(unittest.TestCase):

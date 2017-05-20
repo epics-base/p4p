@@ -133,10 +133,12 @@ class NTScalar(object):
         if isinstance(value, dict):
             return self.Value(self.type, value)
         else:
+            S, NS = divmod(time.time(), 1.0)
             return self.Value(self.type, {
                 'value': value,
                 'timeStamp': {
-                    'secondsPastEpoch': time.time(),
+                    'secondsPastEpoch': S,
+                    'nanoseconds': NS*1e9,
                 },
             })
 

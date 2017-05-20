@@ -7,6 +7,7 @@ try:
     from Queue import Queue, Full, Empty
 except ImportError:
     from queue import Queue, Full, Empty
+from threading import Thread
 
 __all__ = [
     'rpc',
@@ -32,7 +33,7 @@ def rpc(rtype=None):
         pass
     elif isinstance(type, (list, tuple)):
         rtype = Type(rtype)
-    elif hasattr(rtype, 'type'):
+    elif hasattr(rtype, 'type'): # eg. one of the NT* helper classes
         wrap = rtype.wrap
         rtype = rtype.type
     else:
@@ -42,9 +43,9 @@ def rpc(rtype=None):
         if wrap is not None:
             orig = fn
             @wraps(orig)
-            def wrapper(*args, **kws):
+            def wrapper2(*args, **kws):
                 return wrap(orig(*args, **kws))
-            fn = wrapper
+            fn = wrapper2
 
         fn._reply_Type = rtype
         return fn
@@ -62,8 +63,16 @@ class WorkQueue(object):
     def push_wait(self, callable):
         self._Q.put(callable)
     def interrupt(self):
+        """Break one call to handle()
+
+        eg. Call N times to break N threads.
+
+        This call blocks if the queue is full.
+        """
         self._Q.put(self._stopit)
     def handle(self):
+        """Process queued work until interrupt() is called
+        """
         while True:
             # TODO: Queue.get() (and anything using thread.allocate_lock
             #       ignores signals :(  so timeout periodically to allow delivery
@@ -187,3 +196,46 @@ class MASARDispatcher(RPCDispatcherBase):
         # all through a single PV, method name in request
         # {'function':'rpcname', 'name':['name', ...], 'value':['val', ...]}
         return request.function, dict(zip(request.get('name',[]), request.get('value',[])))
+
+def quickRPCServer(provider, prefix, target,
+                   maxsize=20,
+                   workers=1,
+                   useenv=True, conf=None):
+    """Run an RPC server in the current thread
+
+    Calls are handled sequentially, and always in the current thread, if workers=1 (the default).
+    If workers>1 then calls are handled concurrently by a pool of worker threads.
+    Requires NTURI style argument encoding.
+
+    :param str provider: A provider name.  Must be unique in this process.
+    :param str prefix: PV name prefix.  Along with method names, must be globally unique.
+    :param target: The object which is exporting methods.  (use the :func:`rpc` decorator)
+    :param int maxsize: Number of pending RPC calls to be queued.
+    :param int workers: Number of worker threads (default 1)
+    :param useenv: Passed to :class:`~p4p.server.Server`
+    :param conf: Passed to :class:`~p4p.server.Server`
+    """
+    from p4p.server import Server, installProvider, removeProvider
+    queue = WorkQueue(maxsize=maxsize)
+    installProvider(provider, NTURIDispatcher(queue, target=target, prefix=prefix))
+    try:
+        threads = []
+        server = Server(providers=provider, useenv=useenv, conf=conf)
+        server.start()
+        try:
+            for n in range(1,workers):
+                T = Thread(name='%s Worker %d'%(provider, n), target=queue.handle)
+                threads.append(T)
+                T.start()
+            # handle calls in the current thread until KeyboardInterrupt
+            queue.handle()
+        finally:
+            try:
+                for T in threads:
+                    queue.interrupt()
+                    T.join()
+            finally:
+                # we really need to do this or the process will hang on exit
+                server.stop()
+    finally:
+        removeProvider(provider)
