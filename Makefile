@@ -9,7 +9,7 @@ src_DEPEND_DIRS = configure
 
 include $(TOP)/configure/RULES_TOP
 
-UNINSTALL_DIRS += $(INSTALL_LOCATION)/python$(PY_VER)
+UNINSTALL_DIRS += $(wildcard $(INSTALL_LOCATION)/python*)
 
 # jump to a sub-directory where CONFIG_PY has been included
 # can't include CONFIG_PY here as it may not exist yet

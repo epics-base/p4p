@@ -1,5 +1,5 @@
 
-import logging
+import logging, sys
 _log = logging.getLogger(__name__)
 
 try:
@@ -180,5 +180,8 @@ class NTURI(object):
         float: 'd',
         int: 'l',
         bytes: 's',
-        unicode: 's',
     }
+    if sys.version_info>=(3,0):
+        _typeMap[str] = 's'
+    else:
+        _typeMap[unicode] = 's'
