@@ -569,12 +569,11 @@ PyObject* P4PValue_str(PyObject *self)
 }
 
 
-PyObject* P4PValue_toList(PyObject *self, PyObject *args, PyObject *kwds)
+PyObject* P4PValue_toList(PyObject *self, PyObject *args)
 {
     TRY {
-        const char *names[] = {"name", NULL};
         const char *name = NULL;
-        if(!PyArg_ParseTupleAndKeywords(args, kwds, "|z", (char**)names, &name))
+        if(!PyArg_ParseTuple(args, "|z", &name))
             return NULL;
 
         pvd::PVFieldPtr fld;
@@ -593,6 +592,35 @@ PyObject* P4PValue_toList(PyObject *self, PyObject *args, PyObject *kwds)
                              fld->getField().get(),
                              SELF.I,
                              true);
+
+    }CATCH()
+    return NULL;
+}
+
+
+PyObject* P4PValue_items(PyObject *self, PyObject *args)
+{
+    TRY {
+        const char *name = NULL;
+        if(!PyArg_ParseTuple(args, "|z", &name))
+            return NULL;
+
+        pvd::PVFieldPtr fld;
+        if(name)
+            fld = SELF.V->getSubField(name);
+        else
+            fld = SELF.V; // name==NULL converts entire structure
+
+        if(!fld) {
+            PyErr_SetString(PyExc_KeyError, name ? name : "<null>"); // should never actually be null
+            return NULL;
+        }
+
+        // return sub-struct as list of tuple
+        return SELF.fetchfld(fld.get(),
+                             fld->getField().get(),
+                             SELF.I,
+                             false);
 
     }CATCH()
     return NULL;
@@ -834,8 +862,14 @@ PyMappingMethods P4PValue_mapping = {
 };
 
 static PyMethodDef P4PValue_methods[] = {
-    {"tolist", (PyCFunction)&P4PValue_toList, METH_VARARGS|METH_KEYWORDS,
-     "Transform wrapped Structure into a list of tuples."},
+    {"tolist", (PyCFunction)&P4PValue_toList, METH_VARARGS,
+     "tolist()\n"
+     "tolist(\"fld\")\n\n"
+     "Recursively transform into a list of tuples."},
+    {"items", (PyCFunction)&P4PValue_items, METH_VARARGS,
+     "items()\n"
+     "items(\"fld\")\n\n"
+     "Transform into a list of tuples.  Not recursive"},
     {"select", (PyCFunction)&P4PValue_select, METH_VARARGS|METH_KEYWORDS,
      "pre-select/clear Union"},
     {"get", (PyCFunction)&P4PValue_get, METH_VARARGS,
