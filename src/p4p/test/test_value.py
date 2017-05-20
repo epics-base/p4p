@@ -93,6 +93,13 @@ class TestRawValue(unittest.TestCase):
         self.assertRaises(KeyError, V.__setitem__, 'foo', 5)
         self.assertRaises(AttributeError, setattr, V, 'foo', 5)
 
+    def testBadField(self):
+        T = _Type([
+            ('ival', 'i'),
+            ('dval', 'd'),
+            ('sval', 's'),
+        ])
+        self.assertRaises(KeyError, _Value, T, {'invalid':42})
 
     def testArray(self):
         V = _Value(_Type([

@@ -82,25 +82,19 @@ void Value::store_struct(pvd::PVStructure* fld,
                          PyObject *obj,
                          const pvd::BitSet::shared_pointer& bset)
 {
-    const pvd::StringArray& names(ftype->getFieldNames());
-    const pvd::FieldConstPtrArray& flds(ftype->getFields());
-    const pvd::PVFieldPtrArray& vals(fld->getPVFields());
-
-    size_t nfld = names.size();
-
-    for(size_t i=0; i<nfld; i++) {
-        PyRef name(PyUnicode_FromString(names[i].c_str()));
-
-        PyRef item(PyObject_GetItem(obj, name.get()), allownull());
-        if(!item.get()) {
-            assert(PyErr_Occurred());
-            if(!PyErr_ExceptionMatches(PyExc_KeyError))
-                throw std::runtime_error("XXX");
-            PyErr_Clear();
-            continue;
+    if(!PyDict_Check(obj)) {
+        throw std::runtime_error("Must assigned struct from dict");
+    }
+    Py_ssize_t n=0;
+    PyObject *K, *V;
+    while(PyDict_Next(obj, &n, &K, &V)) {
+        PyString key(K);
+        pvd::PVFieldPtr F(fld->getSubField(key.str()));
+        if(!F) {
+            PyErr_Format(PyExc_KeyError, "no sub-field %s", key.str().c_str());
+            throw std::runtime_error("not seen");
         }
-
-        storefld(vals[i].get(), flds[i].get(), item.get(), bset);
+        storefld(F.get(), F->getField().get(), V, bset);
     }
 }
 
