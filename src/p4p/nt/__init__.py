@@ -2,7 +2,13 @@
 import logging
 _log = logging.getLogger(__name__)
 
+try:
+    from itertools import izip
+except ImportError:
+    izip = zip
+
 import time
+from collections import OrderedDict
 from operator import itemgetter
 from ..wrapper import Type, Value
 from .common import timeStamp, alarm
@@ -90,7 +96,7 @@ class NTTable(object):
 
     def wrap(self, values):
         """Pack an iterable of dict into a Value
-        
+
         >>> T=NTTable([('A', 'ai'), ('B', 'as')])
         >>> V = T.wrap([
             {'A':42, 'B':'one'},
@@ -125,3 +131,23 @@ class NTTable(object):
                 _log.error("Columns")
             _log.exception("Failed to wrap: %s", values)
             raise
+
+    @staticmethod
+    def unwrap(value):
+        """Iterate an NTTable
+        
+        :returns: An iterator yielding an OrderedDict for each column
+        """
+        if len(value.labels)==0:
+            return
+
+        # build lists of column names, and value
+        lbl, cols = [], []
+        for cname, cval in value.value.items():
+            lbl.append(cname)
+            cols.append(cval)
+
+        # zip together column arrays to iterate over rows
+        for rval in izip(*cols):
+            # zip together column names and row values
+            yield OrderedDict(zip(lbl, rval))

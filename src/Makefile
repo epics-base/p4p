@@ -34,6 +34,7 @@ PY += p4p/test/__init__.py
 PY += p4p/test/test_type.py
 PY += p4p/test/test_value.py
 PY += p4p/test/test_client.py
+PY += p4p/test/test_nt.py
 PY += p4p/test/test_rpc.py
 
 include $(TOP)/configure/RULES

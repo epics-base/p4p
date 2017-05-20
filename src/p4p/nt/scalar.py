@@ -5,6 +5,15 @@ import numpy
 from ..wrapper import Type, Value
 from .common import alarm, timeStamp
 
+_doc = """
+Has additional attributes
+
+* .severity
+* .status
+* .timestamp
+* .raw_stamp
+"""
+
 class ntwrappercommon(object):
     raw = timestamp = None
     def _store(self, value):
@@ -22,18 +31,29 @@ class ntwrappercommon(object):
         return '%s %s'%(time.ctime(self.timestamp), V)
 
 class ntfloat(ntwrappercommon,float):
+    "Augmented float"+_doc
     pass
 
 class ntint(ntwrappercommon,int):
+    "Augmented int"+_doc
     pass
 
 class ntstr(ntwrappercommon,str):
+    "Augmented str"+_doc
     pass
 
 class ntnumericarray(ntwrappercommon,numpy.ndarray):
-    pass
+    "Augmented numpy.ndarray"+_doc
+
+    @classmethod
+    def build(klass, val):
+        assert len(val.shape)==1, val.shape
+        # clone
+        return klass(shape=val.shape, dtype=val.dtype, buffer=val.data,
+                     strides=val.strides)
 
 class ntstringarray(ntwrappercommon,list):
+    "Augmented list (of strings)"+_doc
     pass
 
 class NTScalar(object):
@@ -124,7 +144,7 @@ class NTScalar(object):
         int: ntint,
         float: ntfloat,
         str: ntstr,
-        numpy.ndarray: ntnumericarray,
+        numpy.ndarray: ntnumericarray.build,
         list: ntstringarray,
     }
 

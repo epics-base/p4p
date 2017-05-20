@@ -36,7 +36,8 @@ struct Value {
     PyObject *fetchfld(pvd::PVField *fld,
                        const pvd::Field *ftype,
                        const pvd::BitSet::shared_pointer& bset,
-                       bool unpackstruct);
+                       bool unpackstruct,
+                       bool unpackrecurse=true);
 };
 
 typedef PyClassWrapper<Value> P4PValue;
@@ -341,7 +342,8 @@ void Value::storefld(pvd::PVField* fld,
 PyObject *Value::fetchfld(pvd::PVField *fld,
                           const pvd::Field *ftype,
                           const pvd::BitSet::shared_pointer& bset,
-                          bool unpackstruct)
+                          bool unpackstruct,
+                          bool unpackrecurse)
 {
     switch(ftype->getType()) {
     case pvd::scalar: {
@@ -421,7 +423,7 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
             PyRef list(PyList_New(vals.size()));
 
             for(size_t i=0; i<vals.size(); i++) {
-                PyRef val(fetchfld(vals[i].get(), flds[i].get(), bset, unpackstruct));
+                PyRef val(fetchfld(vals[i].get(), flds[i].get(), bset, unpackrecurse));
 
                 PyRef item(Py_BuildValue("sO", names[i].c_str(), val.get()));
 
@@ -616,11 +618,11 @@ PyObject* P4PValue_items(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        // return sub-struct as list of tuple
+        // return sub-struct as list of tuple, not recursive
         return SELF.fetchfld(fld.get(),
                              fld->getField().get(),
                              SELF.I,
-                             false);
+                             true, false);
 
     }CATCH()
     return NULL;

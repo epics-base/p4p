@@ -47,6 +47,12 @@ class TestRawValue(unittest.TestCase):
             ('sval', u'hello'),
         ])
 
+        self.assertListEqual(V.items(), [
+            ('ival', 42),
+            ('dval', 4.2),
+            ('sval', u'hello'),
+        ])
+
         self.assertEqual(V.ival, 42)
         self.assertEqual(V.dval, 4.2)
         self.assertEqual(V.sval, u'hello')
