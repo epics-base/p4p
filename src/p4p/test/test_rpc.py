@@ -82,6 +82,7 @@ class TestRPC(unittest.TestCase):
 
 class TestProxy(unittest.TestCase):
     class MockContext(object):
+        name = 'fake'
         def rpc(self, *args, **kws):
             return args, kws
 
@@ -110,7 +111,7 @@ class TestProxy(unittest.TestCase):
         print(args, kws)
         self.assertEqual(args[0], 'pv:foo')
         self.assertListEqual(args[1].tolist(), [
-            ('scheme', u''),
+            ('scheme', u'fake'),
             ('authority', u''),
             ('path', u'pv:foo'),
             ('query', [('A', 4), ('B', u'one')])
@@ -124,7 +125,7 @@ class TestProxy(unittest.TestCase):
         print(args, kws)
         self.assertEqual(args[0], 'pv:foo')
         self.assertListEqual(args[1].tolist(), [
-            ('scheme', u''),
+            ('scheme', u'fake'),
             ('authority', u''),
             ('path', u'pv:foo'),
             ('query', [('A', 4), ('B', u'one')])
@@ -138,7 +139,7 @@ class TestProxy(unittest.TestCase):
         print(args, kws)
         self.assertEqual(args[0], 'pv:foo')
         self.assertListEqual(args[1].tolist(), [
-            ('scheme', u''),
+            ('scheme', u'fake'),
             ('authority', u''),
             ('path', u'pv:foo'),
             ('query', [('A', 4), ('B', u'')])
@@ -152,7 +153,7 @@ class TestProxy(unittest.TestCase):
         print(args, kws)
         self.assertEqual(args[0], 'pv:baz')
         self.assertListEqual(args[1].tolist(), [
-            ('scheme', u''),
+            ('scheme', u'fake'),
             ('authority', u''),
             ('path', u'pv:baz'),
             ('query', [('X', u'one'), ('Y', 2)])

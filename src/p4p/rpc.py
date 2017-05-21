@@ -260,10 +260,16 @@ class RPCProxyBase(object):
     """Base class for automatically generated proxy classes
     """
     context = None
+    "The Context provided on construction"
+    format = None
+    "The tuple/dict used to format ('%' operator) PV name strings."
     timeout = 3.0
-    scheme = ''
+    "Timeout of RPC calls in seconds"
     authority = ''
+    "Authority string sent with NTURI requests"
     throw = True
+    "Whether call errors raise an exception, or return it"
+    scheme = None # set to override automatic
 
 def _wrapMethod(K, V):
     pv, req = V._call_PV, V._call_Request
@@ -282,7 +288,7 @@ def _wrapMethod(K, V):
         pvname = pv%self.format
         pos = dict(zip(S.args[:len(args)], args))
         pos.update(kws)
-        uri = NT.wrap(pvname, pos, scheme=self.scheme, authority=self.authority)
+        uri = NT.wrap(pvname, pos, scheme=self.scheme or self.context.name, authority=self.authority)
         return self.context.rpc(pvname, uri, request=req, timeout=self.timeout, throw=self.throw)
 
     return mcall
@@ -291,14 +297,17 @@ def rpcproxy(spec):
     """Decorator to enable this class to proxy RPC client calls
     
     The decorator class constructor takes one additional arugment "context"
-    which should by a :class:`~p4p.client.thread.Context`.
+    which should by a :class:`~p4p.client.thread.Context`. ::
     
        @rpcproxy
        class MyProxy(object):
            @rpccall("%s:add")
            def add(lhs='d', rhs='d'):
                pass
+
+    The decorated class will by a sub-class of the provided class and :class:`RPCProxyBase`.
     """
+    # inject our ctor first so we don't have to worry about super() non-sense.
     def _proxyinit(self, context=None, format={}, **kws):
         assert context is not None, context
         self.context = context

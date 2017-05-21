@@ -64,6 +64,9 @@ This proxy must be associated with a Context. ::
     proxy = MyProxy(context=ctxt, format='pv:call')
     print proxy.add(1, 1)
 
+
+Decorated proxy class has two additional contructor arguments.
+
 API Reference
 -------------
 
@@ -74,6 +77,19 @@ API Reference
 .. autofunction:: rpccall
 
 .. autofunction:: quickRPCServer
+
+.. autoclass:: RPCProxyBase
+
+  :param Context context: The client :class:`~p4p.client.thread.Context` through which calls are made
+  :param format: A tuple or dict which is applied with the format '%' operator to the name strings given to :func:`rpccall`.
+
+  .. autoattribute:: context
+
+  .. autoattribute:: timeout
+
+  .. autoattribute:: authority
+
+  .. autoattribute:: throw
 
 .. autoclass:: NTURIDispatcher
 
