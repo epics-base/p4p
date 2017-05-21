@@ -1,5 +1,5 @@
 
-import time
+import time, sys
 import numpy
 
 from ..wrapper import Type, Value
@@ -13,6 +13,9 @@ Has additional attributes
 * .timestamp
 * .raw_stamp
 """
+
+if sys.version_info>=(3,0):
+    unicode = str
 
 class ntwrappercommon(object):
     raw = timestamp = None
@@ -38,7 +41,7 @@ class ntint(ntwrappercommon,int):
     "Augmented int"+_doc
     pass
 
-class ntstr(ntwrappercommon,str):
+class ntstr(ntwrappercommon,unicode):
     "Augmented str"+_doc
     pass
 
@@ -145,7 +148,7 @@ class NTScalar(object):
     typeMap = {
         int: ntint,
         float: ntfloat,
-        str: ntstr,
+        unicode: ntstr,
         numpy.ndarray: ntnumericarray.build,
         list: ntstringarray,
     }

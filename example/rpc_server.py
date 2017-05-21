@@ -18,6 +18,8 @@ test with
   $ eget -s example:echo -a value=2
   2
 
+or rpc_client.py
+
 """
 
 from __future__ import print_function
