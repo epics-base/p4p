@@ -6,9 +6,9 @@ Working with Value and Type
 Working with Type and Value
 ---------------------------
 
-:py:class:`Value` is initilized in two steps.
+:py:class:`Value` is initialized in two steps.
 First a :py:class:`Type` describing the data structure is created,
-the the Value container is build, and optionally initialized.
+then the Value container is build, and optionally initialized.
 
    >>> from p4p import Type, Value
    >>> T = Type([('value', 'i')])
@@ -118,7 +118,7 @@ A discriminating union is defined in the same manner.
 Assigning variant and union
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-As the preceeding example suggests, the rules for assigning values
+As the preceding example suggests, the rules for assigning values
 to variant and union fields can be surprising.
 
 The rules for assigning a variant are as follows:
@@ -137,8 +137,8 @@ The rules for assigning a discriminating union are as follows:
 
 * None - clears current value
 * ('field', val) - explicitly specify the union field name
-* val - If a union field has previously been selected, coearse assigned value
-* val - If no union field previously select, attempt magic selection and coearse.
+* val - If a union field has previously been selected, coerce assigned value
+* val - If no union field previously select, attempt magic selection and coerce.
 
 An Exception is thrown otherwise.
 

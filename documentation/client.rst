@@ -9,7 +9,7 @@ Most methods will block the calling thread until a return is available, or an er
 Usage
 -----
 
-Start by creating a client :py:class:`Context`.
+Start by creating a client :py:class:`Context`. ::
 
    >>> from p4p.client.thread import Context
    >>> Context.providers()
@@ -19,7 +19,7 @@ Start by creating a client :py:class:`Context`.
 Get/Put
 ^^^^^^^
 
-Get and Put operations can be performed on on single PVs or a list of PVs.
+Get and Put operations can be performed on on single PVs or a list of PVs. ::
 
    >>> V = ctxt.get('pv:name')
    >>> A, B = ctxt.get(['pv:1', 'pv:2'])
@@ -30,10 +30,10 @@ RPC
 ^^^
 
 The RPC operation is similar to get+put except that the argument value must already
-be a :py:class:`Value`.
+be a :py:class:`Value`. ::
 
-    >>> from p4p import Type, Value
-    >>> V = Value(Type([
+    from p4p import Type, Value
+    V = Value(Type([
         ('schema', 's'),
         ('path', 's'),
         ('query', ('s', None, [
@@ -48,20 +48,20 @@ be a :py:class:`Value`.
             'rhs': 2,
         },
     })
-    >>> result = ctxt.rpc(V)
+    result = ctxt.rpc(V)
 
 Monitor
 ^^^^^^^
 
 Unlike get/put/rpc, the :py:meth:`Context.monitor` method does not block.
 Instead it accepts a callback function which is called with each
-new :py:class:`Value`, or :py:class:`Exception`.
+new :py:class:`Value`, or :py:class:`Exception`. ::
 
-   >>> def cb(V):
+   def cb(V):
           print 'New value', V
-   >>> sub = ctxt.monitor('pv:name', cb)
-   >>> time.sleep(10) # arbitrary wait
-   >>> sub.close()
+   sub = ctxt.monitor('pv:name', cb)
+   time.sleep(10) # arbitrary wait
+   sub.close()
 
 The monitor method returns a :py:class:`Subscription` which has a close method
 to end the subscription.

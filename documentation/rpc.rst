@@ -48,7 +48,7 @@ Client Example
 
 Remote Procedure calls are make through the :meth:`~p4p.client.thread.Context.rpc` method of a :class:`~p4p.client.thread.Context`.
 To assist in encoding arguments, a proxy object can be created with the :func:`rpcproxy` decorator.
-A proxy for the preceeding example would be: ::
+A proxy for the preceding example would be: ::
 
     from p4p.rpc import rpcproxy, rpccall
     @rpcproxy
