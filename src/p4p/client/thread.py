@@ -1,7 +1,7 @@
 
 from __future__ import print_function
 
-import logging
+import logging, warnings
 _log = logging.getLogger(__name__)
 
 try:
@@ -151,6 +151,7 @@ class Context(object):
         if self._Q is None:
             Q = WorkQueue(maxsize=self._Qmax)
             T = threading.Thread(name='p4p Context worker', target=Q.handle)
+            T.daemon = True
             T.start()
             self._Q, self._T = Q, T
         return self._Q
@@ -166,6 +167,8 @@ class Context(object):
         self._ctxt.close()
 
     def __del__(self):
+        if self._Q is not None:
+            warnings.warn("%s collected without close()"%self.__class__)
         self.close()
 
     def __enter__(self):

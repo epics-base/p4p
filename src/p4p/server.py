@@ -1,5 +1,5 @@
 
-import logging
+import logging, warnings
 _log = logging.getLogger(__name__)
 
 from threading import Thread
@@ -30,12 +30,17 @@ class Server(object):
         return self
     def __exit__(self, A, B, C):
         self.stop()
+    def __del__(self):
+        if self._T is not None:
+            warnings.warn("%s collected while running"%self.__class__)
+        self.stop()
 
     def start(self):
         "Start running the PVA server"
         if self._T is not None:
             raise RuntimeError("Already running")
         self._T = Thread(target=self._S.run)
+        self._T.daemon = True
         _log.debug("Starting server thread")
         self._T.start()
 
@@ -46,5 +51,5 @@ class Server(object):
             _log.debug("Stopping server thread")
             self._S.stop()
             _log.debug("Joining server thread")
-            self._T.join()
+            T.join()
             _log.debug("Joined server thread")
