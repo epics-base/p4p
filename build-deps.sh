@@ -22,8 +22,8 @@ EPICS_BASE=$HOME/.source/epics-base
 EOF
 
 cat << EOF > pvAccessCPP/configure/RELEASE.local
-EPICS_BASE=$HOME/.source/epics-base
 PVDATA=$HOME/.source/pvDataCPP
+EPICS_BASE=$HOME/.source/epics-base
 EOF
 
 make -j2 -C epics-base

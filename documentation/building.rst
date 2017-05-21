@@ -49,6 +49,17 @@ Alternately, the full path of the interpreter can be used. ::
 
 For convenience PYTHON can also be set in configure/CONFIG_SITE
 
+Multiple Python Versions
+------------------------
+
+To build for multiple python versions it is necessary to do a partial clean before building
+another version.  This will not remove the final tree. ::
+
+    make PYTHON=python2.7
+    make PYTHON=python2.7 clean
+    make PYTHON=python3.4
+    make PYTHON=python3,4 clean
+
 Building EPICS dependencies
 ---------------------------
 
@@ -65,6 +76,12 @@ If the necessary EPICS modules are not present, then they may be built form sour
    make -C epics-base -j2
    make -C pvDataCPP -j2
    make -C pvAccessCPP -j2
+
+The ./build-deps.sh script in the source tree provides a working example.
+Be warned that this script is meant to be run in the travis-ci.org environment
+and is not meant to be run by end users.
+It will change files in your $HOME.
+
 
 CLI and unittests
 -----------------
