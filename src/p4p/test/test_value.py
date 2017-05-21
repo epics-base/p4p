@@ -119,7 +119,7 @@ class TestRawValue(unittest.TestCase):
     def testSubStruct(self):
         V = _Value(_Type([
             ('ival', 'i'),
-            ('str', ('s', 'foo', [
+            ('str', ('S', 'foo', [
                 ('a', 'i'),
                 ('b', 'i'),
             ])),
@@ -151,9 +151,9 @@ class TestRawValue(unittest.TestCase):
         self.assertEqual(V['str.a'], 1)
 
         self.assertEqual(V.type().aspy(),
-            ('s', 'structure', [
+            ('S', 'structure', [
                 ('ival', 'i'),
-                ('str', ('s', 'foo', [
+                ('str', ('S', 'foo', [
                     ('a', 'i'),
                     ('b', 'i'),
                 ])),
@@ -161,7 +161,7 @@ class TestRawValue(unittest.TestCase):
         )
 
         self.assertEqual(V.type('str').aspy(),
-            ('s', 'foo', [
+            ('S', 'foo', [
                 ('a', 'i'),
                 ('b', 'i'),
             ]),
@@ -201,7 +201,7 @@ class TestRawValue(unittest.TestCase):
 
     def testDisUnion(self):
         V = _Value(_Type([
-            ('x', ('u', 'x', [
+            ('x', ('U', 'x', [
                 ('a', 'i'),
                 ('b', 's'),
             ])),
@@ -231,7 +231,7 @@ class TestRawValue(unittest.TestCase):
     def testUnionArray(self):
         V = _Value(_Type([
             ('x', 'av'),
-            ('y', ('au', 'foo', [
+            ('y', ('aU', 'foo', [
                 ('a', 'i'),
                 ('b', 's'),
             ])),
@@ -338,7 +338,7 @@ class TestRawValue(unittest.TestCase):
         A= _Value(_Type([
             ('x', 'i'),
             ('y', 'i'),
-            ('z', ('s', None, [
+            ('z', ('S', None, [
                 ('a', 'i'),
                 ('b', 'i'),
             ])),

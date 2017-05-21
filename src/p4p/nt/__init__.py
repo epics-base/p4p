@@ -78,7 +78,7 @@ class NTTable(object):
         return Type(id="epics:nt/NTTable:1.0",
                     spec=[
             ('labels', 'as'),
-            ('value', ('s', None, columns)),
+            ('value', ('S', None, columns)),
             ('descriptor', 's'),
             ('alarm', alarm),
             ('timeStamp', timeStamp),
@@ -163,7 +163,7 @@ class NTURI(object):
             ('scheme', 's'),
             ('authority', 's'),
             ('path', 's'),
-            ('query', ('s', None, args)),
+            ('query', ('S', None, args)),
         ])
     def __init__(self, args):
         self.type = self.buildType(args)

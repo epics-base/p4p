@@ -61,8 +61,8 @@ L    u64
 f    f32
 d    f64
 v    variant
-u    union
-s    struct
+U    union
+S    struct
 ==== =======
 
 A :py:class:`Type` is build with a list of tuples,
@@ -79,7 +79,7 @@ sub-structures and discriminating union have a nested tuple to fully define the 
 
    >>> T = Type([
       ('value', 's'), # string
-      ('alarm', ('s', None, [
+      ('alarm', ('S', None, [
           ('severity', 'i'),
           ('status', 'i'),
           ('message', 's'),

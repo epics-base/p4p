@@ -15,7 +15,7 @@ class TestRawType(unittest.TestCase):
         T = _Type(spec=L)
 
         self.assertEqual(T.aspy(),
-                         ('s', 'structure', L))
+                         ('S', 'structure', L))
 
     def testScalarTest(self):
         L = [
@@ -36,12 +36,12 @@ class TestRawType(unittest.TestCase):
         T = _Type(spec=L, id='foo')
 
         self.assertEqual(T.aspy(),
-                         ('s', 'foo', L))
+                         ('S', 'foo', L))
 
     def testSubStruct(self):
         L = [
             ('a', 'i'),
-            ('X', ('s', 'bar', [
+            ('X', ('S', 'bar', [
                 ('m', 's'),
             ])),
             ('b', 'f'),
@@ -49,12 +49,12 @@ class TestRawType(unittest.TestCase):
         T = _Type(L)
 
         self.assertEqual(T.aspy(),
-                         ('s', 'structure', L))
+                         ('S', 'structure', L))
 
     def testStructArray(self):
         L = [
             ('a', 'i'),
-            ('X', ('as', 'bar', [
+            ('X', ('aS', 'bar', [
                 ('m', 's'),
             ])),
             ('b', 'f'),
@@ -62,12 +62,12 @@ class TestRawType(unittest.TestCase):
         T = _Type(L)
 
         self.assertEqual(T.aspy(),
-                         ('s', 'structure', L))
+                         ('S', 'structure', L))
 
     def testUnion(self):
         L = [
             ('a', 'i'),
-            ('X', ('u', 'bar', [
+            ('X', ('U', 'bar', [
                 ('m', 's'),
                 ('n', 'i'),
             ])),
@@ -76,12 +76,12 @@ class TestRawType(unittest.TestCase):
         T = _Type(L)
 
         self.assertEqual(T.aspy(),
-                         ('s', 'structure', L))
+                         ('S', 'structure', L))
 
     def testStructArray(self):
         L = [
             ('a', 'i'),
-            ('X', ('au', 'bar', [
+            ('X', ('aU', 'bar', [
                 ('m', 's'),
                 ('n', 'i'),
             ])),
@@ -90,7 +90,7 @@ class TestRawType(unittest.TestCase):
         T = _Type(L)
 
         self.assertEqual(T.aspy(),
-                         ('s', 'structure', L))
+                         ('S', 'structure', L))
 
     def testAll(self):
         L = [
@@ -120,19 +120,19 @@ class TestRawType(unittest.TestCase):
             ('af32', 'af'),
             ('af64', 'ad'),
             ('aany', 'av'),
-            ('sub', ('s', 'bar', [
+            ('sub', ('S', 'bar', [
                 ('m', 's'),
                 ('n', 'i'),
             ])),
-            ('asub', ('as', 'bar', [
+            ('asub', ('aS', 'bar', [
                 ('m', 's'),
                 ('n', 'i'),
             ])),
-            ('union', ('u', 'bar', [
+            ('union', ('U', 'bar', [
                 ('m', 's'),
                 ('n', 'i'),
             ])),
-            ('aunion', ('au', 'bar', [
+            ('aunion', ('aU', 'bar', [
                 ('m', 's'),
                 ('n', 'i'),
             ])),
@@ -141,7 +141,7 @@ class TestRawType(unittest.TestCase):
         T = _Type(L)
 
         self.assertEqual(T.aspy(),
-                         ('s', 'structure', L))
+                         ('S', 'structure', L))
 
     def testGC(self):
         T = _Type([('a', 'I')])

@@ -89,7 +89,7 @@ class NTScalar(object):
         ]
         if display and valtype not in '?su':
             F.extend([
-                ('display', ('s', None, [
+                ('display', ('S', None, [
                     ('limitLow', valtype[-1:]),
                     ('limitHigh', valtype[-1:]),
                     ('description', 's'),
@@ -99,7 +99,7 @@ class NTScalar(object):
             ])
         if control and valtype not in '?su':
             F.extend([
-                ('display', ('s', None, [
+                ('display', ('S', None, [
                     ('limitLow', valtype[-1:]),
                     ('limitHigh', valtype[-1:]),
                     ('minStep', valtype[-1:]),
@@ -107,7 +107,7 @@ class NTScalar(object):
             ])
         if valueAlarm and valtype not in '?su':
             F.extend([
-                ('valueAlarm', ('s', None, [
+                ('valueAlarm', ('S', None, [
                     ('active', '?'),
                     ('lowAlarmLimit', valtype[-1:]),
                     ('lowWarningLimit', valtype[-1:]),

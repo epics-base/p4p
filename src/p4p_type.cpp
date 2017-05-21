@@ -72,10 +72,10 @@ void py2struct_plain(pvd::FieldBuilderPtr& builder, const char *key, const char 
  *
  * [
  *   ('field', 'typename'),               # simple types
- *   ('field', ('s', 'name'|None, [...])  # sub-struct
- *   ('field', ('u', None, [...])),       # union
- *   ('field', ('as', 'name'|None, [...]) # sub-struct array
- *   ('field', ('au', None, [...])),      # union array
+ *   ('field', ('S', 'name'|None, [...])  # sub-struct
+ *   ('field', ('U', None, [...])),       # union
+ *   ('field', ('aS', 'name'|None, [...]) # sub-struct array
+ *   ('field', ('aU', None, [...])),      # union array
  * ]
  */
 void py2struct(pvd::FieldBuilderPtr& builder, PyObject *o)
@@ -118,16 +118,16 @@ void py2struct(pvd::FieldBuilderPtr& builder, PyObject *o)
                 throw std::runtime_error("XXX");
 
             if(tkey[0]=='a') {
-                if(tkey[1]=='s') {
+                if(tkey[1]=='s' || tkey[1]=='S') {
                     builder = builder->addNestedStructureArray(key);
-                } else if(tkey[1]=='u') {
+                } else if(tkey[1]=='u' || tkey[1]=='U') {
                     builder = builder->addNestedUnionArray(key);
                 } else {
                     throw std::runtime_error(SB()<<"Unknown spec \""<<tkey<<"\"");
                 }
-            } else if(tkey[0]=='s') {
+            } else if(tkey[0]=='s' || tkey[0]=='S') {
                 builder = builder->addNestedStructure(key);
-            } else if(tkey[0]=='u') {
+            } else if(tkey[0]=='u' || tkey[0]=='U') {
                 builder = builder->addNestedUnion(key);
             } else {
                 throw std::runtime_error(SB()<<"Unknown spec \""<<tkey<<"\"");
@@ -208,7 +208,7 @@ PyObject* struct2py(const pvd::StringArray& names,
 
             std::string id(S->getID());
 
-            value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "s",
+            value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "S",
                                       id.empty() ? NULL : id.c_str(),
                                       members.get()
                                       ));
@@ -222,7 +222,7 @@ PyObject* struct2py(const pvd::StringArray& names,
             PyRef members(struct2py(subnames, subflds));
 
             std::string id(S->getID()); // TODO: which ID?
-            value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "as",
+            value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "aS",
                                       id.empty() ? NULL : id.c_str(),
                                       members.get()
                                       ));
@@ -240,7 +240,7 @@ PyObject* struct2py(const pvd::StringArray& names,
                 PyRef members(struct2py(subnames, subflds));
 
                 std::string id(S->getID());
-                value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "u",
+                value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "U",
                                           id.empty() ? NULL : id.c_str(),
                                           members.get()
                                           ));
@@ -259,7 +259,7 @@ PyObject* struct2py(const pvd::StringArray& names,
                 PyRef members(struct2py(subnames, subflds));
 
                 std::string id(S->getID()); // TODO: which ID?
-                value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "au",
+                value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "aU",
                                           id.empty() ? NULL : id.c_str(),
                                           members.get()
                                           ));
@@ -295,7 +295,7 @@ PyObject* P4PType_aspy(PyObject *self) {
         PyRef list(struct2py(names, flds));
         std::string id(SELF->getID());
 
-        return Py_BuildValue("szO", "s",
+        return Py_BuildValue("szO", "S",
                              id.empty() ? NULL : id.c_str(),
                              list.get());
     } CATCH()
