@@ -46,7 +46,7 @@ class Server(object):
 
     def stop(self):
         "Stop the server and block until this is done"
-        T, self.T = self._T, None
+        T, self._T = self._T, None
         if T is not None:
             _log.debug("Stopping server thread")
             self._S.stop()

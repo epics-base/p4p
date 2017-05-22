@@ -53,7 +53,11 @@ class TestRPC(unittest.TestCase):
 
         removeProvider("TestRPC")
         gc.collect()
-        self.assertIsNone(self._dispatch())
+        D = self._dispatch()
+        if D is not None:
+            print("dispatcher lives!  referrers", gc.get_referrers(D))
+            print("referents", gc.get_referents(D))
+        self.assertIsNone(D)
 
     def testAdd(self):
         args = NTURI([
