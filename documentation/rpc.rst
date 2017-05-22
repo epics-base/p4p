@@ -61,7 +61,7 @@ This proxy must be associated with a Context. ::
 
     from p4p.client.thread import Context
     ctxt = Context('pva')
-    proxy = MyProxy(context=ctxt, format='pv:call')
+    proxy = MyProxy(context=ctxt, format='pv:call:')
     print proxy.add(1, 1)
 
 
