@@ -2,6 +2,8 @@
 import logging, warnings
 _log = logging.getLogger(__name__)
 
+import atexit
+
 from threading import Thread
 
 from ._p4p import (Server as _Server,
@@ -10,6 +12,8 @@ from ._p4p import (Server as _Server,
                    clearProviders,
                    RPCReply,
                    )
+
+atexit.register(clearProviders)
 
 class Server(object):
     """Server(conf=None, useenv=True, providers="")
