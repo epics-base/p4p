@@ -34,3 +34,16 @@ class Server(object):
         return self
     def __exit__(self, A, B, C):
         self.stop()
+
+    def conf(self):
+        """Return a dict() with the effective configuration this server is using.
+
+        Suitable to pass to another Server to duplicate this configuration,
+        or to a client Context to allow it to connect to this server.
+        """
+        pass
+
+    def stop(self):
+        """Force server to stop serving, and close connections to existing clients.
+        """
+        pass

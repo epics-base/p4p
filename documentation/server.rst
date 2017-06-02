@@ -70,7 +70,7 @@ API Reference
 
 .. autoclass:: Server
 
-    .. automethod:: start
+    .. automethod:: conf
 
     .. automethod:: stop
 

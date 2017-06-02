@@ -38,9 +38,6 @@ class Context(_Context):
         _all_contexts.discard(self)
 
     def disconnect(self, name):
-        """Drop the named channel from the channel cache.
-        The channel will be closed after any pending operations complete.
-        """
         self._channels.pop(name, None)
 
     def channel(self, name):

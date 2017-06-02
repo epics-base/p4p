@@ -87,6 +87,8 @@ API Reference
 
     .. automethod:: providers
 
+    .. automethod:: disconnect
+
     .. automethod:: set_debug
 
 .. autoclass:: Subscription

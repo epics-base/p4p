@@ -141,6 +141,12 @@ class Context(object):
         # lazy start threaded WorkQueue
         self._Q, self._T = None, None
 
+    def disconnect(self, name):
+        """Drop the named channel from the channel cache.
+        The channel will be closed after any pending operations complete.
+        """
+        pass
+
     def _dounwrap(self, val):
         fn = self._unwrap.get(val.getID())
         if fn:
