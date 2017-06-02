@@ -1,4 +1,6 @@
 
+#include <sstream>
+
 #include <stddef.h>
 
 #include <pv/serverContext.h>
@@ -17,6 +19,18 @@ struct Server {
     pva::ServerContext::shared_pointer server;
     bool started;
     Server() :started(false) {}
+    ~Server() {
+        TRACE("ServerContext use_count="<<server.use_count());
+        if(server && !server.unique()) {
+            std::ostringstream strm;
+            strm<<"Server Leaking ServerContext use_count="<<server.use_count();
+            PyErr_Warn(PyExc_UserWarning, strm.str().c_str());
+        }
+        {
+            PyUnlock U;
+            server.reset();
+        }
+    }
 };
 
 typedef PyClassWrapper<Server> P4PServer;
@@ -67,7 +81,12 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
 
         pva::ServerContext::shared_pointer S(pva::ServerContext::create(pva::ServerContext::Config()
                                                                         .config(SELF.conf)));
-
+        TRACE("ServerContext use_count="<<S.use_count());
+        if(!S.unique()) {
+            std::ostringstream strm;
+            strm<<"ServerContext not unique() after ctor use_count="<<S.use_count();
+            PyErr_Warn(PyExc_UserWarning, strm.str().c_str());
+        }
         SELF.server = S;
 
         return 0;
@@ -111,6 +130,7 @@ PyObject* P4PServer_stop(PyObject *self)
     TRY {
         if(SELF.server) {
             TRACE("SHUTDOWN");
+            PyUnlock U;
             SELF.server->shutdown();
         } else
             TRACE("SKIP");

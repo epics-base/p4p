@@ -27,33 +27,10 @@ class Server(object):
     """
     def __init__(self, *args, **kws):
         self._S = _Server(*args, **kws)
-        self._T = None
         self.conf = self._S.conf
+        self.stop = self._S.stop
 
     def __enter__(self):
         return self
     def __exit__(self, A, B, C):
         self.stop()
-    def __del__(self):
-        if self._T is not None:
-            warnings.warn("%s collected while running"%self.__class__)
-        self.stop()
-
-    def start(self):
-        "Start running the PVA server"
-        if self._T is not None:
-            raise RuntimeError("Already running")
-        self._T = Thread(target=self._S.run)
-        self._T.daemon = True
-        _log.debug("Starting server thread")
-        self._T.start()
-
-    def stop(self):
-        "Stop the server and block until this is done"
-        T, self._T = self._T, None
-        if T is not None:
-            _log.debug("Stopping server thread")
-            self._S.stop()
-            _log.debug("Joining server thread")
-            T.join()
-            _log.debug("Joined server thread")

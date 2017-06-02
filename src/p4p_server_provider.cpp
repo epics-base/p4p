@@ -27,7 +27,7 @@ struct PyServerProvider :
     POINTER_DEFINITIONS(PyServerProvider);
 
     virtual ~PyServerProvider() {
-        TRACE("Being destroyed\n");
+        TRACE("Being destroyed. provider obj="<<provider.ref.get()<<" refs="<<(provider.ref.get() ? Py_REFCNT(provider.ref.get()) : 0));
     }
 
     PyExternalRef provider;
