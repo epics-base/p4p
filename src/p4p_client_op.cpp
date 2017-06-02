@@ -27,6 +27,7 @@ void OpBase::call_cb(PyObject *obj)
         PyErr_Print();
         PyErr_Clear();
     }
+    cb.reset();
 }
 
 namespace {

@@ -297,14 +297,14 @@ class Context(object):
         ops = [None]*len(name)
 
         try:
-            for i,(name, value, req) in enumerate(izip(name, values, request)):
+            for i,(n, value, req) in enumerate(izip(name, values, request)):
                 if isinstance(value, (bytes, unicode)) and value[:1]=='{':
                     try:
                         value = json.loads(value)
                     except ValueError:
                         raise ValueError("Unable to interpret '%s' as json"%value)
 
-                ch = self._channel(name)
+                ch = self._channel(n)
 
                 # callback to build PVD Value from PY value
                 def vb(type, value=value, i=i):
