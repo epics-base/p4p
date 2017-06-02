@@ -135,8 +135,8 @@ class Context(object):
             raise ValueError("unwrap must be None, False, or dict, not %s"%unwrap)
         self._ctxt = raw.Context(*args, **kws)
         self.name = self._ctxt.name
-
-        self._channels = {}
+        self.disconnect = self._ctxt.disconnect
+        self._channel = self._ctxt.channel
 
         # lazy start threaded WorkQueue
         self._Q, self._T = None, None
@@ -163,7 +163,6 @@ class Context(object):
             self._Q.interrupt()
             self._T.join()
             self._Q, self._T = None, None
-        self._channels = None
         self._ctxt.close()
 
     def __del__(self):
@@ -175,13 +174,6 @@ class Context(object):
         return self
     def __exit__(self,A,B,C):
         self.close()
-
-    def _channel(self, name):
-        try:
-            return self._channels[name]
-        except KeyError:
-            self._channels[name] = ch = self._ctxt.channel(name)
-            return ch
 
     def get(self, name, request=None, timeout=5.0, throw=True):
         """Fetch current value of some number of PVs.
