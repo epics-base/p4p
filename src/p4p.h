@@ -180,7 +180,10 @@ void p4p_type_register(PyObject *mod);
 void p4p_value_register(PyObject *mod);
 void p4p_server_register(PyObject *mod);
 void p4p_array_register(PyObject *mod);
-void p4p_client_register(PyObject *mod);
+void p4p_client_context_register(PyObject *mod);
+void p4p_client_channel_register(PyObject *mod);
+void p4p_client_monitor_register(PyObject *mod);
+void p4p_client_op_register(PyObject *mod);
 
 extern struct PyMethodDef P4P_methods[];
 void p4p_server_provider_register(PyObject *mod);
@@ -204,6 +207,7 @@ PyObject *P4PValue_wrap(PyTypeObject *type,
                         const epics::pvData::PVStructure::shared_pointer&,
                         const epics::pvData::BitSet::shared_pointer& = epics::pvData::BitSet::shared_pointer());
 
+extern PyObject* P4PCancelled;
 
 template<class C>
 struct PyClassWrapper {

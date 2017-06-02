@@ -1,9 +1,15 @@
 from __future__ import print_function
 
-import unittest, random, weakref, gc, threading
+import unittest, sys, random, weakref, gc, threading
 
 from ..server import Server, installProvider, removeProvider
 from ..client.thread import Context
+
+def checkweak(O):
+    o = O()
+    if o is not None:
+        print('Live object', id(o), type(o), sys.getrefcount(o), gc.get_referrers(o))
+    return o
 
 class TestDummyProvider(unittest.TestCase):
     # will fail if anything is done to it.
@@ -11,6 +17,7 @@ class TestDummyProvider(unittest.TestCase):
         pass
 
     def test_install(self):
+        "Install and remove provider"
         D = self.Dummy()
         d = weakref.ref(D)
         installProvider("foo", D)
@@ -18,6 +25,22 @@ class TestDummyProvider(unittest.TestCase):
         removeProvider("foo")
         gc.collect()
         self.assertIsNone(d())
+
+    def test_server(self):
+        D = self.Dummy()
+        d = weakref.ref(D)
+        installProvider("foo", D)
+        try:
+            with Server(providers="foo") as S:
+                s = weakref.ref(S)
+        finally:
+            removeProvider("foo")
+        del D
+        del S
+        gc.collect()
+        self.assertIsNone(checkweak(d))
+        self.assertIsNone(checkweak(s))
+        
 
     def test_client(self):
         D = self.Dummy()
