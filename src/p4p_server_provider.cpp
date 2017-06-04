@@ -321,6 +321,7 @@ struct PyServerRPC : public PyServerCommon<pva::ChannelRPC>,
         PyLock L;
         if(active_reply) {
             active_reply->rpc.reset();
+            active_reply = NULL;
         }
         //TODO: notify in progress ops?
     }

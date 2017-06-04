@@ -73,7 +73,7 @@ class Subscription(object):
             _log.exception("Lost Subscription update: %s", E)
     def _handle(self, E):
         try:
-            if E is not None:
+            if E is not True:
                 self._cb(E)
                 return
             while True:
@@ -397,6 +397,12 @@ class Context(object):
         :param callable cb: Processing callback
         :param request: None or a Value to qualify this request
         :returns: a :py:class:`Subscription` instance
+
+        The callable will be invoked with one argument which is either.
+
+        * A Value
+        * A sub-class of Exception
+        * None when the subscription is complete, and more update will ever arrive.
         """
         R = self.Subscription(self, name, cb)
         ch = self._channel(name)
