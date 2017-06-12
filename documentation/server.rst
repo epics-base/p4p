@@ -47,10 +47,12 @@ Example RPC Provider
 
 See the :py:mod:`rpc` module for more functional RPC handling and dispatch.
 
->>> from p4p.nt import NTScalar
+>>> from p4p.nt import NTScalar, Value
+>>> from p4p.server import installProvider
 >>> class ExampleProvider(object):
+        Value = Value
         def __init__(self, myname):
-            self.name = name
+            self.name = myname
             # we 
             self.addret = NTScalar.buildType('d')
         def testChannel(self, name):
@@ -64,6 +66,8 @@ See the :py:mod:`rpc` module for more functional RPC handling and dispatch.
                 'value': float(request.query.lhs) + float(request.query.rhs),
             })
             response.done(reply=V)
+>>> example = ExampleProvider("example")
+>>> installProvider("example", example)
 
 API Reference
 -------------
