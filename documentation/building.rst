@@ -68,7 +68,7 @@ If the necessary EPICS modules are not present, then they may be built form sour
    git clone https://github.com/epics-base/epics-base.git
    git clone https://github.com/epics-base/pvDataCPP.git
    git clone https://github.com/epics-base/pvAccessCPP.git
-   cat <<EOF >  CONFIG_SITE.local
+   cat <<EOF >  RELEASE.local
    PVACCESS=$PWD/pvAccessCPP
    PVDATA=$PWD/pvDataCPP
    EPICS_BASE=$PWD/epics-base
