@@ -59,7 +59,7 @@ See the :py:mod:`rpc` module for more functional RPC handling and dispatch.
             return name==self.name
         def makeChannel(self, name, src):
             # we need no per-channel state, so re-use the provider as the channel
-            return self is name==self.name else None
+            return self if name==self.name else None
         def rpc(self, response, request):
             # Real scalable provider will do this from a worker thread
             V = Value(self.addret, {
