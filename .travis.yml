@@ -19,6 +19,8 @@ matrix:
   include:
   - python: "2.7"
     env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8
+  - python: "2.7"
+    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8 CMPLR=clang
   - python: "3.4"
     env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8
   - python: "2.7"
