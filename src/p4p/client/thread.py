@@ -242,10 +242,8 @@ class Context(object):
         finally:
             [op and op.cancel() for op in ops]
 
-        print('XYZ', self._unwrap, result)
         result = [self._dounwrap(R) for R in result]
 
-        print('XYZ', result)
         if singlepv:
             return result[0]
         else:

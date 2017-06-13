@@ -133,8 +133,13 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
             chan = SELF.provider->createChannel(chanName, pyreq);
         }
 
-        if(!chan)
+        if(!chan) {
             return PyErr_Format(PyExc_RuntimeError, "Failed to create channel '%s'", cname);
+        } else if(!chan.unique()) {
+            std::cerr<<"Provider "<<chan->getProvider()->getProviderName()
+                     <<" for "<<chan->getChannelName()
+                     <<" gives non-unique Channel.  use_count="<<chan.use_count()<<"\n";
+        }
 
         pychan->channel = chan;
 

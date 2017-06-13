@@ -226,7 +226,12 @@ PyObject *py_channel_rpc(PyObject *self, PyObject *args, PyObject *kws)
         reqop->cb.reset(cb, borrow());
         reqop->pvvalue = P4PValue_unwrap(val);
 
-        RPCOp::operation_t::shared_pointer op(SELF->channel->createChannelRPC(pyreq, pvReq));
+        RPCOp::operation_t::shared_pointer op;
+        {
+            PyUnlock U;
+            op = SELF->channel->createChannelRPC(pyreq, pvReq);
+        }
+
         if(!op) {
             Py_RETURN_NONE;
         } else if(!op.unique()) {
