@@ -674,12 +674,6 @@ static struct PyMethodDef PyServerRPC_methods[] = {
     {NULL}
 };
 
-template<>
-PyTypeObject PyServerRPC::Reply::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.RPCReply",
-    sizeof(PyServerRPC::Reply),
-};
 
 static struct PyMethodDef PyServerGet_methods[] = {
     {"done", (PyCFunction)PyServerGet::reply_done, METH_VARARGS|METH_KEYWORDS,
@@ -689,14 +683,21 @@ static struct PyMethodDef PyServerGet_methods[] = {
     {NULL}
 };
 
+} // namespace
+
+template<>
+PyTypeObject PyServerRPC::Reply::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "_p4p.RPCReply",
+    sizeof(PyServerRPC::Reply),
+};
+
 template<>
 PyTypeObject PyServerGet::Reply::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "_p4p.GetReply",
     sizeof(PyServerGet::Reply),
 };
-
-} // namespace
 
 struct PyMethodDef P4P_methods[] = {
     {"installProvider", (PyCFunction)p4p_add_provider, METH_VARARGS|METH_KEYWORDS,

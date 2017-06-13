@@ -343,14 +343,14 @@ int P4PType_clear(PyObject *self)
     return 0;
 }
 
+} // namespace
+
 template<>
 PyTypeObject P4PType::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "_p4p.Type",
     sizeof(P4PType),
 };
-
-} // namespace
 
 PyTypeObject* P4PType_type = &P4PType::type;
 
