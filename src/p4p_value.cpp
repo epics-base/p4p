@@ -931,13 +931,6 @@ static PyMethodDef P4PValue_methods[] = {
     {NULL}
 };
 
-template<>
-PyTypeObject P4PValue::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p.Value",
-    sizeof(P4PValue),
-};
-
 const char value_doc[] =     "Value(type, value=None)\n"
         "\n"
         "Structured value container. Supports dict-list and object-list access\n"
@@ -948,6 +941,13 @@ const char value_doc[] =     "Value(type, value=None)\n"
 
 
 } // namespace
+
+template<>
+PyTypeObject P4PValue::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "p4p.Value",
+    sizeof(P4PValue),
+};
 
 PyTypeObject* P4PValue_type = &P4PValue::type;
 

@@ -184,14 +184,14 @@ int P4PServer_clear(PyObject *self)
     return 0;
 }
 
+} // namespace
+
 template<>
 PyTypeObject P4PServer::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "p4p._p4p.Server",
     sizeof(P4PServer),
 };
-
-} // namespace
 
 void p4p_server_register(PyObject *mod)
 {

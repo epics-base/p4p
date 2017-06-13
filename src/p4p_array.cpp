@@ -15,14 +15,14 @@ namespace pvd = epics::pvData;
 
 typedef PyClassWrapper<array_type > P4PArray;
 
+} // namespace
+
 template<>
 PyTypeObject P4PArray::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "_p4p.Array",
     sizeof(P4PArray),
 };
-
-} // namespace
 
 PyTypeObject* P4PArray_type = &P4PArray::type;
 
