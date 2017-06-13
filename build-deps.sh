@@ -17,6 +17,21 @@ git clone --quiet --depth 5 --branch "$BRBASE" https://github.com/epics-base/epi
 git clone --quiet --depth 5 --branch "$BRPVD" https://github.com/epics-base/pvDataCPP.git pvDataCPP
 git clone --quiet --depth 5 --branch "$BRPVA" https://github.com/epics-base/pvAccessCPP.git pvAccessCPP
 
+EPICS_HOST_ARCH=`sh epics-base/startup/EpicsHostArch`
+
+case "$CMPLR" in
+clang)
+  echo "Host compiler is clang"
+  cat << EOF >> epics-base/configure/os/CONFIG_SITE.Common.$EPICS_HOST_ARCH
+GNU         = NO
+CMPLR_CLASS = clang
+CC          = clang
+CCC         = clang++
+EOF
+  ;;
+*) echo "Host compiler is default";;
+esac
+
 cat << EOF > pvDataCPP/configure/RELEASE.local
 EPICS_BASE=$HOME/.source/epics-base
 EOF
