@@ -124,7 +124,7 @@ void Value::store_union(pvd::PVUnion* fld,
     } else if(ftype->isVariant()) {
         // assign variant with plain value or wrapped Structure
 
-        if(PyObject_TypeCheck(obj, &P4PValue::type)) {
+        if(PyObject_TypeCheck(obj, P4PValue_type)) {
             fld->set(pvd::PVUnion::UNDEFINED_INDEX, P4PValue_unwrap(obj));
             return;
 
@@ -145,7 +145,7 @@ void Value::store_union(pvd::PVUnion* fld,
 
         U = fld->select(select);
 
-        if(PyObject_TypeCheck(val, &P4PValue::type)) {
+        if(PyObject_TypeCheck(val, P4PValue_type)) {
             pvd::PVStructure::shared_pointer V(P4PValue_unwrap(val));
             if(V->getField().get()==U->getField().get())
                 fld->set(V); // store exact

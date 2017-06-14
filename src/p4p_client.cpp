@@ -298,6 +298,31 @@ typedef PyClassWrapper<std::tr1::shared_ptr<Channel> > PyChannel;
 typedef PyClassWrapper<std::tr1::shared_ptr<OpBase> > PyOp;
 typedef PyClassWrapper<std::tr1::shared_ptr<MonitorOp> > PyMonitorOp;
 
+} // namespace
+
+template<>
+PyTypeObject PyContext::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "p4p._p4p.Context",
+    sizeof(PyContext),
+};
+
+template<>
+PyTypeObject PyChannel::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "p4p._p4p.Channel",
+    sizeof(PyChannel),
+};
+
+template<>
+PyTypeObject PyMonitorOp::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "p4p._p4p.Subscription",
+    sizeof(PyMonitorOp),
+};
+
+namespace {
+
 struct GetOp : public OpBase {
     POINTER_DEFINITIONS(GetOp);
 
@@ -1463,13 +1488,6 @@ static PyMemberDef Context_members[] = {
     {NULL}
 };
 
-template<>
-PyTypeObject PyContext::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.Context",
-    sizeof(PyContext),
-};
-
 static PyMethodDef Channel_methods[] = {
     {"getName", (PyCFunction)&Channel::py_name, METH_NOARGS,
      "Channel name (aka PV name)"},
@@ -1492,13 +1510,6 @@ static PyMethodDef Channel_methods[] = {
     {"close", (PyCFunction)&Channel::py_close, METH_NOARGS,
       "close()\n\nDispose of channel."},
     {NULL}
-};
-
-template<>
-PyTypeObject PyChannel::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.Channel",
-    sizeof(PyChannel),
 };
 
 static PyMethodDef OpBase_methods[] = {
@@ -1524,13 +1535,6 @@ static PyMethodDef PyMonitorOp_methods[] = {
     {"pop", (PyCFunction)&MonitorOp::py_pop, METH_NOARGS,
      "Pull an entry from the subscription queue.  return None if empty"},
     {NULL}
-};
-
-template<>
-PyTypeObject PyMonitorOp::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.Subscription",
-    sizeof(PyMonitorOp),
 };
 
 void unfactory()
