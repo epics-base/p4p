@@ -17,6 +17,10 @@ git clone --quiet --depth 5 --branch "$BRBASE" https://github.com/epics-base/epi
 git clone --quiet --depth 5 --branch "$BRPVD" https://github.com/mdavidsaver/pvDataCPP.git pvDataCPP
 git clone --quiet --depth 5 --branch "$BRPVA" https://github.com/mdavidsaver/pvAccessCPP.git pvAccessCPP
 
+(cd epics-base && git log -n1 )
+(cd pvDataCPP && git log -n1 )
+(cd pvAccessCPP && git log -n1 )
+
 EPICS_HOST_ARCH=`sh epics-base/startup/EpicsHostArch`
 
 case "$CMPLR" in
@@ -28,8 +32,16 @@ CMPLR_CLASS = clang
 CC          = clang
 CCC         = clang++
 EOF
+
+  # hack
+  sed -i -e 's/CMPLR_CLASS = gcc/CMPLR_CLASS = clang/' epics-base/configure/CONFIG.gnuCommon
+
+  clang --version
   ;;
-*) echo "Host compiler is default";;
+*)
+  echo "Host compiler is default"
+  gcc --version
+  ;;
 esac
 
 cat << EOF > pvDataCPP/configure/RELEASE.local
