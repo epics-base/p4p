@@ -4,6 +4,14 @@
 #include <time.h>
 #include <stddef.h>
 
+#ifndef CLOCK_MONOTONIC_COARSE
+#  ifdef CLOCK_MONOTONIC
+#    define CLOCK_MONOTONIC_COARSE CLOCK_MONOTONIC
+#  else
+#    define CLOCK_MONOTONIC_COARSE CLOCK_REALTIME
+#  endif
+#endif
+
 #include <pv/serverContext.h>
 
 #include "p4p.h"
