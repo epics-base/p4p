@@ -269,7 +269,7 @@ struct PyServerRPC : public PyServerCommon<pva::ChannelRPC>,
 
     PyServerRPC(const PyServerChannel::shared_pointer& c,
                 const pvd::PVStructure::shared_pointer& pvR,
-                const typename base_type::requester_type::shared_pointer& r) :base_type(c, pvR, r), active_reply(0) {}
+                const base_type::requester_type::shared_pointer& r) :base_type(c, pvR, r), active_reply(0) {}
     virtual ~PyServerRPC() {TRACE("dtor");}
 
     virtual void request(pvd::PVStructure::shared_pointer const & pvArgument)
