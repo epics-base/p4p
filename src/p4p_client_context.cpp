@@ -252,13 +252,6 @@ static PyMemberDef Context_members[] = {
     {NULL}
 };
 
-template<>
-PyTypeObject PyContext::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.Context",
-    sizeof(PyContext),
-};
-
 
 void unfactory()
 {
@@ -267,6 +260,13 @@ void unfactory()
 }
 
 } // namespace
+
+template<>
+PyTypeObject PyContext::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "p4p._p4p.Context",
+    sizeof(PyContext),
+};
 
 void p4p_client_context_register(PyObject *mod)
 {

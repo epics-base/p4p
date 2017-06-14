@@ -261,6 +261,7 @@ struct PyServerRPC : public PyServerCommon<pva::ChannelRPC>,
             }
         }
     };
+    static PyTypeObject *ReplyData_type;
 
     typedef PyClassWrapper<ReplyData> Reply;
     // active_reply should be cleared when Reply::rpc is cleared
@@ -288,7 +289,7 @@ struct PyServerRPC : public PyServerCommon<pva::ChannelRPC>,
 
             PyRef args(PyTuple_New(0));
 
-            PyRef rep(Reply::type.tp_new(&Reply::type, args.get(), 0));
+            PyRef rep(ReplyData_type->tp_new(ReplyData_type, args.get(), 0));
 
             active_reply = &Reply::unwrap(rep.get());
             active_reply->rpc = shared_from_this();
@@ -388,6 +389,20 @@ struct PyServerRPC : public PyServerCommon<pva::ChannelRPC>,
         return NULL;
     }
 };
+
+} // namespace
+
+
+template<>
+PyTypeObject PyServerRPC::Reply::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "_p4p.RPCReply",
+    sizeof(PyServerRPC::Reply),
+};
+
+namespace {
+
+PyTypeObject *PyServerRPC::ReplyData_type = &PyServerRPC::Reply::type;
 
 /*
 struct PyServerGet : public PyServerCommon<pva::ChannelGet>,
@@ -698,13 +713,6 @@ static struct PyMethodDef PyServerGet_methods[] = {
 */
 
 } // namespace
-
-template<>
-PyTypeObject PyServerRPC::Reply::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.RPCReply",
-    sizeof(PyServerRPC::Reply),
-};
 
 /*
 template<>

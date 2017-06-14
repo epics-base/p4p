@@ -78,14 +78,14 @@ static PyMethodDef OpBase_methods[] = {
     {NULL}
 };
 
+} // namespace
+
 template<>
 PyTypeObject PyOp::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "p4p._p4p.Operation",
     sizeof(PyOp),
 };
-
-} // namespace
 
 void p4p_client_op_register(PyObject *mod)
 {

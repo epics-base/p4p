@@ -223,14 +223,14 @@ static PyMethodDef PyMonitorOp_methods[] = {
     {NULL}
 };
 
+} // namespace
+
 template<>
 PyTypeObject PyMonitorOp::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "p4p._p4p.Subscription",
     sizeof(PyMonitorOp),
 };
-
-} // namespace
 
 void p4p_client_monitor_register(PyObject *mod)
 {

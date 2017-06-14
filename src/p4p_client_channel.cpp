@@ -355,14 +355,14 @@ static PyMethodDef Channel_methods[] = {
     {NULL}
 };
 
+} // namespace
+
 template<>
 PyTypeObject PyChannel::type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "p4p._p4p.Channel",
     sizeof(PyChannel),
 };
-
-} // namespace
 
 void p4p_client_channel_register(PyObject *mod)
 {
