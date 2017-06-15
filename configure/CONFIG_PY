@@ -34,11 +34,20 @@ endif
 
 PY_INSTALL_DIR = $(INSTALL_LOCATION)/python$(PY_LD_VER)/$(T_A)
 
+ifneq ($(PYMODULE),NO)
+
 # Python loadables have no prefix (eg 'pymod.so')
 # and are installed alongsize .py files
 LOADABLE_SHRLIB_PREFIX =
-ifneq ($(PYMODULE),NO)
+
 INSTALL_SHRLIB = $(PY_INSTALL_DIR)
+
+ifeq ($(OS_CLASS),OS_CLASS)
+# need -undefined dynamic_lookup
+LOADABLE_SHRLIB_LDFLAGS = -bundle -flat_namespace -undefined dynamic_lookup
+LOADABLE_SHRLIB_SUFFIX = .so
+endif
+
 endif
 
 endif
