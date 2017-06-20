@@ -122,7 +122,6 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
         PyTypeObject *chanklass = (PyTypeObject*)klass.get();
 
         Channel::shared_pointer pychan(new Channel);
-        Channel::Req::shared_pointer pyreq(new Channel::Req(pychan));
 
         pva::Channel::shared_pointer chan;
 
@@ -130,7 +129,7 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
 
         {
             PyUnlock U;
-            chan = SELF.provider->createChannel(chanName, pyreq);
+            chan = SELF.provider->createChannel(chanName);
         }
 
         if(!chan) {

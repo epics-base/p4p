@@ -10,19 +10,6 @@ struct Channel {
 
     ~Channel();
 
-    struct Req : public epics::pvAccess::ChannelRequester {
-        POINTER_DEFINITIONS(Req);
-
-        Channel::weak_pointer owner;
-        Req(const Channel::shared_pointer& o) : owner(o) {}
-        virtual ~Req() {}
-
-        virtual std::string getRequesterName() { return "p4p.Channel"; }
-
-        virtual void channelCreated(const epics::pvData::Status& status, epics::pvAccess::Channel::shared_pointer const & channel);
-        virtual void channelStateChange(epics::pvAccess::Channel::shared_pointer const & channel, epics::pvAccess::Channel::ConnectionState connectionState);
-    };
-
     epics::pvAccess::Channel::shared_pointer channel;
 };
 

@@ -32,24 +32,6 @@ Channel::~Channel()
     }
 }
 
-void Channel::Req::channelCreated(const pvd::Status& status, pva::Channel::shared_pointer const & channel)
-{
-    //TODO: can/do client contexts signal any errors here?
-    TRACE(channel->getChannelName()<<" "<<status);
-    if(!status.isOK()) {
-        std::cout<<"Warning: unexpected in "<<__FUNCTION__<<" "<<status<<"\n";
-    }
-    (void)channel;
-}
-
-void Channel::Req::channelStateChange(pva::Channel::shared_pointer const & channel, pva::Channel::ConnectionState connectionState)
-{
-    Channel::shared_pointer op(owner.lock());
-    if(!op)
-        return;
-    TRACE(channel->getChannelName()<<" "<<connectionState);
-}
-
 namespace {
 
 #define TRY PyChannel::reference_type SELF = PyChannel::unwrap(self); try
