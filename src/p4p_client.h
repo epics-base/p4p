@@ -42,6 +42,7 @@ struct MonitorOp {
     ~MonitorOp();
 
     operation_t::shared_pointer op;
+    requester_t::shared_pointer req;
 
     /** error/non-empty callback
      * Called with one of:
@@ -107,6 +108,7 @@ struct GetOp : public OpBase {
     };
 
     operation_t::shared_pointer op;
+    requester_t::shared_pointer req;
 
     GetOp() {}
     virtual ~GetOp() {}
@@ -148,6 +150,7 @@ struct PutOp : public OpBase {
     };
 
     operation_t::shared_pointer op;
+    requester_t::shared_pointer req;
 
     PutOp() {}
     virtual ~PutOp() {}
@@ -182,6 +185,7 @@ struct RPCOp : public OpBase {
     };
 
     operation_t::shared_pointer op;
+    requester_t::shared_pointer req;
     // sent once the network op may have gone out.
     // the point at which we can't retry safely
     bool sent;

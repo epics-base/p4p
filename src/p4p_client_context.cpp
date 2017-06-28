@@ -86,12 +86,7 @@ int Context::py_init(PyObject *self, PyObject *args, PyObject *kws)
 
         // we create our own provider.
         // we are greedy and don't want to share (also we can destroy channels at will)
-#if 0
-        // No way to apply custom config :P
-        SELF.provider = pva::getChannelProviderRegistry()->createProvider(pname);
-#else
-        SELF.provider = pva::getChannelProviderRegistry()->createProvider(pname, B.build());
-#endif
+        SELF.provider = pva::ChannelProviderRegistry::clients()->createProvider(pname, B.build());
 
         TRACE("Context init");
 
@@ -176,7 +171,7 @@ PyObject *Context::py_close(PyObject *self)
 PyObject*  Context::py_providers(PyObject *junk)
 {
     try {
-        std::auto_ptr<pva::ChannelProviderRegistry::stringVector_t> names(pva::getChannelProviderRegistry()->getProviderNames());
+        std::auto_ptr<pva::ChannelProviderRegistry::stringVector_t> names(pva::ChannelProviderRegistry::clients()->getProviderNames());
 
         if(!names.get())
             return PyErr_Format(PyExc_RuntimeError, "Unable for fetch provider names!?!");

@@ -102,6 +102,7 @@ PyObject *py_channel_get(PyObject *self, PyObject *args, PyObject *kws)
 
         GetOp::shared_pointer reqop(new GetOp);
         GetOp::Req::shared_pointer pyreq(new GetOp::Req(reqop));
+        reqop->req = pyreq;
         pvd::PVStructure::shared_pointer pvReq(buildRequest(req));
 
         reqop->cb.reset(cb, borrow());
@@ -155,6 +156,7 @@ PyObject *py_channel_put(PyObject *self, PyObject *args, PyObject *kws)
 
         PutOp::shared_pointer reqop(new PutOp);
         PutOp::Req::shared_pointer pyreq(new PutOp::Req(reqop));
+        reqop->req = pyreq;
         pvd::PVStructure::shared_pointer pvReq(buildRequest(req));
 
         reqop->cb.reset(cb, borrow());
@@ -203,6 +205,7 @@ PyObject *py_channel_rpc(PyObject *self, PyObject *args, PyObject *kws)
 
         RPCOp::shared_pointer reqop(new RPCOp);
         RPCOp::Req::shared_pointer pyreq(new RPCOp::Req(reqop));
+        reqop->req = pyreq;
         pvd::PVStructure::shared_pointer pvReq(buildRequest(req));
 
         reqop->cb.reset(cb, borrow());
@@ -256,6 +259,7 @@ PyObject *py_channel_monitor(PyObject *self, PyObject *args, PyObject *kws)
 
         MonitorOp::shared_pointer reqop(new MonitorOp);
         MonitorOp::Req::shared_pointer pyreq(new MonitorOp::Req(reqop));
+        reqop->req = pyreq;
         pvd::PVStructure::shared_pointer pvReq(buildRequest(req));
 
         reqop->event.reset(cb, borrow());

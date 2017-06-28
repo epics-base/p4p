@@ -166,7 +166,7 @@ PyObject *py_monitor_pop(PyObject *self)
         }
         try {
 
-            pvd::PVStructure::shared_pointer& E = elem->pvStructurePtr;
+            const pvd::PVStructure::shared_pointer& E = elem->pvStructurePtr;
 
             pvd::PVStructure::shared_pointer V(pvd::getPVDataCreate()->createPVStructure(E->getStructure()));
             V->copyUnchecked(*E);
