@@ -18,16 +18,16 @@ script:
 matrix:
   include:
   - python: "2.7"
-    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8
+    env: BRBASE=3.16 BRPVD=master BRPVA=devel PROF=deb8
   - python: "2.7"
-    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8 CMPLR=clang
+    env: BRBASE=3.16 BRPVD=master BRPVA=devel PROF=deb8 CMPLR=clang
   - python: "3.4"
-    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8
+    env: BRBASE=3.16 BRPVD=master BRPVA=devel PROF=deb8
   - python: "3.6"
-    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9
+    env: BRBASE=3.16 BRPVD=master BRPVA=devel PROF=deb9
   - python: "2.7"
-    env: BRBASE=3.15 BRPVD=master BRPVA=master PROF=deb8
+    env: BRBASE=3.15 BRPVD=master BRPVA=devel PROF=deb8
   - python: "2.7"
-    env: BRBASE=3.14 BRPVD=master BRPVA=master PROF=deb8
+    env: BRBASE=3.14 BRPVD=master BRPVA=devel PROF=deb8
   - python: "2.7"
-    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9
+    env: BRBASE=3.16 BRPVD=master BRPVA=devel PROF=deb9
