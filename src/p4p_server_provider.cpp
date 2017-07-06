@@ -198,20 +198,8 @@ struct PyServerChannel :
 
     virtual std::tr1::shared_ptr<pva::ChannelProvider> getProvider() { return provider; }
     virtual std::string getRemoteAddress() { return requester->getRequesterName(); }
-    virtual ConnectionState getConnectionState() { return pva::Channel::CONNECTED; }
     virtual std::string getChannelName() { return name; }
     virtual std::tr1::shared_ptr<pva::ChannelRequester> getChannelRequester() { return requester; }
-
-    virtual void getField(pva::GetFieldRequester::shared_pointer const & requester,std::string const & subField)
-    {
-        requester->getDone(pvd::Status(pvd::Status::STATUSTYPE_FATAL, "Not implemented"),
-                           pvd::FieldConstPtr());
-    }
-
-    virtual pva::AccessRights getAccessRights(epics::pvData::PVField::shared_pointer const & pvField)
-    {
-        return pva::readWrite;
-    }
 
     virtual pva::ChannelRPC::shared_pointer createChannelRPC(
             pva::ChannelRPCRequester::shared_pointer const & channelRPCRequester,
