@@ -99,7 +99,7 @@ class TestRPCProvider(TestRPCFull):
     """end to end w/o network
     """
     runserver = False
-    provider = 'TestRPC'
+    provider = 'server:TestRPC'
     getconfig = lambda self:{}
 
 class TestProxy(unittest.TestCase):

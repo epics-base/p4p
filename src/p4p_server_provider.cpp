@@ -621,7 +621,7 @@ PyObject* p4p_add_provider(PyObject *junk, PyObject *args, PyObject *kwds)
         P->provider.swap(handler);
         P->provider_name = name;
 
-        pva::registerChannelProviderFactory(P);
+        pva::ChannelProviderRegistry::servers()->add(P);
 
         (*pyproviders)[name] = P;
         TRACE("name="<<name<<" "<<P.use_count());
@@ -647,7 +647,7 @@ PyObject* p4p_remove_provider(PyObject *junk, PyObject *args, PyObject *kwds)
         if(it==pyproviders->end())
             Py_RETURN_FALSE;
 
-        pva::unregisterChannelProviderFactory(it->second);
+        pva::ChannelProviderRegistry::servers()->remove(it->second);
 
         TRACE("name="<<name<<" "<<it->second.use_count());
         pyproviders->erase(it);
@@ -669,7 +669,7 @@ PyObject* p4p_remove_all(PyObject *junk, PyObject *args, PyObject *kwds)
             std::auto_ptr<pyproviders_t> P(pyproviders);
             pyproviders = NULL;
             for(pyproviders_t::const_iterator it = P->begin(); it!=P->end(); ++it) {
-                pva::unregisterChannelProviderFactory(it->second);
+                pva::ChannelProviderRegistry::servers()->remove(it->second);
             }
         }
 

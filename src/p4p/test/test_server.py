@@ -49,7 +49,7 @@ class TestDummyProvider(unittest.TestCase):
         del D
 
         try:
-            with Context('foo'):
+            with Context('server:foo'):
 
                 removeProvider("foo")
                 gc.collect()
