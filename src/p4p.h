@@ -164,9 +164,9 @@ struct PyExternalRef {
 #endif
 
 #if PY_MAJOR_VERSION >= 3
-#define PyMOD(NAME) PyMODINIT_FUNC PyInit_##NAME (void)
+#define PyMOD(NAME) void PyInit_##NAME (void)
 #else
-#define PyMOD(NAME) PyMODINIT_FUNC init##NAME (void)
+#define PyMOD(NAME) void init##NAME (void)
 #endif
 
 #if PY_MAJOR_VERSION < 3

@@ -3,6 +3,10 @@
 
 #include "p4p.h"
 
+// we only need to export the module init function
+#define epicsExportSharedSymbols
+#include <shareLib.h>
+
 //TODO: drop support for numpy 1.6 (found in debian <=7)
 //#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #define PY_ARRAY_UNIQUE_SYMBOL P4P_PyArray_API
@@ -19,6 +23,10 @@ static struct PyModuleDef p4pymodule = {
     P4P_methods,
 };
 #endif
+
+extern "C" {
+epicsShareFunc PyMOD(_p4p);
+}
 
 PyMOD(_p4p)
 {
