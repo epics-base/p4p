@@ -176,17 +176,17 @@ PyObject *Context::py_close(PyObject *self)
 PyObject*  Context::py_providers(PyObject *junk)
 {
     try {
-        std::auto_ptr<pva::ChannelProviderRegistry::stringVector_t> names(pva::ChannelProviderRegistry::clients()->getProviderNames());
+        pva::ChannelProviderRegistry::provider_name_set names;
+        pva::ChannelProviderRegistry::clients()->getProviderNames(names);
 
-        if(!names.get())
-            return PyErr_Format(PyExc_RuntimeError, "Unable for fetch provider names!?!");
+        PyRef ret(PyList_New(names.size()));
 
-        PyRef ret(PyList_New(names->size()));
+        size_t i=0;
+        for(pva::ChannelProviderRegistry::provider_name_set::const_iterator it = names.begin();
+            it != names.end(); ++it) {
+            PyRef name(PyUnicode_FromString(it->c_str()));
 
-        for(size_t i=0; i<names->size(); i++) {
-            PyRef name(PyUnicode_FromString((*names)[i].c_str()));
-
-            PyList_SET_ITEM(ret.get(), i, name.release());
+            PyList_SET_ITEM(ret.get(), i++, name.release());
         }
 
         return ret.release();
