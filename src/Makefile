@@ -22,7 +22,7 @@ _p4p_SRCS += p4p_client_get.cpp
 _p4p_SRCS += p4p_client_put.cpp
 _p4p_SRCS += p4p_client_rpc.cpp
 
-_p4p_LIBS += pvAccess pvData Com
+_p4p_LIBS += pvAccessCA pvAccess pvData Com
 
 PY += p4p/__init__.py
 PY += p4p/wrapper.py
