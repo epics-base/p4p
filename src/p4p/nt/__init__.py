@@ -70,7 +70,7 @@ class NTTable(object):
     @staticmethod
     def buildType(columns=[], extra=[]):
         """Build a table
-        
+ 
         :param list columns: List of columns
         :param list extra: A list of tuples describing additional non-standard fields
         :returns: A :py:class:`Type`
@@ -97,7 +97,7 @@ class NTTable(object):
     def wrap(self, values):
         """Pack an iterable of dict into a Value
 
-        >>> T=NTTable([('A', 'ai'), ('B', 'as')])
+        >>> T=NTTable.buildType([('A', 'ai'), ('B', 'as')])
         >>> V = T.wrap([
             {'A':42, 'B':'one'},
             {'A':43, 'B':'two'},
@@ -135,7 +135,7 @@ class NTTable(object):
     @staticmethod
     def unwrap(value):
         """Iterate an NTTable
-        
+
         :returns: An iterator yielding an OrderedDict for each column
         """
         if len(value.labels)==0:
