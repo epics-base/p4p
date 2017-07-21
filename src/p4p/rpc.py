@@ -237,7 +237,6 @@ def quickRPCServer(provider, prefix, target,
     try:
         threads = []
         server = Server(providers=provider, useenv=useenv, conf=conf)
-        server.start()
         try:
             for n in range(1,workers):
                 T = Thread(name='%s Worker %d'%(provider, n), target=queue.handle)

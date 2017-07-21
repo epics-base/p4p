@@ -21,7 +21,6 @@ class Server(object):
     Run a PVAccess server serving Channels from the listed providers
 
     >>> S = Server(providers="example")
-    >>> S.start()
     >>> # do something else
     >>> S.stop()
     """
