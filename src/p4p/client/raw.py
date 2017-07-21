@@ -30,23 +30,22 @@ class Context(_Context):
     def __init__(self, *args, **kws):
         _Context.__init__(self, *args, **kws)
         _all_contexts.add(self)
-        # we keep strong refs here to shadow the Channel refs
-        # from the underlying Provider, which we can't get at.
-        self._channels = set()
+        self._channels = {}
 
     def close(self):
-        if self._channels is not None:
-            for ch in self._channels:
-                ch.close()
-            self._channels = None
+        self._channels.clear()
         _Context.close(self)
+        _all_contexts.discard(self)
+
+    def disconnect(self, name):
+        self._channels.pop(name, None)
 
     def channel(self, name):
-        if self._channels is None:
-            raise ValueError("Context closed")
-        ch = _Context.channel(self, name)
-        self._channels.add(ch)
-        return ch
+        try:
+            return self._channels[name]
+        except KeyError:
+            self._channels[name] = ch = _Context.channel(self, name)
+            return ch
 
 _all_contexts = WeakSet()
 

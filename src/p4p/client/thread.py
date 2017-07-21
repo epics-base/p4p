@@ -73,7 +73,7 @@ class Subscription(object):
             _log.exception("Lost Subscription update: %s", E)
     def _handle(self, E):
         try:
-            if E is not None:
+            if E is not True:
                 self._cb(E)
                 return
             while True:
@@ -135,11 +135,17 @@ class Context(object):
             raise ValueError("unwrap must be None, False, or dict, not %s"%unwrap)
         self._ctxt = raw.Context(*args, **kws)
         self.name = self._ctxt.name
-
-        self._channels = {}
+        self.disconnect = self._ctxt.disconnect
+        self._channel = self._ctxt.channel
 
         # lazy start threaded WorkQueue
         self._Q, self._T = None, None
+
+    def disconnect(self, name):
+        """Drop the named channel from the channel cache.
+        The channel will be closed after any pending operations complete.
+        """
+        pass
 
     def _dounwrap(self, val):
         fn = self._unwrap.get(val.getID())
@@ -163,7 +169,6 @@ class Context(object):
             self._Q.interrupt()
             self._T.join()
             self._Q, self._T = None, None
-        self._channels = None
         self._ctxt.close()
 
     def __del__(self):
@@ -175,13 +180,6 @@ class Context(object):
         return self
     def __exit__(self,A,B,C):
         self.close()
-
-    def _channel(self, name):
-        try:
-            return self._channels[name]
-        except KeyError:
-            self._channels[name] = ch = self._ctxt.channel(name)
-            return ch
 
     def get(self, name, request=None, timeout=5.0, throw=True):
         """Fetch current value of some number of PVs.
@@ -244,10 +242,8 @@ class Context(object):
         finally:
             [op and op.cancel() for op in ops]
 
-        print('XYZ', self._unwrap, result)
         result = [self._dounwrap(R) for R in result]
 
-        print('XYZ', result)
         if singlepv:
             return result[0]
         else:
@@ -299,14 +295,14 @@ class Context(object):
         ops = [None]*len(name)
 
         try:
-            for i,(name, value, req) in enumerate(izip(name, values, request)):
+            for i,(n, value, req) in enumerate(izip(name, values, request)):
                 if isinstance(value, (bytes, unicode)) and value[:1]=='{':
                     try:
                         value = json.loads(value)
                     except ValueError:
                         raise ValueError("Unable to interpret '%s' as json"%value)
 
-                ch = self._channel(name)
+                ch = self._channel(n)
 
                 # callback to build PVD Value from PY value
                 def vb(type, value=value, i=i):
@@ -399,6 +395,12 @@ class Context(object):
         :param callable cb: Processing callback
         :param request: None or a Value to qualify this request
         :returns: a :py:class:`Subscription` instance
+
+        The callable will be invoked with one argument which is either.
+
+        * A Value
+        * A sub-class of Exception
+        * None when the subscription is complete, and more update will ever arrive.
         """
         R = self.Subscription(self, name, cb)
         ch = self._channel(name)

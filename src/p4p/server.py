@@ -2,6 +2,8 @@
 import logging, warnings
 _log = logging.getLogger(__name__)
 
+import atexit
+
 from threading import Thread
 
 from ._p4p import (Server as _Server,
@@ -11,45 +13,36 @@ from ._p4p import (Server as _Server,
                    RPCReply,
                    )
 
+atexit.register(clearProviders)
+
 class Server(object):
     """Server(conf=None, useenv=True, providers="")
 
     Run a PVAccess server serving Channels from the listed providers
 
     >>> S = Server(providers="example")
-    >>> S.start()
     >>> # do something else
     >>> S.stop()
     """
     def __init__(self, *args, **kws):
         self._S = _Server(*args, **kws)
-        self._T = None
         self.conf = self._S.conf
+        self.stop = self._S.stop
 
     def __enter__(self):
         return self
     def __exit__(self, A, B, C):
         self.stop()
-    def __del__(self):
-        if self._T is not None:
-            warnings.warn("%s collected while running"%self.__class__)
-        self.stop()
 
-    def start(self):
-        "Start running the PVA server"
-        if self._T is not None:
-            raise RuntimeError("Already running")
-        self._T = Thread(target=self._S.run)
-        self._T.daemon = True
-        _log.debug("Starting server thread")
-        self._T.start()
+    def conf(self):
+        """Return a dict() with the effective configuration this server is using.
+
+        Suitable to pass to another Server to duplicate this configuration,
+        or to a client Context to allow it to connect to this server.
+        """
+        pass
 
     def stop(self):
-        "Stop the server and block until this is done"
-        T, self._T = self._T, None
-        if T is not None:
-            _log.debug("Stopping server thread")
-            self._S.stop()
-            _log.debug("Joining server thread")
-            T.join()
-            _log.debug("Joined server thread")
+        """Force server to stop serving, and close connections to existing clients.
+        """
+        pass

@@ -210,10 +210,10 @@ void Value::storefld(pvd::PVField* fld,
             F->putFrom<pvd::boolean>(obj==Py_True);
 #if PY_MAJOR_VERSION < 3
         } else if(PyInt_Check(obj)) {
-            F->putFrom(PyInt_AsLong(obj));
+            F->putFrom<pvd::uint64>(PyInt_AsLong(obj));
 #endif
         } else if(PyLong_Check(obj)) {
-            F->putFrom(PyLong_AsLong(obj));
+            F->putFrom<pvd::uint64>(PyLong_AsLong(obj));
         } else if(PyFloat_Check(obj)) {
             F->putFrom(PyFloat_AsDouble(obj));
         } else if(PyBytes_Check(obj)) {

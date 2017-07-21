@@ -22,7 +22,7 @@ This may be used with the :class:`p4p.rpc.rpc` decorator to specify the return t
         def magicnumber(self):
             return 4
 
-In this example, the returned *4* is passed to :method:`NTScalar.wrap` which stores it as a double precision float.
+In this example, the returned *4* is passed to :meth:`NTScalar.wrap` which stores it as a double precision float.
 
 In addition, NT helpers may have one, or more, method unwrap*() which accept a :class:`~p4p.Value` and return
 some python value.

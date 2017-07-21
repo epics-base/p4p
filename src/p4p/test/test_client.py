@@ -6,6 +6,7 @@ import weakref, gc
 
 from ..client.raw import Context
 from ..wrapper import Value, Type
+from .. import Cancelled
 
 class TestRequest(unittest.TestCase):
     def testEmpty(self):
@@ -27,7 +28,6 @@ class TestProviders(unittest.TestCase):
     def testProviders(self):
         providers = Context.providers()
         self.assertIn('pva', providers)
-        self.assertIn('ca', providers)
 
 class TestPVA(unittest.TestCase):
     def setUp(self):
@@ -48,9 +48,9 @@ class TestPVA(unittest.TestCase):
             _X[0] = V
         op = chan.get(fn)
 
-        self.assertTrue(op.cancel())
+        op.cancel()
 
-        self.assertIsNone(_X[0])
+        self.assertIsInstance(_X[0], Cancelled)
 
     def testGetAbortGC(self):
         chan = self.ctxt.channel("completelyInvalidChannelName")

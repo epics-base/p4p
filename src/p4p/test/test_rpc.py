@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-import unittest, random, weakref, gc, threading
+import unittest, random, weakref, sys, gc, threading
 
 from ..wrapper import Value, Type
 from ..client.thread import Context
@@ -14,7 +14,14 @@ class TestService(object):
         return float(lhs)+float(rhs)
 
 
-class TestRPC(unittest.TestCase):
+class TestRPCFull(unittest.TestCase):
+    """Test end to end
+    
+    full server and client communicating through the loopback
+    """
+    runserver = True
+    provider = 'pva'
+    getconfig = lambda self:self.server.conf()
     def setUp(self):
         # TODO: need PVA API change before we can run w/ network isolation
         conf = {
@@ -38,15 +45,17 @@ class TestRPC(unittest.TestCase):
         self._dispatch = weakref.ref(dispatch)
         installProvider("TestRPC", dispatch)
 
-        self.server = Server(providers="TestRPC", conf=conf, useenv=False)
-        print("conf", self.server.conf(client=True, server=False))
-        self.server.start()
+        if self.runserver:
+            self.server = Server(providers="TestRPC", conf=conf, useenv=False)
+            print("conf", self.server.conf())
 
         self._QT = threading.Thread(name="TestRPC Q", target=self._Q.handle)
         self._QT.start()
 
     def tearDown(self):
-        self.server.stop()
+        if self.runserver:
+            self.server.stop()
+            self.server = None
 
         self._Q.interrupt()
         self._QT.join()
@@ -55,8 +64,10 @@ class TestRPC(unittest.TestCase):
         gc.collect()
         D = self._dispatch()
         if D is not None:
-            print("dispatcher lives!  referrers", gc.get_referrers(D))
-            print("referents", gc.get_referents(D))
+            print("dispatcher lives! ",sys.getrefcount(D)," refs  referrers:")
+            import inspect
+            for R in gc.get_referrers(D):
+                print(R)
         self.assertIsNone(D)
 
     def testAdd(self):
@@ -67,10 +78,10 @@ class TestRPC(unittest.TestCase):
             'lhs': 1,
             'rhs': 1,
         }, scheme='pva')
-        ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False), unwrap=False)
-        self.assertEqual(ctxt.name, 'pva')
-        sum = ctxt.rpc(self.prefix+'add', args)
-        self.assertEqual(sum.value, 2.0)
+        with Context(self.provider, useenv=False, conf=self.getconfig(), unwrap=False) as ctxt:
+            self.assertEqual(ctxt.name, self.provider)
+            sum = ctxt.rpc(self.prefix+'add', args)
+            self.assertEqual(sum.value, 2.0)
 
     def testAdd3(self):
         args = NTURI([
@@ -80,9 +91,16 @@ class TestRPC(unittest.TestCase):
             'lhs': 1,
             'rhs': 2,
         }, scheme='pva')
-        ctxt = Context('pva', useenv=False, conf=self.server.conf(client=True, server=False), unwrap=False)
-        sum = ctxt.rpc(self.prefix+'add', args)
-        self.assertEqual(sum.value, 3.0)
+        with Context(self.provider, useenv=False, conf=self.getconfig(), unwrap=False) as ctxt:
+            sum = ctxt.rpc(self.prefix+'add', args)
+            self.assertEqual(sum.value, 3.0)
+
+class TestRPCProvider(TestRPCFull):
+    """end to end w/o network
+    """
+    runserver = False
+    provider = 'server:TestRPC'
+    getconfig = lambda self:{}
 
 class TestProxy(unittest.TestCase):
     class MockContext(object):

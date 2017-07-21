@@ -14,9 +14,15 @@ _p4p_SRCS += p4p_array.cpp
 _p4p_SRCS += p4p_server.cpp
 _p4p_SRCS += p4p_server_provider.cpp
 
-_p4p_SRCS += p4p_client.cpp
+_p4p_SRCS += p4p_client_context.cpp
+_p4p_SRCS += p4p_client_channel.cpp
+_p4p_SRCS += p4p_client_monitor.cpp
+_p4p_SRCS += p4p_client_op.cpp
+_p4p_SRCS += p4p_client_get.cpp
+_p4p_SRCS += p4p_client_put.cpp
+_p4p_SRCS += p4p_client_rpc.cpp
 
-_p4p_LIBS += pvAccess pvData Com
+_p4p_LIBS += pvAccessCA pvAccess pvData Com
 
 PY += p4p/__init__.py
 PY += p4p/wrapper.py
@@ -34,6 +40,7 @@ PY += p4p/test/__init__.py
 PY += p4p/test/test_type.py
 PY += p4p/test/test_value.py
 PY += p4p/test/test_client.py
+PY += p4p/test/test_server.py
 PY += p4p/test/test_nt.py
 PY += p4p/test/test_rpc.py
 
@@ -42,7 +49,7 @@ include $(TOP)/configure/RULES_PY
 
 ifneq (,$(T_A))
 nose:
-	PYTHONPATH="$(abspath $(PWD))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose.core -P p4p
+	PYTHONPATH="$(abspath $(PWD))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose -P p4p
 
 # bounce back down to the sphinx generated Makefile
 # aren't Makefiles fun...
