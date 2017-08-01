@@ -1,7 +1,7 @@
 
 from __future__ import print_function
 
-import logging, warnings
+import logging, warnings, sys
 _log = logging.getLogger(__name__)
 
 try:
@@ -29,6 +29,9 @@ __all__ = [
     'Value',
     'Type',
 ]
+
+if sys.version_info>=(3,0):
+    unicode = str
 
 class TimeoutError(RuntimeError):
     def __init__(self):
