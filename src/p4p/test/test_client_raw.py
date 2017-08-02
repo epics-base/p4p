@@ -78,11 +78,12 @@ class TestPVA(unittest.TestCase):
 
         self.assertIn(fn.__dict__, gc.get_referrers(op))
 
-        W =  weakref.ref(op)
+        W =  weakref.ref(op), weakref.ref(fn)
         del op, fn
         gc.collect()
 
-        self.assertIsNone(W())
+        self.assertIsNone(W[0]())
+        self.assertIsNone(W[1]())
 
         self.assertIsNone(_X[0])
 

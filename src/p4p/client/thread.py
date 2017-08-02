@@ -36,7 +36,6 @@ if sys.version_info>=(3,0):
 class TimeoutError(RuntimeError):
     def __init__(self):
         RuntimeError.__init__(self, 'Timeout')
-Timeout = TimeoutError()
 
 class Subscription(object):
     """An active subscription.
@@ -151,9 +150,10 @@ class Context(object):
         pass
 
     def _dounwrap(self, val):
-        fn = self._unwrap.get(val.getID())
-        if fn:
-            val = fn(val)
+        if not isinstance(val, Exception):
+            fn = self._unwrap.get(val.getID())
+            if fn:
+                val = fn(val)
         return val
 
     def _queue(self):
@@ -162,6 +162,7 @@ class Context(object):
             T = threading.Thread(name='p4p Context worker', target=Q.handle)
             T.daemon = True
             T.start()
+            _log.debug('Started Context worker')
             self._Q, self._T = Q, T
         return self._Q
 
@@ -169,8 +170,10 @@ class Context(object):
         """Force close all Channels and cancel all Operations
         """
         if self._Q is not None:
+            _log.debug('Join Context worker')
             self._Q.interrupt()
             self._T.join()
+            _log.debug('Joined Context worker')
             self._Q, self._T = None, None
         self._ctxt.close()
 
@@ -215,12 +218,12 @@ class Context(object):
 
         # use Queue instead of Event to allow KeyboardInterrupt
         done = Queue(maxsize=len(name))
-        result = [Timeout]*len(name)
+        result = [TimeoutError()]*len(name)
         ops = [None]*len(name)
 
         try:
             for i,(N, req) in enumerate(izip(name, request)):
-                _log.debug('gext %s', N)
+                _log.debug('get %s', N)
                 ch = self._channel(N)
                 def cb(value, i=i):
                     try:
@@ -235,7 +238,7 @@ class Context(object):
                     value, i = done.get(timeout=timeout)
                 except Empty:
                     if throw:
-                        raise Timeout
+                        raise TimeoutError()
                     break
                 _log.debug('got %s %s', name[i], value)
                 if throw and isinstance(value, Exception):
@@ -294,7 +297,7 @@ class Context(object):
 
         # use Queue instead of Event to allow KeyboardInterrupt
         done = Queue(maxsize=len(name))
-        result = [Timeout]*len(name)
+        result = [TimeoutError()]*len(name)
         ops = [None]*len(name)
 
         try:
@@ -334,7 +337,7 @@ class Context(object):
                     value, i = done.get(timeout=timeout)
                 except Empty:
                     if throw:
-                        raise Timeout
+                        raise TimeoutError()
                     break
                 if throw and isinstance(value, Exception):
                     raise value
@@ -380,7 +383,7 @@ class Context(object):
             try:
                 result = done.get(timeout=timeout)
             except Empty:
-                result = Timeout
+                result = TimeoutError()
             if throw and isinstance(result, Exception):
                 raise result
 

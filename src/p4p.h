@@ -242,6 +242,8 @@ struct PyClassWrapper {
             // instead we only C++ initialize the sub-struct C
             new (&SELF->I) C();
 
+            TRACE("tp_new "<<type->tp_name);
+
             return self.release();
         } CATCH()
         return NULL;
@@ -250,6 +252,7 @@ struct PyClassWrapper {
 
     static void tp_dealloc(PyObject *raw) {
         PyClassWrapper *self = (PyClassWrapper*)raw;
+        TRACE("tp_dealloc "<<Py_TYPE(raw)->tp_name);
         if(self->weak)
             PyObject_ClearWeakRefs(raw);
         PyTypeObject *klass = Py_TYPE(raw);

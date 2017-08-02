@@ -37,6 +37,7 @@ PY += p4p/client/raw.py
 PY += p4p/client/thread.py
 
 PY += p4p/test/__init__.py
+PY += p4p/test/utils.py
 PY += p4p/test/test_type.py
 PY += p4p/test/test_value.py
 PY += p4p/test/test_client_raw.py
