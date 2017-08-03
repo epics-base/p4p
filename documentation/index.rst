@@ -20,6 +20,8 @@ Contents:
    server
    rpc
    internal
+   example
+   walkthrough
 
 Indices and tables
 ==================

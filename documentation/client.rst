@@ -19,12 +19,20 @@ Start by creating a client :py:class:`Context`. ::
 Get/Put
 ^^^^^^^
 
-Get and Put operations can be performed on on single PVs or a list of PVs. ::
+Get and Put operations can be performed on a single PV or a list of PVs. 
+Get returns an NTtype which holds the value and common characteristics: 
+severity, timestamp (seconds after epoch with nanoseconds), raw_stamp 
+(seconds and nanoseconds) and status.::
 
    >>> V = ctxt.get('pv:name')
    >>> A, B = ctxt.get(['pv:1', 'pv:2'])
+   >>> A.severity
+   0
+   >>> A.value
+   0.0
    >>> ctxt.put('pv:name', 5)
    >>> ctxt.put('pv:name', {'value': 5}) # equivalent to previous
+   >>> ctxt.put(['pv:1', 'pv:2'], [1, 2])
 
 RPC
 ^^^
