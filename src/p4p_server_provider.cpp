@@ -584,8 +584,29 @@ PyServerChannel::createChannelGet(
     return ret;
 }
 */
+
+static struct PyMethodDef PyServerRPC_methods[] = {
+    {"done", (PyCFunction)PyServerRPC::reply_done, METH_VARARGS|METH_KEYWORDS,
+     "done(reply=Value)\n"
+     "done(error=\"oops\")\n"
+     "Complete RPC call with reply data or error message"},
+    {NULL}
+};
+
+/*
+static struct PyMethodDef PyServerGet_methods[] = {
+    {"done", (PyCFunction)PyServerGet::reply_done, METH_VARARGS|METH_KEYWORDS,
+     "done(reply=Value)\n"
+     "done(error=\"oops\")\n"
+     "Complete Get call with reply data or error message"},
+    {NULL}
+};
+*/
+
 typedef std::map<std::string, PyServerProvider::shared_pointer> pyproviders_t;
 pyproviders_t* pyproviders;
+
+} // namespace
 
 PyObject* p4p_add_provider(PyObject *junk, PyObject *args, PyObject *kwds)
 {
@@ -666,50 +687,6 @@ PyObject* p4p_remove_all(PyObject *junk, PyObject *args, PyObject *kwds)
     return NULL;
 }
 
-PyObject* p4p_pvd_version(PyObject *junk)
-{
-#ifndef EPICS_PVD_MAJOR_VERSION
-#define EPICS_PVD_MAJOR_VERSION 0
-#define EPICS_PVD_MINOR_VERSION 0
-#define EPICS_PVD_MAINTENANCE_VERSION 0
-#define EPICS_PVD_DEVELOPMENT_FLAG 0
-#endif
-    return Py_BuildValue("iiii",
-                         int(EPICS_PVD_MAJOR_VERSION),
-                         int(EPICS_PVD_MINOR_VERSION),
-                         int(EPICS_PVD_MAINTENANCE_VERSION),
-                         int(EPICS_PVD_DEVELOPMENT_FLAG));
-}
-
-PyObject* p4p_pva_version(PyObject *junk)
-{
-    return Py_BuildValue("iiii",
-                         int(EPICS_PVA_MAJOR_VERSION),
-                         int(EPICS_PVA_MINOR_VERSION),
-                         int(EPICS_PVA_MAINTENANCE_VERSION),
-                         int(EPICS_PVA_DEVELOPMENT_FLAG));
-}
-
-static struct PyMethodDef PyServerRPC_methods[] = {
-    {"done", (PyCFunction)PyServerRPC::reply_done, METH_VARARGS|METH_KEYWORDS,
-     "done(reply=Value)\n"
-     "done(error=\"oops\")\n"
-     "Complete RPC call with reply data or error message"},
-    {NULL}
-};
-
-/*
-static struct PyMethodDef PyServerGet_methods[] = {
-    {"done", (PyCFunction)PyServerGet::reply_done, METH_VARARGS|METH_KEYWORDS,
-     "done(reply=Value)\n"
-     "done(error=\"oops\")\n"
-     "Complete Get call with reply data or error message"},
-    {NULL}
-};
-*/
-
-} // namespace
-
 /*
 
 template<>
@@ -719,23 +696,6 @@ PyTypeObject PyServerGet::Reply::type = {
     sizeof(PyServerGet::Reply),
 };
 */
-
-struct PyMethodDef P4P_methods[] = {
-    {"installProvider", (PyCFunction)p4p_add_provider, METH_VARARGS|METH_KEYWORDS,
-     "installProvider(\"name\", provider)\n"
-     "Install a new Server Channel provider"},
-    {"removeProvider", (PyCFunction)p4p_remove_provider, METH_VARARGS|METH_KEYWORDS,
-     "removeProvider(\"name\")\n"
-     "Remove a previously added Server Channel provider"},
-    {"clearProviders", (PyCFunction)p4p_remove_all, METH_VARARGS|METH_KEYWORDS,
-     "Remove all Server Channel providers"},
-    {"pvdVersion", (PyCFunction)p4p_pvd_version, METH_NOARGS,
-     ":returns: tuple of version number components for PVData"},
-    {"pvaVersion", (PyCFunction)p4p_pva_version, METH_NOARGS,
-     ":returns: tuple of version number components for PVData"},
-    {NULL}
-};
-
 void p4p_server_provider_register(PyObject *mod)
 {
     pyproviders = NULL;

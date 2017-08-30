@@ -185,7 +185,9 @@ void p4p_client_channel_register(PyObject *mod);
 void p4p_client_monitor_register(PyObject *mod);
 void p4p_client_op_register(PyObject *mod);
 
-extern struct PyMethodDef P4P_methods[];
+PyObject* p4p_add_provider(PyObject *junk, PyObject *args, PyObject *kwds);
+PyObject* p4p_remove_provider(PyObject *junk, PyObject *args, PyObject *kwds);
+PyObject* p4p_remove_all(PyObject *junk, PyObject *args, PyObject *kwds);
 void p4p_server_provider_register(PyObject *mod);
 
 extern PyTypeObject* P4PType_type;
