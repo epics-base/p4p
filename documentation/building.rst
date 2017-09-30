@@ -9,6 +9,9 @@ The P4P modules requires:
 * EPICS Base >= 3.14.12
 * PVDataCPP (unreleased)
 * PVAccessCPP (unreleased)
+* pvCommonCPP
+* normativeTypesCPP
+* pvaSrv
 
 Build from source
 -----------------
@@ -20,7 +23,7 @@ Fetch the source.::
 
 Setup on a Debian Linux host::
 
-   sudo apt-get install python2.7-dev python-numpy nose
+   sudo apt-get install python2.7-dev python-numpy python-nose
 
 or with PIP::
 
@@ -68,14 +71,24 @@ If the necessary EPICS modules are not present, then they may be built form sour
    git clone https://github.com/epics-base/epics-base.git
    git clone https://github.com/epics-base/pvDataCPP.git
    git clone https://github.com/epics-base/pvAccessCPP.git
+   git clone https://github.com/epics-base/pvCommonCPP.git
+   git clone https://github.com/epics-base/normativeTypesCPP.git
+   git clone https://github.com/epics-base/pvaSrv.git
+
    cat <<EOF >  CONFIG_SITE.local
    PVACCESS=$PWD/pvAccessCPP
    PVDATA=$PWD/pvDataCPP
+   PVCOMMON=$PWD/pvCommonCPP
+   PVACCESS=$PWD/pvAccessCPP
    EPICS_BASE=$PWD/epics-base
    EOF
+
    make -C epics-base -j2
    make -C pvDataCPP -j2
    make -C pvAccessCPP -j2
+   make -C pvCommonCPP -j2
+   make -C normativeTypesCPP -j2
+   make -C pvaSrv -j2
 
 The ./build-deps.sh script in the source tree provides a working example.
 Be warned that this script is meant to be run in the travis-ci.org environment
