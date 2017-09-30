@@ -16,6 +16,12 @@ try:
 except ImportError:
     from queue import Queue, Full, Empty
 
+try:
+    unicode
+except:
+    # Python >= 3
+    unicode = str
+
 from . import raw
 from ..wrapper import Value, Type
 from ..rpc import WorkQueue
