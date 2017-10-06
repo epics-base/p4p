@@ -5,15 +5,6 @@ import numpy
 from ..wrapper import Type, Value
 from .common import alarm, timeStamp
 
-_doc = """
-Has additional attributes
-
-* .severity
-* .status
-* .timestamp
-* .raw_stamp
-"""
-
 if sys.version_info>=(3,0):
     unicode = str
 
@@ -34,19 +25,48 @@ class ntwrappercommon(object):
         return '%s %s'%(time.ctime(self.timestamp), V)
 
 class ntfloat(ntwrappercommon,float):
-    "Augmented float"+_doc
-    pass
+    """
+    Augmented float with additional attributes
+
+    * .severity
+    * .status
+    * .timestamp
+    * .raw_stamp
+    * .raw
+    """
 
 class ntint(ntwrappercommon,int):
-    "Augmented int"+_doc
-    pass
+    """
+    Augmented integer with additional attributes
+
+    * .severity
+    * .status
+    * .timestamp
+    * .raw_stamp
+    * .raw
+    """
 
 class ntstr(ntwrappercommon,unicode):
-    "Augmented str"+_doc
-    pass
+    """
+    Augmented string with additional attributes
+
+    * .severity
+    * .status
+    * .timestamp
+    * .raw_stamp
+    * .raw
+    """
 
 class ntnumericarray(ntwrappercommon,numpy.ndarray):
-    "Augmented numpy.ndarray"+_doc
+    """
+    Augmented numpy.ndarray with additional attributes
+
+    * .severity
+    * .status
+    * .timestamp
+    * .raw_stamp
+    * .raw
+    """
 
     @classmethod
     def build(klass, val):
@@ -56,8 +76,15 @@ class ntnumericarray(ntwrappercommon,numpy.ndarray):
                      strides=val.strides)
 
 class ntstringarray(ntwrappercommon,list):
-    "Augmented list (of strings)"+_doc
-    pass
+    """
+    Augmented list of strings with additional attributes
+
+    * .severity
+    * .status
+    * .timestamp
+    * .raw_stamp
+    * .raw
+    """
 
 class NTScalar(object):
     """Describes a single scalar or array of scalar values and associated meta-data

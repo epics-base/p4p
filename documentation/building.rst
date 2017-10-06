@@ -60,15 +60,20 @@ another version.  This will not remove the final tree. ::
     make PYTHON=python3.4
     make PYTHON=python3,4 clean
 
+.. _builddeps:
+
 Building EPICS dependencies
 ---------------------------
 
-If the necessary EPICS modules are not present, then they may be built form source as well: ::
+If the necessary EPICS modules are not present, then they may be built form source.
+Note that the 'pva2pva' module is not required to build P4P, and may be omitted.
+It is used in the :ref:`starting` demo. ::
 
-   git clone https://github.com/epics-base/epics-base.git
+   git clone --recursive https://github.com/epics-base/epics-base.git
    git clone https://github.com/epics-base/pvDataCPP.git
    git clone https://github.com/epics-base/pvAccessCPP.git
-   cat <<EOF >  CONFIG_SITE.local
+   git clone https://github.com/epics-base/pva2pva.git
+   cat <<EOF >  RELEASE.local
    PVACCESS=$PWD/pvAccessCPP
    PVDATA=$PWD/pvDataCPP
    EPICS_BASE=$PWD/epics-base
@@ -76,11 +81,7 @@ If the necessary EPICS modules are not present, then they may be built form sour
    make -C epics-base -j2
    make -C pvDataCPP -j2
    make -C pvAccessCPP -j2
-
-The ./build-deps.sh script in the source tree provides a working example.
-Be warned that this script is meant to be run in the travis-ci.org environment
-and is not meant to be run by end users.
-It will change files in your $HOME.
+   make -C pva2pva -j2
 
 
 CLI and unittests

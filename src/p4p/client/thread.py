@@ -191,7 +191,7 @@ class Context(object):
         """Fetch current value of some number of PVs.
         
         :param name: A single name string or list of name strings
-        :param request: None or a Value to qualify this request
+        :param request: A :py:class:`p4p.Value` to qualify this request, or None to use a default.
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.  If False then the Exception is returned instead of the Value
 
@@ -260,7 +260,7 @@ class Context(object):
         
         :param name: A single name string or list of name strings
         :param values: A single value or a list of values
-        :param request: None or a Value to qualify this request
+        :param request: A :py:class:`p4p.Value` to qualify this request, or None to use a default.
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.
                      If False then the Exception is returned instead of the Value
@@ -355,7 +355,7 @@ class Context(object):
 
         :param str name: PV name string
         :param Value value: Arguments.  Must be Value instance
-        :param request: None or a Value to qualify this request
+        :param request: A :py:class:`p4p.Value` to qualify this request, or None to use a default.
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.
                      If False then the Exception is returned instead of the Value
@@ -399,7 +399,7 @@ class Context(object):
         
         :param str name: PV name string
         :param callable cb: Processing callback
-        :param request: None or a Value to qualify this request
+        :param request: A :py:class:`p4p.Value` to qualify this request, or None to use a default.
         :returns: a :py:class:`Subscription` instance
 
         The callable will be invoked with one argument which is either.
