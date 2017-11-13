@@ -290,7 +290,7 @@ class Context(object):
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:
-            request = 'record[block=%s,process=%s]'%('true' if wait else 'false', process or 'passive')
+            request = 'field()record[block=%s,process=%s]'%('true' if wait else 'false', process or 'passive')
 
         singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
