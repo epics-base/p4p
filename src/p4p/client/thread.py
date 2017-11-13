@@ -191,7 +191,7 @@ class Context(object):
         """Fetch current value of some number of PVs.
         
         :param name: A single name string or list of name strings
-        :param request: A :py:class:`p4p.Value` to qualify this request, or None to use a default.
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.  If False then the Exception is returned instead of the Value
 
@@ -255,20 +255,25 @@ class Context(object):
         else:
             return result
 
-    def put(self, name, values, request=None, timeout=5.0, throw=True):
+    def put(self, name, values, request=None, timeout=5.0, throw=True,
+            process=None, wait=None):
         """Write a new value of some number of PVs.
         
         :param name: A single name string or list of name strings
         :param values: A single value or a list of values
-        :param request: A :py:class:`p4p.Value` to qualify this request, or None to use a default.
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.
                      If False then the Exception is returned instead of the Value
+        :param str process: Control remote processing.  May be 'true', 'false', 'passive', or None.
+        :param bool wait: Wait for all server processing to complete.
 
         :returns: A None or Exception, or list of same
 
         When invoked with a single name then returns is a single value.
         When invoked with a list of name, then returns a list of values
+
+        If 'wait' or 'process' is specified, then 'request' must be omitted or None.
 
         >>> ctxt = Context('pva')
         >>> ctxt.put('pv:name', 5.0)
@@ -282,15 +287,20 @@ class Context(object):
         Unless the provided value is a dict, it is assumed to be a plan value
         and an attempt is made to store it in '.value' field.
         """
+        if request and (process or wait is not None):
+            raise ValueError("request= is mutually exclusive to process= or wait=")
+        elif process or wait is not None:
+            request = 'record[block=%s,process=%s]'%('true' if wait else 'false', process or 'passive')
+
+        if request is None:
+            request = [None]*len(name)
+
         singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
             name = [name]
             values = [values]
             if request is not None:
                 request = [request]
-
-        if request is None:
-            request = [None]*len(name)
 
         assert len(name)==len(request), (name, request)
         assert len(name)==len(values), (name, values)
@@ -358,7 +368,7 @@ class Context(object):
 
         :param str name: PV name string
         :param Value value: Arguments.  Must be Value instance
-        :param request: A :py:class:`p4p.Value` to qualify this request, or None to use a default.
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.
                      If False then the Exception is returned instead of the Value
@@ -402,7 +412,7 @@ class Context(object):
         
         :param str name: PV name string
         :param callable cb: Processing callback
-        :param request: A :py:class:`p4p.Value` to qualify this request, or None to use a default.
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :returns: a :py:class:`Subscription` instance
 
         The callable will be invoked with one argument which is either.
