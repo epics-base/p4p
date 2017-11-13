@@ -976,11 +976,15 @@ void p4p_value_register(PyObject *mod)
     }
 }
 
-epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *obj)
+epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *obj,
+                                                           epics::pvData::BitSet *set)
 {
     if(!PyObject_TypeCheck(obj, &P4PValue::type))
         throw std::runtime_error("Not a _p4p.Value");
-    return P4PValue::unwrap(obj).V;
+    Value& val = P4PValue::unwrap(obj);
+    if(set && val.I)
+        *set = *val.I;
+    return val.V;
 }
 
 std::tr1::shared_ptr<epics::pvData::BitSet> P4PValue_unwrap_bitset(PyObject *obj)

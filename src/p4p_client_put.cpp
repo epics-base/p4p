@@ -21,6 +21,8 @@ void PutOp::Req::channelPutConnect(
 
     } else {
         pvd::PVStructure::shared_pointer val;
+        pvd::BitSet::shared_pointer mask(new pvd::BitSet);
+
         {
             PyLock L;
             try {
@@ -30,7 +32,7 @@ void PutOp::Req::channelPutConnect(
                     TRACE("no value!?!?!");
                     return;
                 }
-                //TODO: bitset?
+
                 if(!PyObject_IsInstance(temp.get(), (PyObject*)P4PValue_type)) {
                     // assume callable
                     PyRef ptype(P4PType_wrap(P4PType_type, structure));
@@ -44,9 +46,10 @@ void PutOp::Req::channelPutConnect(
                     op->call_cb(err.get());
                     return;
                 }
-                val = P4PValue_unwrap(temp.get());
+                val = P4PValue_unwrap(temp.get(), mask.get());
                 if(val->getStructure()!=structure) {
-                    //TODO: attempt safe/partial copy?
+                    // callback returned different Structure.
+                    //TODO: attempt safe/partial copy into server provided Structure?
                     PyRef err(PyObject_CallFunction(PyExc_NotImplementedError, "s", "channelPutConnect() safe copy unimplemneted"));
                     op->call_cb(err.get());
                     return;
@@ -59,7 +62,6 @@ void PutOp::Req::channelPutConnect(
             }
         }
         assert(!!val);
-        pvd::BitSet::shared_pointer mask(new pvd::BitSet(1));
         mask->set(0);
         TRACE("send "<<channelPut->getChannel()->getChannelName()<<" mask="<<*mask<<" value="<<val);
         channelPut->lastRequest();
