@@ -31,7 +31,7 @@ def op_put(ctxt, args):
     names, values = [], []
     for pair in args.names:
         N, sep, V = pair.partition('=')
-        if sep is None:
+        if sep is '':
             print("Missing expected '=' after", pair)
             sys.exit(1)
         elif V is None:

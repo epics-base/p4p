@@ -317,7 +317,10 @@ class Context(object):
                             V = self.Value(type, value)
                         else:
                             V = self.Value(type, {})
-                            V.value = value # will try to cast str -> *
+                            try:
+                                V.value = value # will try to cast str -> *
+                            except Exception as E:
+                                raise ValueError("Unable to assign '%s' : %s"%(value, E))
                         return V
                     except Exception as E:
                         _log.exception("Error building put value %s", value)
