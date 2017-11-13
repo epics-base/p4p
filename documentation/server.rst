@@ -45,13 +45,14 @@ A Provider class will define some, or all, of the following:
 Example RPC Provider
 --------------------
 
+This example provided for information purposes.
 See the :py:mod:`rpc` module for more functional RPC handling and dispatch.
 
 >>> from p4p.nt import NTScalar
 >>> class ExampleProvider(object):
         def __init__(self, myname):
             self.name = name
-            # we 
+            # prepare return type
             self.addret = NTScalar.buildType('d')
         def testChannel(self, name):
             return name==self.name
