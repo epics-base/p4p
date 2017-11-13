@@ -78,8 +78,11 @@ pvd::PVStructure::shared_pointer buildRequest(PyObject *req)
         if(!opts)
             throw std::runtime_error(SB()<<"Error parsing pvRequest \""<<R<<"\" : "<<create->getMessage());
 
-    } else {
+    } else if(PyObject_TypeCheck(req, P4PValue_type)) {
         opts = P4PValue_unwrap(req);
+
+    } else {
+        throw std::runtime_error(SB()<<"Can't built pvReqeust from "<<Py_TYPE(req)->tp_name);
     }
     return opts;
 }
