@@ -42,9 +42,14 @@ PyObject* p4p_pva_version(PyObject *junk)
                          int(EPICS_PVA_DEVELOPMENT_FLAG));
 }
 
-PyObject* p4p_getrefs(PyObject *junk)
+PyObject* p4p_getrefs(PyObject *junk, PyObject *args, PyObject *kws)
 {
     try {
+        unsigned zeros = 0;
+        const char *names[] = {"zeros", 0};
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "|I", (char**)names, &zeros))
+            return 0;
+
         epics::RefSnapshot snap;
         snap.update();
 
@@ -53,6 +58,8 @@ PyObject* p4p_getrefs(PyObject *junk)
         for(epics::RefSnapshot::const_iterator it=snap.begin(), end=snap.end();
             it!=end; ++it)
         {
+            if(!zeros && !it->second.current)
+                continue;
             PyRef val(PyLong_FromSize_t(it->second.current));
             if(PyDict_SetItemString(ret.get(), it->first.c_str(), val.get()))
                 throw std::runtime_error("");
@@ -76,8 +83,10 @@ static struct PyMethodDef P4P_methods[] = {
      ":returns: tuple of version number components for PVData"},
     {"pvaVersion", (PyCFunction)p4p_pva_version, METH_NOARGS,
      ":returns: tuple of version number components for PVData"},
-    {"listRefs", (PyCFunction)p4p_getrefs, METH_NOARGS,
-     "Snapshot c++ reference counter values\n"
+    {"listRefs", (PyCFunction)p4p_getrefs, METH_VARARGS|METH_KEYWORDS,
+     "listRefs(zeros=False)\n\n"
+     "Snapshot c++ reference counter values.\n"
+     "If zeros is False, then counts with zero value are omitted.\n"
      ":returns: {\"name\",0}"},
     {NULL}
 };
