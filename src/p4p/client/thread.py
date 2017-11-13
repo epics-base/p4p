@@ -292,15 +292,13 @@ class Context(object):
         elif process or wait is not None:
             request = 'record[block=%s,process=%s]'%('true' if wait else 'false', process or 'passive')
 
-        if request is None:
-            request = [None]*len(name)
-
         singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
             name = [name]
             values = [values]
-            if request is not None:
-                request = [request]
+
+        if not isinstance(request, list):
+            request = [request]
 
         assert len(name)==len(request), (name, request)
         assert len(name)==len(values), (name, values)
