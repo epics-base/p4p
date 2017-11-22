@@ -1,6 +1,7 @@
 """Python reference counter statistics.
 """
 import sys, gc, inspect, time
+from glob import fnmatch
 from types import InstanceType
 
 class StatsDelta(object):
@@ -93,6 +94,23 @@ def gcstats():
   del all
 
   return _stats
+
+def gcfind(name):
+  all = gc.get_objects()
+  found = []
+
+  for obj in all:
+    K = type(obj)
+    if K is gcfind:
+      continue # avoid counting ourselves
+
+    if K is InstanceType: # instance of an old-style class
+      K = getattr(obj, '__class__', K)
+
+    if fnmatch(str(K), name):
+        found.append(obj)
+
+  return found
 
 class _StatsThread(object):
   def __init__(self, period, file):
