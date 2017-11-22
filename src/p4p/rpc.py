@@ -280,14 +280,20 @@ def _wrapMethod(K, V):
     if len(S.args)!=len(S.defaults):
         raise TypeError("proxy method %s must specify types for all arguments"%K)
 
-    NT = NTURI(zip(S.args, S.defaults))
+    try:
+        NT = NTURI(zip(S.args, S.defaults))
+    except Exception, e:
+        raise TypeError("%s : failed to build method from %s, %s"%(e, S.args, S.defaults))
 
     @wraps(V)
     def mcall(self, *args, **kws):
         pvname = pv%self.format
         pos = dict(zip(S.args[:len(args)], args))
         pos.update(kws)
-        uri = NT.wrap(pvname, pos, scheme=self.scheme or self.context.name, authority=self.authority)
+        try:
+            uri = NT.wrap(pvname, pos, scheme=self.scheme or self.context.name, authority=self.authority)
+        except Exception as e:
+            raise ValueError("Unable to wrap %s as %s (%s)"%(pos, NT, e))
         return self.context.rpc(pvname, uri, request=req, timeout=self.timeout, throw=self.throw)
 
     return mcall
