@@ -282,7 +282,7 @@ def _wrapMethod(K, V):
 
     try:
         NT = NTURI(zip(S.args, S.defaults))
-    except Exception, e:
+    except Exception as e:
         raise TypeError("%s : failed to build method from %s, %s"%(e, S.args, S.defaults))
 
     @wraps(V)
