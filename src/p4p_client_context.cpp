@@ -254,7 +254,7 @@ static PyMemberDef Context_members[] = {
 
 void unfactory()
 {
-    //pva::ca::CAClientFactory::stop();
+    pva::ca::CAClientFactory::stop();
     pva::ClientFactory::stop();
 }
 
@@ -271,7 +271,7 @@ void p4p_client_context_register(PyObject *mod)
 {
     pva::ClientFactory::start();
     // don't enable the "ca" provider as it doesn't follow the ChannelProvider rules
-    //pva::ca::CAClientFactory::start();
+    pva::ca::CAClientFactory::start();
 
     Py_AtExit(&unfactory);
 

@@ -107,6 +107,7 @@ PyObject *py_channel_get(PyObject *self, PyObject *args, PyObject *kws)
         GetOp::Req::shared_pointer pyreq(new GetOp::Req(reqop));
         reqop->req = pyreq;
         pvd::PVStructure::shared_pointer pvReq(buildRequest(req));
+        reqop->pvRequest = pvReq;
 
         reqop->cb.reset(cb, borrow());
 
@@ -157,6 +158,7 @@ PyObject *py_channel_put(PyObject *self, PyObject *args, PyObject *kws)
         PutOp::Req::shared_pointer pyreq(new PutOp::Req(reqop));
         reqop->req = pyreq;
         pvd::PVStructure::shared_pointer pvReq(buildRequest(req));
+        reqop->pvRequest = pvReq;
 
         reqop->cb.reset(cb, borrow());
         reqop->pyvalue.reset(val, borrow());
@@ -206,6 +208,7 @@ PyObject *py_channel_rpc(PyObject *self, PyObject *args, PyObject *kws)
         RPCOp::Req::shared_pointer pyreq(new RPCOp::Req(reqop));
         reqop->req = pyreq;
         pvd::PVStructure::shared_pointer pvReq(buildRequest(req));
+        reqop->pvRequest = pvReq;
 
         reqop->cb.reset(cb, borrow());
         reqop->pvvalue = P4PValue_unwrap(val);
@@ -261,6 +264,7 @@ PyObject *py_channel_monitor(PyObject *self, PyObject *args, PyObject *kws)
         MonitorOp::Req::shared_pointer pyreq(new MonitorOp::Req(reqop));
         reqop->req = pyreq;
         pvd::PVStructure::shared_pointer pvReq(buildRequest(req));
+        reqop->pvRequest = pvReq;
 
         reqop->event.reset(cb, borrow());
 

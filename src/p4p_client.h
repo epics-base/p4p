@@ -44,6 +44,10 @@ struct MonitorOp {
     operation_t::shared_pointer op;
     requester_t::shared_pointer req;
 
+    // workaround for caProvider in PVA 6.0.0
+    // fixed with c4fe7150c96ff7c391e41d61c28ebf06c7a1f151
+    epics::pvData::PVStructure::shared_pointer pvRequest;
+
     /** error/non-empty callback
      * Called with one of:
      *   True: New data, call poll()
@@ -72,6 +76,10 @@ struct OpBase {
     PyRef pyvalue;
     // rpc value
     epics::pvData::PVStructure::shared_pointer pvvalue;
+
+    // workaround for caProvider in PVA 6.0.0
+    // fixed with c4fe7150c96ff7c391e41d61c28ebf06c7a1f151
+    epics::pvData::PVStructure::shared_pointer pvRequest;
 
     void call_cb(PyObject *obj);
 
