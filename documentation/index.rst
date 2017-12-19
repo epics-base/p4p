@@ -6,7 +6,11 @@
 PVAccess for Python (P4P)
 =========================
 
-Source can be found at https://github.com/mdavidsaver/p4p
+The canonical version of this page is https://mdavidsaver.github.io/p4p/
+
+Releases can be downloaded from https://github.com/mdavidsaver/p4p/releases
+
+Versioned source can be found at https://github.com/mdavidsaver/p4p
 
 Contents:
 

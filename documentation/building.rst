@@ -1,40 +1,51 @@
 Building
 ========
 
+Release tars available from https://github.com/mdavidsaver/p4p/releasess
+
 The P4P modules requires:
 
 * Python 2.7 or >=3.4
 * numpy >=1.6
 * nosetests (to run unittests)
+
+* EPICS >= 7.0.1
+
+or
+
 * EPICS Base >= 3.14.12
-* PVDataCPP (unreleased)
-* PVAccessCPP (unreleased)
+* pvDataCPP >=7.0.0
+* pvAccessCPP >=6.0.0
 
 Build from source
 -----------------
 
-Fetch the source.::
-
-   git clone https://github.com/mdavidsaver/p4p.git
-   cd p4p
-
-Setup on a Debian Linux host::
+Install python dependencies on a Debian Linux host::
 
    sudo apt-get install python2.7-dev python-numpy nose
 
 or with PIP::
 
-   pip install -r requirements-deb8.txt
-   
+   pip install -r requirements-deb9.txt
 
-Set location of EPICS modules::
+From release tar.::
+
+   curl -L 'https://github.com/mdavidsaver/p4p/releases/download/1.0.0/p4p-1.0.0.tar.gz' | tar -xz
+   cd p4p-1.0.0
+
+or from from versioned source.::
+
+   git clone https://github.com/mdavidsaver/p4p.git
+   cd p4p
+
+Set location of EPICS modules.  With EPICS >= 7.0.1::
 
    cat <<EOF > configure/RELEASE.local
-   PVACCESS=/path/to/pvAccessCPP
-   PVDATA=/path/to/pvDataCPP
    EPICS_BASE=/path/to/epics-base
    EOF
    make
+
+See below for details on building EPICS from source.
 
 By default P4P will build using 'python' found in the system search path.
 To explicitly specify a particular version.::
@@ -69,20 +80,11 @@ If the necessary EPICS modules are not present, then they may be built form sour
 Note that the 'pva2pva' module is not required to build P4P, and may be omitted.
 It is used in the :ref:`starting` demo. ::
 
-   git clone --recursive https://github.com/epics-base/epics-base.git
-   git clone https://github.com/epics-base/pvDataCPP.git
-   git clone https://github.com/epics-base/pvAccessCPP.git
-   git clone https://github.com/epics-base/pva2pva.git
-   cat <<EOF >  RELEASE.local
-   PVACCESS=$PWD/pvAccessCPP
-   PVDATA=$PWD/pvDataCPP
-   EPICS_BASE=$PWD/epics-base
-   EOF
-   make -C epics-base -j2
-   make -C pvDataCPP -j2
-   make -C pvAccessCPP -j2
-   make -C pva2pva -j2
+   git clone --branch core/master --recursive https://github.com/epics-base/epics-base.git
+   make -C epics-base
 
+When building against EPICS < 7.0.1 the pvDataCPP and pvAccessCPP modules
+must be built seperately.
 
 CLI and unittests
 -----------------
