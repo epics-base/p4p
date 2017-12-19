@@ -9,10 +9,10 @@ void GetOp::Req::channelGetConnect(
     pvd::Structure::const_shared_pointer const & structure)
 {
     GetOp::shared_pointer op(owner.lock());
+    TRACE("get start "<<channelGet->getChannel()->getChannelName()<<" "<<status<<" "<<op);
     if(!op)
         return;
 
-    TRACE("get start "<<channelGet->getChannel()->getChannelName()<<" "<<status);
     if(!status.isSuccess()) {
         PyLock L;
         PyRef E(PyObject_CallFunction(PyExc_RuntimeError, (char*)"s", status.getMessage().c_str()));
