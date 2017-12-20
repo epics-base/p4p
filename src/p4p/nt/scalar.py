@@ -30,9 +30,9 @@ class ntfloat(ntwrappercommon,float):
 
     * .severity
     * .status
-    * .timestamp
-    * .raw_stamp
-    * .raw
+    * .timestamp - Seconds since 1 Jan 1970 UTC as a float
+    * .raw_stamp - A tuple (seconds, nanoseconds)
+    * .raw - The underlying :py:class:`p4p.Value`.
     """
 
 class ntint(ntwrappercommon,int):
@@ -41,9 +41,9 @@ class ntint(ntwrappercommon,int):
 
     * .severity
     * .status
-    * .timestamp
-    * .raw_stamp
-    * .raw
+    * .timestamp - Seconds since 1 Jan 1970 UTC as a float
+    * .raw_stamp - A tuple (seconds, nanoseconds)
+    * .raw - The underlying :py:class:`p4p.Value`.
     """
 
 class ntstr(ntwrappercommon,unicode):
@@ -52,9 +52,9 @@ class ntstr(ntwrappercommon,unicode):
 
     * .severity
     * .status
-    * .timestamp
-    * .raw_stamp
-    * .raw
+    * .timestamp - Seconds since 1 Jan 1970 UTC as a float
+    * .raw_stamp - A tuple (seconds, nanoseconds)
+    * .raw - The underlying :py:class:`p4p.Value`.
     """
 
 class ntnumericarray(ntwrappercommon,numpy.ndarray):
@@ -63,9 +63,9 @@ class ntnumericarray(ntwrappercommon,numpy.ndarray):
 
     * .severity
     * .status
-    * .timestamp
-    * .raw_stamp
-    * .raw
+    * .timestamp - Seconds since 1 Jan 1970 UTC as a float
+    * .raw_stamp - A tuple (seconds, nanoseconds)
+    * .raw - The underlying :py:class:`p4p.Value`.
     """
 
     @classmethod
@@ -81,9 +81,9 @@ class ntstringarray(ntwrappercommon,list):
 
     * .severity
     * .status
-    * .timestamp
-    * .raw_stamp
-    * .raw
+    * .timestamp - Seconds since 1 Jan 1970 UTC as a float
+    * .raw_stamp - A tuple (seconds, nanoseconds)
+    * .raw - The underlying :py:class:`p4p.Value`.
     """
 
 class NTScalar(object):

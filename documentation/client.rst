@@ -26,6 +26,8 @@ Get and Put operations can be performed on on single PVs or a list of PVs. ::
    >>> ctxt.put('pv:name', 5)
    >>> ctxt.put('pv:name', {'value': 5}) # equivalent to previous
 
+By default the values returned by :py:meth:`Context.get` are subject to :py:ref:`unwrap`.
+
 RPC
 ^^^
 
@@ -50,6 +52,8 @@ be a :py:class:`Value`. ::
     })
     result = ctxt.rpc(V)
 
+By default the values returned by :py:meth:`Context.rpc` are subject to :py:ref:`unwrap`.
+
 Monitor
 ^^^^^^^
 
@@ -65,6 +69,8 @@ new :py:class:`Value`, or :py:class:`Exception`. ::
 
 The monitor method returns a :py:class:`Subscription` which has a close method
 to end the subscription.
+
+By default the values passed to monitor callbacks are subject to :py:ref:`unwrap`.
 
 API Reference
 -------------

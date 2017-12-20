@@ -22,7 +22,7 @@ Build from source
 
 Install python dependencies on a Debian Linux host::
 
-   sudo apt-get install python2.7-dev python-numpy nose
+   sudo apt-get install python2.7-dev python-numpy python-nose
 
 or with PIP::
 

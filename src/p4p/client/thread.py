@@ -195,7 +195,7 @@ class Context(object):
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.  If False then the Exception is returned instead of the Value
 
-        :returns: A Value or Exception, or list of same
+        :returns: A p4p.Value or Exception, or list of same.  Subject to :py:ref:`unwrap`.
 
         When invoked with a single name then returns is a single value.
         When invoked with a list of name, then returns a list of values
@@ -371,7 +371,7 @@ class Context(object):
         :param bool throw: When true, operation error throws an exception.
                      If False then the Exception is returned instead of the Value
 
-        :returns: A Value or Exception
+        :returns: A Value or Exception.  Subject to :py:ref:`unwrap`.
 
         When invoked with a single name then returns is a single value.
         When invoked with a list of names, then returns a list of values
@@ -415,7 +415,7 @@ class Context(object):
 
         The callable will be invoked with one argument which is either.
 
-        * A Value
+        * A p4p.Value (Subject to :py:ref:`unwrap`)
         * A sub-class of Exception
         * None when the subscription is complete, and more update will ever arrive.
         """
