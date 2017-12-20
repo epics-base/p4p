@@ -134,10 +134,6 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
 
         if(!chan) {
             return PyErr_Format(PyExc_RuntimeError, "Failed to create channel '%s'", cname);
-        } else if(!chan.unique()) {
-            std::cerr<<"Provider "<<chan->getProvider()->getProviderName()
-                     <<" for "<<chan->getChannelName()
-                     <<" gives non-unique Channel.  use_count="<<chan.use_count()<<"\n";
         }
 
         pychan->channel = chan;
@@ -149,7 +145,7 @@ PyObject *Context::py_channel(PyObject *self, PyObject *args, PyObject *kws)
         if(chanklass->tp_init && chanklass->tp_init(ret.get(), args, kws))
             throw std::runtime_error("Error Channel.__init__");
 
-        TRACE("Channel "<<cname<<" "<<chan);
+        TRACE("Channel "<<cname<<" "<<chan<<" use_count="<<chan.use_count());
         return ret.release();
     } CATCH()
     return NULL;

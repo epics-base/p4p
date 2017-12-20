@@ -166,10 +166,6 @@ PyObject *py_channel_put(PyObject *self, PyObject *args, PyObject *kws)
         PutOp::operation_t::shared_pointer op(SELF->channel->createChannelPut(pyreq, pvReq));
         if(!op) {
             Py_RETURN_NONE;
-        } else if(!op.unique() && reqop->pyvalue.get()) {
-            std::cerr<<"Provider "<<SELF->channel->getProvider()->getProviderName()
-                     <<" for "<<SELF->channel->getChannelName()
-                     <<" gives non-unique Put operation.  use_count="<<op.use_count()<<"\n";
         }
         // cb may be called at this point.
         reqop->op.swap(op);
@@ -221,11 +217,6 @@ PyObject *py_channel_rpc(PyObject *self, PyObject *args, PyObject *kws)
 
         if(!op) {
             Py_RETURN_NONE;
-        } else if(!op.unique() && reqop->pvvalue) {
-            // !pvvalue indicates that RPC request was initiated from channelRPCConnect()
-            std::cerr<<"Provider "<<SELF->channel->getProvider()->getProviderName()
-                     <<" for "<<SELF->channel->getChannelName()
-                     <<" gives non-unique RPC operation.  use_count="<<op.use_count()<<"\n";
         }
         // cb may be called at this point.
         reqop->op.swap(op);
@@ -271,10 +262,6 @@ PyObject *py_channel_monitor(PyObject *self, PyObject *args, PyObject *kws)
         MonitorOp::operation_t::shared_pointer op(SELF->channel->createMonitor(pyreq, pvReq));
         if(!op) {
             Py_RETURN_NONE;
-        } else if(!op.unique()) {
-            std::cerr<<"Provider "<<SELF->channel->getProvider()->getProviderName()
-                     <<" for "<<SELF->channel->getChannelName()
-                     <<" gives non-unique Monitor operation.  use_count="<<op.use_count()<<"\n";
         }
         // cb may be called at this point.
         reqop->op.swap(op);
