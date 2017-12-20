@@ -50,6 +50,7 @@ class Context(_Context):
 _all_contexts = WeakSet()
 
 def _cleanup_contexts():
+    _log.debug("Closing all Client contexts")
     contexts = list(_all_contexts)
     for ctxt in contexts:
         ctxt.close()
