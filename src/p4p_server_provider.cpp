@@ -338,12 +338,15 @@ struct PyServerRPC : public PyServerCommon<pva::ChannelRPC>,
         TRACE("ENTER");
         Reply::reference_type SELF = Reply::unwrap(self);
         try {
+            if(!SELF.rpc) {
+                TRACE("Cancelled");
+                Py_RETURN_NONE;
+
+            }
+
             pva::ChannelRPCRequester::shared_pointer R(SELF.rpc->requester);
 
-            if(!SELF.rpc) {
-                TRACE("NOOP");
-
-            } else if(data!=Py_None) {
+            if(data!=Py_None) {
 
 
                 pvd::PVStructure::shared_pointer value;
