@@ -375,3 +375,40 @@ class TestRawValue(unittest.TestCase):
         self.assertTrue(A.changed('z.b'))
         self.assertFalse(Z.changed('a'))
         self.assertTrue(Z.changed('b'))
+
+class TestReInit(unittest.TestCase):
+    def testCopySubStruct(self):
+        A = _Value(_Type([
+            ('x', ('S', None, [
+                ('y', 'i'),
+                ('z', 'ai'),
+                ('q', 'v'),
+                ('m', 'av'),
+                ('a', ('S', None, [
+                    ('A', 'i'),
+                ])),
+            ])),
+        ]), {
+            'x.y':42,
+            'x.z':range(3),
+            'x.q':'hello',
+            'x.m':['hello', 52],
+            'x.a.A':100,
+        })
+
+        B = _Value(A.type(), {
+            'x.y':43,
+            'x.z':range(4),
+            'x.q':15,
+            'x.m':['world', 62],
+            'x.a.A':101,
+        })
+
+        print(A.x, B.x)
+        B.x = A.x
+
+        self.assertEqual(B.x.y, 42)
+        assert_aequal(B.x.z, [0,1,2])
+        self.assertEqual(B.x.q, 'hello')
+        self.assertEqual(B.x.m, ['hello', 52])
+        self.assertEqual(B.x.a.A, 100)

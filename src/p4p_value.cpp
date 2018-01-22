@@ -159,6 +159,7 @@ void Value::store_struct(pvd::PVStructure* fld,
     const pvd::StructureConstPtr& stype = obj.getStructure();
 
     const pvd::StringArray& names = stype->getFieldNames();
+    const pvd::FieldConstPtrArray& types = stype->getFields();
     // TODO: getPVFields() breaks const-ness
     const pvd::PVFieldPtrArray& fields = obj.getPVFields();
 
@@ -172,10 +173,10 @@ void Value::store_struct(pvd::PVStructure* fld,
 
         const pvd::FieldConstPtr& dtype = dest->getField();
 
-        if(ftype->getType() != dtype->getType()) {
+        if(types[i]->getType() != dtype->getType()) {
             PyErr_Format(PyExc_KeyError, "Can't assign \"%s.%s\" %s from %s",
                          fld->getFullName().c_str(), names[i].c_str(),
-                         pvd::TypeFunc::name(ftype->getType()),
+                         pvd::TypeFunc::name(types[i]->getType()),
                          pvd::TypeFunc::name(dtype->getType()));
             throw std::runtime_error("not seen");
         }
@@ -218,12 +219,32 @@ void Value::store_struct(pvd::PVStructure* fld,
                 dest[i] = create->createPVStructure(Ftype);
                 store_struct(dest[i].get(), Ftype.get(), *src[i], nil);
             }
+
+            F->replace(pvd::freeze(dest));
         }
             break;
         case pvd::union_: {
             pvd::PVUnion* F = static_cast<pvd::PVUnion*>(dest.get());
             pvd::PVUnion* S = static_cast<pvd::PVUnion*>(fields[i].get());
             store_union(F, F->getUnion().get(), *S);
+        }
+            break;
+        case pvd::unionArray: {
+            pvd::PVUnionArray* F = static_cast<pvd::PVUnionArray*>(dest.get());
+            pvd::PVUnionArray* S = static_cast<pvd::PVUnionArray*>(fields[i].get());
+            pvd::UnionConstPtr Ftype = F->getUnionArray()->getUnion();
+            pvd::PVUnionArray::const_svector src(S->view());
+            pvd::PVUnionArray::svector dest(src.size());
+            const pvd::PVDataCreatePtr& create(pvd::getPVDataCreate());
+
+            for(size_t i=0, N=src.size(); i<N; i++) {
+                if(!src[i])
+                    continue;
+                dest[i] = create->createPVUnion(Ftype);
+                store_union(dest[i].get(), Ftype.get(), *src[i]);
+            }
+
+            F->replace(pvd::freeze(dest));
         }
             break;
         default:
@@ -520,7 +541,7 @@ void Value::storefld(pvd::PVField* fld,
         return;
     }
 
-    throw std::runtime_error("Storage of type not implemented");
+    throw std::runtime_error(SB()<<"Storage of type not implemented : "<<pvd::TypeFunc::name(ftype->getType()));
 }
 
 PyObject *Value::fetchfld(pvd::PVField *fld,
