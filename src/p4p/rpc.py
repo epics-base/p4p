@@ -301,7 +301,7 @@ def _wrapMethod(K, V):
 def rpcproxy(spec):
     """Decorator to enable this class to proxy RPC client calls
     
-    The decorator class constructor takes one additional arugment "context"
+    The decorated class constructor takes one additional arugment "context"
     which should by a :class:`~p4p.client.thread.Context`. ::
     
        @rpcproxy
