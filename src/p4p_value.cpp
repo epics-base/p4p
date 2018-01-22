@@ -19,6 +19,8 @@ struct Value {
     // NULL when not tracking, treated as bit 0 set (aka all initialized)
     pvd::BitSet::shared_pointer I;
 
+    // assignment of PVStructure from Object
+
     void storefld(epics::pvData::PVField *fld,
                const epics::pvData::Field *ftype,
                PyObject *obj,
@@ -32,6 +34,19 @@ struct Value {
     void store_union(pvd::PVUnion* fld,
                       const pvd::Union* ftype,
                       PyObject *obj);
+
+    // assignment of PVStructure from (possibly unrelated) PVStructure
+
+    void store_struct(pvd::PVStructure* fld,
+                      const pvd::Structure* ftype,
+                      const pvd::PVStructure& obj,
+                      const pvd::BitSet::shared_pointer& bset);
+
+    void store_union(pvd::PVUnion* fld,
+                      const pvd::Union* ftype,
+                      const pvd::PVUnion& obj);
+
+    // fetch PVField as Object
 
     PyObject *fetchfld(pvd::PVField *fld,
                        const pvd::Field *ftype,
@@ -69,6 +84,7 @@ NPY_TYPES ntype(pvd::ScalarType t) {
     throw std::runtime_error(SB()<<"Unable to map scalar type '"<<(int)t<<"'");
 }
 
+// so far not needed...
 //pvd::ScalarType ptype(NPY_TYPES t) {
 //    for(const npmap *p = np2pvd; p->npy!=NPY_NOTYPE; p++) {
 //        if(p->npy==t) return p->pvd;
@@ -82,19 +98,137 @@ void Value::store_struct(pvd::PVStructure* fld,
                          PyObject *obj,
                          const pvd::BitSet::shared_pointer& bset)
 {
-    if(!PyDict_Check(obj)) {
-        throw std::runtime_error("Must assigned struct from dict");
-    }
-    Py_ssize_t n=0;
-    PyObject *K, *V;
-    while(PyDict_Next(obj, &n, &K, &V)) {
-        PyString key(K);
-        pvd::PVFieldPtr F(fld->getSubField(key.str()));
-        if(!F) {
-            PyErr_Format(PyExc_KeyError, "no sub-field %s", key.str().c_str());
+    if(PyDict_Check(obj)) {
+        Py_ssize_t n=0;
+        PyObject *K, *V;
+        while(PyDict_Next(obj, &n, &K, &V)) {
+            PyString key(K);
+            pvd::PVFieldPtr F(fld->getSubField(key.str()));
+            if(!F) {
+                PyErr_Format(PyExc_KeyError, "no sub-field %s.%s", fld->getFullName().c_str(), key.str().c_str());
+                throw std::runtime_error("not seen");
+            }
+            storefld(F.get(), F->getField().get(), V, bset);
+        }
+
+    } else if(PyObject_IsInstance(obj, (PyObject*)P4PValue_type)) {
+        store_struct(fld, ftype, *P4PValue::unwrap(obj).V, bset);
+
+    } else {
+        // an iterable yielding tuples ('fieldname', value)
+        PyRef iter;
+        try {
+            PyRef temp(PyObject_GetIter(obj));
+            iter.swap(temp);
+        }catch(std::runtime_error&){
+            PyErr_Format(PyExc_KeyError, "Can't assign \"%s\" from %s : not iterable",
+                         fld->getFullName().c_str(), Py_TYPE(obj)->tp_name);
             throw std::runtime_error("not seen");
         }
-        storefld(F.get(), F->getField().get(), V, bset);
+
+        while(true) {
+            PyRef I(PyIter_Next(iter.get()), allownull());
+            if(!I.get()) {
+                if(PyErr_Occurred())
+                    throw std::runtime_error("XXX");
+                break;
+            }
+
+            const char *key = 0;
+            PyObject *V = 0;
+
+            if(!PyArg_ParseTuple(I.get(), "sO", &key, &V))
+                throw std::runtime_error("XXX");
+
+            pvd::PVFieldPtr F(fld->getSubField(key));
+            if(!F) {
+                PyErr_Format(PyExc_KeyError, "no sub-field %s.%s", fld->getFullName().c_str(), key);
+                throw std::runtime_error("not seen");
+            }
+
+            storefld(F.get(), F->getField().get(), V, bset);
+        }
+    }
+}
+
+void Value::store_struct(pvd::PVStructure* fld,
+                         const pvd::Structure* ftype,
+                         const pvd::PVStructure& obj,
+                         const pvd::BitSet::shared_pointer& bset)
+{
+    const pvd::StructureConstPtr& stype = obj.getStructure();
+
+    const pvd::StringArray& names = stype->getFieldNames();
+    // TODO: getPVFields() breaks const-ness
+    const pvd::PVFieldPtrArray& fields = obj.getPVFields();
+
+    for(size_t i=0, N=names.size(); i<N; i++) {
+        pvd::PVFieldPtr dest(fld->getSubField(names[i]));
+        if(!dest) {
+            PyErr_Format(PyExc_KeyError, "Can't assign non-existant \"%s.%s\"",
+                         fld->getFullName().c_str(), names[i].c_str());
+            throw std::runtime_error("not seen");
+        }
+
+        const pvd::FieldConstPtr& dtype = dest->getField();
+
+        if(ftype->getType() != dtype->getType()) {
+            PyErr_Format(PyExc_KeyError, "Can't assign \"%s.%s\" %s from %s",
+                         fld->getFullName().c_str(), names[i].c_str(),
+                         pvd::TypeFunc::name(ftype->getType()),
+                         pvd::TypeFunc::name(dtype->getType()));
+            throw std::runtime_error("not seen");
+        }
+
+        switch(dtype->getType()) {
+        case pvd::scalar: {
+            pvd::PVScalar* F = static_cast<pvd::PVScalar*>(dest.get());
+            pvd::PVScalar* S = static_cast<pvd::PVScalar*>(fields[i].get());
+            pvd::AnyScalar temp;
+            S->getAs(temp);
+            F->putFrom(temp);
+        }
+            break;
+        case pvd::scalarArray: {
+            pvd::PVScalarArray* F = static_cast<pvd::PVScalarArray*>(dest.get());
+            pvd::PVScalarArray* S = static_cast<pvd::PVScalarArray*>(fields[i].get());
+            pvd::shared_vector<const void> temp;
+            S->getAs(temp);
+            F->putFrom(temp);
+        }
+            break;
+        case pvd::structure: {
+            pvd::PVStructure* F = static_cast<pvd::PVStructure*>(dest.get());
+            pvd::PVStructure* S = static_cast<pvd::PVStructure*>(fields[i].get());
+            store_struct(F, F->getStructure().get(), *S, bset);
+        }
+            break;
+        case pvd::structureArray: {
+            pvd::PVStructureArray* F = static_cast<pvd::PVStructureArray*>(dest.get());
+            pvd::PVStructureArray* S = static_cast<pvd::PVStructureArray*>(fields[i].get());
+            pvd::StructureConstPtr Ftype = F->getStructureArray()->getStructure();
+            pvd::PVStructureArray::const_svector src(S->view());
+            pvd::PVStructureArray::svector dest(src.size());
+            const pvd::PVDataCreatePtr& create(pvd::getPVDataCreate());
+            pvd::BitSetPtr nil;
+
+            for(size_t i=0, N=src.size(); i<N; i++) {
+                if(!src[i])
+                    continue;
+                dest[i] = create->createPVStructure(Ftype);
+                store_struct(dest[i].get(), Ftype.get(), *src[i], nil);
+            }
+        }
+            break;
+        case pvd::union_: {
+            pvd::PVUnion* F = static_cast<pvd::PVUnion*>(dest.get());
+            pvd::PVUnion* S = static_cast<pvd::PVUnion*>(fields[i].get());
+            store_union(F, F->getUnion().get(), *S);
+        }
+            break;
+        default:
+            throw std::runtime_error(SB()<<__FILE__<<":"<<__LINE__<<" Not implemented "<<pvd::TypeFunc::name(ftype->getType()));
+        }
     }
 }
 
@@ -194,6 +328,62 @@ void Value::store_union(pvd::PVUnion* fld,
              empty);
 
     fld->set(U);
+}
+
+void Value::store_union(pvd::PVUnion* fld,
+                        const pvd::Union* ftype,
+                        const pvd::PVUnion& src)
+{
+    const pvd::UnionConstPtr& stype(src.getUnion());
+    const pvd::PVField::const_shared_pointer val(src.get()); // may be null
+
+    if(ftype->isVariant()) {
+        // if dest is variant, then copy
+        if(val) {
+            pvd::PVFieldPtr temp(pvd::getPVDataCreate()->createPVField(val->getField()));
+            temp->copyUnchecked(*val);
+            fld->set(temp);
+        } else {
+            fld->select(pvd::PVUnion::UNDEFINED_INDEX);
+        }
+
+    } else if(!stype->isVariant()) {
+        // neither is variant
+        // require that selected field names match
+        if(src.getSelectedIndex() == pvd::PVUnion::UNDEFINED_INDEX || !val) {
+            fld->select(pvd::PVUnion::UNDEFINED_INDEX);
+        } else {
+            pvd::PVFieldPtr temp(pvd::getPVDataCreate()->createPVField(val->getField()));
+            temp->copyUnchecked(*val);
+            fld->set(temp);
+        }
+
+    } else {
+        // src is variant, dest is not
+        // attempt automatic selection
+        if(!val) {
+            fld->select(pvd::PVUnion::UNDEFINED_INDEX);
+        } else {
+            const pvd::FieldConstPtr& vtype(val->getField());
+            pvd::ScalarType guess_scalar;
+            switch(vtype->getType()) {
+            case pvd::scalar:
+                guess_scalar = static_cast<const pvd::Scalar&>(*vtype).getScalarType();
+                break;
+            case pvd::scalarArray:
+                guess_scalar = static_cast<const pvd::ScalarArray&>(*vtype).getElementType();
+                break;
+            default:
+                guess_scalar = pvd::pvString;
+            }
+
+            fld->select(ftype->guess(vtype->getType(), guess_scalar));
+
+            pvd::PVFieldPtr temp(pvd::getPVDataCreate()->createPVField(val->getField()));
+            temp->copyUnchecked(*val);
+            fld->set(temp);
+        }
+    }
 }
 
 void Value::storefld(pvd::PVField* fld,
