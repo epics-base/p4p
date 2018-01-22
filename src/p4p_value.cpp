@@ -402,15 +402,15 @@ void Value::storefld(pvd::PVField* fld,
         } else if(PyInt_Check(obj)) {
             F->putFrom<pvd::uint64>(PyInt_AsLong(obj));
 #endif
-        } else if(PyLong_Check(obj)) {
+        } else if(PyLong_Check(obj) || PyArray_IsScalar(obj, Integer)) {
             F->putFrom<pvd::uint64>(PyLong_AsLong(obj));
-        } else if(PyFloat_Check(obj)) {
+        } else if(PyFloat_Check(obj) || PyArray_IsScalar(obj, Number)) {
             F->putFrom(PyFloat_AsDouble(obj));
         } else if(PyBytes_Check(obj)) {
             std::string S(PyBytes_AS_STRING(obj), PyBytes_GET_SIZE(obj));
             F->putFrom(S);
 
-        } else if(PyUnicode_Check(obj)) {
+        } else if(PyUnicode_Check(obj) || PyArray_IsScalar(obj, Unicode)) {
             PyRef S(PyUnicode_AsUTF8String(obj));
 
             std::string V(PyBytes_AS_STRING(S.get()), PyBytes_GET_SIZE(S.get()));
