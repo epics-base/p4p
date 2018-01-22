@@ -301,14 +301,20 @@ def _wrapMethod(K, V):
 def rpcproxy(spec):
     """Decorator to enable this class to proxy RPC client calls
     
-    The decorated class constructor takes one additional arugment "context"
-    which should by a :class:`~p4p.client.thread.Context`. ::
-    
+    The decorated class constructor takes two additional arugments,
+    the first "context" is required to be a :class:`~p4p.client.thread.Context`.
+    The second optional "format" can be a string, tuple, or dictionary and is applied
+    to PV name strings given to :py:function:`rpcall`.
+    Other arguments are passed to the user/base class constructor. ::
+
        @rpcproxy
        class MyProxy(object):
            @rpccall("%s:add")
            def add(lhs='d', rhs='d'):
                pass
+
+       ctxt = Context('pva')
+       proxy = MyProxy(ctxt, "tst:")
 
     The decorated class will by a sub-class of the provided class and :class:`RPCProxyBase`.
     """
