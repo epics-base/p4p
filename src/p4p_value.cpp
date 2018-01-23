@@ -494,6 +494,8 @@ void Value::storefld(pvd::PVField* fld,
             memcpy(buf.data(), PyArray_DATA(V.get()), PyArray_NBYTES(V.get()));
 
             F->putFrom(pvd::freeze(buf));
+            if(bset)
+                bset->set(fld_offset);
         }
     }
         return;
@@ -511,6 +513,8 @@ void Value::storefld(pvd::PVField* fld,
         const pvd::Union *T = static_cast<const pvd::Union *>(ftype);
 
         store_union(F, T, obj);
+        if(bset)
+            bset->set(fld_offset);
     }
         return;
     case pvd::unionArray: {
@@ -537,6 +541,8 @@ void Value::storefld(pvd::PVField* fld,
         }
 
         F->replace(pvd::freeze(arr));
+        if(bset)
+            bset->set(fld_offset);
     }
         return;
     }
