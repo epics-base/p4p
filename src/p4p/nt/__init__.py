@@ -171,10 +171,10 @@ class NTURI(object):
                 ('path', 's'),
                 ('query', ('S', None, args)),
             ])
-        except RuntimeError as e:
+        except Exception as e:
             raise ValueError('Unable to build NTURI compatible type from %s'%args)
     def __init__(self, args):
-        self._args = args
+        self._args = list(args)
         self.type = self.buildType(args)
 
     def wrap(self, path, args=(), kws={}, scheme='', authority=''):
@@ -201,5 +201,5 @@ class NTURI(object):
                 'path':path,
                 'query': AV,
             })
-        except RuntimeError as e:
-            raise ValueError('Unable to initialize NTURI %s from %s'%(AT, AV))
+        except Exception as e:
+            raise ValueError('Unable to initialize NTURI %s from %s using %s'%(AT, AV, self._args))
