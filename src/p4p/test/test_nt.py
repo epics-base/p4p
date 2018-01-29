@@ -110,3 +110,39 @@ class TestTable(unittest.TestCase):
             OrderedDict([('a', 5), ('b', u'one')]),
             OrderedDict([('a', 6), ('b', u'two')]),
         ])
+
+class TestURI(unittest.TestCase):
+    def test_build(self):
+        NT = nt.NTURI([
+            ('a', 'I'),
+            ('b', 's'),
+            ('c', ('S', None, [
+                ('x', 'd'),
+                ('y', 'd'),
+            ])),
+        ])
+
+        V = NT.wrap('fn', (5,))
+        self.assertEqual(V.query.a, 5)
+        self.assertRaises(AttributeError, lambda:V.query.b)
+        self.assertRaises(AttributeError, lambda:V.query.c)
+
+        V = NT.wrap('fn', (6, 'foo'))
+        self.assertEqual(V.query.a, 6)
+        self.assertEqual(V.query.b, 'foo')
+        self.assertRaises(AttributeError, lambda:V.query.c)
+
+        V = NT.wrap('fn', (7,), {'b':'bar'})
+        self.assertEqual(V.query.a, 7)
+        self.assertEqual(V.query.b, 'bar')
+        self.assertRaises(AttributeError, lambda:V.query.c)
+
+        V = NT.wrap('fn', (), {'a':8, 'b':'bar'})
+        self.assertEqual(V.query.a, 8)
+        self.assertEqual(V.query.b, 'bar')
+        self.assertRaises(AttributeError, lambda:V.query.c)
+
+        V = NT.wrap('fn', (), {'a':8, 'b':'bar', 'c':{'x':1,'y':2}})
+        self.assertEqual(V.query.a, 8)
+        self.assertEqual(V.query.c.x, 1)
+        self.assertEqual(V.query.c.y, 2)

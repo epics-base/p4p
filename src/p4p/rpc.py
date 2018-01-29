@@ -288,12 +288,10 @@ def _wrapMethod(K, V):
     @wraps(V)
     def mcall(self, *args, **kws):
         pvname = pv%self.format
-        pos = dict(zip(S.args[:len(args)], args))
-        pos.update(kws)
         try:
-            uri = NT.wrap(pvname, pos, scheme=self.scheme or self.context.name, authority=self.authority)
+            uri = NT.wrap(pvname, args, kws, scheme=self.scheme or self.context.name, authority=self.authority)
         except Exception as e:
-            raise ValueError("Unable to wrap %s as %s (%s)"%(pos, NT, e))
+            raise ValueError("Unable to wrap %s %s as %s (%s)"%(args, kws, NT, e))
         return self.context.rpc(pvname, uri, request=req, timeout=self.timeout, throw=self.throw)
 
     return mcall

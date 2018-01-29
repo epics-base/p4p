@@ -74,7 +74,7 @@ class TestRPCFull(unittest.TestCase):
         args = NTURI([
             ('lhs', 'd'),
             ('rhs', 'd'),
-        ]).wrap(self.prefix+'add', {
+        ]).wrap(self.prefix+'add', kws={
             'lhs': 1,
             'rhs': 1,
         }, scheme='pva')
@@ -87,7 +87,7 @@ class TestRPCFull(unittest.TestCase):
         args = NTURI([
             ('lhs', 'd'),
             ('rhs', 'd'),
-        ]).wrap(self.prefix+'add', {
+        ]).wrap(self.prefix+'add', kws={
             'lhs': 1,
             'rhs': 2,
         }, scheme='pva')
@@ -164,7 +164,7 @@ class TestProxy(unittest.TestCase):
             ('scheme', u'fake'),
             ('authority', u''),
             ('path', u'pv:foo'),
-            ('query', [('A', 4), ('B', u'')])
+            ('query', [('A', 4)])
         ])
         self.assertEqual(len(args), 2)
         self.assertDictEqual(kws, {'request': None, 'throw': True, 'timeout': 3.0})

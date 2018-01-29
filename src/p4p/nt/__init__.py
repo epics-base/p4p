@@ -157,31 +157,49 @@ class NTURI(object):
     def buildType(args):
         """Build NTURI
 
-        :param list args: A list of tuples of query argument name and type code.
-        """
-        return Type(id="epics:nt/NTURI:1.0", spec=[
-            ('scheme', 's'),
-            ('authority', 's'),
-            ('path', 's'),
-            ('query', ('S', None, args)),
+        :param list args: A list of tuples of query argument name and PVD type code.
+
+        >>> I = NTURI([
+            ('arg:a', 'I'),
+            ('arg:two', 's'),
         ])
+        """
+        try:
+            return Type(id="epics:nt/NTURI:1.0", spec=[
+                ('scheme', 's'),
+                ('authority', 's'),
+                ('path', 's'),
+                ('query', ('S', None, args)),
+            ])
+        except RuntimeError as e:
+            raise ValueError('Unable to build NTURI compatible type from %s'%args)
     def __init__(self, args):
+        self._args = args
         self.type = self.buildType(args)
 
-    def wrap(self, path, args, scheme='', authority=''):
-        return Value(self.type, {
-            'scheme':scheme,
-            'authority':authority,
-            'path':path,
-            'query': args,
-        })
+    def wrap(self, path, args=(), kws={}, scheme='', authority=''):
+        """Wrap argument values (tuple/list with optional dict) into Value
 
-    _typeMap = {
-        float: 'd',
-        int: 'l',
-        bytes: 's',
-    }
-    if sys.version_info>=(3,0):
-        _typeMap[str] = 's'
-    else:
-        _typeMap[unicode] = 's'
+        :param str path: The PV name to which this call is made
+        :param tuple args: Ordered arguments
+        :param dict kws: Keyword arguments
+        :rtype: Value
+        """
+        # build dict of argument name+value
+        AV = {}
+        AV.update([A for A in kws.items() if A[1] is not None])
+        AV.update([(N, V) for (N,_T),V in zip(self._args, args)])
+
+        # list of argument name+type tuples for which a value was provided
+        AT = [A for A in self._args if A[0] in AV]
+
+        T = self.buildType(AT)
+        try:
+            return Value(T, {
+                'scheme':scheme,
+                'authority':authority,
+                'path':path,
+                'query': AV,
+            })
+        except RuntimeError as e:
+            raise ValueError('Unable to initialize NTURI %s from %s'%(AT, AV))
