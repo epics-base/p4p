@@ -151,8 +151,7 @@ struct PutOp : public OpBase {
             const epics::pvData::Status& status,
             epics::pvAccess::ChannelPut::shared_pointer const & channelPut,
             epics::pvData::PVStructure::shared_pointer const & pvStructure,
-            epics::pvData::BitSet::shared_pointer const & bitSet)
-        { /* no used */ }
+            epics::pvData::BitSet::shared_pointer const & bitSet);
 
         virtual void channelDisconnect(bool destroy);
     };

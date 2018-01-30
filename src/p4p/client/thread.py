@@ -319,16 +319,29 @@ class Context(object):
                 ch = self._channel(n)
 
                 # callback to build PVD Value from PY value
-                def vb(type, value=value, i=i):
+                def vb(cur, value=value, i=i):
                     try:
+                        type = cur.type()
                         if isinstance(value, dict):
                             V = self.Value(type, value)
                         else:
                             V = self.Value(type, {})
-                            try:
-                                V.value = value # will try to cast str -> *
-                            except Exception as E:
-                                raise ValueError("Unable to assign '%s' : %s"%(value, E))
+                            if not cur.getID().startswith("epics:nt/NTEnum:"):
+                                # handle as plain value
+                                V.value = value
+                            else:
+                                # enumeration
+                                if isinstance(value, (bytes, unicode)):
+                                    # lookup
+                                    estr, value = value, None
+                                    for i,E in enumerate(cur.value.choices):
+                                        if estr==E:
+                                            value = i
+                                            break
+                                    if value is None:
+                                        value = int(estr, 0) # last ditch effort, parse as integer
+                                V.value.index = value
+
                         return V
                     except Exception as E:
                         _log.exception("Error building put value %s", value)
