@@ -302,7 +302,7 @@ def rpcproxy(spec):
     The decorated class constructor takes two additional arugments,
     the first "context" is required to be a :class:`~p4p.client.thread.Context`.
     The second optional "format" can be a string, tuple, or dictionary and is applied
-    to PV name strings given to :py:function:`rpcall`.
+    to PV name strings given to :py:func:`rpcall`.
     Other arguments are passed to the user/base class constructor. ::
 
        @rpcproxy
