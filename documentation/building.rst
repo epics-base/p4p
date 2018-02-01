@@ -80,8 +80,10 @@ If the necessary EPICS modules are not present, then they may be built form sour
 Note that the 'pva2pva' module is not required to build P4P, and may be omitted.
 It is used in the :ref:`starting` demo. ::
 
+   sudo apt-get install libreadline6-dev libncurses5-dev perl
    git clone --branch core/master --recursive https://github.com/epics-base/epics-base.git
    make -C epics-base
+   echo "EPICS_BASE=$PWD/epics-base" > ../p4p/configure/RELEASE.local
 
 When building against EPICS < 7.0.1 the pvDataCPP and pvAccessCPP modules
 must be built seperately.
