@@ -30,8 +30,8 @@ or with PIP::
 
 From release tar.::
 
-   curl -L 'https://github.com/mdavidsaver/p4p/releases/download/1.0.0/p4p-1.0.0.tar.gz' | tar -xz
-   cd p4p-1.0.0
+   curl -L 'https://github.com/mdavidsaver/p4p/releases/download/1.0/p4p-1.0.tar.gz' | tar -xz
+   cd p4p-1.0
 
 or from from versioned source.::
 
@@ -70,6 +70,8 @@ another version.  This will not remove the final tree. ::
     make PYTHON=python2.7 clean
     make PYTHON=python3.4
     make PYTHON=python3,4 clean
+
+.. note:: If PYTHON= is ever specified, then it must be specified for all targets except 'distclean'.
 
 .. _builddeps:
 
