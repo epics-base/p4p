@@ -52,13 +52,16 @@ include $(TOP)/configure/RULES_PY
 
 ifneq (,$(T_A))
 nose:
-	PYTHONPATH="$(abspath $(PWD))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose -P p4p
+	PYTHONPATH="${PYTHONPATH}:$(abspath $(PWD))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose -P p4p
 
 # bounce back down to the sphinx generated Makefile
 # aren't Makefiles fun...
 sphinx:
-	PYTHONPATH="$(abspath $(PWD))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(MAKE) -C $(TOP)/documentation html
+	PYTHONPATH="${PYTHONPATH}:$(abspath $(PWD))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(MAKE) -C $(TOP)/documentation html
+
+sh:
+	echo "export PYTHONPATH=\$${PYTHONPATH}:$(abspath $(PWD))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" > $(OUTPUT)
 
 endif
 
-.PHONY: nose sphinx
+.PHONY: nose sphinx sh

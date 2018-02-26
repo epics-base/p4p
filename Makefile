@@ -13,7 +13,7 @@ UNINSTALL_DIRS += $(wildcard $(INSTALL_LOCATION)/python*)
 
 # jump to a sub-directory where CONFIG_PY has been included
 # can't include CONFIG_PY here as it may not exist yet
-nose sphinx: all
+nose sphinx sh: all
 	$(MAKE) -C src/O.$(EPICS_HOST_ARCH) $@
 
 sphinx-clean:
