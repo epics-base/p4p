@@ -281,10 +281,10 @@ class Context(object):
         >>> ctxt.put('pv:name', {'value':5})
         >>>
 
-        The provided value(s) will be automatically coearsed to the target type.
+        The provided value(s) will be automatically coerced to the target type.
         If this is not possible then an Exception is raised/returned.
 
-        Unless the provided value is a dict, it is assumed to be a plan value
+        Unless the provided value is a dict, it is assumed to be a plain value
         and an attempt is made to store it in '.value' field.
         """
         if request and (process or wait is not None):
@@ -393,10 +393,10 @@ class Context(object):
         >>> ctxt.rpc('pv:name:add', {'A':5, 'B'; 6})
         >>>
 
-        The provided value(s) will be automatically coearsed to the target type.
+        The provided value(s) will be automatically coerced to the target type.
         If this is not possible then an Exception is raised/returned.
 
-        Unless the provided value is a dict, it is assumed to be a plan value
+        Unless the provided value is a dict, it is assumed to be a plain value
         and an attempt is made to store it in '.value' field.
         """
         done = Queue(maxsize=1)
@@ -430,7 +430,7 @@ class Context(object):
 
         * A p4p.Value (Subject to :py:ref:`unwrap`)
         * A sub-class of Exception
-        * None when the subscription is complete, and more update will ever arrive.
+        * None when the subscription is complete, and more updates will ever arrive.
         """
         R = self.Subscription(self, name, cb)
         ch = self._channel(name)
