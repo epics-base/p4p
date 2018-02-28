@@ -78,12 +78,16 @@ class Subscription(object):
             if E is not True:
                 self._cb(E)
                 return
-            while True:
+            for n in range(4):
                 E = self._S.pop()
                 if E is None:
                     break
                 E = self._dounwrap(E)
                 self._cb(E)
+            if E is not None:
+                # removed 4 elements without emptying queue
+                # re-schedule to mux with others
+                self._Q.push(partial(self._handle, True))
             if self._S.done():
                 _log.debug("Subscription complete")
                 self._S.close()
