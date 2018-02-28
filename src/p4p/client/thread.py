@@ -75,11 +75,14 @@ class Subscription(object):
             _log.exception("Lost Subscription update: %s", E)
     def _handle(self, E):
         try:
+            S = self._S
+            if S is None:
+                return
             if E is not True:
                 self._cb(E)
                 return
             for n in range(4):
-                E = self._S.pop()
+                E = S.pop()
                 if E is None:
                     break
                 E = self._dounwrap(E)
@@ -88,10 +91,10 @@ class Subscription(object):
                 # removed 4 elements without emptying queue
                 # re-schedule to mux with others
                 self._Q.push(partial(self._handle, True))
-            if self._S.done():
+            if S.done():
                 _log.debug("Subscription complete")
-                self._S.close()
-                self._S = None
+                S.close()
+                S = None
                 self._cb(None)
         except:
             _log.exception("Error processing Subscription event: %s", E)
@@ -104,7 +107,8 @@ class Context(object):
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
     :param conf dict: Configuration to pass to provider.  Depends on provider selected.
     :param useenv bool: Allow the provider to use configuration from the process environment.
-    :param maxsize int: Size of internal work queue used for monitor callbacks
+    :param workers int: Size of thread pool in which monitor callbacks are run.  Default is 4
+    :param maxsize int: Size of internal work queue used for monitor callbacks.  Default is unlimited
     :param unwrap: Controls :ref:`unwrap`.  Set False to disable
 
     The methods of this Context will block the calling thread until completion or timeout
@@ -129,6 +133,7 @@ class Context(object):
     def __init__(self, *args, **kws):
         _log.debug("thread.Context with %s %s", args, kws)
         self._Qmax = kws.pop('maxsize', 0)
+        self._Wcnt = kws.pop('workers', 4)
         unwrap = kws.pop('unwrap', None)
         if unwrap is None:
             self._unwrap = _default_unwrap
@@ -163,21 +168,27 @@ class Context(object):
     def _queue(self):
         if self._Q is None:
             Q = WorkQueue(maxsize=self._Qmax)
-            T = threading.Thread(name='p4p Context worker', target=Q.handle)
-            T.daemon = True
-            T.start()
-            _log.debug('Started Context worker')
-            self._Q, self._T = Q, T
+            Ts = []
+            for n in range(self._Wcnt):
+                T = threading.Thread(name='p4p Context worker', target=Q.handle)
+                T.daemon = True
+                Ts.append(T)
+            for T in Ts:
+                T.start()
+            _log.debug('Started %d Context worker', self._Wcnt)
+            self._Q, self._T = Q, Ts
         return self._Q
 
     def close(self):
         """Force close all Channels and cancel all Operations
         """
         if self._Q is not None:
-            _log.debug('Join Context worker')
-            self._Q.interrupt()
-            self._T.join()
-            _log.debug('Joined Context worker')
+            for T in self._T:
+                self._Q.interrupt()
+            for n,T in enumerate(self._T):
+                _log.debug('Join Context worker %d', n)
+                T.join()
+            _log.debug('Joined Context workers')
             self._Q, self._T = None, None
         self._ctxt.close()
 
