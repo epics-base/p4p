@@ -505,9 +505,36 @@ void Value::storefld(pvd::PVField* fld,
         store_struct(F, T, obj, bset);
     }
         return;
-    case pvd::structureArray:
-        // TODO
-        break;
+    case pvd::structureArray: {
+        pvd::PVStructureArray* F = static_cast<pvd::PVStructureArray*>(fld);
+        const pvd::StructureArray* T = static_cast<const pvd::StructureArray*>(ftype);
+        const pvd::Structure* ST = T->getStructure().get();
+
+        pvd::PVDataCreatePtr create(pvd::getPVDataCreate());
+        pvd::BitSet::shared_pointer junk;
+        pvd::PVStructureArray::svector arr;
+
+        while(1) {
+            PyRef iter(PyObject_GetIter(obj));
+
+            PyRef I(PyIter_Next(iter.get()), allownull());
+            if(!I.get()) {
+                if(PyErr_Occurred())
+                    throw std::runtime_error("XXX");
+                break;
+            }
+
+            pvd::PVStructurePtr elem(create->createPVStructure(T->getStructure()));
+
+            store_struct(elem.get(), ST, obj, junk);
+        }
+
+        F->replace(pvd::freeze(arr));
+        if(bset)
+            bset->set(fld_offset);
+
+    }
+        return;
     case pvd::union_: {
         pvd::PVUnion* F = static_cast<pvd::PVUnion*>(fld);
         const pvd::Union *T = static_cast<const pvd::Union *>(ftype);
@@ -650,7 +677,30 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
         }
     }
         break;
-    case pvd::structureArray:
+    case pvd::structureArray: {
+        pvd::PVStructureArray* F = static_cast<pvd::PVStructureArray*>(fld);
+        const pvd::StructureArray *T = static_cast<const pvd::StructureArray*>(ftype);
+        const pvd::Structure *ST = T->getStructure().get();
+        pvd::BitSet::shared_pointer empty;
+        pvd::PVStructureArray::const_svector arr(F->view());
+
+        PyRef list(PyList_New(arr.size()));
+
+        for(size_t i=0, N=arr.size(); i<N; i++) {
+            if(!arr[i]) {
+                Py_INCREF(Py_None);
+                PyList_SET_ITEM(list.get(), i, Py_None);
+
+            } else {
+                PyObject *elem = fetchfld(arr[i].get(), ST, empty, unpackstruct, unpackrecurse);
+
+                PyList_SET_ITEM(list.get(), i, elem);
+            }
+        }
+
+        return list.release();
+    }
+
         break;
     case pvd::union_: {
         pvd::PVUnion* F = static_cast<pvd::PVUnion*>(fld);
