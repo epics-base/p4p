@@ -160,8 +160,8 @@ class NTURI(object):
         :param list args: A list of tuples of query argument name and PVD type code.
 
         >>> I = NTURI([
-            ('arg:a', 'I'),
-            ('arg:two', 's'),
+            ('arg_a', 'I'),
+            ('arg_two', 's'),
         ])
         """
         try:
