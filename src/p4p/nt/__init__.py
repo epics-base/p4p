@@ -13,16 +13,19 @@ from operator import itemgetter
 from ..wrapper import Type, Value
 from .common import timeStamp, alarm
 from .scalar import NTScalar
+from .ndarray import NTNDArray
 
 __all__ = [
     'NTScalar',
     'NTMultiChannel',
     'NTTable',
+    'NTNDArray',
 ]
 
 _default_unwrap = {
     "epics:nt/NTScalar:1.0":NTScalar.unwrap,
     "epics:nt/NTScalarArray:1.0":NTScalar.unwrap,
+    "epics:nt/NTNDArray:1.0":NTNDArray.unwrap,
 }
 _default_wrap = {
     "epics:nt/NTScalar:1.0":NTScalar.wrap,
