@@ -761,17 +761,19 @@ int P4PValue_init(PyObject *self, PyObject *args, PyObject *kwds)
 
             pvd::PVStructure::shared_pointer V(pvd::getPVDataCreate()->createPVStructure(S));
 
+            SELF.I.reset(new pvd::BitSet(V->getNextFieldOffset()));
+
             if(value!=Py_None) {
-                pvd::BitSet::shared_pointer empty;
-                SELF.store_struct(V.get(), S.get(), value, empty);
+                SELF.store_struct(V.get(), S.get(), value, SELF.I);
             }
 
             SELF.V = V;
-            SELF.I.reset(new pvd::BitSet(SELF.V->getNextFieldOffset()));
 
         } else if(clone) {
-            SELF.V = P4PValue::unwrap(clone).V;
-            SELF.I.reset(new pvd::BitSet(SELF.V->getNextFieldOffset()));
+            const P4PValue::reference_type other = P4PValue::unwrap(clone);
+            SELF.V = other.V;
+            SELF.I.reset(new pvd::BitSet);
+            *SELF.I = *other.I;
 
         } else {
             PyErr_SetString(PyExc_ValueError, "Value ctor requires type= or clone=");

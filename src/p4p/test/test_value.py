@@ -311,28 +311,29 @@ class TestRawValue(unittest.TestCase):
             ('x', 'i'),
             ('y', 'i'),
         ]), {
+            'y': 42,
         })
         # initially all un-"changed" (at default)
 
-        self.assertSetEqual(A.asSet(), set())
+        self.assertSetEqual(A.asSet(), {'y'})
         self.assertFalse(A.changed())
         self.assertFalse(A.changed('x'))
-        self.assertFalse(A.changed('y'))
+        self.assertTrue(A.changed('y'))
         self.assertRaises(KeyError, A.changed, 'invalid')
 
         A.mark('x')
 
-        self.assertSetEqual(A.asSet(), {'x'})
+        self.assertSetEqual(A.asSet(), {'x', 'y'})
         self.assertFalse(A.changed())
         self.assertTrue(A.changed('x'))
-        self.assertFalse(A.changed('y'))
+        self.assertTrue(A.changed('y'))
 
         A.mark('x', False)
 
-        self.assertSetEqual(A.asSet(), set())
+        self.assertSetEqual(A.asSet(), {'y'})
         self.assertFalse(A.changed())
         self.assertFalse(A.changed('x'))
-        self.assertFalse(A.changed('y'))
+        self.assertTrue(A.changed('y'))
 
     def testBitSetRecurse(self):
         A= _Value(_Type([
