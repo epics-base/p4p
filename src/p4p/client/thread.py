@@ -56,6 +56,10 @@ class Subscription(object):
             self._Q.push_wait(E.set)
             E.wait()
             self._S = None
+    def __enter__(self):
+        return self
+    def __exit__(self,A,B,C):
+        self.close()
     @property
     def done(self):
         'Has all data for this subscription been received?'
