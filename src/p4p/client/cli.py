@@ -1,7 +1,7 @@
 
 from __future__ import print_function
 
-import sys, time
+import sys, time, json
 try:
     from itertools import izip
 except ImportError:
@@ -36,6 +36,8 @@ def op_put(ctxt, args):
             sys.exit(1)
         elif V is None:
             V = ''
+        else:
+            V = json.dumps(V)
         N = N.strip()
         names.append(N)
         values.append(V)
