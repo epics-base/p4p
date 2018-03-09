@@ -326,7 +326,11 @@ static PyMethodDef Channel_methods[] = {
     {"monitor", (PyCFunction)&py_channel_monitor, METH_VARARGS|METH_KEYWORDS,
      "monitor(callback, request=None)\n\nInitiate a new rpc() operation.\n"
      "The provided callback must be a callable object, which will be called with a single argument.\n"
-     "Either None or an Exception."},
+     "Returns a Subscription object.\n"
+     "\n"
+     "* True - FIFO not empty.  Call Subscription.pop()\n"
+     "* False - unlisten.  Subscription complete.\n"
+     "* None - Disconnect.\n"},
     {"close", (PyCFunction)&py_channel_close, METH_NOARGS,
       "close()\n\nDispose of channel."},
     {NULL}
