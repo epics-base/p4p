@@ -40,10 +40,13 @@ class TimeoutError(RuntimeError):
 class Subscription(object):
     """An active subscription.
     """
-    def __init__(self, ctxt, name, cb):
+    def __init__(self, ctxt, name, cb, notify_disconnect = False):
         self._dounwrap = ctxt._dounwrap
         self.name, self._S, self._cb = name, None, cb
+        self._notify_disconnect = notify_disconnect
         self._Q = ctxt._queue()
+        if notify_disconnect:
+            self._Q.push_wait(partial(cb, None))
     def close(self):
         """Close subscription.
         """
@@ -83,7 +86,9 @@ class Subscription(object):
             if S is None:
                 return
             if E is not True:
-                self._cb(E)
+                _log.debug('Subscription notify for %s with %s', self.name, E)
+                if self._notify_disconnect:
+                    self._cb(E)
                 return
             for n in range(4):
                 E = S.pop()
@@ -99,7 +104,9 @@ class Subscription(object):
                 _log.debug("Subscription complete")
                 S.close()
                 S = None
-                self._cb(None)
+                _log.debug('Subscription disconnect %s', self.name)
+                if self._notify_disconnect:
+                    self._cb(None)
         except:
             _log.exception("Error processing Subscription event: %s", E)
             self._S.close()
@@ -437,12 +444,13 @@ class Context(object):
 
     Subscription = Subscription
 
-    def monitor(self, name, cb, request=None):
+    def monitor(self, name, cb, request=None, notify_disconnect = False):
         """Create a subscription.
         
         :param str name: PV name string
         :param callable cb: Processing callback
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param bool notify_disconnect: Whether disconnect (and done) notifications are delivered to the callback (as None).
         :returns: a :py:class:`Subscription` instance
 
         The callable will be invoked with one argument which is either.
@@ -451,7 +459,7 @@ class Context(object):
         * A sub-class of Exception
         * None when the subscription is complete, and more update will ever arrive.
         """
-        R = self.Subscription(self, name, cb)
+        R = self.Subscription(self, name, cb, notify_disconnect=notify_disconnect)
         ch = self._channel(name)
 
         R._S = ch.monitor(R._event, request)

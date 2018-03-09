@@ -61,12 +61,14 @@ def op_monitor(ctxt, args):
     ret = 0
     for name in args.names:
         def show(val, name=name):
-            if isinstance(val, Exception):
+            if val is None:
+                print(name, "Disconnect")
+            elif isinstance(val, Exception):
                 ret = 1
                 print(name, 'Error:', val)
             else:
                 print(name, val)
-        subs.append(ctxt.monitor(name, show, args.request))
+        subs.append(ctxt.monitor(name, show, args.request, notify_disconnect=True))
 
     try:
         while True:
