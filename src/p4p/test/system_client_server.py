@@ -544,7 +544,7 @@ class SystemClientServer(unittest.TestCase):
                               "counter.timeStamp.nanoseconds"})
         self.ctxt.put("TESTCOUNTER.counter", 0, "value")
         counter = q.get()
-        # TODO: this is only for Malcolm, not with bitsets done
+        # TODO: Is this true even if you get a subset of changes?
         self.assertStructureWithoutTsEqual(str(counter), str(counter_expected))
 
     # Equivalent to:
