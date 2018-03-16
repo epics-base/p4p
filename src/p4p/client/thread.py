@@ -348,6 +348,10 @@ class Context(object):
                 def vb(cur, value=value, i=i):
                     try:
                         type = cur.type()
+                        # TODO: this is not right in general, but needed for a
+                        # Put to a subfield of a structure...
+                        if req:
+                            value = {req: value}
                         if isinstance(value, dict):
                             V = self.Value(type, value)
                         else:
