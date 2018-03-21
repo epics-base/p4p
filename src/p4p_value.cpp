@@ -660,29 +660,22 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
             const pvd::FieldConstPtrArray& flds(T->getFields());
             const pvd::PVFieldPtrArray& vals(F->getPVFields());
 
-            if (asdict) {
-                PyRef dict(PyDict_New());
+            PyRef list(PyList_New(vals.size()));
 
-                for(size_t i=0; i<vals.size(); i++) {
-                    PyRef val(fetchfld(vals[i].get(), flds[i].get(), bset, unpackrecurse, true, asdict));
+            for(size_t i=0; i<vals.size(); i++) {
+                PyRef val(fetchfld(vals[i].get(), flds[i].get(), bset, unpackrecurse, true, asdict));
 
-                    PyDict_SetItemString(dict.get(), names[i].c_str(), val.get());
-                }
+                PyRef item(Py_BuildValue("sO", names[i].c_str(), val.get()));
 
-                return dict.release();
-            } else {
-                PyRef list(PyList_New(vals.size()));
-
-                for(size_t i=0; i<vals.size(); i++) {
-                    PyRef val(fetchfld(vals[i].get(), flds[i].get(), bset, unpackrecurse));
-
-                    PyRef item(Py_BuildValue("sO", names[i].c_str(), val.get()));
-
-                    PyList_SET_ITEM(list.get(), i, item.release());
-                }
-
-                return list.release();
+                PyList_SET_ITEM(list.get(), i, item.release());
             }
+
+            if (asdict) {
+                PyRef dict(PyObject_CallFunction((PyObject*) &PyDict_Type, "O", list.release()));
+                return dict.release();
+            }
+
+            return list.release();
 
         } else {
             PyObject *self = P4PValue::wrap(this);

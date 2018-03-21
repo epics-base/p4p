@@ -139,6 +139,14 @@ class TestRawValue(unittest.TestCase):
             ]),
         ])
 
+        self.assertDictEqual(V.todict(), {
+            'ival': 42,
+            'str': {
+                'a': 1,
+                'b': 2,
+            },
+        })
+
         self.assertListEqual(V.tolist('str'), [
             ('a', 1),
             ('b', 2),
