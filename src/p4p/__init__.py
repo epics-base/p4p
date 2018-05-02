@@ -1,6 +1,13 @@
 import logging
 import sys
 import atexit
+
+try:
+    # give a chance to adjust DSO loader path
+    import epicscorelibs.path
+except ImportError:
+    pass
+
 from .wrapper import Value, Type
 from ._p4p import (pvdVersion, pvaVersion, listRefs, Cancelled, ClientProvider as _ClientProvider)
 
@@ -44,7 +51,7 @@ def set_debug(lvl):
     assert lvl in _lvls, lvl
     _ClientProvider.set_debug(lvl)
 
-version = (1, 1, 0)
+version = (1, 0, -80)
 
 def cleanup():
     """P4P sequenced shutdown.  Intended to be atexit.  Idenpotent.
