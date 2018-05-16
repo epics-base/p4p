@@ -16,6 +16,7 @@ class TestRawType(unittest.TestCase):
 
         self.assertEqual(T.aspy(),
                          ('S', 'structure', L))
+        self.assertEqual(T.aspy('a'), 'i')
 
     def testScalarTest(self):
         L = [

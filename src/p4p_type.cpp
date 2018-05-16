@@ -168,6 +168,93 @@ int P4PType_init(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 PyObject* struct2py(const pvd::StringArray& names,
+                    const pvd::FieldConstPtrArray& flds);
+
+PyObject* field2py(const pvd::FieldConstPtr& fld)
+{
+    switch(fld->getType()) {
+    case pvd::scalar: {
+        pvd::ScalarType stype = static_cast<const pvd::Scalar*>(fld.get())->getScalarType();
+        char spec[2] = {sname(stype), '\0'};
+
+        return Py_BuildValue("s", spec);
+    }
+        break;
+    case pvd::scalarArray: {
+        pvd::ScalarType stype = static_cast<const pvd::ScalarArray*>(fld.get())->getElementType();
+        char spec[3] = {'a', sname(stype), '\0'};
+        return Py_BuildValue("s", spec);
+    }
+        break;
+    case pvd::structure: {
+        pvd::StructureConstPtr S(std::tr1::static_pointer_cast<const pvd::Structure>(fld));
+
+        const pvd::StringArray& subnames(S->getFieldNames());
+        const pvd::FieldConstPtrArray& subflds(S->getFields());
+        PyRef members(struct2py(subnames, subflds));
+
+        std::string id(S->getID());
+
+        return Py_BuildValue("szO", "S",
+                             id.empty() ? NULL : id.c_str(),
+                             members.get());
+    }
+        break;
+    case pvd::structureArray: {
+        pvd::StructureConstPtr S(std::tr1::static_pointer_cast<const pvd::StructureArray>(fld)->getStructure());
+
+        const pvd::StringArray& subnames(S->getFieldNames());
+        const pvd::FieldConstPtrArray& subflds(S->getFields());
+        PyRef members(struct2py(subnames, subflds));
+
+        std::string id(S->getID()); // TODO: which ID?
+        return Py_BuildValue("szO", "aS",
+                             id.empty() ? NULL : id.c_str(),
+                             members.get());
+    }
+        break;
+    case pvd::union_: {
+        pvd::UnionConstPtr S(std::tr1::static_pointer_cast<const pvd::Union>(fld));
+
+        if(S->isVariant()) {
+            return Py_BuildValue("s", "v");
+
+        } else {
+            const pvd::StringArray& subnames(S->getFieldNames());
+            const pvd::FieldConstPtrArray& subflds(S->getFields());
+            PyRef members(struct2py(subnames, subflds));
+
+            std::string id(S->getID());
+            return Py_BuildValue("szO", "U",
+                                 id.empty() ? NULL : id.c_str(),
+                                 members.get());
+        }
+    }
+        break;
+    case pvd::unionArray: {
+        pvd::UnionConstPtr S(std::tr1::static_pointer_cast<const pvd::UnionArray>(fld)->getUnion());
+
+        if(S->isVariant()) {
+            return Py_BuildValue("s", "av");
+
+        } else {
+            const pvd::StringArray& subnames(S->getFieldNames());
+            const pvd::FieldConstPtrArray& subflds(S->getFields());
+            PyRef members(struct2py(subnames, subflds));
+
+            std::string id(S->getID()); // TODO: which ID?
+            return Py_BuildValue("szO", "aU",
+                                 id.empty() ? NULL : id.c_str(),
+                                 members.get());
+        }
+    }
+        break;
+    }
+
+    return PyErr_Format(PyExc_RuntimeError, "field2py() unsupported field type");
+}
+
+PyObject* struct2py(const pvd::StringArray& names,
                     const pvd::FieldConstPtrArray& flds)
 {
     assert(names.size()==flds.size());
@@ -176,97 +263,12 @@ PyObject* struct2py(const pvd::StringArray& names,
     PyRef list(PyList_New(nfld));
 
     for(size_t i=0; i<nfld; i++) {
-        PyRef value;
 
-        pvd::Type ftype = flds[i]->getType();
+        PyRef value(field2py(flds[i]));
+        PyRef pair(Py_BuildValue("sO", names[i].c_str(), value.get()));
+        value.release();
 
-        switch(ftype) {
-        case pvd::scalar: {
-            pvd::ScalarType stype = static_cast<const pvd::Scalar*>(flds[i].get())->getScalarType();
-            char spec[2] = {sname(stype), '\0'};
-
-            value.reset(Py_BuildValue("ss", names[i].c_str(), spec));
-        }
-            break;
-        case pvd::scalarArray: {
-            pvd::ScalarType stype = static_cast<const pvd::ScalarArray*>(flds[i].get())->getElementType();
-            char spec[3] = {'a', sname(stype), '\0'};
-            PyRef str(PyUnicode_FromString(spec));
-            value.reset(Py_BuildValue("ss", names[i].c_str(), spec));
-        }
-            break;
-        case pvd::structure: {
-            pvd::StructureConstPtr S(std::tr1::static_pointer_cast<const pvd::Structure>(flds[i]));
-
-            const pvd::StringArray& subnames(S->getFieldNames());
-            const pvd::FieldConstPtrArray& subflds(S->getFields());
-            PyRef members(struct2py(subnames, subflds));
-
-            std::string id(S->getID());
-
-            value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "S",
-                                      id.empty() ? NULL : id.c_str(),
-                                      members.get()
-                                      ));
-        }
-            break;
-        case pvd::structureArray: {
-            pvd::StructureConstPtr S(std::tr1::static_pointer_cast<const pvd::StructureArray>(flds[i])->getStructure());
-
-            const pvd::StringArray& subnames(S->getFieldNames());
-            const pvd::FieldConstPtrArray& subflds(S->getFields());
-            PyRef members(struct2py(subnames, subflds));
-
-            std::string id(S->getID()); // TODO: which ID?
-            value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "aS",
-                                      id.empty() ? NULL : id.c_str(),
-                                      members.get()
-                                      ));
-        }
-            break;
-        case pvd::union_: {
-            pvd::UnionConstPtr S(std::tr1::static_pointer_cast<const pvd::Union>(flds[i]));
-
-            if(S->isVariant()) {
-                value.reset(Py_BuildValue("ss", names[i].c_str(), "v"));
-
-            } else {
-                const pvd::StringArray& subnames(S->getFieldNames());
-                const pvd::FieldConstPtrArray& subflds(S->getFields());
-                PyRef members(struct2py(subnames, subflds));
-
-                std::string id(S->getID());
-                value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "U",
-                                          id.empty() ? NULL : id.c_str(),
-                                          members.get()
-                                          ));
-            }
-        }
-            break;
-        case pvd::unionArray: {
-            pvd::UnionConstPtr S(std::tr1::static_pointer_cast<const pvd::UnionArray>(flds[i])->getUnion());
-
-            if(S->isVariant()) {
-                value.reset(Py_BuildValue("ss", names[i].c_str(), "av"));
-
-            } else {
-                const pvd::StringArray& subnames(S->getFieldNames());
-                const pvd::FieldConstPtrArray& subflds(S->getFields());
-                PyRef members(struct2py(subnames, subflds));
-
-                std::string id(S->getID()); // TODO: which ID?
-                value.reset(Py_BuildValue("s(szO)", names[i].c_str(), "aU",
-                                          id.empty() ? NULL : id.c_str(),
-                                          members.get()
-                                          ));
-            }
-        }
-            break;
-        }
-
-        if(!value)
-            throw std::runtime_error(SB()<<"Unable to translate \""<<names[i]<<"\"");
-        PyList_SET_ITEM(list.get(), i, value.release());
+        PyList_SET_ITEM(list.get(), i, pair.release());
     }
 
     return list.release();
@@ -281,19 +283,18 @@ PyObject* P4PType_id(PyObject *self) {
     return NULL;
 }
 
-PyObject* P4PType_aspy(PyObject *self) {
+PyObject* P4PType_aspy(PyObject *self, PyObject *args, PyObject *kws) {
     TRY {
+        static const char *names[] = {"name", NULL};
+        const char *fname = NULL;
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "|z", (char**)names, &fname))
+            return NULL;
+
         assert(SELF.get());
 
-        const pvd::StringArray& names(SELF->getFieldNames());
-        const pvd::FieldConstPtrArray& flds(SELF->getFields());
+        pvd::FieldConstPtr fld(fname ? SELF->getField(fname) : pvd::FieldConstPtr(SELF));
 
-        PyRef list(struct2py(names, flds));
-        std::string id(SELF->getID());
-
-        return Py_BuildValue("szO", "S",
-                             id.empty() ? NULL : id.c_str(),
-                             list.get());
+        return field2py(fld);
     } CATCH()
     return NULL;
 }
@@ -322,10 +323,10 @@ PyObject* P4PType_has(PyObject *self, PyObject *args, PyObject *kws) {
 static struct PyMethodDef P4PType_members[] = {
     {"getID", (PyCFunction)P4PType_id, METH_NOARGS,
      "Return Structure ID"},
-    {"aspy", (PyCFunction)P4PType_aspy, METH_NOARGS,
+    {"aspy", (PyCFunction)P4PType_aspy, METH_VARARGS|METH_KEYWORDS,
      "Return spec for this PVD Structure"},
     {"has", (PyCFunction)P4PType_has, METH_VARARGS|METH_KEYWORDS,
-     "has('name', type=None)\n\nTest structure member presense"},
+     "has('name', type=None)\n\nTest structure member presence"},
     {NULL}
 };
 
