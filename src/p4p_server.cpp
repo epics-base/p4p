@@ -39,15 +39,40 @@ typedef PyClassWrapper<Server> P4PServer;
 
 int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    PyObject *cdict = Py_None, *useenv = Py_True;
-    const char *provs = NULL;
+    PyObject *cdict = Py_None, *useenv = Py_True, *providers = Py_None;
     const char *names[] = {"conf", "useenv", "providers", NULL};
-    if(!PyArg_ParseTupleAndKeywords(args, kwds, "|OOz", (char**)names, &cdict, &useenv, &provs))
+    if(!PyArg_ParseTupleAndKeywords(args, kwds, "|OOO", (char**)names, &cdict, &useenv, &providers))
         return -1;
 
     TRY {
-        if(provs) {
-            SELF.providers = provs;
+        if(PyUnicode_Check(providers) || PyBytes_Check(providers)) {
+            PyString provs(providers);
+            SELF.providers = provs.str();
+            TRACE("Providers: "<<SELF.providers);
+            // TODO: add deprecation warning
+        } else {
+            // treat as an iterator yielding strings
+            PyRef iter(PyObject_GetIter(providers));
+            std::ostringstream strm;
+            bool first = true;
+            while(true) {
+                PyRef I(PyIter_Next(iter.get()), nextiter());
+                if(!I) break;
+
+                PyString pyname(I.get());
+                std::string name(pyname.str());
+
+                if(name.find_first_of(" \t\n\r") != name.npos) {
+                    PyErr_Format(PyExc_ValueError, "Provider name \"%s\" may not contain whitespace", name.c_str());
+                    return -1;
+                }
+
+                if(!first)
+                    strm<<' ';
+                first = false;
+                strm << name;
+            }
+            SELF.providers = strm.str();
             TRACE("Providers: "<<SELF.providers);
         }
 

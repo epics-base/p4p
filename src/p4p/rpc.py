@@ -236,7 +236,7 @@ def quickRPCServer(provider, prefix, target,
     installProvider(provider, NTURIDispatcher(queue, target=target, prefix=prefix))
     try:
         threads = []
-        server = Server(providers=provider, useenv=useenv, conf=conf)
+        server = Server(providers=[provider], useenv=useenv, conf=conf)
         try:
             for n in range(1,workers):
                 T = Thread(name='%s Worker %d'%(provider, n), target=queue.handle)

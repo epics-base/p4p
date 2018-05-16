@@ -31,7 +31,7 @@ class TestDummyProvider(unittest.TestCase):
         d = weakref.ref(D)
         installProvider("foo", D)
         try:
-            with Server(providers="foo") as S:
+            with Server(providers=["foo"]) as S:
                 s = weakref.ref(S)
         finally:
             removeProvider("foo")

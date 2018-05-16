@@ -16,11 +16,11 @@ from ._p4p import (Server as _Server,
 atexit.register(clearProviders)
 
 class Server(object):
-    """Server(conf=None, useenv=True, providers="")
+    """Server(conf=None, useenv=True, providers=[""])
 
     Run a PVAccess server serving Channels from the listed providers
 
-    >>> S = Server(providers="example")
+    >>> S = Server(providers=["example"])
     >>> # do something else
     >>> S.stop()
     """

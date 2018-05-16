@@ -46,7 +46,7 @@ class TestRPCFull(unittest.TestCase):
         installProvider("TestRPC", dispatch)
 
         if self.runserver:
-            self.server = Server(providers="TestRPC", conf=conf, useenv=False)
+            self.server = Server(providers=["TestRPC"], conf=conf, useenv=False)
             print("conf", self.server.conf())
 
         self._QT = threading.Thread(name="TestRPC Q", target=self._Q.handle)
