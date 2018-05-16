@@ -14,7 +14,8 @@ namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
 struct Server {
-    std::string providers;
+    std::string provider_names;
+    std::vector<pva::ChannelProvider::shared_pointer> provider_inst;
     pva::Configuration::shared_pointer conf;
     pva::ServerContext::shared_pointer server;
     bool started;
@@ -47,8 +48,7 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
     TRY {
         if(PyUnicode_Check(providers) || PyBytes_Check(providers)) {
             PyString provs(providers);
-            SELF.providers = provs.str();
-            TRACE("Providers: "<<SELF.providers);
+            SELF.provider_names = provs.str();
             // TODO: add deprecation warning
         } else {
             // treat as an iterator yielding strings
@@ -59,22 +59,30 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
                 PyRef I(PyIter_Next(iter.get()), nextiter());
                 if(!I) break;
 
-                PyString pyname(I.get());
-                std::string name(pyname.str());
+                if(PyUnicode_Check(I.get()) || PyBytes_Check(I.get())) {
+                    PyString pyname(I.get());
+                    std::string name(pyname.str());
 
-                if(name.find_first_of(" \t\n\r") != name.npos) {
-                    PyErr_Format(PyExc_ValueError, "Provider name \"%s\" may not contain whitespace", name.c_str());
-                    return -1;
+                    if(name.find_first_of(" \t\n\r") != name.npos) {
+                        PyErr_Format(PyExc_ValueError, "Provider name \"%s\" may not contain whitespace", name.c_str());
+                        return -1;
+                    }
+
+                    if(!first)
+                        strm<<' ';
+                    first = false;
+                    strm << name;
+
+                } else {
+                    PyRef pyname(PyObject_GetAttrString(I.get(), "name"));
+                    PyString name(pyname.get());
+                    SELF.provider_inst.push_back(p4p_build_provider(I, name.str()));
                 }
-
-                if(!first)
-                    strm<<' ';
-                first = false;
-                strm << name;
             }
-            SELF.providers = strm.str();
-            TRACE("Providers: "<<SELF.providers);
+            SELF.provider_names = strm.str();
         }
+
+        TRACE("Provider names: "<<SELF.provider_names<<" #instances="<<SELF.provider_inst.size());
 
         pva::ConfigurationBuilder B;
 
@@ -99,12 +107,18 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
             return -1;
         }
 
-        if(!SELF.providers.empty())
-            B.add("EPICS_PVAS_PROVIDER_NAMES",SELF.providers).push_map();
+        if(SELF.provider_names.empty() && SELF.provider_inst.empty()) {
+            PyErr_Format(PyExc_RuntimeError, "Server must be constructed with a list of names or instances, but not a mixture of both");
+            return -1;
+        }
+
+        if(!SELF.provider_names.empty())
+            B.add("EPICS_PVAS_PROVIDER_NAMES",SELF.provider_names).push_map();
 
         SELF.conf = B.build();
 
         pva::ServerContext::shared_pointer S(pva::ServerContext::create(pva::ServerContext::Config()
+                                                                        .providers(SELF.provider_inst)
                                                                         .config(SELF.conf)));
         TRACE("ServerContext use_count="<<S.use_count());
         SELF.server = S;

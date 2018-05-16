@@ -23,6 +23,18 @@ class Server(object):
     >>> S = Server(providers=["example"])
     >>> # do something else
     >>> S.stop()
+
+    :param dict conf: Configuration keys for the server.  Uses same names as environment variables (aka. EPICS_PVAS_*)
+    :param bool useenv: Whether to use process environment in addition to provided config.
+    :param providers: A list of provider names or instances.
+
+    When configuring a Server, conf keys provided to the constructor have the same name as the environment variables.
+    If both are given, then the provided conf dict is used.
+
+    Call Server.conf() to see a list of valid server (EPICS_PVAS_*) key names.
+
+    The providers list must be a list of name strings (cf. installProvider()),
+    or a list of Provider instances.  A mixture is not yet supported.
     """
     def __init__(self, *args, **kws):
         self._S = _Server(*args, **kws)

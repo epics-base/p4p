@@ -142,6 +142,9 @@ class Context(object):
     set_debug = raw.Context.set_debug
 
     def __init__(self, *args, **kws):
+        # lazy start threaded WorkQueue
+        self._ctxt = self._Q = self._T = None
+
         _log.debug("thread.Context with %s %s", args, kws)
         self._Qmax = kws.pop('maxsize', 0)
         self._Wcnt = kws.pop('workers', 4)
@@ -159,9 +162,6 @@ class Context(object):
         self.name = self._ctxt.name
         self.disconnect = self._ctxt.disconnect
         self._channel = self._ctxt.channel
-
-        # lazy start threaded WorkQueue
-        self._Q, self._T = None, None
 
     def disconnect(self, name):
         """Drop the named channel from the channel cache.
@@ -201,7 +201,8 @@ class Context(object):
                 T.join()
             _log.debug('Joined Context workers')
             self._Q, self._T = None, None
-        self._ctxt.close()
+        if self._ctxt is not None:
+            self._ctxt.close()
 
     def __del__(self):
         if self._Q is not None:

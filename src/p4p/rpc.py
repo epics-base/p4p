@@ -109,10 +109,11 @@ class RPCDispatcherBase(object):
     # wrapper to use for request Structures
     Value = Value
 
-    def __init__(self, queue, target=None, channels=set()):
+    def __init__(self, queue, target=None, channels=set(), name=None):
         self.queue = queue
         self.target = target
         self.channels = set(channels)
+        self.name = name
         M = self.methods = {}
         for name, mem in inspect.getmembers(target):
             if not hasattr(mem, '_reply_Type'):
@@ -233,27 +234,24 @@ def quickRPCServer(provider, prefix, target,
     """
     from p4p.server import Server, installProvider, removeProvider
     queue = WorkQueue(maxsize=maxsize)
-    installProvider(provider, NTURIDispatcher(queue, target=target, prefix=prefix))
+    provider = NTURIDispatcher(queue, target=target, prefix=prefix, name=provider)
+    threads = []
+    server = Server(providers=[provider], useenv=useenv, conf=conf)
     try:
-        threads = []
-        server = Server(providers=[provider], useenv=useenv, conf=conf)
-        try:
-            for n in range(1,workers):
-                T = Thread(name='%s Worker %d'%(provider, n), target=queue.handle)
-                threads.append(T)
-                T.start()
-            # handle calls in the current thread until KeyboardInterrupt
-            queue.handle()
-        finally:
-            try:
-                for T in threads:
-                    queue.interrupt()
-                    T.join()
-            finally:
-                # we really need to do this or the process will hang on exit
-                server.stop()
+        for n in range(1,workers):
+            T = Thread(name='%s Worker %d'%(provider, n), target=queue.handle)
+            threads.append(T)
+            T.start()
+        # handle calls in the current thread until KeyboardInterrupt
+        queue.handle()
     finally:
-        removeProvider(provider)
+        try:
+            for T in threads:
+                queue.interrupt()
+                T.join()
+        finally:
+            # we really need to do this or the process will hang on exit
+            server.stop()
 
 class RPCProxyBase(object):
     """Base class for automatically generated proxy classes

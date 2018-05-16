@@ -18,6 +18,7 @@
 #include <pv/pvIntrospect.h>
 #include <pv/bitSet.h>
 #include <pv/pvData.h>
+#include <pv/pvAccess.h>
 
 typedef epicsGuard<epicsMutex> Guard;
 typedef epicsGuardRelease<epicsMutex> UnGuard;
@@ -208,6 +209,7 @@ void p4p_client_channel_register(PyObject *mod);
 void p4p_client_monitor_register(PyObject *mod);
 void p4p_client_op_register(PyObject *mod);
 
+epics::pvAccess::ChannelProvider::shared_pointer p4p_build_provider(PyRef &handler, const std::string& name);
 PyObject* p4p_add_provider(PyObject *junk, PyObject *args, PyObject *kwds);
 PyObject* p4p_remove_provider(PyObject *junk, PyObject *args, PyObject *kwds);
 PyObject* p4p_remove_all(PyObject *junk, PyObject *args, PyObject *kwds);

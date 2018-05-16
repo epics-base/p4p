@@ -192,7 +192,7 @@ struct PyServerChannel :
     {
         handler.swap(py);
     }
-    virtual ~PyServerChannel() {TRACE("dtor provider refs="<<provider.use_count());}
+    virtual ~PyServerChannel() {TRACE("dtor provider obj="<<provider.get()<<" refs="<<provider.use_count());}
 
     virtual void destroy() {}
 
@@ -610,6 +610,14 @@ typedef std::map<std::string, PyServerProvider::shared_pointer> pyproviders_t;
 pyproviders_t* pyproviders;
 
 } // namespace
+
+pva::ChannelProvider::shared_pointer p4p_build_provider(PyRef& handler, const std::string& name)
+{
+    PyServerProvider::shared_pointer P(new PyServerProvider);
+    P->provider.swap(handler);
+    P->provider_name = name;
+    return P;
+}
 
 PyObject* p4p_add_provider(PyObject *junk, PyObject *args, PyObject *kwds)
 {

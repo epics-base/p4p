@@ -41,13 +41,14 @@ class TestRPCFull(unittest.TestCase):
         self._Q = WorkQueue(maxsize=2)
 
         # RPC dispatcher (extract RPC args from PVD blob)
-        dispatch = NTURIDispatcher(self._Q, target=service, prefix=self.prefix)
+        dispatch = NTURIDispatcher(self._Q, target=service, prefix=self.prefix, name="TestRPC")
         self._dispatch = weakref.ref(dispatch)
-        installProvider("TestRPC", dispatch)
 
         if self.runserver:
-            self.server = Server(providers=["TestRPC"], conf=conf, useenv=False)
+            self.server = Server(providers=[dispatch], conf=conf, useenv=False)
             print("conf", self.server.conf())
+        else:
+            installProvider("TestRPC", dispatch)
 
         self._QT = threading.Thread(name="TestRPC Q", target=self._Q.handle)
         self._QT.start()
@@ -60,7 +61,8 @@ class TestRPCFull(unittest.TestCase):
         self._Q.interrupt()
         self._QT.join()
 
-        removeProvider("TestRPC")
+        if not self.runserver:
+            removeProvider("TestRPC")
         gc.collect()
         D = self._dispatch()
         if D is not None:
