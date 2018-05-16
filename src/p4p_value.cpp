@@ -979,6 +979,21 @@ PyObject *P4PValue_select(PyObject *self, PyObject *args, PyObject *kwds)
     return NULL;
 }
 
+PyObject *P4PValue_has(PyObject *self, PyObject *args)
+{
+    TRY {
+        const char *name;
+        if(!PyArg_ParseTuple(args, "s", &name))
+            return NULL;
+
+        if(SELF.V->getSubField(name))
+            Py_RETURN_TRUE;
+        else
+            Py_RETURN_FALSE;
+    }CATCH()
+    return NULL;
+}
+
 PyObject *P4PValue_get(PyObject *self, PyObject *args)
 {
     TRY {
@@ -1133,6 +1148,27 @@ PyObject* P4PValue_asSet(PyObject *self)
     return NULL;
 }
 
+PyObject* P4PValue_magic(PyObject *self, PyObject *args)
+{
+    try {
+        PyObject *replacement, *old;
+        if(!PyArg_ParseTuple(args, "O", &replacement))
+            return NULL;
+
+        if(!PyObject_IsSubclass(replacement, (PyObject*)&P4PValue::type))
+            return PyErr_Format(PyExc_ValueError, "Not sub-class");
+
+        old = (PyObject*)P4PValue_type;
+        P4PValue_type = (PyTypeObject*)replacement;
+
+        Py_INCREF(replacement);
+        Py_DECREF(old);
+
+        Py_RETURN_NONE;
+    } CATCH()
+    return NULL;
+}
+
 Py_ssize_t P4PValue_len(PyObject *self)
 {
     TRY {
@@ -1200,6 +1236,9 @@ static PyMethodDef P4PValue_methods[] = {
     {"select", (PyCFunction)&P4PValue_select, METH_VARARGS|METH_KEYWORDS,
      "select(\"fld\", \"member\")\n"
      "pre-select/clear Union"},
+    {"has", (PyCFunction)&P4PValue_has, METH_VARARGS,
+     "has(\"fld\")\n"
+     "Test for existance of field"},
     {"get", (PyCFunction)&P4PValue_get, METH_VARARGS,
      "get(\"fld\", [default])\n"
      "Fetch a field value, or a default if it does not exist"},
@@ -1221,6 +1260,8 @@ static PyMethodDef P4PValue_methods[] = {
     {"asSet", (PyCFunction)&P4PValue_asSet, METH_NOARGS,
      "asSet() -> set(['...'])\n\n"
      "set all changed fields"},
+    {"_magic", (PyCFunction)P4PValue_magic, METH_VARARGS|METH_STATIC,
+     "Don't call this!"},
     {NULL}
 };
 

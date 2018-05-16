@@ -1,5 +1,5 @@
 
-from ._p4p import (Type as _Type, Value)
+from ._p4p import (Type as _Type, Value as _Value)
 
 __all__ = (
     'Type',
@@ -41,3 +41,15 @@ class Type(_Type):
     __str__ = __repr__
 
 _Type._magic(Type)
+
+class Value(_Value):
+    __slots__ = [] # prevent attribute access to invalid fields
+
+    __contains__ = _Value.has
+
+    def keys(self):
+        return self.type().keys()
+
+
+
+_Value._magic(Value)

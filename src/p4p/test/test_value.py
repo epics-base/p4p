@@ -7,13 +7,12 @@ import unittest
 import numpy as np
 from numpy.testing import assert_array_almost_equal as assert_aequal
 
-from .._p4p import (Type as _Type, Value as _Value)
-from ..wrapper import Value
+from ..wrapper import Type, Value
 from .. import pvdVersion
 
 class TestRawValue(unittest.TestCase):
     def testToString(self):
-        V = _Value(_Type([
+        V = Value(Type([
             ('ival', 'i'),
             ('dval', 'd'),
             ('sval', 's'),
@@ -35,7 +34,7 @@ class TestRawValue(unittest.TestCase):
 '''))
         
     def testScalar(self):
-        V = _Value(_Type([
+        V = Value(Type([
             ('ival', 'i'),
             ('dval', 'd'),
             ('sval', 's'),
@@ -78,7 +77,7 @@ class TestRawValue(unittest.TestCase):
         self.assertEqual(V['sval'], u'world')
 
     def testFieldAccess(self):
-        V = _Value(_Type([
+        V = Value(Type([
             ('ival', 'i'),
             ('dval', 'd'),
             ('sval', 's'),
@@ -98,15 +97,15 @@ class TestRawValue(unittest.TestCase):
         self.assertRaises(AttributeError, setattr, V, 'foo', 5)
 
     def testBadField(self):
-        T = _Type([
+        T = Type([
             ('ival', 'i'),
             ('dval', 'd'),
             ('sval', 's'),
         ])
-        self.assertRaises(KeyError, _Value, T, {'invalid':42})
+        self.assertRaises(KeyError, Value, T, {'invalid':42})
 
     def testArray(self):
-        V = _Value(_Type([
+        V = Value(Type([
             ('ival', 'ai'),
             ('dval', 'ad'),
             ('sval', 'as'),
@@ -121,7 +120,7 @@ class TestRawValue(unittest.TestCase):
         self.assertListEqual(V.sval, [u'a', u'b'])
 
     def testSubStruct(self):
-        V = _Value(_Type([
+        V = Value(Type([
             ('ival', 'i'),
             ('str', ('S', 'foo', [
                 ('a', 'i'),
@@ -181,8 +180,13 @@ class TestRawValue(unittest.TestCase):
 
         self.assertRaises(KeyError, V.type, 'invalid')
 
+        self.assertListEqual(V.keys(), ['ival', 'str'])
+        self.assertTrue('ival' in V)
+        self.assertTrue('str' in V)
+        self.assertFalse('missing' in V)
+
     def testVariantUnion(self):
-        V = _Value(_Type([
+        V = Value(Type([
             ('x', 'v'),
         ]))
 
@@ -212,7 +216,7 @@ class TestRawValue(unittest.TestCase):
             self.assertIsNone(V.x)
 
     def testDisUnion(self):
-        V = _Value(_Type([
+        V = Value(Type([
             ('x', ('U', 'x', [
                 ('a', 'i'),
                 ('b', 's'),
@@ -241,7 +245,7 @@ class TestRawValue(unittest.TestCase):
             self.assertIsNone(V.x)
 
     def testUnionArray(self):
-        V = _Value(_Type([
+        V = Value(Type([
             ('x', 'av'),
             ('y', ('aU', 'foo', [
                 ('a', 'i'),
@@ -270,13 +274,13 @@ class TestRawValue(unittest.TestCase):
         self.assertListEqual(V.y, [2, 5, u'bar'])
 
     def testUnionArrayStruct(self):
-        S= _Value(_Type([
+        S= Value(Type([
             ('x', 'i'),
         ]), {
             'x': 42,
         })
 
-        V = _Value(_Type([
+        V = Value(Type([
             ('y', 'av'),
         ]), {
             'y': [S],
@@ -286,7 +290,7 @@ class TestRawValue(unittest.TestCase):
         X = V.y
 
         self.assertIsInstance(X, list)
-        self.assertIsInstance(X[0], _Value)
+        self.assertIsInstance(X[0], Value)
         self.assertEqual(len(X), 1)
 
         # returns union array w/ struct as list of list of tuples
@@ -299,27 +303,27 @@ class TestRawValue(unittest.TestCase):
         ])
 
     def testStructID(self):
-        V = Value(_Type([('a', 'I')]))
+        V = Value(Type([('a', 'I')]))
         self.assertEqual(V.getID(), "structure")
 
-        V = Value(_Type([('a', 'I')], id="foo"))
+        V = Value(Type([('a', 'I')], id="foo"))
         self.assertEqual(V.getID(), "foo")
 
     def testRepr(self):
-        V = Value(_Type([('a', 'I')]))
+        V = Value(Type([('a', 'I')]))
         self.assertEqual(repr(V), 'Value(id:structure, a:0)')
         
-        V = Value(_Type([('a', 'I'), ('value', 'd')]))
+        V = Value(Type([('a', 'I'), ('value', 'd')]))
         self.assertEqual(repr(V), 'Value(id:structure, value:0.0)')
 
-        V = Value(_Type([('a', 'I')], id='foo'))
+        V = Value(Type([('a', 'I')], id='foo'))
         self.assertEqual(repr(V), 'Value(id:foo, a:0)')
         
-        V = Value(_Type([('a', 'I'), ('value', 'd')], id='foo'))
+        V = Value(Type([('a', 'I'), ('value', 'd')], id='foo'))
         self.assertEqual(repr(V), 'Value(id:foo, value:0.0)')
 
     def testBitSet(self):
-        A= _Value(_Type([
+        A= Value(Type([
             ('x', 'i'),
             ('y', 'i'),
         ]), {
@@ -348,7 +352,7 @@ class TestRawValue(unittest.TestCase):
         self.assertTrue(A.changed('y'))
 
     def testBitSetRecurse(self):
-        A= _Value(_Type([
+        A= Value(Type([
             ('x', 'i'),
             ('y', 'i'),
             ('z', ('S', None, [
@@ -391,7 +395,7 @@ class TestRawValue(unittest.TestCase):
 
 class TestReInit(unittest.TestCase):
     def testCopySubStruct(self):
-        A = _Value(_Type([
+        A = Value(Type([
             ('x', ('S', None, [
                 ('y', 'i'),
                 ('z', 'ai'),
@@ -409,7 +413,7 @@ class TestReInit(unittest.TestCase):
             'x.a.A':100,
         })
 
-        B = _Value(A.type(), {
+        B = Value(A.type(), {
             'x.y':43,
             'x.z':range(4),
             'x.q':15,
