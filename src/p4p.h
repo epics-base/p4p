@@ -36,18 +36,29 @@ struct PyExternalRef;
 
 struct borrow {};
 struct allownull {};
+struct nextiter {};
+
 struct PyRef {
     PyObject *obj;
     PyRef() :obj(0) {}
     PyRef(const PyRef& o) :obj(o.obj) {
         Py_XINCREF(obj);
     }
-    explicit PyRef(PyObject *o, const allownull&) :obj(o) {}
-    explicit PyRef(PyObject *o, const borrow&) :obj(o) {
+    //! Make a new reference using the provided ref
+    PyRef(PyObject *o, const borrow&) :obj(o) {
         if(!o)
             throw std::runtime_error("Can't borrow NULL");
         Py_INCREF(obj);
     }
+    //! Take over the provided ref as our own.  Accept NULL silently.
+    PyRef(PyObject *o, const allownull&) :obj(o) {}
+    //! Same as allownull except that NULL is allowed as long as !PyErr_Occurred()
+    //! For use with PyIter_Next()
+    PyRef(PyObject *o, const nextiter&) :obj(o) {
+        if(!o && PyErr_Occurred())
+            throw std::runtime_error("XXX"); // exception already set
+    }
+    //! Take over the provided ref as our own.  Throw if the provided ref. is NULL
     explicit PyRef(PyObject *o) :obj(o) {
         if(!o)
             throw std::runtime_error("Alloc failed");
@@ -80,6 +91,18 @@ struct PyRef {
         return o;
     }
     PyObject* get() const { return obj; }
+
+    inline bool valid() const { return !!obj; }
+
+#if __cplusplus>=201103L
+    explicit operator bool() const { return valid(); }
+#else
+private:
+    typedef bool (PyRef::*bool_type)() const;
+public:
+    operator bool_type() const { return !!obj ? &PyRef::valid : 0; }
+#endif
+
     void swap(PyRef& o) {
         std::swap(obj, o.obj);
     }

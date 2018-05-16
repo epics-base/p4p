@@ -83,12 +83,8 @@ void py2struct(pvd::FieldBuilderPtr& builder, PyObject *o)
     PyRef iter(PyObject_GetIter(o));
 
     while(true) {
-        PyRef ent(PyIter_Next(iter.get()), allownull());
-        if(!ent.get()) {
-            if(PyErr_Occurred())
-                throw std::runtime_error("XXX"); // exception already set
-            break;
-        }
+        PyRef ent(PyIter_Next(iter.get()), nextiter());
+        if(!ent) break;
 
         const char *key;
         PyObject *val;

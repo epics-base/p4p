@@ -128,12 +128,8 @@ void Value::store_struct(pvd::PVStructure* fld,
         }
 
         while(true) {
-            PyRef I(PyIter_Next(iter.get()), allownull());
-            if(!I.get()) {
-                if(PyErr_Occurred())
-                    throw std::runtime_error("XXX");
-                break;
-            }
+            PyRef I(PyIter_Next(iter.get()), nextiter());
+            if(!I) break;
 
             const char *key = 0;
             PyObject *V = 0;
@@ -456,12 +452,8 @@ void Value::storefld(pvd::PVField* fld,
             pvd::shared_vector<std::string> vec;
 
             while(1) {
-                PyRef I(PyIter_Next(iter.get()), allownull());
-                if(!I.get()) {
-                    if(PyErr_Occurred())
-                        throw std::runtime_error("XXX");
-                    break;
-                }
+                PyRef I(PyIter_Next(iter.get()), nextiter());
+                if(!I) break;
 
                 if(PyBytes_Check(I.get())) {
                     vec.push_back(std::string(PyBytes_AS_STRING(I.get()), PyBytes_GET_SIZE(I.get())));
@@ -518,12 +510,8 @@ void Value::storefld(pvd::PVField* fld,
         while(1) {
             PyRef iter(PyObject_GetIter(obj));
 
-            PyRef I(PyIter_Next(iter.get()), allownull());
-            if(!I.get()) {
-                if(PyErr_Occurred())
-                    throw std::runtime_error("XXX");
-                break;
-            }
+            PyRef I(PyIter_Next(iter.get()), nextiter());
+            if(!I) break;
 
             pvd::PVStructurePtr elem(create->createPVStructure(T->getStructure()));
 
@@ -555,12 +543,8 @@ void Value::storefld(pvd::PVField* fld,
         pvd::PVDataCreatePtr create(pvd::getPVDataCreate());
 
         while(true) {
-            PyRef item(PyIter_Next(iter.get()), allownull());
-            if(!item.get()) {
-                if(PyErr_Occurred())
-                    throw std::runtime_error("XXX");
-                break;
-            }
+            PyRef item(PyIter_Next(iter.get()), nextiter());
+            if(!item) break;
 
             pvd::PVUnionPtr dest(create->createPVUnion(T));
             store_union(dest.get(), T.get(), item.get());
