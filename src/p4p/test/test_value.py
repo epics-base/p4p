@@ -23,12 +23,16 @@ class TestRawValue(unittest.TestCase):
             'sval':'hello',
         })
 
-        self.assertEqual(str(V),
-                         '''structure 
+        # attempt to normalize to avoid comparing whitespace
+        def proc(s):
+            return list([l.split() for l in s.splitlines()])
+
+        self.assertEqual(proc(str(V)),
+                         proc('''structure 
     int ival 42
     double dval 4.2
     string sval hello
-''')
+'''))
         
     def testScalar(self):
         V = _Value(_Type([
