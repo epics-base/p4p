@@ -4,7 +4,7 @@ from __future__ import print_function
 import weakref, gc
 import unittest
 
-from .._p4p import Type as _Type
+from ..wrapper import Type as _Type
 
 class TestRawType(unittest.TestCase):
     def testScalar(self):
@@ -17,6 +17,7 @@ class TestRawType(unittest.TestCase):
         self.assertEqual(T.aspy(),
                          ('S', 'structure', L))
         self.assertEqual(T.aspy('a'), 'i')
+        self.assertEqual(T['a'], 'i')
         self.assertEqual(len(T), 2)
 
     def testScalarTest(self):
@@ -30,6 +31,10 @@ class TestRawType(unittest.TestCase):
         self.assertTrue (T.has('b'))
         self.assertFalse(T.has('c'))
         self.assertListEqual(T.keys(), ['a', 'b'])
+
+        self.assertTrue ('a' in T)
+        self.assertTrue ('b' in T)
+        self.assertFalse('c' in T)
 
     def testID(self):
         L = [

@@ -290,7 +290,8 @@ struct PyClassWrapper {
     }
 
     static C& unwrap(PyObject *obj) {
-        assert(PyObject_TypeCheck(obj, &type));
+        if(!PyObject_TypeCheck(obj, &type))
+            throw std::runtime_error("Unable to unwrap, wrong type");
         PyClassWrapper *W = (PyClassWrapper*)obj;
         return W->I;
     }

@@ -339,6 +339,27 @@ PyObject* P4PType_keys(PyObject *self)
     return NULL;
 }
 
+PyObject* P4PType_magic(PyObject *self, PyObject *args)
+{
+    try {
+        PyObject *replacement, *old;
+        if(!PyArg_ParseTuple(args, "O", &replacement))
+            return NULL;
+
+        if(!PyObject_IsSubclass(replacement, (PyObject*)&P4PType::type))
+            return PyErr_Format(PyExc_TypeError, "Not sub-class");
+
+        old = (PyObject*)P4PType_type;
+        P4PType_type = (PyTypeObject*)replacement;
+
+        Py_INCREF(replacement);
+        Py_DECREF(old);
+
+        Py_RETURN_NONE;
+    } CATCH()
+    return NULL;
+}
+
 Py_ssize_t P4PType_len(PyObject *self)
 {
     TRY {
@@ -355,10 +376,10 @@ PyObject* P4PType_getitem(PyObject *self, PyObject *name)
         if(!fld) {
             return PyErr_Format(PyExc_KeyError, "%s", S.str().c_str());
         } else if(fld->getType()!=pvd::structure) {
-            return PyErr_Format(PyExc_ValueError, "Type[%s] only supported for sub-struct", S.str().c_str());
+            return field2py(fld);
+        } else {
+            return P4PType_wrap(P4PType_type, std::tr1::static_pointer_cast<const pvd::Structure>(fld));
         }
-
-        return P4PType_wrap(P4PType_type, std::tr1::static_pointer_cast<const pvd::Structure>(fld));
     }CATCH()
     return NULL;
 }
@@ -378,6 +399,8 @@ static struct PyMethodDef P4PType_members[] = {
      "Return spec for this PVD Structure"},
     {"has", (PyCFunction)P4PType_has, METH_VARARGS|METH_KEYWORDS,
      "has('name', type=None)\n\nTest structure member presence"},
+    {"_magic", (PyCFunction)P4PType_magic, METH_VARARGS|METH_STATIC,
+     "Don't call this!"},
     {NULL}
 };
 
@@ -405,7 +428,7 @@ PyTypeObject* P4PType_type = &P4PType::type;
 void p4p_type_register(PyObject *mod)
 {
     P4PType::buildType();
-    P4PType::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_HAVE_GC;
+    P4PType::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC;
     P4PType::type.tp_init = &P4PType_init;
     P4PType::type.tp_traverse = &P4PType_traverse;
     P4PType::type.tp_clear = &P4PType_clear;

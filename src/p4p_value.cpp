@@ -738,8 +738,8 @@ int P4PValue_init(PyObject *self, PyObject *args, PyObject *kwds)
         const char *names[] = {"type", "value", "clone", NULL};
         PyObject *type = NULL, *value = Py_None;
         PyObject *clone = NULL;
-        if(!PyArg_ParseTupleAndKeywords(args, kwds, "|O!OO!", (char**)names,
-                                        P4PType_type, &type,
+        if(!PyArg_ParseTupleAndKeywords(args, kwds, "|OOO!", (char**)names,
+                                        &type,
                                         &value,
                                         P4PValue_type, &clone))
             return -1;
