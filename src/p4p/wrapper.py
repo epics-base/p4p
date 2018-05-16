@@ -38,7 +38,7 @@ class Type(_Type):
 
     def __repr__(self):
         S, id, fields = self.aspy()
-        return 'Struct(%s, id="%s")'%(fields, id)
+        return 'Type(%s, id="%s")'%(fields, id)
     __str__ = __repr__
 
 _Type._magic(Type)
