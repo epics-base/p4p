@@ -17,6 +17,7 @@ class TestRawType(unittest.TestCase):
         self.assertEqual(T.aspy(),
                          ('S', 'structure', L))
         self.assertEqual(T.aspy('a'), 'i')
+        self.assertEqual(len(T), 2)
 
     def testScalarTest(self):
         L = [
@@ -51,6 +52,9 @@ class TestRawType(unittest.TestCase):
 
         self.assertEqual(T.aspy(),
                          ('S', 'structure', L))
+        self.assertEqual(T['X'].getID(), 'bar')
+        self.assertEqual(T['X'].aspy(), T.aspy('X'))
+        self.assertEqual(T['X'].aspy(), L[1][1])
 
     def testStructArray(self):
         L = [

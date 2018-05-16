@@ -320,6 +320,36 @@ PyObject* P4PType_has(PyObject *self, PyObject *args, PyObject *kws) {
     return NULL;
 }
 
+Py_ssize_t P4PType_len(PyObject *self)
+{
+    TRY {
+        return SELF->getNumberFields();
+    }CATCH()
+    return -1;
+}
+
+PyObject* P4PType_getitem(PyObject *self, PyObject *name)
+{
+    TRY {
+        PyString S(name);
+        pvd::FieldConstPtr fld(SELF->getField(S.str()));
+        if(!fld) {
+            return PyErr_Format(PyExc_KeyError, "%s", S.str().c_str());
+        } else if(fld->getType()!=pvd::structure) {
+            return PyErr_Format(PyExc_ValueError, "Type[%s] only supported for sub-struct", S.str().c_str());
+        }
+
+        return P4PType_wrap(P4PType_type, std::tr1::static_pointer_cast<const pvd::Structure>(fld));
+    }CATCH()
+    return NULL;
+}
+
+PyMappingMethods P4PType_mapping = {
+    (lenfunc)&P4PType_len,
+    (binaryfunc)&P4PType_getitem,
+    NULL,
+};
+
 static struct PyMethodDef P4PType_members[] = {
     {"getID", (PyCFunction)P4PType_id, METH_NOARGS,
      "Return Structure ID"},
@@ -358,6 +388,8 @@ void p4p_type_register(PyObject *mod)
     P4PType::type.tp_init = &P4PType_init;
     P4PType::type.tp_traverse = &P4PType_traverse;
     P4PType::type.tp_clear = &P4PType_clear;
+
+    P4PType::type.tp_as_mapping = &P4PType_mapping;
 
     P4PType::type.tp_methods = P4PType_members;
 
