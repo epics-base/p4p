@@ -181,9 +181,13 @@ API Reference
 
     .. automethod:: changed
 
+    .. automethod:: changedSet
+
     .. automethod:: mark
 
-    .. automethod:: asSet
+    .. method:: asSet
+
+        Deprecated alias for changedSet()
 
 .. autoclass:: Type
 

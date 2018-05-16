@@ -1114,14 +1114,14 @@ PyObject* P4PValue_mark(PyObject *self, PyObject *args, PyObject *kws)
     return NULL;
 }
 
-PyObject* P4PValue_asSet(PyObject *self)
+PyObject* P4PValue_changedSet(PyObject *self)
 {
     TRY {
         size_t b0 = SELF.V->getFieldOffset(),
                b1 = SELF.V->getNextFieldOffset();
 
         if(SELF.V->getParent())
-            return PyErr_Format(PyExc_NotImplementedError, "asSet not implemented for sub-struct");
+            return PyErr_Format(PyExc_NotImplementedError, "changedSet not implemented for sub-struct");
 
         PyRef ret(PySet_New(NULL));
 
@@ -1257,8 +1257,8 @@ static PyMethodDef P4PValue_methods[] = {
     {"mark", (PyCFunction)&P4PValue_mark, METH_VARARGS|METH_KEYWORDS,
      "mark(\"fld\", val=True)\n\n"
      "set/clear field as changed"},
-    {"asSet", (PyCFunction)&P4PValue_asSet, METH_NOARGS,
-     "asSet() -> set(['...'])\n\n"
+    {"changedSet", (PyCFunction)&P4PValue_changedSet, METH_NOARGS,
+     "changedSet() -> set(['...'])\n\n"
      "set all changed fields"},
     {"_magic", (PyCFunction)P4PValue_magic, METH_VARARGS|METH_STATIC,
      "Don't call this!"},

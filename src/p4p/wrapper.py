@@ -23,6 +23,7 @@ def UnionArray(spec=None, id=None):
     return ('aU', id, spec)
 
 class Type(_Type):
+    __slots__ = [] # we don't allow custom attributes for now
     __contains__ = _Type.has
 
     def __iter__(self):
@@ -50,6 +51,10 @@ class Value(_Value):
     def keys(self):
         return self.type().keys()
 
+    def __iter__(self):
+        return iter(self.type())
 
+    # TODO: deprecate
+    asSet = _Value.changedSet
 
 _Value._magic(Value)
