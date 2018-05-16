@@ -1291,7 +1291,7 @@ PyObject *P4PValue_wrap(PyTypeObject *type,
                         const epics::pvData::PVStructure::shared_pointer& V,
                         const epics::pvData::BitSet::shared_pointer & I)
 {
-    assert(V.get());
+    assert(V);
     if(!PyType_IsSubtype(type, &P4PValue::type))
         throw std::runtime_error("Not a sub-class of _p4p.Value");
 

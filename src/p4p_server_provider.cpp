@@ -102,7 +102,7 @@ struct PyServerProvider :
                 PyLock G;
     
                 PyRef grab(PyObject_CallMethod(provider.ref.get(), "testChannel", "s", channelName.c_str()), allownull());
-                if(!grab.get()) {
+                if(!grab) {
                     PyErr_Print();
                     PyErr_Clear();
                     found = false;
@@ -540,7 +540,7 @@ PyServerProvider::createChannel(std::string const & channelName,
 
         PyRef handler(PyObject_CallMethod(provider.ref.get(), "makeChannel", "ss", channelName.c_str(),
                                       channelRequester->getRequesterName().c_str()), allownull());
-        if(!handler.get()) {
+        if(!handler) {
             PyErr_Print();
             PyErr_Clear();
             channelRequester->channelCreated(pvd::Status(pvd::Status::STATUSTYPE_ERROR, "Logic Error"),

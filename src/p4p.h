@@ -125,13 +125,13 @@ struct PyString
     explicit PyString(PyObject *b) :base(b) {
         if(PyUnicode_Check(b)) {
             temp.reset(PyUnicode_AsUTF8String(b));
-            if(!temp.get())
+            if(!temp)
                 throw std::runtime_error("PyString Unicode Error");
         } else if(!PyBytes_Check(b))
             throw std::runtime_error("Not bytes or unicode");
     }
     std::string str() {
-        PyObject *X = temp.get() ? temp.get() : base;
+        PyObject *X = temp ? temp.get() : base;
         return std::string(PyBytes_AS_STRING(X),
                            PyBytes_GET_SIZE(X));
     }
@@ -159,7 +159,7 @@ struct PyExternalRef {
     PyRef ref;
     PyExternalRef() {}
     ~PyExternalRef() {
-        if(ref.get()) {
+        if(ref) {
             PyLock G;
             ref.reset();
         }

@@ -59,7 +59,7 @@ void PutOp::Req::getDone(
         try {
             PyRef temp;
             temp.swap(op->pyvalue);
-            if(!temp.get()) {
+            if(!temp) {
                 TRACE("no value!?!?!");
                 return;
             }
@@ -113,7 +113,7 @@ void PutOp::Req::putDone(
 
     PyLock L;
     TRACE("status="<<status);
-    if(!op->cb.get()) return;
+    if(!op->cb) return;
     PyRef V;
 
     if(status.isSuccess()) {
@@ -124,7 +124,7 @@ void PutOp::Req::putDone(
         V.reset(PyObject_CallFunction(PyExc_RuntimeError, (char*)"s", status.getMessage().c_str()));
     }
 
-    if(!V.get()) {
+    if(!V) {
         PyErr_Print();
         PyErr_Clear();
         std::cerr<<"Error in putDone\n";

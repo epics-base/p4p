@@ -36,7 +36,7 @@ void GetOp::Req::getDone(
     PyLock L;
 
     TRACE("get complete "<<channelGet->getChannel()->getChannelName()<<" for "<<op->cb.get()<<" with "<<status);
-    if(!op->cb.get()) return;
+    if(!op->cb) return;
     PyRef V;
 
     if(status.isSuccess()) {
@@ -48,7 +48,7 @@ void GetOp::Req::getDone(
         V.reset(PyObject_CallFunction(PyExc_RuntimeError, (char*)"s", status.getMessage().c_str()));
     }
 
-    if(!V.get()) {
+    if(!V) {
         PyErr_Print();
         PyErr_Clear();
     } else {

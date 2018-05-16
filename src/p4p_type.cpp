@@ -264,7 +264,7 @@ PyObject* struct2py(const pvd::StringArray& names,
             break;
         }
 
-        if(!value.get())
+        if(!value)
             throw std::runtime_error(SB()<<"Unable to translate \""<<names[i]<<"\"");
         PyList_SET_ITEM(list.get(), i, value.release());
     }

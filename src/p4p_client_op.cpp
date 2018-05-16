@@ -11,7 +11,7 @@ OpBase::~OpBase()
 void OpBase::cancel()
 {
     TRACE("");
-    if(cb.get()) {
+    if(cb) {
         PyRef err(PyObject_CallFunction(P4PCancelled, "s", "Cancelled"));
         call_cb(err.get());
     }
@@ -19,7 +19,7 @@ void OpBase::cancel()
 
 void OpBase::call_cb(PyObject *obj)
 {
-    if(!cb.get()) return;
+    if(!cb) return;
     PyObject *junk = PyObject_CallFunctionObjArgs(cb.get(), obj, NULL);
     if(junk) {
         Py_DECREF(junk);
@@ -47,9 +47,9 @@ PyObject* py_op_cancel(PyObject *self)
 int py_op_traverse(PyObject *self, visitproc visit, void *arg)
 {
     TRY {
-        if(SELF->cb.get())
+        if(SELF->cb)
             Py_VISIT(SELF->cb.get());
-        if(SELF->pyvalue.get())
+        if(SELF->pyvalue)
             Py_VISIT(SELF->pyvalue.get());
         return 0;
     } CATCH()

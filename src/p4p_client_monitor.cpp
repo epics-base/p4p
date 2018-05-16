@@ -194,7 +194,7 @@ PyObject *py_monitor_pop(PyObject *self)
 int py_monitor_traverse(PyObject *self, visitproc visit, void *arg)
 {
     TRY {
-        if(SELF->event.get())
+        if(SELF->event)
             Py_VISIT(SELF->event.get());
         return 0;
     }CATCH()
