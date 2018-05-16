@@ -47,28 +47,26 @@ struct PyServerProvider :
     search_cache_t search_cache;
     epicsMutex search_cache_lock;
 
-    virtual std::string getFactoryName() { return provider_name; }
+    virtual std::string getFactoryName() OVERRIDE FINAL { return provider_name; }
     virtual ChannelProvider::shared_pointer sharedInstance() {
         TRACE("GET");
         return shared_from_this();
     }
-    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<pva::Configuration>&) {
+    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<pva::Configuration>&) OVERRIDE FINAL {
         ChannelProvider::shared_pointer ret(shared_from_this());
         TRACE("GET "<<ret.use_count());
         return ret;
     }
 
-    virtual std::tr1::shared_ptr<pva::ChannelProvider> getChannelProvider() { return shared_from_this(); }
-    virtual void cancel() {}
+    virtual std::tr1::shared_ptr<pva::ChannelProvider> getChannelProvider() OVERRIDE FINAL { return shared_from_this(); }
+    virtual void cancel() OVERRIDE FINAL {}
 
-    virtual void lock() {}
-    virtual void unlock() {}
-    virtual void destroy() {}
+    virtual void destroy() OVERRIDE FINAL {}
 
-    virtual std::string getProviderName() { return provider_name; }
+    virtual std::string getProviderName() OVERRIDE FINAL { return provider_name; }
 
     virtual pva::ChannelFind::shared_pointer channelFind(std::string const & channelName,
-            pva::ChannelFindRequester::shared_pointer const & channelFindRequester)
+            pva::ChannelFindRequester::shared_pointer const & channelFindRequester) OVERRIDE FINAL
     {
         timespec now = {0,0};
         clock_gettime(CLOCK_MONOTONIC_COARSE, &now);
@@ -147,7 +145,7 @@ struct PyServerProvider :
         return ret;
     }
 
-    virtual pva::ChannelFind::shared_pointer channelList(pva::ChannelListRequester::shared_pointer const & channelListRequester)
+    virtual pva::ChannelFind::shared_pointer channelList(pva::ChannelListRequester::shared_pointer const & channelListRequester) OVERRIDE FINAL
     {
         pva::ChannelFind::shared_pointer ret;
         channelListRequester->channelListResult(pvd::Status(pvd::Status::STATUSTYPE_FATAL, "Not implemented"),
@@ -159,14 +157,14 @@ struct PyServerProvider :
 
     virtual pva::Channel::shared_pointer createChannel(std::string const & channelName,
                                                        pva::ChannelRequester::shared_pointer const & channelRequester,
-                                                       short priority)
+                                                       short priority) OVERRIDE FINAL
     {
         return createChannel(channelName, channelRequester, priority, "<unknown>");
     }
 
     virtual pva::Channel::shared_pointer createChannel(std::string const & channelName,
                                                        pva::ChannelRequester::shared_pointer const & channelRequester,
-                                                       short priority, std::string const & address);
+                                                       short priority, std::string const & address) OVERRIDE FINAL;
 };
 
 struct PyServerChannel :
@@ -194,20 +192,20 @@ struct PyServerChannel :
     }
     virtual ~PyServerChannel() {TRACE("dtor provider obj="<<provider.get()<<" refs="<<provider.use_count());}
 
-    virtual void destroy() {}
+    virtual void destroy() OVERRIDE FINAL {}
 
-    virtual std::tr1::shared_ptr<pva::ChannelProvider> getProvider() { return provider; }
-    virtual std::string getRemoteAddress() { return requester->getRequesterName(); }
-    virtual std::string getChannelName() { return name; }
-    virtual std::tr1::shared_ptr<pva::ChannelRequester> getChannelRequester() { return requester; }
+    virtual std::tr1::shared_ptr<pva::ChannelProvider> getProvider() OVERRIDE FINAL { return provider; }
+    virtual std::string getRemoteAddress() OVERRIDE FINAL { return requester->getRequesterName(); }
+    virtual std::string getChannelName() OVERRIDE FINAL { return name; }
+    virtual std::tr1::shared_ptr<pva::ChannelRequester> getChannelRequester() OVERRIDE FINAL { return requester; }
 
     virtual pva::ChannelRPC::shared_pointer createChannelRPC(
             pva::ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-            pvd::PVStructure::shared_pointer const & pvRequest);
+            pvd::PVStructure::shared_pointer const & pvRequest) OVERRIDE FINAL;
 
 //    virtual pva::ChannelGet::shared_pointer createChannelGet(
 //            const pva::ChannelGetRequester::shared_pointer &channelGetRequester,
-//            const pvd::PVStructure::shared_pointer &pvRequest);
+//            const pvd::PVStructure::shared_pointer &pvRequest) OVERRIDE FINAL;
 };
 
 // common base class for our operations
@@ -225,13 +223,11 @@ struct PyServerCommon : public Base
                    const typename requester_type::shared_pointer& r) :chan(c), requester(r), pvRequest(pvR) {}
     virtual ~PyServerCommon() {}
 
-    virtual void lock() {}
-    virtual void unlock() {}
-    virtual void destroy() {this->cancel();}
+    virtual void destroy() OVERRIDE FINAL {this->cancel();}
 
-    virtual pva::Channel::shared_pointer getChannel() { return chan; }
+    virtual pva::Channel::shared_pointer getChannel() OVERRIDE FINAL { return chan; }
 
-    virtual void lastRequest() {}
+    virtual void lastRequest() OVERRIDE FINAL {}
 
 };
 
@@ -268,7 +264,7 @@ struct PyServerRPC : public PyServerCommon<pva::ChannelRPC>,
                 const base_type::requester_type::shared_pointer& r) :base_type(c, pvR, r), active_reply(0) {}
     virtual ~PyServerRPC() {TRACE("dtor");}
 
-    virtual void request(pvd::PVStructure::shared_pointer const & pvArgument)
+    virtual void request(pvd::PVStructure::shared_pointer const & pvArgument) OVERRIDE FINAL
     {
         TRACE("ENTER");
         bool createdReply = false;
@@ -314,7 +310,7 @@ struct PyServerRPC : public PyServerCommon<pva::ChannelRPC>,
         }
     }
 
-    virtual void cancel() {
+    virtual void cancel() OVERRIDE FINAL {
         PyLock L;
         if(active_reply) {
             active_reply->rpc.reset();
@@ -433,7 +429,7 @@ struct PyServerGet : public PyServerCommon<pva::ChannelGet>,
 
     pvd::Structure::const_shared_pointer type;
 
-    virtual void get()
+    virtual void get() OVERRIDE FINAL
     {
         bool createdReply = false;
         PyLock L;
