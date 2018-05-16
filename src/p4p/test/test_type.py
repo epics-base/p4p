@@ -29,6 +29,7 @@ class TestRawType(unittest.TestCase):
         self.assertTrue (T.has('a'))
         self.assertTrue (T.has('b'))
         self.assertFalse(T.has('c'))
+        self.assertListEqual(T.keys(), ['a', 'b'])
 
     def testID(self):
         L = [

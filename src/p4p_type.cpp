@@ -320,6 +320,25 @@ PyObject* P4PType_has(PyObject *self, PyObject *args, PyObject *kws) {
     return NULL;
 }
 
+PyObject* P4PType_keys(PyObject *self)
+{
+    TRY {
+        const pvd::StringArray& names(SELF->getFieldNames());
+
+        PyRef list(PyList_New(names.size()));
+
+        for(size_t i=0; i<names.size(); i++) {
+            PyObject *name = PyUnicode_FromString(names[i].c_str());
+            if(!name)
+                return NULL;
+            PyList_SET_ITEM(list.get(), i, name);
+        }
+
+        return list.release();
+    } CATCH()
+    return NULL;
+}
+
 Py_ssize_t P4PType_len(PyObject *self)
 {
     TRY {
@@ -353,6 +372,8 @@ PyMappingMethods P4PType_mapping = {
 static struct PyMethodDef P4PType_members[] = {
     {"getID", (PyCFunction)P4PType_id, METH_NOARGS,
      "Return Structure ID"},
+    {"keys", (PyCFunction)P4PType_keys, METH_NOARGS,
+     "Return field names"},
     {"aspy", (PyCFunction)P4PType_aspy, METH_VARARGS|METH_KEYWORDS,
      "Return spec for this PVD Structure"},
     {"has", (PyCFunction)P4PType_has, METH_VARARGS|METH_KEYWORDS,
