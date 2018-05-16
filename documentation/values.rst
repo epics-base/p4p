@@ -157,6 +157,8 @@ API Reference
 
     .. automethod:: type
 
+    .. automethod:: has
+
     .. automethod:: get
 
     .. automethod:: select
@@ -190,6 +192,18 @@ API Reference
     .. automethod:: aspy
 
     .. automethod:: has
+
+    .. method:: __getattr__(field)
+
+        Return Type of field.  Same as self.aspy(field) for non-structure fields.
+
+    .. automethod:: keys
+
+    .. automethod:: values
+
+    .. automethod:: items
+
+    .. automethod:: __iter__
 
 Relation to C++ API
 -------------------
