@@ -60,6 +60,7 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
                 if(!I) break;
 
                 if(PyUnicode_Check(I.get()) || PyBytes_Check(I.get())) {
+                    // name of previously registered provider
                     PyString pyname(I.get());
                     std::string name(pyname.str());
 
@@ -74,9 +75,7 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
                     strm << name;
 
                 } else {
-                    PyRef pyname(PyObject_GetAttrString(I.get(), "name"));
-                    PyString name(pyname.get());
-                    SELF.provider_inst.push_back(p4p_build_provider(I, name.str()));
+                    SELF.provider_inst.push_back(p4p_unwrap_provider(I.get()));
                 }
             }
             SELF.provider_names = strm.str();

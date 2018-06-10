@@ -20,6 +20,7 @@ __all__ = [
 
 from .wrapper import Value, Type
 from .nt import NTURI
+from .server import SharedPV, DynamicProvider
 
 def rpc(rtype=None):
     """Decorator marks a proxy method for export.
@@ -105,15 +106,20 @@ class WorkQueue(object):
             finally:
                 self._Q.task_done()
 
-class RPCDispatcherBase(object):
+class RPCDispatcherBase(DynamicProvider):
     # wrapper to use for request Structures
     Value = Value
 
     def __init__(self, queue, target=None, channels=set(), name=None):
+        DynamicProvider.__init__(self, name, self) # we are our own Handler
         self.queue = queue
         self.target = target
         self.channels = set(channels)
         self.name = name
+        self.__pv = SharedPV(
+            handler=self, # no per-channel state, and only RPC used, so only need on PV
+            initial=Value(Type([])), # we don't support get/put/monitor, so use empty struct
+        )
         M = self.methods = {}
         for name, mem in inspect.getmembers(target):
             if not hasattr(mem, '_reply_Type'):
@@ -126,22 +132,28 @@ class RPCDispatcherBase(object):
         # return 'name', {'var':'val'}
 
     def testChannel(self, name):
+        _log.debug("Test RPC channel %s = %s", name, name in self.channels)
         return name in self.channels
 
     def makeChannel(self, name, src):
         if self.testChannel(name):
-            return self # no per-channel tracking needed
+            _log.debug("Open RPC channel %s", name)
+            print("XXX")
+            return self.__pv # no per-channel tracking needed
+        else:
+            _log.warn("Ignore RPC channel %s", name)
 
-    def rpc(self, response, request):
-        _log.debug("RPC call %s", request)
+    def rpc(self, op):
+        _log.debug("RPC call %s", op)
         try:
-            self.queue.push(partial(self._handle, response, request))
+            self.queue.push(partial(self._handle, op))
         except Full:
             _log.warn("RPC call queue overflow")
-            response.done(error="Too many concurrent RPC calls")
+            op.done(error="Too many concurrent RPC calls")
 
-    def _handle(self, response, request):
+    def _handle(self, op):
         try:
+            request = op.value()
             name, args = self.getMethodNameArgs(request)
             fn = self.methods[name]
             rtype = fn._reply_Type
@@ -153,18 +165,18 @@ class RPCDispatcherBase(object):
                     R = self.Value(rtype, R)
                 except:
                     _log.exception("Error encoding %s as %s", R, rtype)
-                    response.done(error="Error encoding reply")
+                    op.done(error="Error encoding reply")
                     return
             _log.debug("RPC reply %s -> %s", request, R)
-            response.done(R)
+            op.done(R)
 
         except RemoteError as e:
             _log.debug("RPC reply %s -> error: %s", request, e)
-            response.done(error=str(e))
+            op.done(error=str(e))
 
         except:
             _log.exception("Error handling RPC %s", request)
-            response.done(error="Error handling RPC")
+            op.done(error="Error handling RPC")
         
 
 class NTURIDispatcher(RPCDispatcherBase):

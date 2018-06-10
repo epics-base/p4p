@@ -1,4 +1,6 @@
 
+#include <time.h>
+
 #include <pv/logger.h>
 
 #include <pv/pvIntrospect.h> /* for pv/pvdVersion.h */
@@ -124,6 +126,7 @@ PyMOD(_p4p)
         p4p_value_register(mod.get());
         p4p_array_register(mod.get());
         p4p_server_register(mod.get());
+        p4p_server_sharedpv_register(mod.get());
         p4p_server_provider_register(mod.get());
         p4p_client_context_register(mod.get());
         p4p_client_channel_register(mod.get());
@@ -151,3 +154,20 @@ PyMOD(_p4p)
 PyRef::PyRef(const PyExternalRef& o) :obj(o.ref.obj) {
     Py_XINCREF(obj);
 }
+
+#ifdef TRACING
+std::ostream& show_time(std::ostream& strm)
+{
+    timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+
+    time_t sec = now.tv_sec;
+    char buf[40];
+    strftime(buf, sizeof(buf), "%H:%M:%S", localtime(&sec));
+    size_t end = strlen(buf);
+    PyOS_snprintf(buf+end, sizeof(buf)-end, ".%03u ", unsigned(now.tv_nsec/1000000u));
+    buf[sizeof(buf)-1] = '\0';
+    strm<<buf;
+    return strm;
+}
+#endif // TRACING

@@ -5,6 +5,15 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include <epicsMutex.h>
+#include <epicsGuard.h>
+#include <pv/pvIntrospect.h>
+#include <pv/bitSet.h>
+#include <pv/pvData.h>
+#include <pv/pvAccess.h>
+#include <pva/server.h>
+#include <pva/sharedstate.h>
+
 #ifdef READONLY
 // don't want def from shareLib.h
 #  undef READONLY
@@ -12,13 +21,6 @@
 
 #include <Python.h>
 #include <structmember.h>
-
-#include <epicsMutex.h>
-#include <epicsGuard.h>
-#include <pv/pvIntrospect.h>
-#include <pv/bitSet.h>
-#include <pv/pvData.h>
-#include <pv/pvAccess.h>
 
 typedef epicsGuard<epicsMutex> Guard;
 typedef epicsGuardRelease<epicsMutex> UnGuard;
@@ -175,8 +177,11 @@ struct PyExternalRef {
 
 #define CATCH() catch(std::exception& e) { if(!PyErr_Occurred()) { PyErr_SetString(PyExc_RuntimeError, e.what()); } }
 
+// enable extremely verbose low level debugging prints.
 #if 0
-#define TRACE(ARG) do{ std::cerr<<"TRACE "<<__FUNCTION__<<" "<<ARG<<"\n";} while(0)
+#define TRACING
+std::ostream& show_time(std::ostream&);
+#define TRACE(ARG) do{ show_time(std::cerr<<"TRACE ")<<__FUNCTION__<<" "<<ARG<<"\n";} while(0)
 #else
 #define TRACE(ARG) do{ } while(0)
 #endif
@@ -196,13 +201,14 @@ struct PyExternalRef {
 #if PY_MAJOR_VERSION < 3
 // quiet some warnings about implict const char* -> char* cast
 // for API functions.  These are corrected in py >= 3.x
-#define PyObject_CallFunction(O, FMT, ...) PyObject_CallFunction(O, (char*)(FMT), __VA_ARGS__)
-#define PyObject_CallMethod(O, METH, FMT, ...) PyObject_CallMethod(O, (char*)(METH), (char*)(FMT), __VA_ARGS__)
+#define PyObject_CallFunction(O, FMT, ...) PyObject_CallFunction(O, (char*)(FMT), ##__VA_ARGS__)
+#define PyObject_CallMethod(O, METH, FMT, ...) PyObject_CallMethod(O, (char*)(METH), (char*)(FMT), ##__VA_ARGS__)
 #endif
 
 void p4p_type_register(PyObject *mod);
 void p4p_value_register(PyObject *mod);
 void p4p_server_register(PyObject *mod);
+void p4p_server_sharedpv_register(PyObject *mod);
 void p4p_array_register(PyObject *mod);
 void p4p_client_context_register(PyObject *mod);
 void p4p_client_channel_register(PyObject *mod);
@@ -210,6 +216,7 @@ void p4p_client_monitor_register(PyObject *mod);
 void p4p_client_op_register(PyObject *mod);
 
 epics::pvAccess::ChannelProvider::shared_pointer p4p_build_provider(PyRef &handler, const std::string& name);
+epics::pvAccess::ChannelProvider::shared_pointer p4p_unwrap_provider(PyObject *provider);
 PyObject* p4p_add_provider(PyObject *junk, PyObject *args, PyObject *kwds);
 PyObject* p4p_remove_provider(PyObject *junk, PyObject *args, PyObject *kwds);
 PyObject* p4p_remove_all(PyObject *junk, PyObject *args, PyObject *kwds);
@@ -235,6 +242,10 @@ PyObject *P4PValue_wrap(PyTypeObject *type,
                         const epics::pvData::BitSet::shared_pointer& = epics::pvData::BitSet::shared_pointer());
 
 extern PyObject* P4PCancelled;
+
+extern PyTypeObject* P4PSharedPV_type;
+std::tr1::shared_ptr<pvas::SharedPV> P4PSharedPV_unwrap(PyObject *obj);
+PyObject *P4PSharedPV_wrap(const std::tr1::shared_ptr<pvas::SharedPV>& pv);
 
 template<class C>
 struct PyClassWrapper {

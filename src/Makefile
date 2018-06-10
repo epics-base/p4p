@@ -13,6 +13,7 @@ _p4p_SRCS += p4p_value.cpp
 _p4p_SRCS += p4p_array.cpp
 _p4p_SRCS += p4p_server.cpp
 _p4p_SRCS += p4p_server_provider.cpp
+_p4p_SRCS += p4p_server_sharedpv.cpp
 
 _p4p_SRCS += p4p_client_context.cpp
 _p4p_SRCS += p4p_client_channel.cpp
@@ -28,7 +29,8 @@ PY += p4p/__init__.py
 PY += p4p/disect.py
 PY += p4p/wrapper.py
 PY += p4p/rpc.py
-PY += p4p/server.py
+PY += p4p/server/__init__.py
+PY += p4p/server/raw.py
 PY += p4p/nt/__init__.py
 PY += p4p/nt/common.py
 PY += p4p/nt/scalar.py

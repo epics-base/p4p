@@ -10,7 +10,7 @@ OpBase::~OpBase()
 
 void OpBase::cancel()
 {
-    TRACE("");
+    TRACE((cb?"active":"used"));
     if(cb) {
         PyRef err(PyObject_CallFunction(P4PCancelled, "s", "Cancelled"));
         call_cb(err.get());

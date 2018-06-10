@@ -13,33 +13,37 @@
 #endif
 
 #include <pv/serverContext.h>
+#include <pva/server.h>
 
 #include "p4p.h"
-
-namespace {
 
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
-struct PyServerChannel;
+typedef PyClassWrapper<pvas::DynamicProvider::shared_pointer> PyDynamicProvider;
+typedef PyClassWrapper<pvas::StaticProvider::shared_pointer> PyStaticProvider;
 
 const unsigned maxCache = 100;
 const unsigned expireIn = 5;
 
-struct PyServerProvider :
-        public pva::ChannelProviderFactory,
-        public pva::ChannelFind,
-        public pva::ChannelProvider,
-        public std::tr1::enable_shared_from_this<PyServerProvider>
-{
-    POINTER_DEFINITIONS(PyServerProvider);
+template<>
+PyTypeObject PyDynamicProvider::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "_p4p.DynamicProvider",
+    sizeof(PyDynamicProvider),
+};
 
-    virtual ~PyServerProvider() {
-        TRACE("Being destroyed. provider obj="<<provider.ref.get()<<" refs="<<(provider.ref.get() ? Py_REFCNT(provider.ref.get()) : 0));
-    }
+template<>
+PyTypeObject PyStaticProvider::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "_p4p.StaticProvider",
+    sizeof(PyStaticProvider),
+};
 
-    PyExternalRef provider;
-    std::string provider_name;
+namespace {
+
+struct DynamicHandler : public pvas::DynamicProvider::Handler {
+    POINTER_DEFINITIONS(DynamicHandler);
 
     // cache negative search results (names we don't have)
     // map name -> expiration time
@@ -47,572 +51,265 @@ struct PyServerProvider :
     search_cache_t search_cache;
     epicsMutex search_cache_lock;
 
-    virtual std::string getFactoryName() OVERRIDE FINAL { return provider_name; }
-    virtual ChannelProvider::shared_pointer sharedInstance() {
-        TRACE("GET");
-        return shared_from_this();
+    PyRef cb;
+    DynamicHandler(PyObject *callback) :cb(callback, borrow()) {
+        TRACE("");
     }
-    virtual ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<pva::Configuration>&) OVERRIDE FINAL {
-        ChannelProvider::shared_pointer ret(shared_from_this());
-        TRACE("GET "<<ret.use_count());
-        return ret;
+    virtual ~DynamicHandler() {
+        // we may get here with the GIL locked (via ~PySharedPV), or not (SharedPV released from ServerContext)
+        PyLock L;
+        TRACE("");
+        cb.reset();
     }
 
-    virtual std::tr1::shared_ptr<pva::ChannelProvider> getChannelProvider() OVERRIDE FINAL { return shared_from_this(); }
-    virtual void cancel() OVERRIDE FINAL {}
-
-    virtual void destroy() OVERRIDE FINAL {}
-
-    virtual std::string getProviderName() OVERRIDE FINAL { return provider_name; }
-
-    virtual pva::ChannelFind::shared_pointer channelFind(std::string const & channelName,
-            pva::ChannelFindRequester::shared_pointer const & channelFindRequester) OVERRIDE FINAL
-    {
+    virtual void hasChannels(pvas::DynamicProvider::search_type& name) {
         timespec now = {0,0};
         clock_gettime(CLOCK_MONOTONIC_COARSE, &now);
-        TRACE("ENTER "<<channelName);
-        pva::ChannelFind::shared_pointer ret;
-        try {
-            // To reduce load we maintain a cache of failed name searches
-            // which we don't repeat too often
+
+        for(pvas::DynamicProvider::search_type::iterator it(name.begin()), end(name.end()); it!=end; ++it) {
+            TRACE("ENTER "<<it->name());
 
             bool hit;
             {
                 Guard G(search_cache_lock);
-                search_cache_t::iterator it = search_cache.find(channelName);
-                if(it!=search_cache.end() && it->second.tv_sec < now.tv_sec) {
+                search_cache_t::iterator it2 = search_cache.find(it->name());
+                if(it2!=search_cache.end() && it2->second.tv_sec < now.tv_sec) {
                     // stale entry
-                    search_cache.erase(it);
-                    it = search_cache.end();
+                    search_cache.erase(it2);
+                    it2 = search_cache.end();
                 }
-                hit = it != search_cache.end();
+                hit = it2 != search_cache.end();
             }
 
             if(hit) {
-                TRACE("HIT "<<channelName);
-                channelFindRequester->channelFindResult(pvd::Status::Ok,
-                                                        ret, false);
-                return ret;
+                TRACE("HIT IGNORE "<<it->name());
+                continue;
             }
 
-            bool found;
-            {
-                PyLock G;
-    
-                PyRef grab(PyObject_CallMethod(provider.ref.get(), "testChannel", "s", channelName.c_str()), allownull());
+
+            PyLock L;
+            if(cb) {
+                PyRef grab(PyObject_CallMethod(cb.get(), "testChannel", "s", it->name().c_str()), allownull());
                 if(!grab) {
+                    TRACE("cb ERROR");
                     PyErr_Print();
                     PyErr_Clear();
-                    found = false;
 
                 } else if(PyObject_IsTrue(grab.get())) {
-                    found = true;
-
-                } else {
-                    found = false;
+                    TRACE("CLAIM");
+                    it->claim();
+                    continue;
                 }
-            }
-
-
-            if(found) {
-                ret = shared_from_this();
-                channelFindRequester->channelFindResult(pvd::Status::Ok,
-                                                        ret, true);
-
             } else {
-                channelFindRequester->channelFindResult(pvd::Status::Ok,
-                                                        ret, false);
-
-                now.tv_sec+=expireIn;
-
-                {
-                    Guard G(search_cache_lock);
-                    if(search_cache.size()>=maxCache) {
-                        // instead of a proper LRU cache, just drop when it gets too big
-                        TRACE("CLEAR");
-                        search_cache.clear();
-                    }
-                    TRACE("ADD "<<channelName);
-                    search_cache.insert(std::make_pair(channelName, now));
-                }
+                TRACE("DEFUCT");
+                break;
             }
-        } catch(std::exception& e) {
-            channelFindRequester->channelFindResult(pvd::Status::Ok,
-                                                    ret, false);
-            std::cerr<<"Unhandled exception in channelFind(): "<<e.what()<<"\n";
+
+            // negative
+
+            now.tv_sec+=expireIn;
+
+            {
+                Guard G(search_cache_lock);
+                if(search_cache.size()>=maxCache) {
+                    // instead of a proper LRU cache, just drop when it gets too big
+                    TRACE("CLEAR IGNORES");
+                    search_cache.clear();
+                }
+                TRACE("ADD IGNORE "<<it->name());
+                search_cache.insert(std::make_pair(it->name(), now));
+            }
         }
-        TRACE("EXIT "<<(ret ? "Claim" : "Ignore"));
-        return ret;
     }
 
-    virtual pva::ChannelFind::shared_pointer channelList(pva::ChannelListRequester::shared_pointer const & channelListRequester) OVERRIDE FINAL
+    virtual void listChannels(names_type& names, bool& dynamic) {}
+
+    virtual std::tr1::shared_ptr<epics::pvAccess::Channel> createChannel(const std::tr1::shared_ptr<epics::pvAccess::ChannelProvider>& provider,
+                                                                         const std::string& name,
+                                                                         const std::tr1::shared_ptr<epics::pvAccess::ChannelRequester>& requester)
     {
-        pva::ChannelFind::shared_pointer ret;
-        channelListRequester->channelListResult(pvd::Status(pvd::Status::STATUSTYPE_FATAL, "Not implemented"),
-                                                ret,
-                                                pvd::PVStringArray::const_svector(),
-                                                false);
-        return ret;
-    }
+        std::tr1::shared_ptr<epics::pvAccess::Channel> ret;
+        pvas::SharedPV::shared_pointer pv;
 
-    virtual pva::Channel::shared_pointer createChannel(std::string const & channelName,
-                                                       pva::ChannelRequester::shared_pointer const & channelRequester,
-                                                       short priority) OVERRIDE FINAL
-    {
-        return createChannel(channelName, channelRequester, priority, "<unknown>");
-    }
+        {
+            PyLock G;
+            TRACE(cb.get());
 
-    virtual pva::Channel::shared_pointer createChannel(std::string const & channelName,
-                                                       pva::ChannelRequester::shared_pointer const & channelRequester,
-                                                       short priority, std::string const & address) OVERRIDE FINAL;
-};
+            if(cb) {
+                PyRef handler(PyObject_CallMethod(cb.get(), "makeChannel", "ss", name.c_str(),
+                                                  requester->getRequesterName().c_str()), allownull());
+                if(!handler) {
+                    TRACE("ERROR");
+                    PyErr_Print();
+                    PyErr_Clear();
 
-struct PyServerChannel :
-        public pva::Channel,
-        public std::tr1::enable_shared_from_this<PyServerChannel>
-{
-    POINTER_DEFINITIONS(PyServerChannel);
-
-    PyServerProvider::shared_pointer provider;
-    pva::ChannelRequester::shared_pointer requester;
-    const std::string name;
-    PyExternalRef handler;
-    //! type description for get/put
-    pvd::Structure::const_shared_pointer type;
-
-    PyServerChannel(const PyServerProvider::shared_pointer& provider,
-                    const pva::ChannelRequester::shared_pointer& req,
-                    const std::string& name,
-                    PyRef& py)
-        :provider(provider)
-        ,requester(req)
-        ,name(name)
-    {
-        handler.swap(py);
-    }
-    virtual ~PyServerChannel() {TRACE("dtor provider obj="<<provider.get()<<" refs="<<provider.use_count());}
-
-    virtual void destroy() OVERRIDE FINAL {}
-
-    virtual std::tr1::shared_ptr<pva::ChannelProvider> getProvider() OVERRIDE FINAL { return provider; }
-    virtual std::string getRemoteAddress() OVERRIDE FINAL { return requester->getRequesterName(); }
-    virtual std::string getChannelName() OVERRIDE FINAL { return name; }
-    virtual std::tr1::shared_ptr<pva::ChannelRequester> getChannelRequester() OVERRIDE FINAL { return requester; }
-
-    virtual pva::ChannelRPC::shared_pointer createChannelRPC(
-            pva::ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-            pvd::PVStructure::shared_pointer const & pvRequest) OVERRIDE FINAL;
-
-//    virtual pva::ChannelGet::shared_pointer createChannelGet(
-//            const pva::ChannelGetRequester::shared_pointer &channelGetRequester,
-//            const pvd::PVStructure::shared_pointer &pvRequest) OVERRIDE FINAL;
-};
-
-// common base class for our operations
-template<typename Base>
-struct PyServerCommon : public Base
-{
-    typedef Base operation_type;
-    typedef typename Base::requester_type requester_type;
-    PyServerChannel::shared_pointer chan;
-    typename requester_type::shared_pointer requester;
-    pvd::PVStructure::shared_pointer pvRequest;
-
-    PyServerCommon(const PyServerChannel::shared_pointer& c,
-                   const pvd::PVStructure::shared_pointer& pvR,
-                   const typename requester_type::shared_pointer& r) :chan(c), requester(r), pvRequest(pvR) {}
-    virtual ~PyServerCommon() {}
-
-    virtual void destroy() OVERRIDE FINAL {this->cancel();}
-
-    virtual pva::Channel::shared_pointer getChannel() OVERRIDE FINAL { return chan; }
-
-    virtual void lastRequest() OVERRIDE FINAL {}
-
-};
-
-struct PyServerRPC : public PyServerCommon<pva::ChannelRPC>,
-                     public std::tr1::enable_shared_from_this<PyServerRPC>
-{
-    typedef PyServerCommon<pva::ChannelRPC> base_type;
-    POINTER_DEFINITIONS(PyServerRPC);
-
-    struct ReplyData {
-        PyServerRPC::shared_pointer rpc;
-        ReplyData() {}
-        ~ReplyData() {
-            if(rpc) {
-                if(PyErr_Warn(PyExc_UserWarning, "RPCReply collected before reply")) {
+                } else if(!PyObject_IsInstance(handler.get(), (PyObject*)P4PSharedPV_type)) {
+                    TRACE("Wrong return type");
+                    PyErr_Format(PyExc_TypeError, "makeChannel() must return SharedPV");
                     PyErr_Print();
                     PyErr_Clear();
                 }
-                TRACE("rpc dropped");
-                PyUnlock U;
-                pvd::Status error(pvd::Status::STATUSTYPE_ERROR, "No Reply");
-                rpc->requester->requestDone(error, rpc, pvd::PVStructure::shared_pointer());
+
+                pv = P4PSharedPV_unwrap(handler.get());
             }
         }
-    };
-    static PyTypeObject *ReplyData_type;
 
-    typedef PyClassWrapper<ReplyData> Reply;
-    // active_reply should be cleared when Reply::rpc is cleared
-    ReplyData* active_reply;
-
-    PyServerRPC(const PyServerChannel::shared_pointer& c,
-                const pvd::PVStructure::shared_pointer& pvR,
-                const base_type::requester_type::shared_pointer& r) :base_type(c, pvR, r), active_reply(0) {}
-    virtual ~PyServerRPC() {TRACE("dtor");}
-
-    virtual void request(pvd::PVStructure::shared_pointer const & pvArgument) OVERRIDE FINAL
-    {
-        TRACE("ENTER");
-        bool createdReply = false;
-        PyLock G;
-        if(active_reply)
-            throw std::logic_error("Request already in progress");
-        try {
-
-            PyRef wrapper(PyObject_GetAttrString(chan->handler.ref.get(), "Value"));
-            if(!PyType_Check(wrapper.get()))
-                throw std::runtime_error("handler.Value is not a Type");
-
-            PyRef req(P4PValue_wrap((PyTypeObject*)wrapper.get(), pvArgument));
-
-            PyRef args(PyTuple_New(0));
-
-            PyRef rep(ReplyData_type->tp_new(ReplyData_type, args.get(), 0));
-
-            active_reply = &Reply::unwrap(rep.get());
-            active_reply->rpc = shared_from_this();
-            createdReply = true;
-            // from this point the Reply is responsible for calling requestDone()
-            // if the call to .rpc() fails then the reply is sent when the Reply is destroyed
-            // which means that an exception thrown by rpc() will only be printed to screen
-
-            PyRef junk(PyObject_CallMethod(chan->handler.ref.get(), "rpc", "OO", rep.get(), req.get()));
-
-            TRACE("SUCCESS");
-        } catch(std::exception& e) {
-            active_reply = NULL;
-            if(PyErr_Occurred()) {
-                PyErr_Print();
-                PyErr_Clear();
-            }
-            if(!createdReply) {
-                pva::ChannelRPCRequester::shared_pointer R(requester);
-                PyUnlock U;
-                R->requestDone(pvd::Status(pvd::Status::STATUSTYPE_ERROR, e.what()),
-                               shared_from_this(),
-                               pvd::PVStructurePtr());
-            }
-            TRACE("ERROR "<<(createdReply ? "DELEGATE" : "SENT"));
-        }
+        if(pv)
+            ret = pv->connect(provider, name, requester);
+        return ret;
     }
 
-    virtual void cancel() OVERRIDE FINAL {
-        PyLock L;
-        if(active_reply) {
-            active_reply->rpc.reset();
-            active_reply = NULL;
+    virtual void destroy() {}
+};
+
+#define TRY PyDynamicProvider::reference_type SELF = PyDynamicProvider::unwrap(self); try
+
+static int dynamicprovider_init(PyObject *self, PyObject *args, PyObject *kwds) {
+    TRY {
+        const char *names[] = {"name", "handler", NULL};
+        const char *name;
+        PyObject *handler;
+        if(!PyArg_ParseTupleAndKeywords(args, kwds, "sO", (char**)names, &name, &handler))
+            return -1;
+
+        DynamicHandler::shared_pointer H(new DynamicHandler(handler));
+
+        SELF.reset(new pvas::DynamicProvider(name, H));
+
+        return 0;
+    }CATCH()
+    return -1;
+}
+
+static int dynamicprovider_traverse(PyObject *self, visitproc visit, void *arg)
+{
+    TRY {
+        if(!SELF) return 0; // eg. failed sub-class ctor
+        // attempt to drill through to the handler
+        DynamicHandler::shared_pointer handler(std::tr1::dynamic_pointer_cast<DynamicHandler>(SELF->getHandler()));
+        if(handler && handler->cb)
+            Py_VISIT(handler->cb.get());
+        return 0;
+    } CATCH()
+    return -1;
+}
+
+static int dynamicprovider_clear(PyObject *self)
+{
+    TRY {
+        // also called by PyClassWrapper dtor, so we are killing the Handler
+        // even though it may still be ref'd
+        TRACE("");
+        if(!SELF) return 0; // eg. failed sub-class ctor
+        DynamicHandler::shared_pointer handler(std::tr1::dynamic_pointer_cast<DynamicHandler>(SELF->getHandler()));
+        // ~= Py_CLEAR(cb)
+        if(handler) {
+            PyRef tmp;
+            handler->cb.swap(tmp);
         }
-        //TODO: notify in progress ops?
-    }
+        return 0;
+    } CATCH()
+    return -1;
+}
 
-    // python methods of the ReplyData class
+#undef TRY
+#define TRY PyStaticProvider::reference_type SELF = PyStaticProvider::unwrap(self); try
 
-    static PyObject* reply_done(PyObject *self, PyObject *args, PyObject *kwds)
-    {
-        PyObject *data = Py_None;
-        const char *error = NULL;
-        const char *names[] = {"reply", "error", NULL};
-        if(!PyArg_ParseTupleAndKeywords(args, kwds, "|Oz", (char**)names,
-                                        &data,
-                                        &error))
+static int staticprovider_init(PyObject *self, PyObject *args, PyObject *kwds) {
+    TRY {
+        const char *names[] = {"name", NULL};
+        const char *name;
+        if(!PyArg_ParseTupleAndKeywords(args, kwds, "s", (char**)names, &name))
+            return -1;
+
+        SELF.reset(new pvas::StaticProvider(name));
+
+        return 0;
+    }CATCH()
+    return -1;
+}
+
+static PyObject* staticprovider_close(PyObject *self) {
+    TRY {
+        SELF->close();
+
+        Py_RETURN_NONE;
+    }CATCH()
+    return NULL;
+}
+
+static PyObject* staticprovider_add(PyObject *self, PyObject *args, PyObject *kwds) {
+    TRY {
+        const char *names[] = {"name", "pv", NULL};
+        const char *name;
+        PyObject *pypv;
+        if(!PyArg_ParseTupleAndKeywords(args, kwds, "sO", (char**)names, &name, &pypv))
             return NULL;
 
-        TRACE("ENTER");
-        Reply::reference_type SELF = Reply::unwrap(self);
-        try {
-            if(!SELF.rpc) {
-                TRACE("Cancelled");
-                Py_RETURN_NONE;
+        if(PyObject_IsInstance(pypv, (PyObject*)P4PSharedPV_type)) {
 
-            }
-
-            pva::ChannelRPCRequester::shared_pointer R(SELF.rpc->requester);
-
-            if(data!=Py_None) {
-
-
-                pvd::PVStructure::shared_pointer value;
-
-                if(PyObject_TypeCheck(data, P4PValue_type)) {
-                    value = P4PValue_unwrap(data);
-                } else {
-                    return PyErr_Format(PyExc_ValueError, "RPC results must be Value");
-                }
-
-                PyServerRPC::shared_pointer rpc;
-                SELF.rpc->active_reply = NULL;
-                SELF.rpc.swap(rpc);
-                {
-                    PyUnlock U;
-                    R->requestDone(pvd::Status::Ok,
-                                   rpc,
-                                   value);
-                }
-                TRACE("SUCCESS");
-            } else if(error) {
-                PyServerRPC::shared_pointer rpc;
-                SELF.rpc->active_reply = NULL;
-                SELF.rpc.swap(rpc);
-                {
-                    PyUnlock U;
-                    R->requestDone(pvd::Status(pvd::Status::STATUSTYPE_ERROR, error),
-                                           rpc,
-                                           pvd::PVStructurePtr());
-                }
-                TRACE("ERROR");
-            } else {
-                return PyErr_Format(PyExc_ValueError, "done() needs reply= or error=");
-            }
-
-            Py_RETURN_NONE;
-        }CATCH()
-        TRACE("FAIL");
-        return NULL;
-    }
-};
-
-} // namespace
-
-
-template<>
-PyTypeObject PyServerRPC::Reply::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.RPCReply",
-    sizeof(PyServerRPC::Reply),
-};
-
-namespace {
-
-PyTypeObject *PyServerRPC::ReplyData_type = &PyServerRPC::Reply::type;
-
-/*
-struct PyServerGet : public PyServerCommon<pva::ChannelGet>,
-                     public std::tr1::enable_shared_from_this<PyServerGet>
-{
-    typedef PyServerCommon<pva::ChannelGet> base_type;
-    POINTER_DEFINITIONS(PyServerGet);
-
-    struct ReplyData {
-        PyServerGet::shared_pointer op;
-        bool sent;
-        ReplyData() :sent(false) {}
-        ~ReplyData() {
-            if(!sent) {
-                TRACE("get dropped");
-                PyUnlock U;
-                pvd::Status error(pvd::Status::STATUSTYPE_ERROR, "Operation dropped by server");
-                op->requester->getDone(error, op, pvd::PVStructure::shared_pointer(), pvd::BitSet::shared_pointer());
-            }
-        }
-    };
-
-    typedef PyClassWrapper<ReplyData> Reply;
-
-    PyServerGet(const PyServerChannel::shared_pointer& c,
-                const pvd::PVStructure::shared_pointer& pvR,
-                const typename base_type::requester_type::shared_pointer& r) :base_type(c, pvR, r) {}
-    virtual ~PyServerGet() {}
-
-    pvd::Structure::const_shared_pointer type;
-
-    virtual void get() OVERRIDE FINAL
-    {
-        bool createdReply = false;
-        PyLock L;
-        try {
-            PyRef args(PyTuple_New(0));
-            PyRef rep(Reply::type.tp_new(&Reply::type, args.get(), 0));
-
-            Reply::unwrap(rep.get()).op = shared_from_this();
-            createdReply = true;
-
-            PyRef junk(PyObject_CallMethod(chan->handler.ref.get(), "get", "O", rep.get()));
-
-            TRACE("SUCCESS");
-        } catch(std::exception& e) {
-            if(PyErr_Occurred()) {
-                PyErr_Print();
-                PyErr_Clear();
-            }
-            if(!createdReply) {
-                pva::ChannelGetRequester::shared_pointer R(requester);
-                PyUnlock U;
-                R->getDone(pvd::Status(pvd::Status::STATUSTYPE_ERROR, e.what()),
-                           shared_from_this(),
-                           pvd::PVStructurePtr(),
-                           pvd::BitSetPtr());
-            }
-            TRACE("ERROR "<<(createdReply ? "DELEGATE" : "SENT"));
-        }
-
-    }
-
-    static PyObject* reply_done(PyObject *self, PyObject *args, PyObject *kwds)
-    {
-        PyObject *data = Py_None;
-        const char *error = NULL;
-        const char *names[] = {"reply", "error", NULL};
-        if(!PyArg_ParseTupleAndKeywords(args, kwds, "|Oz", (char**)names,
-                                        &data,
-                                        &error))
-            return NULL;
-
-        TRACE("ENTER");
-        Reply::reference_type SELF = Reply::unwrap(self);
-        try {
-            pva::ChannelGetRequester::shared_pointer R(SELF.op->requester);
-
-            if(!SELF.op->active) {
-                // cancelled by client, no-op
-            } else if(SELF.sent) {
-                return PyErr_Format(PyExc_TypeError, "done() already called");
-
-            } else if(data!=Py_None) {
-
-
-                pvd::PVStructure::shared_pointer value;
-                // TODO: use bitset from Value, need to copy?
-                pvd::BitSet::shared_pointer vset(new pvd::BitSet(1));
-                vset->set(0);
-
-                if(PyObject_TypeCheck(data, P4PValue_type)) {
-                    value = P4PValue_unwrap(data);
-                } else {
-                    return PyErr_Format(PyExc_ValueError, "RPC results must be Value");
-                }
-
-                if(SELF.op->type!=value->getStructure()) {
-                    //TODO: oops?
-                }
-
-                SELF.sent = true;
-                PyUnlock U;
-                R->getDone(pvd::Status::Ok,
-                            SELF.op,
-                            value, vset);
-            } else if(error) {
-                SELF.sent = true;
-                PyUnlock U;
-                R->getDone(pvd::Status(pvd::Status::STATUSTYPE_ERROR, error),
-                                       SELF.op,
-                                       pvd::PVStructurePtr(),
-                                       pvd::BitSetPtr());
-            } else {
-                return PyErr_Format(PyExc_ValueError, "done() needs reply= or error=");
-            }
-
-            TRACE("SUCCESS");
-            Py_RETURN_NONE;
-        }CATCH()
-        TRACE("ERROR");
-        return NULL;
-    }
-};
-*/
-
-pva::Channel::shared_pointer
-PyServerProvider::createChannel(std::string const & channelName,
-                                                   pva::ChannelRequester::shared_pointer const & channelRequester,
-                                                   short priority, std::string const & address)
-{
-    TRACE("ENTER "<<channelRequester->getRequesterName());
-    pva::Channel::shared_pointer ret;
-    try {
-        PyLock G;
-
-        PyRef handler(PyObject_CallMethod(provider.ref.get(), "makeChannel", "ss", channelName.c_str(),
-                                      channelRequester->getRequesterName().c_str()), allownull());
-        if(!handler) {
-            PyErr_Print();
-            PyErr_Clear();
-            channelRequester->channelCreated(pvd::Status(pvd::Status::STATUSTYPE_ERROR, "Logic Error"),
-                                             ret);
-
-        } else if(handler.get()==Py_None) {
-            channelRequester->channelCreated(pvd::Status(pvd::Status::STATUSTYPE_ERROR, "No such channel"),
-                                             ret);
+            SELF->add(name, P4PSharedPV_unwrap(pypv));
 
         } else {
-            ret.reset(new PyServerChannel(shared_from_this(),channelRequester, channelName, handler));
-            // handler consumed now
-            channelRequester->channelCreated(pvd::Status::Ok, ret);
+            return PyErr_Format(PyExc_ValueError, "pv= must be SharedPV instance");
         }
-    } catch(std::exception& e) {
-        channelRequester->channelCreated(pvd::Status(pvd::Status::STATUSTYPE_ERROR, e.what()),
-                                         ret);
-    }
-    TRACE("EXIT "<<(ret ? "Create" : "Refuse"));
-    return ret;
+
+        Py_RETURN_NONE;
+    }CATCH()
+            return NULL;
 }
 
-pva::ChannelRPC::shared_pointer
-PyServerChannel::createChannelRPC(
-        pva::ChannelRPCRequester::shared_pointer const & channelRPCRequester,
-        pvd::PVStructure::shared_pointer const & pvRequest)
-{
-    TRACE("ENTER");
-    pva::ChannelRPC::shared_pointer ret(new PyServerRPC(shared_from_this(), pvRequest, channelRPCRequester));
-    channelRPCRequester->channelRPCConnect(pvd::Status::Ok, ret);
-    return ret;
-}
-/*
-pva::ChannelGet::shared_pointer
-PyServerChannel::createChannelGet(
-        const pva::ChannelGetRequester::shared_pointer &channelGetRequester,
-        const pvd::PVStructure::shared_pointer &pvRequest)
-{
-    TRACE("ENTER");
-    pvd::Structure::const_shared_pointer gtype(getType());
-    pva::ChannelGet::shared_pointer ret(new PyServerGet(shared_from_this(), pvRequest, channelGetRequester));
-    if(gtype)
-        channelGetRequester->channelGetConnect(pvd::Status::Ok, ret);
-    return ret;
-}
-*/
+static PyObject* staticprovider_remove(PyObject *self, PyObject *args, PyObject *kwds) {
+    TRY {
+        const char *names[] = {"name", NULL};
+        const char *name;
+        if(!PyArg_ParseTupleAndKeywords(args, kwds, "s", (char**)names, &name))
+            return NULL;
 
-static struct PyMethodDef PyServerRPC_methods[] = {
-    {"done", (PyCFunction)PyServerRPC::reply_done, METH_VARARGS|METH_KEYWORDS,
-     "done(reply=Value)\n"
-     "done(error=\"oops\")\n"
-     "Complete RPC call with reply data or error message"},
+        pvas::SharedPV::shared_pointer sharedpv;
+        pvas::StaticProvider::ChannelBuilder::shared_pointer pv(SELF->remove(name));
+
+        if(!pv) {
+            return PyErr_Format(PyExc_KeyError, "No Such PV %s", name);
+
+        } else if((sharedpv = std::tr1::dynamic_pointer_cast<pvas::SharedPV>(pv))) {
+            return P4PSharedPV_wrap(sharedpv);
+
+        } else {
+            return PyErr_Format(PyExc_TypeError, "PV %s of unmapped c++ type", name);
+        }
+
+        Py_RETURN_NONE; // not reached
+    }CATCH()
+    return NULL;
+}
+
+static PyMethodDef StaticProvider_methods[] = {
+    {"close", (PyCFunction)&staticprovider_close, METH_NOARGS,
+     "close()\n"
+     "Equivalent to calling close() on every SharedPV add()'d"},
+    {"add", (PyCFunction)&staticprovider_add, METH_VARARGS|METH_KEYWORDS,
+     "add(name, pv)\n"
+     "Add a new SharedPV instance to be served by this provider."},
+    {"remove", (PyCFunction)&staticprovider_remove, METH_VARARGS|METH_KEYWORDS,
+     "remove(name) -> pv\n"
+     "Remove a SharedPV from this provider.  Raises KeyError in named PV doesn't exist.\n"
+     "Returns the PV which has been removed.\n"
+     "Implicitly close()s the PV before returning, disconnecting any clients."},
     {NULL}
 };
 
-/*
-static struct PyMethodDef PyServerGet_methods[] = {
-    {"done", (PyCFunction)PyServerGet::reply_done, METH_VARARGS|METH_KEYWORDS,
-     "done(reply=Value)\n"
-     "done(error=\"oops\")\n"
-     "Complete Get call with reply data or error message"},
-    {NULL}
-};
-*/
-
-typedef std::map<std::string, PyServerProvider::shared_pointer> pyproviders_t;
-pyproviders_t* pyproviders;
 
 } // namespace
 
-pva::ChannelProvider::shared_pointer p4p_build_provider(PyRef& handler, const std::string& name)
+epics::pvAccess::ChannelProvider::shared_pointer p4p_unwrap_provider(PyObject *provider)
 {
-    PyServerProvider::shared_pointer P(new PyServerProvider);
-    P->provider.swap(handler);
-    P->provider_name = name;
-    return P;
+    if(PyObject_IsInstance(provider, (PyObject*)&PyDynamicProvider::type))
+        return PyDynamicProvider::unwrap(provider)->provider();
+    else if(PyObject_IsInstance(provider, (PyObject*)&PyStaticProvider::type))
+        return PyStaticProvider::unwrap(provider)->provider();
+    else
+        throw std::runtime_error("provider= must be DynamicProvider or StaticProvider");
 }
 
 PyObject* p4p_add_provider(PyObject *junk, PyObject *args, PyObject *kwds)
@@ -625,22 +322,13 @@ PyObject* p4p_add_provider(PyObject *junk, PyObject *args, PyObject *kwds)
         return NULL;
 
     try {
-        if(!pyproviders)
-            pyproviders = new pyproviders_t;
-
-        pyproviders_t::const_iterator it = pyproviders->find(name);
-        if(it!=pyproviders->end())
-            return PyErr_Format(PyExc_KeyError, "Provider %s already registered", name);
-
-        PyRef handler(prov, borrow());
-        PyServerProvider::shared_pointer P(new PyServerProvider);
-        P->provider.swap(handler);
-        P->provider_name = name;
-
-        pva::ChannelProviderRegistry::servers()->add(P);
-
-        (*pyproviders)[name] = P;
-        TRACE("name="<<name<<" "<<P.use_count());
+        pva::ChannelProvider::shared_pointer provider(p4p_unwrap_provider(prov));
+        // TODO: avoid redundency
+        if(provider->getProviderName()!=name)
+            return PyErr_Format(PyExc_ValueError, "Provider name inconsistent %s != %s",
+                                provider->getProviderName().c_str(), name);
+        TRACE("Add "<<provider->getProviderName());
+        pva::ChannelProviderRegistry::servers()->addSingleton(provider);
 
         Py_RETURN_NONE;
     }CATCH()
@@ -656,17 +344,8 @@ PyObject* p4p_remove_provider(PyObject *junk, PyObject *args, PyObject *kwds)
 
     try {
         TRACE("Clear "<<name);
-        if(!pyproviders)
-            Py_RETURN_FALSE;
 
-        pyproviders_t::iterator it = pyproviders->find(name);
-        if(it==pyproviders->end())
-            Py_RETURN_FALSE;
-
-        pva::ChannelProviderRegistry::servers()->remove(it->second);
-
-        TRACE("name="<<name<<" "<<it->second.use_count());
-        pyproviders->erase(it);
+        pva::ChannelProviderRegistry::servers()->remove(name);
 
         Py_RETURN_TRUE;
     }CATCH()
@@ -681,61 +360,42 @@ PyObject* p4p_remove_all(PyObject *junk, PyObject *args, PyObject *kwds)
 
     try {
         TRACE("Clear");
-        if(pyproviders) {
-            std::auto_ptr<pyproviders_t> P(pyproviders);
-            pyproviders = NULL;
-            for(pyproviders_t::const_iterator it = P->begin(); it!=P->end(); ++it) {
-                pva::ChannelProviderRegistry::servers()->remove(it->second);
-            }
-        }
 
         Py_RETURN_NONE;
     }CATCH()
     return NULL;
 }
 
-/*
-
-template<>
-PyTypeObject PyServerGet::Reply::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.GetReply",
-    sizeof(PyServerGet::Reply),
-};
-*/
 void p4p_server_provider_register(PyObject *mod)
 {
-    pyproviders = NULL;
+    PyDynamicProvider::buildType();
+    PyDynamicProvider::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_HAVE_GC;
+    PyDynamicProvider::type.tp_init = &dynamicprovider_init;
+    PyDynamicProvider::type.tp_traverse = &dynamicprovider_traverse;
+    PyDynamicProvider::type.tp_clear = &dynamicprovider_clear;
 
-    PyServerRPC::Reply::buildType();
-    PyServerRPC::Reply::type.tp_flags = Py_TPFLAGS_DEFAULT;
-    // No init.  This type can't be created by python code
+    if(PyType_Ready(&PyDynamicProvider::type))
+        throw std::runtime_error("failed to initialize DynamicProvider");
 
-    PyServerRPC::Reply::type.tp_methods = PyServerRPC_methods;
-
-    if(PyType_Ready(&PyServerRPC::Reply::type))
-        throw std::runtime_error("failed to initialize RPCReply");
-
-    Py_INCREF((PyObject*)&PyServerRPC::Reply::type);
-    if(PyModule_AddObject(mod, "RPCReply", (PyObject*)&PyServerRPC::Reply::type)) {
-        Py_DECREF((PyObject*)&PyServerRPC::Reply::type);
-        throw std::runtime_error("failed to add _p4p.RPCReply");
+    Py_INCREF((PyObject*)&PyDynamicProvider::type);
+    if(PyModule_AddObject(mod, "DynamicProvider", (PyObject*)&PyDynamicProvider::type)) {
+        Py_DECREF((PyObject*)&PyDynamicProvider::type);
+        throw std::runtime_error("failed to add _p4p.DynamicProvider");
     }
 
-/*
-    PyServerGet::Reply::buildType();
-    PyServerGet::Reply::type.tp_flags = Py_TPFLAGS_DEFAULT;
-    // No init.  This type can't be created by python code
+    PyStaticProvider::buildType();
+    PyStaticProvider::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
+    PyStaticProvider::type.tp_init = &staticprovider_init;
+    // we are explicitly not GC'ing, through we could traverse through PySharedPV to it's handlers
 
-    PyServerGet::Reply::type.tp_methods = PyServerGet_methods;
+    PyStaticProvider::type.tp_methods = StaticProvider_methods;
 
-    if(PyType_Ready(&PyServerGet::Reply::type))
-        throw std::runtime_error("failed to initialize GetReply");
+    if(PyType_Ready(&PyStaticProvider::type))
+        throw std::runtime_error("failed to initialize StaticProvider");
 
-    Py_INCREF((PyObject*)&PyServerGet::Reply::type);
-    if(PyModule_AddObject(mod, "GetReply", (PyObject*)&PyServerGet::Reply::type)) {
-        Py_DECREF((PyObject*)&PyServerGet::Reply::type);
-        throw std::runtime_error("failed to add _p4p.GetReply");
+    Py_INCREF((PyObject*)&PyStaticProvider::type);
+    if(PyModule_AddObject(mod, "StaticProvider", (PyObject*)&PyStaticProvider::type)) {
+        Py_DECREF((PyObject*)&PyStaticProvider::type);
+        throw std::runtime_error("failed to add _p4p.DynamicProvider");
     }
-*/
 }

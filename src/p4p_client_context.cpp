@@ -86,12 +86,16 @@ int Context::py_init(PyObject *self, PyObject *args, PyObject *kws)
 
         // we create our own provider.
         // we are greedy and don't want to share (also we can destroy channels at will)
-        if(strncmp(pname, "server:", 7)==0)
+        if(strncmp(pname, "server:", 7)==0) {
+            TRACE("Lookup server provider "<<(pname+7));
             SELF.provider = pva::ChannelProviderRegistry::servers()->createProvider(&pname[7], B.build());
-        else if(strncmp(pname, "client:", 7)==0)
+        } else if(strncmp(pname, "client:", 7)==0) {
+            TRACE("Lookup client provider "<<(pname+7));
             SELF.provider = pva::ChannelProviderRegistry::clients()->createProvider(&pname[7], B.build());
-        else
+        } else {
+            TRACE("Lookup client provider "<<pname);
             SELF.provider = pva::ChannelProviderRegistry::clients()->createProvider(pname, B.build());
+        }
 
         TRACE("Context init");
 

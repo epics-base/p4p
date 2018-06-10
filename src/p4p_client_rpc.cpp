@@ -40,9 +40,9 @@ void RPCOp::Req::requestDone(
     if(!op)
         return;
 
-    TRACE("rpc done "<<channelRPC->getChannel()->getChannelName()<<" "<<status);
-
     PyLock L;
+
+    TRACE("rpc done "<<channelRPC->getChannel()->getChannelName()<<" "<<status<<" cb="<<op->cb.get());
 
     if(!status.isSuccess()) {
         PyRef err(PyObject_CallFunction(PyExc_RuntimeError, "s", status.getMessage().c_str()));
