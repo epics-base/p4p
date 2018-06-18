@@ -51,6 +51,7 @@ int py_op_traverse(PyObject *self, visitproc visit, void *arg)
             Py_VISIT(SELF->cb.get());
         if(SELF->pyvalue.get())
             Py_VISIT(SELF->pyvalue.get());
+        return 0;
     } CATCH()
     return -1;
 }
