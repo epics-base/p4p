@@ -267,7 +267,7 @@ PyObject *py_channel_monitor(PyObject *self, PyObject *args, PyObject *kws)
         reqop->op.swap(op);
 
         try {
-            PyRef ret(PyOp::type.tp_new(&PyMonitorOp::type, args, kws));
+            PyRef ret(PyMonitorOp::type.tp_new(&PyMonitorOp::type, args, kws));
 
             PyMonitorOp::unwrap(ret.get()) = reqop;
 

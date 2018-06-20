@@ -256,10 +256,13 @@ struct PyClassWrapper {
         type.tp_weaklistoffset = offsetof(PyClassWrapper, weak);
     }
 
-    static PyObject* tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    static PyObject* tp_new(PyTypeObject *atype, PyObject *args, PyObject *kwds) {
         try {
+            if(!PyType_IsSubtype(atype, &type))
+                return PyErr_Format(PyExc_RuntimeError, "P4P tp_new inconsistency %s %s",
+                                    atype->tp_name, type.tp_name);
             // we use python alloc instead of new here so that we could participate in GC
-            PyRef self(type->tp_alloc(type, 0));
+            PyRef self(atype->tp_alloc(atype, 0));
             PyClassWrapper *SELF = (PyClassWrapper*)self.get();
 
             SELF->weak = NULL;
@@ -269,7 +272,7 @@ struct PyClassWrapper {
             // instead we only C++ initialize the sub-struct C
             new (&SELF->I) C();
 
-            TRACE("tp_new "<<type->tp_name);
+            TRACE("tp_new "<<atype->tp_name);
 
             return self.release();
         } CATCH()
