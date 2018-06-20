@@ -12,7 +12,11 @@ One or more Providers must be named to give the server
 a useful function.
 
 Two Provider containers are available: :py:class:`StaticProvider` or :py:class:`DynamicProvider`.
-These can be used with :py:class:`SharedPV`.
+Both are used with one of the SharedPV classes: :py:class:`raw.SharedPV`,
+:py:class:`thread.SharedPV`, :py:class:`asyncio.SharedPV`, and/or :py:class:`cothread.SharedPV`.
+These different threading models may be mixed into a single Provider.
+
+.. note:: It is recommended to prefer :py:class:`StaticProvider` and leave :py:class:`DynamicProvider` for special cases.
 
 DynamicProvider Handler Interface
 ---------------------------------
@@ -71,29 +75,6 @@ A :py:class:`SharedPV` Handler class will
 
         :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
 
-Example RPC Provider
---------------------
-
-This example provided for information purposes.
-See the :py:mod:`rpc` module for more functional RPC handling and dispatch.
-
->>> from p4p.nt import NTScalar
->>> class ExampleProvider(object):
-        def __init__(self, myname):
-            self.name = name
-            # prepare return type
-            self.addret = NTScalar.buildType('d')
-        def testChannel(self, name):
-            return name==self.name
-        def makeChannel(self, name, src):
-            # we need no per-channel state, so re-use the provider as the channel
-            return self is name==self.name else None
-        def rpc(self, response, request):
-            # Real scalable provider will do this from a worker thread
-            V = Value(self.addret, {
-                'value': float(request.query.lhs) + float(request.query.rhs),
-            })
-            response.done(reply=V)
 
 API Reference
 -------------
@@ -130,3 +111,31 @@ API Reference
 
     .. automethod:: warn
 
+
+.. currentmodule:: p4p.server.raw
+
+.. autoclass:: SharedPV
+
+    .. automethod:: open
+
+    .. automethod:: close
+
+    .. automethod:: post
+
+
+There is a SharedPV class for each of the four threading models.
+All have the same methods as :py:class:`raw.SharedPV`.
+
+.. currentmodule:: p4p.server.thread
+
+.. autoclass:: SharedPV
+
+
+.. currentmodule:: p4p.server.asyncio
+
+.. autoclass:: SharedPV
+
+
+.. currentmodule:: p4p.server.cothread
+
+.. autoclass:: SharedPV

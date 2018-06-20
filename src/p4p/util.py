@@ -1,4 +1,6 @@
 
+import logging
+_log = logging.getLogger(__name__)
 
 try:
     from Queue import Queue, Full, Empty

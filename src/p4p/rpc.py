@@ -14,7 +14,8 @@ __all__ = [
 
 from .wrapper import Value, Type
 from .nt import NTURI
-from .server import SharedPV, DynamicProvider
+from .server import DynamicProvider
+from .server.raw import SharedPV
 from .util import WorkQueue
 
 def rpc(rtype=None):
@@ -98,12 +99,11 @@ class RPCDispatcherBase(DynamicProvider):
     def makeChannel(self, name, src):
         if self.testChannel(name):
             _log.debug("Open RPC channel %s", name)
-            print("XXX")
             return self.__pv # no per-channel tracking needed
         else:
             _log.warn("Ignore RPC channel %s", name)
 
-    def rpc(self, op):
+    def rpc(self, pv, op):
         _log.debug("RPC call %s", op)
         try:
             self.queue.push(partial(self._handle, op))

@@ -75,7 +75,7 @@ struct PVHandler : public pvas::SharedPV::Handler {
             PyOperation::unwrap(pyop.get()) = op;
 
             PyRef ret(PyObject_CallMethod(cb.get(), "put", "O", pyop.get()), allownull());
-            if(PyErr_Occurred()) {
+            if(!ret) {
                 TRACE("ERROR");
                 PyErr_Print();
                 PyErr_Clear();
@@ -90,7 +90,8 @@ struct PVHandler : public pvas::SharedPV::Handler {
     virtual void onRPC(const pvas::SharedPV::shared_pointer& pv, pvas::Operation& op) OVERRIDE FINAL {
         {
             PyLock L;
-            TRACE("");
+            TRACE(cb.get());
+            if(!cb) return;
 
             PyRef args(PyTuple_New(0));
             PyRef kws(PyDict_New());
@@ -99,7 +100,7 @@ struct PVHandler : public pvas::SharedPV::Handler {
             PyOperation::unwrap(pyop.get()) = op;
 
             PyRef ret(PyObject_CallMethod(cb.get(), "rpc", "O", pyop.get()), allownull());
-            if(PyErr_Occurred()) {
+            if(!ret) {
                 TRACE("ERROR");
                 PyErr_Print();
                 PyErr_Clear();
