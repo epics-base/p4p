@@ -8,11 +8,18 @@
 //#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
 
-namespace {
-
 namespace pvd = epics::pvData;
 
 typedef PyClassWrapper<pvd::Structure::const_shared_pointer> P4PType;
+
+template<>
+PyTypeObject P4PType::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "_p4p.Type",
+    sizeof(P4PType),
+};
+
+namespace {
 
 #define TRY P4PType::reference_type SELF = P4PType::unwrap(self); try
 
@@ -415,13 +422,6 @@ int P4PType_clear(PyObject *self)
 }
 
 } // namespace
-
-template<>
-PyTypeObject P4PType::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.Type",
-    sizeof(P4PType),
-};
 
 PyTypeObject* P4PType_type = &P4PType::type;
 

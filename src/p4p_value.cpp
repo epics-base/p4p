@@ -56,7 +56,19 @@ struct Value {
                        bool asdict=false);
 };
 
+}//namespace
+
 typedef PyClassWrapper<Value> P4PValue;
+
+
+template<>
+PyTypeObject P4PValue::type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "p4p.Value",
+    sizeof(P4PValue),
+};
+
+namespace {
 
 #define TRY P4PValue::reference_type SELF = P4PValue::unwrap(self); try
 
@@ -1275,13 +1287,6 @@ const char value_doc[] =     "Value(type, value=None)\n"
 
 
 } // namespace
-
-template<>
-PyTypeObject P4PValue::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p.Value",
-    sizeof(P4PValue),
-};
 
 PyTypeObject* P4PValue_type = &P4PValue::type;
 
