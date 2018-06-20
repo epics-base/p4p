@@ -12,12 +12,7 @@ namespace pvd = epics::pvData;
 
 typedef PyClassWrapper<pvd::Structure::const_shared_pointer> P4PType;
 
-template<>
-PyTypeObject P4PType::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.Type",
-    sizeof(P4PType),
-};
+PyClassWrapper_DEF(P4PType, "Type")
 
 namespace {
 
@@ -437,14 +432,7 @@ void p4p_type_register(PyObject *mod)
 
     P4PType::type.tp_methods = P4PType_members;
 
-    if(PyType_Ready(&P4PType::type))
-        throw std::runtime_error("failed to initialize P4PType_type");
-
-    Py_INCREF((PyObject*)&P4PType::type);
-    if(PyModule_AddObject(mod, "Type", (PyObject*)&P4PType::type)) {
-        Py_DECREF((PyObject*)&P4PType::type);
-        throw std::runtime_error("failed to add _p4p.Type");
-    }
+    P4PType::finishType(mod, "Type");
 }
 
 PyObject* P4PType_wrap(PyTypeObject *type, const epics::pvData::Structure::const_shared_pointer& S)

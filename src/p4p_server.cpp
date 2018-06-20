@@ -219,12 +219,7 @@ int P4PServer_clear(PyObject *self)
 
 } // namespace
 
-template<>
-PyTypeObject P4PServer::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.Server",
-    sizeof(P4PServer),
-};
+PyClassWrapper_DEF(P4PServer, "Server")
 
 void p4p_server_register(PyObject *mod)
 {
@@ -236,12 +231,5 @@ void p4p_server_register(PyObject *mod)
 
     P4PServer::type.tp_methods = P4PServer_methods;
 
-    if(PyType_Ready(&P4PServer::type))
-        throw std::runtime_error("failed to initialize p4p._p4p.Server");
-
-    Py_INCREF((PyObject*)&P4PServer::type);
-    if(PyModule_AddObject(mod, "Server", (PyObject*)&P4PServer::type)) {
-        Py_DECREF((PyObject*)&P4PServer::type);
-        throw std::runtime_error("failed to add p4p._p4p.Server");
-    }
+    P4PServer::finishType(mod, "Server");
 }

@@ -247,6 +247,13 @@ extern PyTypeObject* P4PSharedPV_type;
 std::tr1::shared_ptr<pvas::SharedPV> P4PSharedPV_unwrap(PyObject *obj);
 PyObject *P4PSharedPV_wrap(const std::tr1::shared_ptr<pvas::SharedPV>& pv);
 
+#define PyClassWrapper_DEF(TYPE, NAME) \
+    template<> PyTypeObject TYPE::type = { \
+        PyVarObject_HEAD_INIT(NULL, 0) \
+        "p4p._p4p." NAME, \
+        sizeof(TYPE), \
+    };
+
 template<class C>
 struct PyClassWrapper {
     PyObject_HEAD
@@ -265,6 +272,16 @@ struct PyClassWrapper {
         type.tp_dealloc = &tp_dealloc;
 
         type.tp_weaklistoffset = offsetof(PyClassWrapper, weak);
+    }
+    static void finishType(PyObject *mod, const char *name) {
+        if(PyType_Ready(&type))
+            throw std::runtime_error("failed to initialize extension type");
+
+        Py_INCREF((PyObject*)&type);
+        if(PyModule_AddObject(mod, name, (PyObject*)&type)) {
+            Py_DECREF((PyObject*)&type);
+            throw std::runtime_error("failed to add extension type");
+        }
     }
 
     static PyObject* tp_new(PyTypeObject *atype, PyObject *args, PyObject *kwds) {

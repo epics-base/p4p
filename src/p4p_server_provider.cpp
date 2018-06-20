@@ -26,19 +26,8 @@ typedef PyClassWrapper<pvas::StaticProvider::shared_pointer> PyStaticProvider;
 const unsigned maxCache = 100;
 const unsigned expireIn = 5;
 
-template<>
-PyTypeObject PyDynamicProvider::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.DynamicProvider",
-    sizeof(PyDynamicProvider),
-};
-
-template<>
-PyTypeObject PyStaticProvider::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.StaticProvider",
-    sizeof(PyStaticProvider),
-};
+PyClassWrapper_DEF(PyDynamicProvider, "DynamicProvider")
+PyClassWrapper_DEF(PyStaticProvider, "StaticProvider")
 
 namespace {
 
@@ -374,14 +363,7 @@ void p4p_server_provider_register(PyObject *mod)
     PyDynamicProvider::type.tp_traverse = &dynamicprovider_traverse;
     PyDynamicProvider::type.tp_clear = &dynamicprovider_clear;
 
-    if(PyType_Ready(&PyDynamicProvider::type))
-        throw std::runtime_error("failed to initialize DynamicProvider");
-
-    Py_INCREF((PyObject*)&PyDynamicProvider::type);
-    if(PyModule_AddObject(mod, "DynamicProvider", (PyObject*)&PyDynamicProvider::type)) {
-        Py_DECREF((PyObject*)&PyDynamicProvider::type);
-        throw std::runtime_error("failed to add _p4p.DynamicProvider");
-    }
+    PyDynamicProvider::finishType(mod, "DynamicProvider");
 
     PyStaticProvider::buildType();
     PyStaticProvider::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
@@ -390,12 +372,5 @@ void p4p_server_provider_register(PyObject *mod)
 
     PyStaticProvider::type.tp_methods = StaticProvider_methods;
 
-    if(PyType_Ready(&PyStaticProvider::type))
-        throw std::runtime_error("failed to initialize StaticProvider");
-
-    Py_INCREF((PyObject*)&PyStaticProvider::type);
-    if(PyModule_AddObject(mod, "StaticProvider", (PyObject*)&PyStaticProvider::type)) {
-        Py_DECREF((PyObject*)&PyStaticProvider::type);
-        throw std::runtime_error("failed to add _p4p.DynamicProvider");
-    }
+    PyStaticProvider::finishType(mod, "StaticProvider");
 }

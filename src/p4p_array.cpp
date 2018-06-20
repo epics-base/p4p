@@ -17,12 +17,7 @@ typedef PyClassWrapper<array_type > P4PArray;
 
 } // namespace
 
-template<>
-PyTypeObject P4PArray::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "_p4p.Array",
-    sizeof(P4PArray),
-};
+PyClassWrapper_DEF(P4PArray, "Array")
 
 PyTypeObject* P4PArray_type = &P4PArray::type;
 
@@ -51,12 +46,5 @@ void p4p_array_register(PyObject *mod)
 
     P4PArray::type.tp_doc = "Holder for a shared_array<> being shared w/ numpy";
 
-    if(PyType_Ready(&P4PArray::type))
-        throw std::runtime_error("failed to initialize P4PArray_type");
-
-    Py_INCREF((PyObject*)&P4PArray::type);
-    if(PyModule_AddObject(mod, "Array", (PyObject*)&P4PArray::type)) {
-        Py_DECREF((PyObject*)&P4PArray::type);
-        throw std::runtime_error("failed to add _p4p.Array");
-    }
+    P4PArray::finishType(mod, "Array");
 }

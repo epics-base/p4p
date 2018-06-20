@@ -8,19 +8,8 @@ namespace pva = epics::pvAccess;
 typedef PyClassWrapper<pvas::Operation> PyOperation;
 typedef PyClassWrapper<pvas::SharedPV::shared_pointer> PySharedPV;
 
-template<>
-PyTypeObject PyOperation::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.ServerOperation",
-    sizeof(PyOperation),
-};
-
-template<>
-PyTypeObject PySharedPV::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.SharedPV",
-    sizeof(PySharedPV),
-};
+PyClassWrapper_DEF(PyOperation, "ServerOperation")
+PyClassWrapper_DEF(PySharedPV, "SharedPV")
 
 namespace {
 
@@ -398,14 +387,7 @@ void p4p_server_sharedpv_register(PyObject *mod)
 
     PySharedPV::type.tp_methods = SharedPV_methods;
 
-    if(PyType_Ready(&PySharedPV::type))
-        throw std::runtime_error("failed to initialize PySharedPV");
-
-    Py_INCREF((PyObject*)&PyOperation::type);
-    if(PyModule_AddObject(mod, "SharedPV", (PyObject*)&PySharedPV::type)) {
-        Py_DECREF((PyObject*)&PySharedPV::type);
-        throw std::runtime_error("failed to add p4p._p4p.SharedPV");
-    }
+    PySharedPV::finishType(mod, "SharedPV");
 
     PyOperation::buildType();
     PyOperation::type.tp_flags = Py_TPFLAGS_DEFAULT;
@@ -413,12 +395,5 @@ void p4p_server_sharedpv_register(PyObject *mod)
 
     PyOperation::type.tp_methods = Operation_methods;
 
-    if(PyType_Ready(&PyOperation::type))
-        throw std::runtime_error("failed to initialize PyOperation");
-
-    Py_INCREF((PyObject*)&PyOperation::type);
-    if(PyModule_AddObject(mod, "ServerOperation", (PyObject*)&PyOperation::type)) {
-        Py_DECREF((PyObject*)&PyOperation::type);
-        throw std::runtime_error("failed to add p4p._p4p.ServerOperation");
-    }
+    PyOperation::finishType(mod, "ServerOperation");
 }

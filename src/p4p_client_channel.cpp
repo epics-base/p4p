@@ -338,12 +338,7 @@ static PyMethodDef Channel_methods[] = {
 
 } // namespace
 
-template<>
-PyTypeObject PyChannel::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.Channel",
-    sizeof(PyChannel),
-};
+PyClassWrapper_DEF(PyChannel, "Channel")
 
 void p4p_client_channel_register(PyObject *mod)
 {
@@ -353,12 +348,5 @@ void p4p_client_channel_register(PyObject *mod)
 
     PyChannel::type.tp_methods = Channel_methods;
 
-    if(PyType_Ready(&PyChannel::type))
-        throw std::runtime_error("failed to initialize PyChannel");
-
-    Py_INCREF((PyObject*)&PyChannel::type);
-    if(PyModule_AddObject(mod, "Channel", (PyObject*)&PyChannel::type)) {
-        Py_DECREF((PyObject*)&PyChannel::type);
-        throw std::runtime_error("failed to add p4p._p4p.Channel");
-    }
+    PyChannel::finishType(mod, "Channel");
 }

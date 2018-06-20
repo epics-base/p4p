@@ -225,12 +225,7 @@ static PyMethodDef PyMonitorOp_methods[] = {
 
 } // namespace
 
-template<>
-PyTypeObject PyMonitorOp::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.Subscription",
-    sizeof(PyMonitorOp),
-};
+PyClassWrapper_DEF(PyMonitorOp, "Subscription")
 
 void p4p_client_monitor_register(PyObject *mod)
 {
@@ -241,12 +236,5 @@ void p4p_client_monitor_register(PyObject *mod)
 
     PyMonitorOp::type.tp_methods = PyMonitorOp_methods;
 
-    if(PyType_Ready(&PyMonitorOp::type))
-        throw std::runtime_error("failed to initialize PyMonitorOp");
-
-    Py_INCREF((PyObject*)&PyMonitorOp::type);
-    if(PyModule_AddObject(mod, "Subscription", (PyObject*)&PyMonitorOp::type)) {
-        Py_DECREF((PyObject*)&PyOp::type);
-        throw std::runtime_error("failed to add p4p._p4p.Subscription");
-    }
+    PyMonitorOp::finishType(mod, "Subscription");
 }

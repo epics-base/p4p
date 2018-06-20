@@ -61,12 +61,7 @@ struct Value {
 typedef PyClassWrapper<Value> P4PValue;
 
 
-template<>
-PyTypeObject P4PValue::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p.Value",
-    sizeof(P4PValue),
-};
+PyClassWrapper_DEF(P4PValue, "Value")
 
 namespace {
 
@@ -1307,14 +1302,7 @@ void p4p_value_register(PyObject *mod)
 
     P4PValue::type.tp_methods = P4PValue_methods;
 
-    if(PyType_Ready(&P4PValue::type))
-        throw std::runtime_error("failed to initialize P4PValue_type");
-
-    Py_INCREF((PyObject*)&P4PValue::type);
-    if(PyModule_AddObject(mod, "Value", (PyObject*)&P4PValue::type)) {
-        Py_DECREF((PyObject*)&P4PValue::type);
-        throw std::runtime_error("failed to add _p4p.Value");
-    }
+    P4PValue::finishType(mod, "Value");
 }
 
 epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *obj,

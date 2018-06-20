@@ -3,6 +3,8 @@
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
+PyClassWrapper_DEF(PyOp, "Operation")
+
 OpBase::~OpBase()
 {
     cancel();
@@ -81,13 +83,6 @@ static PyMethodDef OpBase_methods[] = {
 
 } // namespace
 
-template<>
-PyTypeObject PyOp::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.Operation",
-    sizeof(PyOp),
-};
-
 void p4p_client_op_register(PyObject *mod)
 {
     PyOp::buildType();
@@ -97,12 +92,5 @@ void p4p_client_op_register(PyObject *mod)
 
     PyOp::type.tp_methods = OpBase_methods;
 
-    if(PyType_Ready(&PyOp::type))
-        throw std::runtime_error("failed to initialize PyOp");
-
-    Py_INCREF((PyObject*)&PyOp::type);
-    if(PyModule_AddObject(mod, "Operation", (PyObject*)&PyOp::type)) {
-        Py_DECREF((PyObject*)&PyOp::type);
-        throw std::runtime_error("failed to add p4p._p4p.Operation");
-    }
+    PyOp::finishType(mod, "Operation");
 }

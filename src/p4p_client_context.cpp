@@ -260,12 +260,7 @@ void unfactory()
 
 } // namespace
 
-template<>
-PyTypeObject PyContext::type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "p4p._p4p.Context",
-    sizeof(PyContext),
-};
+PyClassWrapper_DEF(PyContext, "Context")
 
 void p4p_client_context_register(PyObject *mod)
 {
@@ -282,12 +277,5 @@ void p4p_client_context_register(PyObject *mod)
     PyContext::type.tp_methods = Context_methods;
     PyContext::type.tp_members = Context_members;
 
-    if(PyType_Ready(&PyContext::type))
-        throw std::runtime_error("failed to initialize PyContext");
-
-    Py_INCREF((PyObject*)&PyContext::type);
-    if(PyModule_AddObject(mod, "Context", (PyObject*)&PyContext::type)) {
-        Py_DECREF((PyObject*)&PyContext::type);
-        throw std::runtime_error("failed to add p4p._p4p.Context");
-    }
+    PyContext::finishType(mod, "Context");
 }
