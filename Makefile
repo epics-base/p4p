@@ -14,10 +14,10 @@ UNINSTALL_DIRS += $(wildcard $(INSTALL_LOCATION)/python*)
 # jump to a sub-directory where CONFIG_PY has been included
 # can't include CONFIG_PY here as it may not exist yet
 nose sphinx sh: all
-	$(MAKE) -C src/O.$(EPICS_HOST_ARCH) $@
+	$(MAKE) -C src/O.$(EPICS_HOST_ARCH) $@ PYTHON=$(PYTHON)
 
 sphinx-clean:
-	$(MAKE) -C documentation clean
+	$(MAKE) -C documentation clean PYTHON=$(PYTHON)
 
 sphinx-commit: sphinx
 	touch documentation/_build/html/.nojekyll

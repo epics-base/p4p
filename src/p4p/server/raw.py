@@ -32,11 +32,11 @@ atexit.register(clearProviders)
 class Server(object):
     """Server(conf=None, useenv=True, providers=[""])
 
-    Run a PVAccess server serving Channels from the listed providers
+    Run a PVAccess server serving Channels from the listed providers. ::
 
-    >>> S = Server(providers=["example"])
-    >>> # do something else
-    >>> S.stop()
+        S = Server(providers=["example"])
+        # do something else
+        S.stop()
 
     :param dict conf: Configuration keys for the server.  Uses same names as environment variables (aka. EPICS_PVAS_*)
     :param bool useenv: Whether to use process environment in addition to provided config.
@@ -50,9 +50,9 @@ class Server(object):
     The providers list must be a list of name strings (cf. installProvider()),
     or a list of Provider instances.  A mixture is not yet supported.
 
-    As a convenience, a Server may be used as a context manager to automatically stop.
+    As a convenience, a Server may be used as a context manager to automatically stop. ::
 
-    >>> with Server(providers=["example"]) as S:
+        with Server(providers=["example"]) as S:
         # do something else
     """
     def __init__(self, *args, **kws):
@@ -87,9 +87,9 @@ class DynamicProvider(_DynamicProvider):
     """A channel provider which does not maintain a list of provided channel names.
 
        The following example shows a simple case, in fact so simple that StaticProvider
-       is a better fit.
+       is a better fit. ::
     
-       >>> class DynHandler(object):
+            class DynHandler(object):
                 def __init__(self):
                     self.pv = SharedPV()
                 def testChannel(self, name):
@@ -97,8 +97,8 @@ class DynamicProvider(_DynamicProvider):
                 def makeChannel(self, name, peer):
                     assert name=="blah"
                     return self.pv
-      >>> provider = DynamicProvider("arbitrary", DynHandler())
-      >>> server = Server(providers=[provider])
+            provider = DynamicProvider("arbitrary", DynHandler())
+            server = Server(providers=[provider])
     """
     def __init__(self, name, handler):
         _DynamicProvider.__init__(self, name, self._WrapHandler(handler))

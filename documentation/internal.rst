@@ -121,8 +121,8 @@ API Reference
 
     .. autoclass:: Array
 
-    .. autoclass:: RPCReply
-
     .. autoclass:: Type
 
     .. autoclass:: Value
+
+    .. autofunction:: clearProviders
