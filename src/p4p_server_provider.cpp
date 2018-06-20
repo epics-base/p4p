@@ -34,6 +34,8 @@ namespace {
 struct DynamicHandler : public pvas::DynamicProvider::Handler {
     POINTER_DEFINITIONS(DynamicHandler);
 
+    static size_t num_instances;
+
     // cache negative search results (names we don't have)
     // map name -> expiration time
     typedef std::map<std::string, timespec> search_cache_t;
@@ -42,6 +44,7 @@ struct DynamicHandler : public pvas::DynamicProvider::Handler {
 
     PyRef cb;
     DynamicHandler(PyObject *callback) :cb(callback, borrow()) {
+        REFTRACE_INCREMENT(num_instances);
         TRACE("");
     }
     virtual ~DynamicHandler() {
@@ -49,6 +52,7 @@ struct DynamicHandler : public pvas::DynamicProvider::Handler {
         PyLock L;
         TRACE("");
         cb.reset();
+        REFTRACE_DECREMENT(num_instances);
     }
 
     virtual void hasChannels(pvas::DynamicProvider::search_type& name) {
@@ -150,6 +154,8 @@ struct DynamicHandler : public pvas::DynamicProvider::Handler {
 
     virtual void destroy() {}
 };
+
+size_t DynamicHandler::num_instances;
 
 #define TRY PyDynamicProvider::reference_type SELF = PyDynamicProvider::unwrap(self); try
 
@@ -373,4 +379,6 @@ void p4p_server_provider_register(PyObject *mod)
     PyStaticProvider::type.tp_methods = StaticProvider_methods;
 
     PyStaticProvider::finishType(mod, "StaticProvider");
+
+    epics::registerRefCounter("p4p._p4p.DynamicProvider::Handler", &DynamicHandler::num_instances);
 }

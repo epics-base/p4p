@@ -5,7 +5,6 @@
 
 #include <pv/pvIntrospect.h> /* for pv/pvdVersion.h */
 #include <pv/pvaVersion.h>
-#include <pv/reftrack.h>
 
 #include "p4p.h"
 

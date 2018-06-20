@@ -16,9 +16,12 @@ namespace {
 struct PVHandler : public pvas::SharedPV::Handler {
     POINTER_DEFINITIONS(PVHandler);
 
+    static size_t num_instances;
+
     PyRef cb;
 
     PVHandler(PyObject *cb) : cb(cb, borrow()) {
+        REFTRACE_INCREMENT(num_instances);
         TRACE("");
     }
     virtual ~PVHandler() {
@@ -26,6 +29,7 @@ struct PVHandler : public pvas::SharedPV::Handler {
         PyLock L;
         TRACE("");
         cb.reset();
+        REFTRACE_DECREMENT(num_instances);
     }
 
     virtual void onFirstConnect(const pvas::SharedPV::shared_pointer& pv) OVERRIDE FINAL {
@@ -108,6 +112,7 @@ struct PVHandler : public pvas::SharedPV::Handler {
     }
 }; // PVHandler
 
+size_t PVHandler::num_instances;
 
 #define TRY PySharedPV::reference_type SELF = PySharedPV::unwrap(self); try
 
@@ -396,4 +401,6 @@ void p4p_server_sharedpv_register(PyObject *mod)
     PyOperation::type.tp_methods = Operation_methods;
 
     PyOperation::finishType(mod, "ServerOperation");
+
+    epics::registerRefCounter("p4p._p4p.SharedPV::Handler", &PVHandler::num_instances);
 }

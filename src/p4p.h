@@ -9,6 +9,7 @@
 #include <epicsGuard.h>
 #include <pv/pvIntrospect.h>
 #include <pv/bitSet.h>
+#include <pv/reftrack.h>
 #include <pv/pvData.h>
 #include <pv/pvAccess.h>
 #include <pva/server.h>
@@ -252,7 +253,8 @@ PyObject *P4PSharedPV_wrap(const std::tr1::shared_ptr<pvas::SharedPV>& pv);
         PyVarObject_HEAD_INIT(NULL, 0) \
         "p4p._p4p." NAME, \
         sizeof(TYPE), \
-    };
+    }; \
+    template<> size_t TYPE::num_instances = 0;
 
 template<class C>
 struct PyClassWrapper {
@@ -265,6 +267,8 @@ struct PyClassWrapper {
     typedef C& reference_type;
     C I;
 
+    static size_t num_instances;
+
     static PyTypeObject type;
     static void buildType() {
         type.tp_flags = Py_TPFLAGS_DEFAULT;
@@ -272,6 +276,8 @@ struct PyClassWrapper {
         type.tp_dealloc = &tp_dealloc;
 
         type.tp_weaklistoffset = offsetof(PyClassWrapper, weak);
+
+        epics::registerRefCounter(type.tp_name, &num_instances);
     }
     static void finishType(PyObject *mod, const char *name) {
         if(PyType_Ready(&type))
@@ -300,6 +306,7 @@ struct PyClassWrapper {
             // instead we only C++ initialize the sub-struct C
             new (&SELF->I) C();
 
+            REFTRACE_INCREMENT(num_instances);
             TRACE("tp_new "<<atype->tp_name);
 
             return self.release();
@@ -316,6 +323,7 @@ struct PyClassWrapper {
         PyTypeObject *klass = Py_TYPE(raw);
         if(klass->tp_clear)
             (klass->tp_clear)(raw);
+        REFTRACE_DECREMENT(num_instances);
         try {
             self->I.~C();
         } CATCH()
