@@ -7,12 +7,12 @@ from collections import OrderedDict
 
 from ..wrapper import Value, Type
 from .. import nt
+from .utils import RefTestCase
 
 import numpy
 from numpy.testing import assert_array_almost_equal as assert_aequal
 
-class TestScalar(unittest.TestCase):
-
+class TestScalar(RefTestCase):
     def test_float_wrap(self, code='d', value=5.0):
         NT = nt.NTScalar(code)
 
@@ -87,7 +87,7 @@ class TestScalar(unittest.TestCase):
         self.assertTrue(V.changed('value'))
 
 
-class TestTable(unittest.TestCase):
+class TestTable(RefTestCase):
     def test_wrap(self):
         NT = nt.NTTable(columns=[
             ('a', 'i'),
@@ -121,7 +121,7 @@ class TestTable(unittest.TestCase):
             OrderedDict([('a', 6), ('b', u'two')]),
         ])
 
-class TestURI(unittest.TestCase):
+class TestURI(RefTestCase):
     def test_build(self):
         NT = nt.NTURI([
             ('a', 'I'),

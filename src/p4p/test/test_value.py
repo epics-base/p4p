@@ -9,8 +9,9 @@ from numpy.testing import assert_array_almost_equal as assert_aequal
 
 from ..wrapper import Type, Value
 from .. import pvdVersion
+from .utils import RefTestCase
 
-class TestRawValue(unittest.TestCase):
+class TestRawValue(RefTestCase):
     def testToString(self):
         V = Value(Type([
             ('ival', 'i'),
@@ -393,7 +394,7 @@ class TestRawValue(unittest.TestCase):
         self.assertFalse(Z.changed('a'))
         self.assertTrue(Z.changed('b'))
 
-class TestReInit(unittest.TestCase):
+class TestReInit(RefTestCase):
     def testCopySubStruct(self):
         A = Value(Type([
             ('x', ('S', None, [

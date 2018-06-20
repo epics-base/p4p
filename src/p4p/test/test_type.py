@@ -5,8 +5,9 @@ import weakref, gc
 import unittest
 
 from ..wrapper import Type as _Type
+from .utils import RefTestCase
 
-class TestRawType(unittest.TestCase):
+class TestRawType(RefTestCase):
     def testScalar(self):
         L = [
             ('a', 'i'),

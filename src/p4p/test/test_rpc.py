@@ -7,6 +7,7 @@ from ..client.thread import Context
 from ..server import Server, installProvider, removeProvider
 from ..rpc import NTURIDispatcher, WorkQueue, rpc, rpccall, rpcproxy
 from ..nt import NTScalar, NTURI
+from .utils import RefTestCase
 
 class TestService(object):
    @rpc(NTScalar('d'))
@@ -14,7 +15,7 @@ class TestService(object):
         return float(lhs)+float(rhs)
 
 
-class TestRPCFull(unittest.TestCase):
+class TestRPCFull(RefTestCase):
     """Test end to end
     
     full server and client communicating through the loopback
@@ -23,7 +24,8 @@ class TestRPCFull(unittest.TestCase):
     provider = 'pva'
     getconfig = lambda self:self.server.conf()
     def setUp(self):
-        # TODO: need PVA API change before we can run w/ network isolation
+        super(TestRPCFull, self).setUp()
+
         conf = {
             'EPICS_PVAS_INTF_ADDR_LIST':'127.0.0.1',
             'EPICS_PVA_ADDR_LIST':'127.0.0.1',
@@ -71,6 +73,7 @@ class TestRPCFull(unittest.TestCase):
             for R in gc.get_referrers(D):
                 print(R)
         self.assertIsNone(D)
+        super(TestRPCFull, self).tearDown()
 
     def testAdd(self):
         args = NTURI([
@@ -104,7 +107,7 @@ class TestRPCProvider(TestRPCFull):
     provider = 'server:TestRPC'
     getconfig = lambda self:{}
 
-class TestProxy(unittest.TestCase):
+class TestProxy(RefTestCase):
     class MockContext(object):
         name = 'fake'
         def rpc(self, *args, **kws):
@@ -124,6 +127,7 @@ class TestProxy(unittest.TestCase):
             pass
 
     def setUp(self):
+        super(TestProxy, self).setUp()
         ctxt = self.MockContext()
         self.proxy = self.MyProxy(myarg=3, context=ctxt, format='pv:')
         self.assertEqual(self.proxy.myarg, 3)

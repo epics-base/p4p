@@ -4,6 +4,7 @@ import unittest, sys, random, weakref, gc, threading
 
 from ..server import Server, installProvider, removeProvider, DynamicProvider
 from ..client.thread import Context
+from .utils import RefTestCase
 
 def checkweak(O):
     o = O()
@@ -11,7 +12,7 @@ def checkweak(O):
         print('Live object', id(o), type(o), sys.getrefcount(o), gc.get_referrers(o))
     return o
 
-class TestDummyProvider(unittest.TestCase):
+class TestDummyProvider(RefTestCase):
     # will fail if anything is done to it.
     class Dummy(object):
         name = "foo"

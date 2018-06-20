@@ -6,9 +6,11 @@ import weakref, gc
 
 from ..client.thread import Context, TimeoutError
 from .utils import gctrace
+from .utils import RefTestCase
 
-class TestTimeout(unittest.TestCase):
+class TestTimeout(RefTestCase):
     def setUp(self):
+        super(TestTimeout, self).setUp()
         self.ctxt = Context('pva')
 
     def tearDown(self):
@@ -21,6 +23,7 @@ class TestTimeout(unittest.TestCase):
             print('trace', C)
             gctrace(C)
         self.assertIsNone(C)
+        super(TestTimeout, self).tearDown()
 
     def test_get(self):
         R = self.ctxt.get('invalid:pv:name', timeout=0.1, throw=False)

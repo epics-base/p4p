@@ -7,8 +7,9 @@ import weakref, gc
 from ..client.raw import Context
 from ..wrapper import Value, Type
 from .. import Cancelled
+from .utils import RefTestCase
 
-class TestRequest(unittest.TestCase):
+class TestRequest(RefTestCase):
     def testEmpty(self):
         self.assertListEqual(Context.makeRequest("").tolist(), [])
 
@@ -22,19 +23,21 @@ class TestRequest(unittest.TestCase):
             [('field', [])]
         )
 
-class TestProviders(unittest.TestCase):
+class TestProviders(RefTestCase):
     def tearDown(self):
         gc.collect() # try to provoke any crashes here so they can be associated with this testcase
     def testProviders(self):
         providers = Context.providers()
         self.assertIn('pva', providers)
 
-class TestPVA(unittest.TestCase):
+class TestPVA(RefTestCase):
     def setUp(self):
+        super(TestPVA, self).setUp()
         self.ctxt = Context("pva")
     def tearDown(self):
         self.ctxt = None
         gc.collect()
+        super(TestPVA, self).tearDown()
 
     def testChan(self):
         chan = self.ctxt.channel("completelyInvalidChannelName")
