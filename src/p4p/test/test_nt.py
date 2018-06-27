@@ -64,6 +64,7 @@ class TestScalar(unittest.TestCase):
         V = NT.wrap(A)
         assert_aequal(V.value, A)
         self.assertEqual(V.alarm.severity, 0)
+        self.assertTrue(V.changed('value'))
 
 
     def test_array_unwrap(self):
@@ -75,6 +76,15 @@ class TestScalar(unittest.TestCase):
         self.assertIsNot(P, A)
         assert_aequal(P, A)
         self.assertEqual(P.severity, 0)
+
+    def test_string_array_wrap(self):
+        NT = nt.NTScalar('as') # array of string
+
+        A = ["hello", "world"]
+        V = NT.wrap(A)
+        self.assertEqual(V.value, A)
+        self.assertEqual(V.alarm.severity, 0)
+        self.assertTrue(V.changed('value'))
 
 
 class TestTable(unittest.TestCase):

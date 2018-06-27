@@ -481,6 +481,8 @@ void Value::storefld(pvd::PVField* fld,
             }
 
             static_cast<pvd::PVStringArray*>(F)->replace(pvd::freeze(vec));
+            if(bset)
+                bset->set(fld_offset);
 
         } else {
             NPY_TYPES nptype(ntype(etype));
