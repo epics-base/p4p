@@ -15,6 +15,7 @@ _p4p_SRCS += p4p_server.cpp
 _p4p_SRCS += p4p_server_provider.cpp
 _p4p_SRCS += p4p_server_sharedpv.cpp
 
+_p4p_SRCS += p4p_client.cpp
 _p4p_SRCS += p4p_client_context.cpp
 _p4p_SRCS += p4p_client_channel.cpp
 _p4p_SRCS += p4p_client_monitor.cpp

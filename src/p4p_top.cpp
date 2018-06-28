@@ -127,6 +127,7 @@ PyMOD(_p4p)
         p4p_server_register(mod.get());
         p4p_server_sharedpv_register(mod.get());
         p4p_server_provider_register(mod.get());
+        p4p_client_register(mod.get());
         p4p_client_context_register(mod.get());
         p4p_client_channel_register(mod.get());
         p4p_client_monitor_register(mod.get());
