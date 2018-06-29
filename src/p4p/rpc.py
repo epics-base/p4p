@@ -14,6 +14,7 @@ __all__ = [
 
 from .wrapper import Value, Type
 from .nt import NTURI
+from .client.raw import RemoteError
 from .server import DynamicProvider
 from .server.raw import SharedPV
 from .util import WorkQueue
@@ -63,9 +64,6 @@ def rpccall(pvname, rtype=None, request=None):
         fn._reply_Type = rtype
         return fn
     return wrapper
-
-class RemoteError(RuntimeError):
-    "Throw with an error message which will be passed back to the caller"
 
 class RPCDispatcherBase(DynamicProvider):
     # wrapper to use for request Structures

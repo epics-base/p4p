@@ -17,17 +17,19 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from . import raw
+from .raw import Disconnected, RemoteError, Cancelled
 from ..wrapper import Value, Type
 from ..rpc import WorkQueue
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                     logLevelInfo, logLevelWarn, logLevelError,
                     logLevelFatal, logLevelOff)
-from ..nt import _default_wrap, _default_unwrap
 
 __all__ = [
     'Context',
     'Value',
     'Type',
+    'RemoteError',
+    'TimeoutError',
 ]
 
 if sys.version_info>=(3,0):
@@ -41,11 +43,11 @@ class Subscription(object):
     """An active subscription.
     """
     def __init__(self, ctxt, name, cb, notify_disconnect = False):
-        self._dounwrap = ctxt._dounwrap
         self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
         self._Q = ctxt._queue()
         if notify_disconnect:
+            # all subscriptions are inittially disconnected
             self._Q.push_wait(partial(cb, None))
     def close(self):
         """Close subscription.
@@ -83,36 +85,40 @@ class Subscription(object):
     def _handle(self, E):
         try:
             S = self._S
-            if S is None:
+            if S is None: # already close()'d
                 return
-            if E is not True:
+
+            if isinstance(E, (Disconnected, Cancelled, RemoteError)):
                 _log.debug('Subscription notify for %s with %s', self.name, E)
                 if self._notify_disconnect:
                     self._cb(E)
+                elif isinstance(E, RemoteError):
+                    _log.error("Subscription Error %s", E)
                 return
+
             for n in range(4):
                 E = S.pop()
                 if E is None:
                     break
-                E = self._dounwrap(E)
                 self._cb(E)
+
             if E is not None:
                 # removed 4 elements without emptying queue
                 # re-schedule to mux with others
                 self._Q.push(partial(self._handle, True))
-            if S.done():
+            elif S.done:
                 _log.debug("Subscription complete")
                 S.close()
                 S = None
                 _log.debug('Subscription disconnect %s', self.name)
                 if self._notify_disconnect:
-                    self._cb(None)
+                    self._cb(Disconnected())
         except:
             _log.exception("Error processing Subscription event: %s", E)
             self._S.close()
             self._S = None
 
-class Context(object):
+class Context(raw.Context):
     """Context(provider, conf=None, useenv=True)
 
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
@@ -141,40 +147,20 @@ class Context(object):
     providers = raw.Context.providers
     set_debug = raw.Context.set_debug
 
-    def __init__(self, *args, **kws):
+    def __init__(self, provider, conf=None, useenv=True, unwrap=None,
+                 maxsize=0, workers=4):
+        super(Context, self).__init__(provider, conf=conf, useenv=useenv, unwrap=unwrap)
         # lazy start threaded WorkQueue
-        self._ctxt = self._Q = self._T = None
+        self._Q = self._T = None
 
-        _log.debug("thread.Context with %s %s", args, kws)
-        self._Qmax = kws.pop('maxsize', 0)
-        self._Wcnt = kws.pop('workers', 4)
-        unwrap = kws.pop('unwrap', None)
-        if unwrap is None:
-            self._unwrap = _default_unwrap
-        elif not unwrap:
-            self._unwrap = {}
-        elif isinstance(unwrap, dict):
-            self._unwrap = _default_unwrap.copy()
-            self._unwrap.update(unwrap)
-        else:
-            raise ValueError("unwrap must be None, False, or dict, not %s"%unwrap)
-        self._ctxt = raw.Context(*args, **kws)
-        self.name = self._ctxt.name
-        self.disconnect = self._ctxt.disconnect
-        self._channel = self._ctxt.channel
+        self._Qmax = maxsize
+        self._Wcnt = workers
 
-    def disconnect(self, name):
-        """Drop the named channel from the channel cache.
-        The channel will be closed after any pending operations complete.
-        """
-        pass
+        self._channel_lock = threading.Lock()
 
-    def _dounwrap(self, val):
-        if not isinstance(val, Exception):
-            fn = self._unwrap.get(val.getID())
-            if fn:
-                val = fn(val)
-        return val
+    def _channel(self, name):
+        with self._channel_lock:
+            return super(Context, self)._channel(name)
 
     def _queue(self):
         if self._Q is None:
@@ -201,13 +187,7 @@ class Context(object):
                 T.join()
             _log.debug('Joined Context workers')
             self._Q, self._T = None, None
-        if self._ctxt is not None:
-            self._ctxt.close()
-
-    def __del__(self):
-        if self._Q is not None:
-            warnings.warn("%s collected without close()"%self.__class__)
-        self.close()
+        super(Context, self).close()
 
     def __enter__(self):
         return self
@@ -248,23 +228,27 @@ class Context(object):
         result = [TimeoutError()]*len(name)
         ops = [None]*len(name)
 
+        raw_get = super(Context, self).get
+
         try:
             for i,(N, req) in enumerate(izip(name, request)):
-                _log.debug('get %s', N)
-                ch = self._channel(N)
                 def cb(value, i=i):
                     try:
-                        done.put_nowait((value, i))
+                        if not isinstance(value, Cancelled):
+                            done.put_nowait((value, i))
+                        _log.debug('get %s Q %s', N, value)
                     except:
                         _log.exception("Error queuing get result %s", value)
+
                 _log.debug('get %s w/ %s', N, req)
-                ops[i] = ch.get(cb, request=req)
+                ops[i] = raw_get(N, cb, request=req)
 
             for _n in range(len(name)):
                 try:
                     value, i = done.get(timeout=timeout)
                 except Empty:
                     if throw:
+                        _log.debug('timeout %s after %s', name[i], timeout)
                         raise TimeoutError()
                     break
                 _log.debug('got %s %s', name[i], value)
@@ -273,9 +257,7 @@ class Context(object):
                 result[i] = value
 
         finally:
-            [op and op.cancel() for op in ops]
-
-        result = [self._dounwrap(R) for R in result]
+            [op and op.close() for op in ops]
 
         if singlepv:
             return result[0]
@@ -335,6 +317,8 @@ class Context(object):
         result = [TimeoutError()]*len(name)
         ops = [None]*len(name)
 
+        raw_put = super(Context, self).put
+
         try:
             for i,(n, value, req) in enumerate(izip(name, values, request)):
                 if isinstance(value, (bytes, unicode)) and value[:1]=='{':
@@ -343,45 +327,14 @@ class Context(object):
                     except ValueError:
                         raise ValueError("Unable to interpret '%s' as json"%value)
 
-                ch = self._channel(n)
-
-                # callback to build PVD Value from PY value
-                def vb(cur, value=value, i=i):
-                    try:
-                        type = cur.type()
-                        if isinstance(value, dict):
-                            V = self.Value(type, value)
-                        else:
-                            V = self.Value(type, {})
-                            if not cur.getID().startswith("epics:nt/NTEnum:"):
-                                # handle as plain value
-                                V.value = value
-                            else:
-                                # enumeration
-                                if isinstance(value, (bytes, unicode)):
-                                    # lookup
-                                    estr, value = value, None
-                                    for i,E in enumerate(cur.value.choices):
-                                        if estr==E:
-                                            value = i
-                                            break
-                                    if value is None:
-                                        value = int(estr, 0) # last ditch effort, parse as integer
-                                V.value.index = value
-
-                        return V
-                    except Exception as E:
-                        _log.exception("Error building put value %s", value)
-                        done.put_nowait((E, i))
-                        raise E
-
                 # completion callback
                 def cb(value, i=i):
                     try:
                         done.put_nowait((value, i))
                     except:
                         _log.exception("Error queuing put result %s", value)
-                ops[i] = ch.put(cb, vb, request=req)
+
+                ops[i] = raw_put(n, cb, builder=value, request=req)
 
             for _n in range(len(name)):
                 try:
@@ -399,7 +352,7 @@ class Context(object):
             else:
                 return result
         finally:
-            [op and op.cancel() for op in ops]
+            [op and op.close() for op in ops]
 
     def rpc(self, name, value, request=None, timeout=5.0, throw=True):
         """Perform a Remote Procedure Call (RPC) operation
@@ -428,8 +381,8 @@ class Context(object):
         """
         done = Queue(maxsize=1)
 
-        ch = self._channel(name)
-        op = ch.rpc(done.put_nowait, value, request)
+        op = super(Context, self).rpc(name, done.put_nowait, value, request=request)
+
         try:
             try:
                 result = done.get(timeout=timeout)
@@ -438,12 +391,10 @@ class Context(object):
             if throw and isinstance(result, Exception):
                 raise result
 
-            return self._dounwrap(result)
+            return result
         except:
-            op.cancel()
+            op.close()
             raise
-
-    Subscription = Subscription
 
     def monitor(self, name, cb, request=None, notify_disconnect = False):
         """Create a subscription.
@@ -460,12 +411,7 @@ class Context(object):
         * A sub-class of Exception
         * None when the subscription is complete, and more updates will ever arrive.
         """
-        R = self.Subscription(self, name, cb, notify_disconnect=notify_disconnect)
-        ch = self._channel(name)
+        R = Subscription(self, name, cb, notify_disconnect=notify_disconnect)
 
-        R._S = ch.monitor(R._event, request)
-        try:
-            return R
-        except:
-            S.close()
-            raise
+        R._S = super(Context, self).monitor(name, R._event, request)
+        return R

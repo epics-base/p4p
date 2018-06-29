@@ -4,9 +4,8 @@ from __future__ import print_function
 import unittest
 import weakref, gc
 
-from ..client.raw import Context
+from ..client.raw import Context, Cancelled
 from ..wrapper import Value, Type
-from .. import Cancelled
 from .utils import RefTestCase
 
 class TestRequest(RefTestCase):
@@ -39,28 +38,21 @@ class TestPVA(RefTestCase):
         gc.collect()
         super(TestPVA, self).tearDown()
 
-    def testChan(self):
-        chan = self.ctxt.channel("completelyInvalidChannelName")
-
-        self.assertEqual(chan.getName(), "completelyInvalidChannelName")
-
     def testGetAbort(self):
-        chan = self.ctxt.channel("completelyInvalidChannelName")
         _X = [None]
         def fn(V):
             _X[0] = V
-        op = chan.get(fn)
+        op = self.ctxt.get("completelyInvalidChannelName", fn)
 
-        op.cancel()
+        op.close()
 
-        self.assertIsInstance(_X[0], Cancelled)
+        self.assertIsNone(_X[0])
 
     def testGetAbortGC(self):
-        chan = self.ctxt.channel("completelyInvalidChannelName")
         _X = [None]
         def fn(V):
             _X[0] = V
-        op = chan.get(fn)
+        op = self.ctxt.get("completelyInvalidChannelName", fn)
 
         W =  weakref.ref(op)
         del op
@@ -71,11 +63,10 @@ class TestPVA(RefTestCase):
         self.assertIsNone(_X[0])
 
     def testGCCycle(self):
-        chan = self.ctxt.channel("completelyInvalidChannelName")
         _X = [None]
         def fn(V):
             _X[0] = V
-        op = chan.get(fn)
+        op = self.ctxt.get("completelyInvalidChannelName", fn)
 
         fn._cycle = op # create cycle: op -> fn -> fn.__dict__ -> op
 
@@ -96,11 +87,11 @@ class TestPVA(RefTestCase):
         ]), {
             'value': 42,
         })
-        chan = self.ctxt.channel("completelyInvalidChannelName")
+
         _X = [None]
         def fn(V):
             _X[0] = V
-        op = chan.rpc(fn, P)
+        op = self.ctxt.rpc("completelyInvalidChannelName", fn, P)
 
         W =  weakref.ref(op)
         del op
@@ -111,28 +102,24 @@ class TestPVA(RefTestCase):
         self.assertIsNone(_X[0])
 
     def testMonAbort(self):
-        chan = self.ctxt.channel("completelyInvalidChannelName")
-
         canery = object()
         _X = [canery]
         def evt(V):
             _X[0] = V
 
-        op = chan.monitor(evt)
+        op = self.ctxt.monitor("completelyInvalidChannelName", evt)
 
         op.close()
 
-        self.assertIs(_X[0], canery)
+        self.assertIsInstance(_X[0], Cancelled)
 
     def testMonCycle(self):
-        chan = self.ctxt.channel("completelyInvalidChannelName")
-
         canery = object()
         _X = [canery]
         def evt(V):
             _X[0] = V
 
-        op = chan.monitor(evt)
+        op = self.ctxt.monitor("completelyInvalidChannelName", evt)
 
         evt._cycle = op # op -> evt -> evt.__dict__ -> op
 

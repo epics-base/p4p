@@ -82,7 +82,7 @@ class TestGPM(RefTestCase):
         super(TestGPM, self).tearDown()
 
     def testGet(self):
-        with Context('pva', conf=self.server.conf()) as ctxt:
+        with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
             # PV not yet opened
             self.assertRaises(TimeoutError, ctxt.get, 'foo', timeout=0.1)
             
@@ -91,6 +91,7 @@ class TestGPM(RefTestCase):
 
             # TODO: this really shouldn't fail, but does due to:
             # https://github.com/epics-base/pvAccessCPP/issues/103
+            #  also proves that our Channel cache is working...
             self.assertRaises(RuntimeError, ctxt.get, 'foo', timeout=0.1)
 
             V = ctxt.get('foo')
@@ -103,7 +104,7 @@ class TestGPM(RefTestCase):
         self.assertIsNone(C())
 
     def testPutGet(self):
-        with Context('pva', conf=self.server.conf()) as ctxt:
+        with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
             
             type = NTScalar('d')
             self.pv.open(type.wrap(1.0))
@@ -122,7 +123,7 @@ class TestGPM(RefTestCase):
         self.assertIsNone(C())
 
     def testMonitor(self):
-        with Context('pva', conf=self.server.conf()) as ctxt:
+        with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
 
             type = NTScalar('d')
             self.pv.open(type.wrap(1.0))
