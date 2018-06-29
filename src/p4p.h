@@ -212,10 +212,6 @@ void p4p_server_register(PyObject *mod);
 void p4p_server_sharedpv_register(PyObject *mod);
 void p4p_array_register(PyObject *mod);
 void p4p_client_register(PyObject *mod);
-void p4p_client_context_register(PyObject *mod);
-void p4p_client_channel_register(PyObject *mod);
-void p4p_client_monitor_register(PyObject *mod);
-void p4p_client_op_register(PyObject *mod);
 
 epics::pvAccess::ChannelProvider::shared_pointer p4p_build_provider(PyRef &handler, const std::string& name);
 epics::pvAccess::ChannelProvider::shared_pointer p4p_unwrap_provider(PyObject *provider);

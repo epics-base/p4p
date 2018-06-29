@@ -16,13 +16,6 @@ _p4p_SRCS += p4p_server_provider.cpp
 _p4p_SRCS += p4p_server_sharedpv.cpp
 
 _p4p_SRCS += p4p_client.cpp
-_p4p_SRCS += p4p_client_context.cpp
-_p4p_SRCS += p4p_client_channel.cpp
-_p4p_SRCS += p4p_client_monitor.cpp
-_p4p_SRCS += p4p_client_op.cpp
-_p4p_SRCS += p4p_client_get.cpp
-_p4p_SRCS += p4p_client_put.cpp
-_p4p_SRCS += p4p_client_rpc.cpp
 
 _p4p_LIBS += pvAccessCA pvAccess pvData Com
 
