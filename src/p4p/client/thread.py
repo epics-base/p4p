@@ -224,7 +224,7 @@ class Context(raw.Context):
         assert len(name)==len(request), (name, request)
 
         # use Queue instead of Event to allow KeyboardInterrupt
-        done = Queue(maxsize=len(name))
+        done = Queue()
         result = [TimeoutError()]*len(name)
         ops = [None]*len(name)
 
@@ -313,7 +313,7 @@ class Context(raw.Context):
         assert len(name)==len(values), (name, values)
 
         # use Queue instead of Event to allow KeyboardInterrupt
-        done = Queue(maxsize=len(name))
+        done = Queue()
         result = [TimeoutError()]*len(name)
         ops = [None]*len(name)
 
@@ -379,7 +379,7 @@ class Context(raw.Context):
         Unless the provided value is a dict, it is assumed to be a plain value
         and an attempt is made to store it in '.value' field.
         """
-        done = Queue(maxsize=1)
+        done = Queue()
 
         op = super(Context, self).rpc(name, done.put_nowait, value, request=request)
 
