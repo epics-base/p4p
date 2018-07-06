@@ -31,5 +31,3 @@ matrix:
     env: BRBASE=3.14 BRPVD=master BRPVA=master PROF=deb8
   - python: "2.7"
     env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9
-  - python: "2.7"
-    env: BRBASE=3.16 BRPVD=7.0.0 BRPVA=6.0.0 PROF=deb9
