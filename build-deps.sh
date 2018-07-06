@@ -15,7 +15,7 @@ cd "$HOME/.source"
 
 git clone --quiet --depth 5 --branch "$BRBASE" https://github.com/epics-base/epics-base.git epics-base
 git clone --quiet --depth 5 --branch "$BRPVD" https://github.com/epics-base/pvDataCPP.git pvDataCPP
-git clone --quiet --depth 5 --branch "$BRPVA" https://github.com/mdavidsaver/pvAccessCPP.git pvAccessCPP
+git clone --quiet --depth 5 --branch "$BRPVA" https://github.com/epics-base/pvAccessCPP.git pvAccessCPP
 
 (cd epics-base && git log -n1 )
 (cd pvDataCPP && git log -n1 )
