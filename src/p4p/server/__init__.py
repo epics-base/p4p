@@ -2,6 +2,7 @@
 import logging, warnings
 _log = logging.getLogger(__name__)
 
+import time
 import atexit
 
 from .._p4p import (Server as _Server,
@@ -72,6 +73,27 @@ class Server(object):
         """Force server to stop serving, and close connections to existing clients.
         """
         pass
+
+    @classmethod
+    def forever(klass, *args, **kws):
+        """Create a server and block the calling thread until KeyboardInterrupt.
+        Shorthand for: ::
+
+            with Server(*args, **kws):
+                try;
+                    time.sleep(99999999)
+                except KeyboardInterrupt:
+                    pass
+        """
+        with klass(*args, **kws):
+            _log.info("Running server")
+            try:
+                while True:
+                    time.sleep(100)
+            except KeyboardInterrupt:
+                pass
+            finally:
+                _log.info("Stopping server")
 
 class StaticProvider(_StaticProvider):
     """A channel provider which servers from a clearly defined list of names.
