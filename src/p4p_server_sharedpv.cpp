@@ -270,6 +270,27 @@ PyObject* operation_value(PyObject *self)
     return NULL;
 }
 
+PyObject* operation_name(PyObject *self)
+{
+    TRY {
+        return PyUnicode_FromString(SELF.channelName().c_str());
+    } CATCH()
+    return NULL;
+}
+
+PyObject* operation_peer(PyObject *self)
+{
+    TRY {
+        pva::ChannelBaseRequester::shared_pointer req(SELF.getRequester());
+        if(req) {
+            return PyUnicode_FromString(req->getRequesterName().c_str());
+        } else {
+            Py_RETURN_NONE;
+        }
+    } CATCH()
+    return NULL;
+}
+
 PyObject* operation_done(PyObject *self, PyObject *args, PyObject *kws)
 {
     TRY {
@@ -345,14 +366,27 @@ PyObject* operation_warn(PyObject *self, PyObject *args)
 
 static PyMethodDef Operation_methods[] = {
     {"pvRequest", (PyCFunction)&operation_pvRequest, METH_NOARGS,
+     "pvRequest() -> Value\n"
      "Access to client provided request modifiers"},
     {"value", (PyCFunction)&operation_value, METH_NOARGS,
+     "value() -> Value\n"
      "Access to client provided input/argument value"},
+    {"name", (PyCFunction)&operation_name, METH_NOARGS,
+     "name() -> str\n"
+     "Channel name through which this Operation is made."},
+    {"peer", (PyCFunction)&operation_peer, METH_NOARGS,
+     "peer() -> str\n"
+     "A information about the peer, or None."},
     {"done", (PyCFunction)&operation_done, METH_VARARGS|METH_KEYWORDS,
-     "Complete in-progress operation"},
+     "done(value=None, error=None)\n"
+     "Complete in-progress operation.\n"
+     "Provide a value=Value (RPC) or value=None (Put) to indicate success."
+     "  Provide error=str to signal that an error occured."},
     {"info", (PyCFunction)&operation_info, METH_VARARGS,
+     "info(msg)\n"
      "Send remote info message"},
     {"warn", (PyCFunction)&operation_warn, METH_VARARGS,
+     "warn(msg)\n"
      "Send remote warning message"},
     {NULL}
 };
