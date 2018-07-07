@@ -81,6 +81,9 @@ class SharedPV(_SharedPV):
     def post(self, value):
         _SharedPV.post(self, self._wrap(value))
 
+    def current(self):
+        return self._unwrap(_SharedPV.current(self))
+
     def _exec(self, op, M, *args): # sub-classes will replace this
         try:
             M(*args)
@@ -148,5 +151,8 @@ class SharedPV(_SharedPV):
         return decorate
 
     def __repr__(self):
-        return "%s(open=%s)"%(self.__class__.__name__, self.isOpen())
+        if self.isOpen():
+            return '%s(value=%s)'%(self.__class__.__name__, self.current())
+        else:
+            return "%s(<closed>)"%(self.__class__.__name__,)
     __str__ = __repr__

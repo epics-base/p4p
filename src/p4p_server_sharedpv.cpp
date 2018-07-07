@@ -179,6 +179,18 @@ static PyObject* sharedpv_post(PyObject* self, PyObject *args, PyObject *kwds) {
     return NULL;
 }
 
+static PyObject* sharedpv_current(PyObject* self) {
+    TRY {
+        TRACE("");
+        pvd::PVStructure::shared_pointer val(SELF->build());
+        pvd::BitSet::shared_pointer changed(new pvd::BitSet);
+        SELF->fetch(*val, *changed);
+        return P4PValue_wrap(P4PValue_type, val, changed);
+    }CATCH()
+    return NULL;
+}
+
+
 static PyObject* sharedpv_close(PyObject* self) {
     TRY {
         TRACE("");
@@ -237,6 +249,9 @@ static PyMethodDef SharedPV_methods[] = {
      "Mark PV as opened and provide initial value"},
     {"post", (PyCFunction)&sharedpv_post, METH_VARARGS|METH_KEYWORDS,
      "Update value of PV"},
+    {"current", (PyCFunction)&sharedpv_current, METH_NOARGS,
+     "current() -> Value\n"
+     "The current Value of this PV.  The result of the initial value, and all accumulated post() calls."},
     {"close", (PyCFunction)&sharedpv_close, METH_NOARGS,
      "Mark PV as closed"},
     {"isOpen", (PyCFunction)&sharedpv_isOpen, METH_NOARGS,
