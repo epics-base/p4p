@@ -16,6 +16,7 @@ from p4p.server.cothread import SharedPV
 
 logging.basicConfig(level=logging.DEBUG)
 
+# use a handler object, vs. decorator, so that we can store some state
 class MoveHandler(object):
     def __init__(self):
         self.pos = 0
@@ -28,7 +29,7 @@ class MoveHandler(object):
         self.busy = True
         try:
             initial = self.pos
-            final = op.value().value
+            final = op.value()
             delta = abs(final-initial)
             op.info("Moving %s -> %s"%(initial, final))
 
@@ -42,17 +43,13 @@ class MoveHandler(object):
         finally:
             self.busy = False
 
-pv = SharedPV(initial=NTScalar('d').wrap(0),
+pv = SharedPV(nt=NTScalar('d'),
+              initial=0.0,
               handler=MoveHandler())
 
 provider = StaticProvider('move') # 'move' is an arbitrary name
 provider.add("foo", pv)
 
-with Server(providers=[provider]):
-    print('Running')
-    try:
-        cothread.WaitForQuit()
-    except KeyboardInterrupt:
-        pass
+Server.forever(providers=[provider])
 
 print('Done')

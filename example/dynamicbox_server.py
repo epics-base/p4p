@@ -101,13 +101,6 @@ def remover(pv, op):
 
     op.done()
 
-
-with Server(providers=[provider]):
-    print('Running')
-    try:
-        while True: # wait forever
-            time.sleep(1.0)
-    except KeyboardInterrupt:
-        pass
+Server.forever(providers=[provider])
 
 print('Done')

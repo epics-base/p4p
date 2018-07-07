@@ -18,6 +18,27 @@ These different threading models may be mixed into a single Provider.
 
 .. note:: It is recommended to prefer :py:class:`StaticProvider` and leave :py:class:`DynamicProvider` for special cases.
 
+Example
+=======
+
+A server with a single "mailbox" PV. ::
+
+    import time
+    from p4p.nt import NTScalar
+    from p4p.server import Server, StaticProvider
+    from p4p.server.thread import SharedPV
+    
+    type = NTScalar('d')
+    pv = SharedPV(initial=type.wrap(0.0))
+    @pv.put
+    def handle(pv, op):
+        pv.post(op) # just store and update subscribers
+
+    provider = StaticProvider('arbitrary')
+    provider.add('demo:pv:name', pv)
+
+    Server.forever(providers=[provider]):
+
 DynamicProvider Handler Interface
 ---------------------------------
 
@@ -99,6 +120,17 @@ API Reference
 
 .. autofunction:: removeProvider
 
+
+.. currentmodule:: p4p.server.raw
+
+.. autoclass:: SharedPV
+
+    .. automethod:: open
+
+    .. automethod:: close
+
+    .. automethod:: post
+
 .. autoclass:: ServerOperation
 
     .. automethod:: pvRequest
@@ -111,16 +143,9 @@ API Reference
 
     .. automethod:: warn
 
+    .. automethod:: name
 
-.. currentmodule:: p4p.server.raw
-
-.. autoclass:: SharedPV
-
-    .. automethod:: open
-
-    .. automethod:: close
-
-    .. automethod:: post
+    .. automethod:: peer
 
 
 There is a SharedPV class for each of the four threading models.

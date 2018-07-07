@@ -67,13 +67,7 @@ def main(args):
         provider.add(name, pv)
         pvs.append(pv)
 
-    with Server(providers=[provider]) as S:
-        print('Running', S.conf())
-        try:
-            while True: # wait forever
-                time.sleep(1.0)
-        except KeyboardInterrupt:
-            pass
+    Server.forever(providers=[provider])
 
     print('Done')
 if __name__=='__main__':
