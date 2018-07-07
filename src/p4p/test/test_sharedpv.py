@@ -22,10 +22,10 @@ class TestGPM(RefTestCase):
     class Times2Handler(object):
         def put(self, pv, op):
             V = op.value()
-            if V.changed('value'):
-                if V.value<0:
+            if V.raw.changed('value'):
+                if V<0:
                     op.done(error="Must be non-negative")
-                V.value = V.value *2
+                V = V *2
                 pv.post(V)
             op.done()
 
@@ -41,7 +41,7 @@ class TestGPM(RefTestCase):
             'EPICS_PVA_BROADCAST_PORT':'0',
         }
 
-        self.pv = SharedPV(handler=self.Times2Handler())
+        self.pv = SharedPV(handler=self.Times2Handler(), nt=NTScalar('d'))
         self.sprov = StaticProvider("serverend")
         self.sprov.add('foo', self.pv)
 
@@ -57,26 +57,6 @@ class TestGPM(RefTestCase):
         del self.sprov
         del self.pv
         gc.collect()
-        from sys import getrefcount
-        frame = inspect.currentframe()
-        for r in R:
-            obj = r()
-            if obj is None:
-                continue
-            print("XXX", getrefcount(obj)-1, obj)
-            for A in gc.get_referrers(obj):
-                if A is frame:
-                    print(">>>X")
-                    continue
-                print(">>>", type(A), A)
-                for B in gc.get_referrers(R):
-                    if B is frame:
-                        continue
-                    print(">>>>>", type(B), B)
-            del A
-            del B
-            gc.collect()
-
         R = [r() for r in R]
         self.assertListEqual(R, [None]*len(R))
         super(TestGPM, self).tearDown()
@@ -86,8 +66,7 @@ class TestGPM(RefTestCase):
             # PV not yet opened
             self.assertRaises(TimeoutError, ctxt.get, 'foo', timeout=0.1)
             
-            type = NTScalar('d')
-            self.pv.open(type.wrap(1.0))
+            self.pv.open(1.0)
 
             # TODO: this really shouldn't fail, but does due to:
             # https://github.com/epics-base/pvAccessCPP/issues/103
@@ -106,8 +85,7 @@ class TestGPM(RefTestCase):
     def testPutGet(self):
         with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
             
-            type = NTScalar('d')
-            self.pv.open(type.wrap(1.0))
+            self.pv.open(1.0)
 
             V = ctxt.get('foo')
             self.assertEqual(V, 1.0)
@@ -125,8 +103,7 @@ class TestGPM(RefTestCase):
     def testMonitor(self):
         with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
 
-            type = NTScalar('d')
-            self.pv.open(type.wrap(1.0))
+            self.pv.open(1.0)
 
             Q = Queue(maxsize=4)
             sub = ctxt.monitor('foo', Q.put)
