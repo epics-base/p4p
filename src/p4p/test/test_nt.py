@@ -54,6 +54,9 @@ class TestScalar(RefTestCase):
         self.assertEqual(P, value)
         self.assertEqual(P.severity, 1)
 
+        V2 = NT.wrap(P)
+        self.assertIs(V, V2)
+
     test_int_unwrap = partial(test_float_unwrap, code='i', value=42)
     test_str_unwrap = partial(test_float_unwrap, code='s', value='foo')
 

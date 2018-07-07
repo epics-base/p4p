@@ -160,7 +160,9 @@ class NTScalar(object):
         Accepts dict to explicitly initialize fields be name.
         Any other type is assigned to the 'value' field.
         """
-        if isinstance(value, dict):
+        if isinstance(value, ntwrappercommon):
+            return value.raw
+        elif isinstance(value, dict):
             return self.Value(self.type, value)
         else:
             S, NS = divmod(time.time(), 1.0)
