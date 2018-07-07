@@ -68,8 +68,8 @@ class SharedPV(_SharedPV):
         self._handler = handler or self._DummyHandler()
         self._whandler = self._WrapHandler(self, self._handler)
 
-        self._wrap = wrap or getattr(nt, 'wrap', None) or (lambda x:x)
-        self._unwrap = unwrap or getattr(nt, 'unwrap', None) or (lambda x:x)
+        self._wrap = wrap or (nt and nt.wrap) or (lambda x:x)
+        self._unwrap = unwrap or (nt and nt.unwrap) or (lambda x:x)
 
         _SharedPV.__init__(self, self._whandler)
         if initial is not None:
