@@ -52,7 +52,7 @@ class MailboxHandler(object):
 
 addpv = SharedPV(initial=NTScalar('s').wrap('Only RPC'))
 delpv = SharedPV(initial=NTScalar('s').wrap('Only RPC'))
-listpv = SharedPV(initial=list_type.wrap([]))
+listpv = SharedPV(nt=list_type, initial=[])
 
 provider.add(prefix + "add", addpv)
 provider.add(prefix + "del", delpv)
@@ -80,7 +80,7 @@ def adder(pv, op):
         names = list(pvs) # makes a copy to ensure consistency outside lock
 
     _log.info("Added mailbox %s", name)
-    listpv.post(list_type.wrap(names))
+    listpv.post(names)
     op.done()
 
 
@@ -97,7 +97,7 @@ def remover(pv, op):
         names = list(pvs) # makes a copy to ensure consistency outside lock
 
     _log.info("Removed mailbox %s", name)
-    listpv.post(list_type.wrap(names))
+    listpv.post(names)
 
     op.done()
 
