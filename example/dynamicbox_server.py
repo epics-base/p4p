@@ -23,7 +23,7 @@ _log = logging.getLogger(__name__)
 
 from threading import Lock
 
-from p4p.nt import NTScalar
+from p4p.nt import NTScalar, NTEnum
 from p4p.server import Server, StaticProvider
 from p4p.server.thread import SharedPV
 
@@ -37,6 +37,7 @@ types = {
     'int':NTScalar('i').wrap(0),
     'float':NTScalar('d').wrap(0.0),
     'str':NTScalar('s').wrap(''),
+    'enum':NTEnum().wrap(0),
 }
 
 pvs_lock = Lock()

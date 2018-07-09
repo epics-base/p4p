@@ -159,3 +159,63 @@ class TestURI(RefTestCase):
         self.assertEqual(V.query.a, 8)
         self.assertEqual(V.query.c.x, 1)
         self.assertEqual(V.query.c.y, 2)
+
+class TestEnum(RefTestCase):
+    def testStore(self):
+        T = nt.NTEnum.buildType()
+
+        V = Value(T, {
+            'value.choices':['zero', 'one', 'two'],
+        })
+
+        V.value = 'one'
+
+        self.assertEqual(V.value.index, 1)
+
+        V.value = '2'
+
+        self.assertEqual(V.value.index, 2)
+
+        V.value = 1
+
+        self.assertEqual(V.value.index, 1)
+
+    def testStoreBad(self):
+        V = Value(nt.NTEnum.buildType(), {
+            'value.choices':['zero', 'one', 'two'],
+        })
+
+        V.value.index = 42
+
+        def fn():
+            V.value = self
+        self.assertRaises(TypeError, fn)
+
+        self.assertEqual(V.value.index, 42)
+
+        def fn():
+            V.value = 'other'
+        self.assertRaises(ValueError, fn)
+
+        self.assertEqual(V.value.index, 42)
+
+        V.value.choices = []
+        def fn():
+            V.value = '1'
+        self.assertWarns(UserWarning, fn) # warns of empty choices
+
+        self.assertEqual(V.value.index, 1)
+
+    def testSubStore(self):
+        V = Value(Type([
+            ('a', nt.NTEnum.buildType()),
+            ('b', nt.NTEnum.buildType()),
+        ]), {
+            'a.value.choices':['A','B'],
+            'b.value.choices':['X','Y'],
+        })
+
+        V.a = {'value':'B'}
+
+        self.assertEqual(V.a.value.index, 1)
+        self.assertEqual(V.b.value.index, 0)

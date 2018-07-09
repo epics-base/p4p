@@ -122,6 +122,56 @@ void Value::store_struct(pvd::PVStructure* fld,
     } else if(PyObject_IsInstance(obj, (PyObject*)P4PValue_type)) {
         store_struct(fld, ftype, *P4PValue::unwrap(obj).V, bset);
 
+    } else if(ftype->getID()=="enum_t") {
+        // Attempted enumeration assignment
+
+        pvd::PVScalar::shared_pointer index(fld->getSubField<pvd::PVScalar>("index"));
+        pvd::PVStringArray::const_shared_pointer choices(fld->getSubField<pvd::PVStringArray>("choices"));
+
+        if(!index || !choices)
+            throw std::runtime_error("enum_t assignment finds non-complient enum_t");
+
+        if(PyUnicode_Check(obj) || PyBytes_Check(obj)) {
+            PyString pystr(obj);
+            std::string str(pystr.str());
+
+            pvd::PVStringArray::const_svector C(choices->view());
+
+            if(C.empty())
+                PyErr_WarnEx(PyExc_UserWarning, "enum_t assignment with empty choices", 2);
+
+            bool found = false;
+
+            // search for matching choices string
+            for(size_t i=0; i<C.size(); i++) {
+                if(C[i]==str) {
+                    // match
+                    index->putFrom<pvd::int32>(i);
+                    found = true;
+                    break;
+                }
+            }
+
+            // attempt to convert from string
+            if(!found) {
+                try {
+                    index->putFrom(str);
+                } catch(std::runtime_error& e) {
+                    PyErr_Format(PyExc_ValueError, "%s", e.what());
+                    throw std::runtime_error("not seen");
+                }
+            }
+        } else {
+            long val = PyLong_AsLong(obj);
+            if(PyErr_Occurred())
+                throw std::runtime_error("not seen");
+
+            index->putFrom<pvd::int32>(val);
+        }
+
+        if(bset)
+            bset->set(index->getFieldOffset());
+
     } else {
         // an iterable yielding tuples ('fieldname', value)
         PyRef iter;
@@ -140,6 +190,11 @@ void Value::store_struct(pvd::PVStructure* fld,
 
             const char *key = 0;
             PyObject *V = 0;
+
+            if(!PyTuple_Check(I.get())) {
+                PyErr_Format(PyExc_ValueError, "Assigned object must be iterable yielding a typle ('name', value)");
+                throw std::runtime_error("XXX");
+            }
 
             if(!PyArg_ParseTuple(I.get(), "sO", &key, &V))
                 throw std::runtime_error("XXX");

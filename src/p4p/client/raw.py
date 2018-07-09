@@ -81,31 +81,31 @@ def defaultBuilder(value):
     """Reasonably sensible default handling of put builder
     """
     if callable(value):
-        return value
+        @wraps(value)
+        def logbuilder(V):
+            try:
+                value(V)
+            except:
+                _log.exception("Error in Builder")
+                raise # will be logged again
+        return logbuilder
+
     def builder(V):
         try:
-            # assume get=True
             if isinstance(value, dict):
                 for k,v in value.items():
                     V[k] = v
-            elif V.getID().startswith("epics:nt/NTEnum:"):
-                # enumeration
-                if isinstance(value, (bytes, unicode)):
-                    # try to match choices string first
-                    idx = None
-                    for i,E in enumerate(cur.value.choices):
-                        if value==E:
-                            idx = i
-                            break
-                    if idx is None:
-                        idx = int(value, 0) # last ditch effort, parse as integer
-                V.value.index = idx
             else:
                 V.value = value
         except:
             _log.exception("Exception in Put builder")
             raise # will be printed to stdout from extension code.
     return builder
+
+def wrapRequest(request):
+    if isinstance(request, Value):
+        return request
+    return Context.makeRequest(request)
 
 class Subscription(_p4p.ClientMonitor):
     """Interface to monitor subscription FIFO
@@ -228,7 +228,7 @@ class Context(object):
         """
         chan = self._channel(name)
         return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._unwrap),
-                                    pvRequest=request, get=True, put=False)
+                                    pvRequest=wrapRequest(request), get=True, put=False)
 
     def put(self, name, handler, builder=None, request=None, get=True):
         """Write a new value to a PV.
@@ -238,14 +238,14 @@ class Context(object):
         :param callable builder: Called when the PV Put type is known.  A builder is responsible
                                  for filling in the Value to be sent.  builder(value)
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
-        :param bool get: Whether to do a Get before the Put.  If True then the value passed to the builder
+        :param bool get: Whether to do a Get before the Put.  If True then the value passed to the builder callable
                          will be initialized with recent PV values.  eg. use this with NTEnum to find the enumeration list.
 
         :returns: A object with a method cancel() which may be used to abort the operation.
         """
         chan = self._channel(name)
         return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._unwrap),
-                                    builder=defaultBuilder(builder), pvRequest=request, get=get, put=True)
+                                    builder=defaultBuilder(builder), pvRequest=wrapRequest(request), get=get, put=True)
 
     def rpc(self, name, handler, value, request=None):
         """Perform RPC operation on PV
@@ -258,7 +258,7 @@ class Context(object):
         """
         chan = self._channel(name)
         return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._unwrap),
-                                    value=value, pvRequest=request, rpc=True)
+                                    value=value, pvRequest=wrapRequest(request), rpc=True)
 
     def monitor(self, name, handler, request=None, **kws):
         """Begin subscription to named PV
@@ -272,7 +272,7 @@ class Context(object):
         """
         chan = self._channel(name)
         return Subscription(context=self,
-                            channel=chan, handler=monHandler(handler), pvRequest=request,
+                            channel=chan, handler=monHandler(handler), pvRequest=wrapRequest(request),
                             unwrap=self._unwrap,
                             **kws)
 

@@ -32,6 +32,7 @@ PY += p4p/server/asyncio.py
 PY += p4p/nt/__init__.py
 PY += p4p/nt/common.py
 PY += p4p/nt/scalar.py
+PY += p4p/nt/enum.py
 PY += p4p/nt/ndarray.py
 PY += p4p/client/__init__.py
 PY += p4p/client/cli.py

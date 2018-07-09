@@ -14,9 +14,11 @@ from ..wrapper import Type, Value
 from .common import timeStamp, alarm
 from .scalar import NTScalar
 from .ndarray import NTNDArray
+from .enum import NTEnum
 
 __all__ = [
     'NTScalar',
+    'NTEnum',
     'NTMultiChannel',
     'NTTable',
     'NTNDArray',
