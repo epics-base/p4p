@@ -103,7 +103,7 @@ def defaultBuilder(value):
     return builder
 
 def wrapRequest(request):
-    if isinstance(request, Value):
+    if request is None or isinstance(request, Value):
         return request
     return Context.makeRequest(request)
 
@@ -144,8 +144,8 @@ class Context(object):
     """
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
     :param conf dict: Configuration to pass to provider.  Depends on provider selected.
-    :param useenv bool: Allow the provider to use configuration from the process environment.
-    :param unwrap: Controls :ref:`unwrap`.  None uses defaults.  Set False to disable
+    :param bool useenv: Allow the provider to use configuration from the process environment.
+    :param dict unwrap: Controls :ref:`unwrap`.  None uses defaults.  Set False to disable
     """
     def __init__(self, provider=None, conf=None, useenv=None, unwrap=None, **kws):
         self.name = provider
