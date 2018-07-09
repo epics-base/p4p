@@ -1,6 +1,9 @@
 
 from __future__ import print_function
 
+import logging
+_log = logging.getLogger(__name__)
+
 import sys, time, json
 try:
     from itertools import izip
@@ -35,11 +38,10 @@ def op_put(ctxt, args):
         if sep is '':
             print("Missing expected '=' after", pair)
             sys.exit(1)
-        elif V is None:
-            V = ''
-        else:
-            V = json.dumps(V)
+        elif V[:1] in '{[':
+            V = json.loads(V)
         N = N.strip()
+        _log.debug("put %s <- %s", N, V)
         names.append(N)
         values.append(V)
 
@@ -87,6 +89,8 @@ def op_rpc(ctxt, args):
         if not sep:
             print("arguments must be name=value not:", arg)
             sys.exit(2)
+        elif V[:1] in '{[':
+            V = json.loads(V)
 
         anames.append((K, 's'))
         kws[K] = V
@@ -108,6 +112,7 @@ def getargs():
     P.add_argument('-p', '--provider', default='pva')
     P.add_argument('-d','--debug', action='store_true')
     P.add_argument('--raw', action='store_false', default=None)
+    P.set_defaults(func=lambda ctxt,args:P.print_help())
 
     SP = P.add_subparsers()
 
@@ -116,7 +121,7 @@ def getargs():
     PP.set_defaults(func=op_get)
 
     PP = SP.add_parser('put')
-    PP.add_argument('names', nargs='*')
+    PP.add_argument('names', nargs='*', metavar='name=value', help='PV names and values')
     PP.set_defaults(func=op_put)
 
     PP = SP.add_parser('monitor')
