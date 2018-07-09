@@ -11,11 +11,12 @@ import logging
 _log = logging.getLogger(__name__)
 
 from .. import Value
+from .. import nt
 from . import thread
 
 def op_get(ctxt, args):
     requests = [args.request]*len(args.names)
-    results = ctxt.get(args.names, requests, throw=False)
+    results = ctxt.get(args.names, requests, timeout=args.timeout, throw=False)
     ret= 0
     for name, val in izip(args.names, results):
         if isinstance(val, Exception):
@@ -42,7 +43,7 @@ def op_put(ctxt, args):
         names.append(N)
         values.append(V)
 
-    results = ctxt.put(names, values, requests, throw=False)
+    results = ctxt.put(names, values, requests, timeout=args.timeout, throw=False)
 
     ret= 0
     for name, val in izip(args.names, results):
@@ -56,9 +57,9 @@ def op_put(ctxt, args):
     sys.exit(ret)
 
 def op_monitor(ctxt, args):
-
     subs = []
     ret = 0
+
     for name in args.names:
         def show(val, name=name):
             if val is None:
@@ -77,6 +78,27 @@ def op_monitor(ctxt, args):
         ret = 1
     [S.close() for S in subs]
     sys.exit(ret)
+
+def op_rpc(ctxt, args):
+    anames = []
+    kws = {}
+    for arg in args.args:
+        K, sep, V = arg.partition('=')
+        if not sep:
+            print("arguments must be name=value not:", arg)
+            sys.exit(2)
+
+        anames.append((K, 's'))
+        kws[K] = V
+
+    uri = nt.NTURI(anames).wrap(args.name, kws=kws) # only keyword arguments
+
+    ret = ctxt.rpc(args.name, uri, request=args.request, timeout=args.timeout, throw=False)
+    if isinstance(ret, Exception):
+        print('Error:', ret)
+        sys.exit(1)
+    else:
+        print(ret.tolist())
 
 def getargs():
     from argparse import ArgumentParser
@@ -100,6 +122,11 @@ def getargs():
     PP = SP.add_parser('monitor')
     PP.add_argument('names', nargs='*')
     PP.set_defaults(func=op_monitor)
+
+    PP = SP.add_parser('rpc')
+    PP.add_argument('name')
+    PP.add_argument('args', nargs='*')
+    PP.set_defaults(func=op_rpc)
 
     return P.parse_args()
 
