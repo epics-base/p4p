@@ -46,6 +46,7 @@ class Subscription(object):
         self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
         self._Q = ctxt._queue()
+        self._evt = threading.Event()
         if notify_disconnect:
             # all subscriptions are inittially disconnected
             self._Q.push_wait(partial(cb, None))
@@ -53,13 +54,10 @@ class Subscription(object):
         """Close subscription.
         """
         if self._S is not None:
-            E = threading.Event()
             # after .close() self._event should never be called
             self._S.close()
-            # now wait for any pending calls to self._handle
-            # TODO: detect when called from worker and avoid deadlock
-            self._Q.push_wait(E.set)
-            E.wait()
+            # wait for Cancelled to be delivered
+            self._evt.wait()
             self._S = None
     def __enter__(self):
         return self
@@ -85,16 +83,22 @@ class Subscription(object):
     def _handle(self, E):
         try:
             S = self._S
-            if S is None: # already close()'d
+
+            if isinstance(E, Cancelled):
+                self._evt.set()
                 return
 
-            if isinstance(E, (Disconnected, Cancelled, RemoteError)):
+            elif isinstance(E, (Disconnected, RemoteError)):
                 _log.debug('Subscription notify for %s with %s', self.name, E)
                 if self._notify_disconnect:
                     self._cb(E)
                 elif isinstance(E, RemoteError):
                     _log.error("Subscription Error %s", E)
                 return
+
+            elif S is None: # already close()'d
+                return
+
 
             for n in range(4):
                 E = S.pop()
