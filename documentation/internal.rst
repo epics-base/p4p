@@ -121,8 +121,4 @@ API Reference
 
     .. autoclass:: Array
 
-    .. autoclass:: Type
-
-    .. autoclass:: Value
-
     .. autofunction:: clearProviders

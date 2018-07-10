@@ -37,8 +37,8 @@ If the preceeding didn't work as described, there is likely a networking problem
 
 TODO: Troubleshooting procedure
 
-Client API Usage
-----------------
+Client API Introduction
+-----------------------
 
 First start a server in another terminal. ::
 

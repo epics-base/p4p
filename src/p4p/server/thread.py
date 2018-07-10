@@ -59,7 +59,7 @@ class SharedPV(_SharedPV):
 
     :param handler: A object which will receive callbacks when eg. a Put operation is requested.
                     May be omitted if the decorator syntax is used.
-    :param Value initial: An initial Value for this PV.  If omitted, :py:meth:`open()`s must be called before client access is possible.
+    :param Value initial: An initial Value for this PV.  If omitted, :py:meth:`open` s must be called before client access is possible.
     :param nt: An object with methods wrap() and unwrap().  eg :py:class:`p4p.nt.NTScalar`.
     :param callable wrap: As an alternative to providing 'nt=', A callable to transform Values passed to open() and post().
     :param callable unwrap: As an alternative to providing 'nt=', A callable to transform Values returned Operations in Put/RPC handlers.
@@ -83,7 +83,7 @@ class SharedPV(_SharedPV):
                 pass
             def onLastDisconnect(self): # may be omitted
                 pass
-    pv = SharedPV(MyHandler())
+        pv = SharedPV(MyHandler())
 
     Alternatively, decorators may be used. ::
 

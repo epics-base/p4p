@@ -15,7 +15,7 @@ Both are used with one of the SharedPV classes:,
 These different threading models may be mixed into a single Provider.
 
 Example
-=======
+^^^^^^^
 
 A server with a single "mailbox" PV. ::
 
@@ -45,8 +45,128 @@ And in another shell. ::
 
     $ python -m p4p.client.cli monitor demo:pv:name
 
+
+Server API
+----------
+
+.. autoclass:: Server
+
+    .. automethod:: conf
+
+    .. automethod:: stop
+
+.. autoclass:: StaticProvider
+
+    .. automethod:: close
+
+    .. automethod:: add
+
+    .. automethod:: remove
+
+Global Provider registry
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+If it becomes necessary for a Provider to be included in a server which is started
+outside of Python code, then it must be placed in the global provider registry
+with installProvider().
+
+.. autofunction:: installProvider
+
+.. autofunction:: removeProvider
+
+For situations where PV names are not known ahead of time,
+or when PVs are created only as requested, DynamicProvider can be used.
+
+.. autoclass:: DynamicProvider
+
+    .. autoattribute:: NotYet
+
+
+DynamicProvider Handler Interface
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A :py:class:`DynamicProvider` Handler class will define the following:
+
+.. class:: ProviderHandler
+
+    .. method:: testChannel(pvname)
+
+        Called with a PV name which some client is searching for.
+
+        :return: True to claim this PV.  False to "permenently" disclaim this PV.  Or :py:attr:`DynamicProvider.NotYet` to temporarily disclaim.
+
+        Each DynamicProvider maintains a cache of negative search results (when ```testChannel()==False```)
+        to avoid extra work on a subnet with many clients searching for non-existant PVs.
+        If it is desirable to defeat this behavour, for example as part of lazy pv creation,
+        then testChannel() can return :py:attr:`DynamicProvider.NotYet` instead of False.
+
+    .. method:: makeChannel(pvname, src):
+
+        Called when a client attempts to create a Channel for some PV.
+        The object which is returned will not be collected until
+        the client closes the Channel or becomes disconnected.
+
+        :return: A :py:class:`SharedPV` instance.
+
+
+ServerOperation
+^^^^^^^^^^^^^^^
+
+This class is passed to SharedPV handler put() and rpc() methods.
+
+.. autoclass:: ServerOperation
+
+    .. automethod:: pvRequest
+
+    .. automethod:: value
+
+    .. automethod:: done
+
+    .. automethod:: info
+
+    .. automethod:: warn
+
+    .. automethod:: name
+
+    .. automethod:: peer
+
+
+SharedPV concurrency options
+----------------------------
+
+There is a SharedPV class for each of other three concurrency models
+supported: OS threading, asyncio coroutines, and cothreads.
+All have the same methods as :py:class:`thread.SharedPV`.
+
+
+SharedPV API
+------------
+
+.. currentmodule:: p4p.server.thread
+
+.. autoclass:: SharedPV
+
+    .. automethod:: open
+
+    .. automethod:: close
+
+    .. automethod:: post
+
+
+.. currentmodule:: p4p.server.asyncio
+
+.. class:: SharedPV
+
+    Instead of the handler= argument accepted by :py:class:`thread.SharedPV`
+
+    :param loop: An asyncio event loop, or None to use the default.
+
+.. currentmodule:: p4p.server.cothread
+
+.. class:: SharedPV
+
 SharedPV Handler Interface
---------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A :py:class:`SharedPV` Handler interface is as follows.
 The difference between :py:class:`thread.SharedPV`, :py:class:`asyncio.SharedPV`, and :py:class:`cothread.SharedPV`
@@ -85,96 +205,3 @@ This limits the number of concurrent callbacks.
         Called when the last Client channel is closed.
 
         :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
-
-
-API Reference
--------------
-
-.. autoclass:: Server
-
-    .. automethod:: conf
-
-    .. automethod:: stop
-
-.. autoclass:: StaticProvider
-
-    .. automethod:: close
-
-    .. automethod:: add
-
-    .. automethod:: remove
-
-.. autoclass:: DynamicProvider
-
-    .. autoattribute:: NotYet
-
-.. autofunction:: installProvider
-
-.. autofunction:: removeProvider
-
-
-.. currentmodule:: p4p.server.thread
-
-.. autoclass:: SharedPV
-
-    .. automethod:: open
-
-    .. automethod:: close
-
-    .. automethod:: post
-
-.. autoclass:: ServerOperation
-
-    .. automethod:: pvRequest
-
-    .. automethod:: value
-
-    .. automethod:: done
-
-    .. automethod:: info
-
-    .. automethod:: warn
-
-    .. automethod:: name
-
-    .. automethod:: peer
-
-
-There is a SharedPV class for each of other two threading models.
-All have the same methods as :py:class:`thread.SharedPV`.
-
-.. currentmodule:: p4p.server.asyncio
-
-.. autoclass:: SharedPV
-
-
-.. currentmodule:: p4p.server.cothread
-
-.. autoclass:: SharedPV
-
-
-DynamicProvider Handler Interface
----------------------------------
-
-A :py:class:`DynamicProvider` Handler class will define the following:
-
-.. class:: ProviderHandler
-
-    .. method:: testChannel(pvname)
-
-        Called with a PV name which some client is searching for.
-
-        :return: True to claim this PV.  False to "permenently" disclaim this PV.  Or :py:attr:`DynamicProvider.NotYet` to temporarily disclaim.
-
-        Each DynamicProvider maintains a cache of negative search results (when ```testChannel()==False```)
-        to avoid extra work on a subnet with many clients searching for non-existant PVs.
-        If it is desirable to defeat this behavour, for example as part of lazy pv creation,
-        then testChannel() can return :py:attr:`DynamicProvider.NotYet` instead of False.
-
-    .. method:: makeChannel(pvname, src):
-
-        Called when a client attempts to create a Channel for some PV.
-        The object which is returned will not be collected until
-        the client closes the Channel or becomes disconnected.
-
-        :return: A :py:class:`SharedPV` instance.
