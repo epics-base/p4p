@@ -57,4 +57,7 @@ class Value(_Value):
     # TODO: deprecate
     asSet = _Value.changedSet
 
+    def clear(self):
+        self.mark(None, False)
+
 _Value._magic(Value)

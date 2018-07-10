@@ -1178,6 +1178,17 @@ PyObject* P4PValue_mark(PyObject *self, PyObject *args, PyObject *kws)
     return NULL;
 }
 
+PyObject* P4PValue_unmark(PyObject *self)
+{
+    TRY {
+        if(SELF.I)
+            SELF.I->clear();
+
+        Py_RETURN_NONE;
+    }CATCH()
+    return NULL;
+}
+
 PyObject* P4PValue_changedSet(PyObject *self)
 {
     TRY {
@@ -1321,6 +1332,9 @@ static PyMethodDef P4PValue_methods[] = {
     {"mark", (PyCFunction)&P4PValue_mark, METH_VARARGS|METH_KEYWORDS,
      "mark(\"fld\", val=True)\n\n"
      "set/clear field as changed"},
+    {"unmark", (PyCFunction)&P4PValue_unmark, METH_NOARGS,
+     "unmark()\n\n"
+     "clear all field changed flag."},
     {"changedSet", (PyCFunction)&P4PValue_changedSet, METH_NOARGS,
      "changedSet() -> set(['...'])\n\n"
      "set all changed fields"},

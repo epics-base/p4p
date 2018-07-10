@@ -8,7 +8,11 @@ PVAccess for Python (P4P)
 
 The canonical version of this page is https://mdavidsaver.github.io/p4p/
 
-Releases can be downloaded from https://github.com/mdavidsaver/p4p/releases
+Install from pypi on supported targets/versions. ::
+
+   pip install p4p
+
+Release tars can be downloaded from https://github.com/mdavidsaver/p4p/releases
 
 Versioned source can be found at https://github.com/mdavidsaver/p4p
 
@@ -17,11 +21,11 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   building
    starting
-   values
-   nt
+   building
    client
+   nt
+   values
    server
    rpc
    internal

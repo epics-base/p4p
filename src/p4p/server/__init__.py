@@ -28,31 +28,46 @@ atexit.register(clearProviders)
 class Server(object):
     """Server(conf=None, useenv=True, providers=[""])
 
-    Run a PVAccess server serving Channels from the listed providers. ::
+    :param providers: A list of provider names or instances.
+    :param dict conf: Configuration keys for the server.  Uses same names as environment variables (aka. EPICS_PVAS_*)
+    :param bool useenv: Whether to use process environment in addition to provided config.
+    :param bool isolate: If True, override conf= and useenv= to select a configuration suitable for isolated testing.
+                         eg. listening only on localhost with a randomly chosen port number.  Use conf() to determine
+                         which port is being used.
+
+    Run a PVAccess server serving Channels from the listed providers.
+    The server is running after construction, until stop(). ::
 
         S = Server(providers=["example"])
         # do something else
         S.stop()
 
-    :param dict conf: Configuration keys for the server.  Uses same names as environment variables (aka. EPICS_PVAS_*)
-    :param bool useenv: Whether to use process environment in addition to provided config.
-    :param providers: A list of provider names or instances.
-
-    When configuring a Server, conf keys provided to the constructor have the same name as the environment variables.
-    If both are given, then the provided conf dict is used.
-
-    Call Server.conf() to see a list of valid server (EPICS_PVAS_*) key names.
-
-    The providers list must be a list of name strings (cf. installProvider()),
-    or a list of Provider instances.  A mixture is not yet supported.
-
     As a convenience, a Server may be used as a context manager to automatically stop. ::
 
         with Server(providers=["example"]) as S:
         # do something else
+
+    When configuring a Server, conf keys provided to the constructor have the same name as the environment variables.
+    If both are given, then the provided conf dict is used.
+
+    Call Server.conf() to see a list of valid server (EPICS_PVAS_*) key names and the actual values.
+
+    A Server may be used as a Context Manager.  The Server is stop() 'd when the context exits.
+
+    The providers list must be a list of name strings (cf. installProvider()),
+    or a list of Provider instances.  A mixture is not yet supported.
     """
-    def __init__(self, *args, **kws):
-        self._S = _Server(*args, **kws)
+    def __init__(self, isolate=False, **kws):
+        if isolate:
+            kws['useenv'] = False
+            kws['conf'] = {
+                'EPICS_PVAS_INTF_ADDR_LIST':'127.0.0.1',
+                'EPICS_PVA_ADDR_LIST':'127.0.0.1',
+                'EPICS_PVA_AUTO_ADDR_LIST':'0',
+                'EPICS_PVA_SERVER_PORT':'0',
+                'EPICS_PVA_BROADCAST_PORT':'0',
+            }
+        self._S = _Server(**kws)
         self.conf = self._S.conf
         self.stop = self._S.stop
 
@@ -65,7 +80,11 @@ class Server(object):
         """Return a dict() with the effective configuration this server is using.
 
         Suitable to pass to another Server to duplicate this configuration,
-        or to a client Context to allow it to connect to this server.
+        or to a client Context to allow it to connect to this server. ::
+
+            with Server(providers=["..."], isolate=True) as S:
+                with p4p.client.thread.Context('pva', conf=S.conf(), useenv=False) as C:
+                    print(C.get("pv:name"))
         """
         pass
 

@@ -23,8 +23,8 @@ def _handle(op, M, *args):
         _log.exception("Unexpected")
 
 class SharedPV(_SharedPV):
-    def __init__(self, handler=None, initial=None, queue=None):
-        _SharedPV.__init__(self, handler=handler, initial=initial)
+    def __init__(self, queue=None, **kws):
+        _SharedPV.__init__(self, **kws)
         self._queue = queue or Callback
 
     def _exec(self, op, M, *args):

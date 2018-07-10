@@ -22,9 +22,9 @@ def _handle(loop, op, M, args):
         _log.exception("Unexpected")
 
 class SharedPV(_SharedPV):
-    def __init__(self, handler=None, initial=None, loop=None):
+    def __init__(self, handler=None, loop=None, **kws):
         handler.loop = self.loop = loop or asyncio.get_event_loop()
-        _SharedPV.__init__(self, handler=handler, initial=initial)
+        _SharedPV.__init__(self, handler=handler, **kws)
         self._queue = queue or Callback()
 
     def _exec(self, op, M, *args):

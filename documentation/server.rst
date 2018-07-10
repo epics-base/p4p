@@ -7,16 +7,12 @@ Running a PVA Server
 --------------------
 
 The :py:class:`Server` starts/stops a PVAccess server.
-However, by itself a server is not useful.
-One or more Providers must be named to give the server
-a useful function.
+In order to be useful, a Server must be associated with one or more Providers.
 
 Two Provider containers are available: :py:class:`StaticProvider` or :py:class:`DynamicProvider`.
-Both are used with one of the SharedPV classes: :py:class:`raw.SharedPV`,
+Both are used with one of the SharedPV classes:,
 :py:class:`thread.SharedPV`, :py:class:`asyncio.SharedPV`, and/or :py:class:`cothread.SharedPV`.
 These different threading models may be mixed into a single Provider.
-
-.. note:: It is recommended to prefer :py:class:`StaticProvider` and leave :py:class:`DynamicProvider` for special cases.
 
 Example
 =======
@@ -28,43 +24,37 @@ A server with a single "mailbox" PV. ::
     from p4p.server import Server, StaticProvider
     from p4p.server.thread import SharedPV
     
-    type = NTScalar('d')
-    pv = SharedPV(initial=type.wrap(0.0))
+    pv = SharedPV(nt=NTScalar('d'), # scalar double
+                  initial=0.0)      # setting initial value also open()'s
     @pv.put
     def handle(pv, op):
         pv.post(op) # just store and update subscribers
 
     provider = StaticProvider('arbitrary')
-    provider.add('demo:pv:name', pv)
+    provider.add('demo:pv:name', pv) # PV name only appears here
 
-    Server.forever(providers=[provider]):
+    Server.forever(providers=[provider]) # help which runs until KeyboardInterrupt
 
-DynamicProvider Handler Interface
----------------------------------
+This server can be tested using the included command line tools. eg. ::
 
-A :py:class:`DynamicProvider` Handler class will define the following:
+    $ python -m p4p.client.cli get demo:pv:name
+    $ python -m p4p.client.cli put demo:pv:name
+    $ python -m p4p.client.cli get demo:pv:name
 
-.. class:: ProviderHandler
+And in another shell. ::
 
-    .. method:: testChannel(pvname)
-
-        Called with a PV name which some client is searching for.
-
-        :return: True to claim this PV.
-
-    .. method:: makeChannel(pvname, src):
-
-        Called when a client attempts to create a Channel for some PV.
-        The object which is returned will not be collected until
-        the client closes the Channel or becomes disconnected.
-
-        :return: A :py:class:`SharedPV` instance.
-
+    $ python -m p4p.client.cli monitor demo:pv:name
 
 SharedPV Handler Interface
 --------------------------
 
-A :py:class:`SharedPV` Handler class will
+A :py:class:`SharedPV` Handler interface is as follows.
+The difference between :py:class:`thread.SharedPV`, :py:class:`asyncio.SharedPV`, and :py:class:`cothread.SharedPV`
+is the context in which the handler methods are called (an OS thread, an asyncio coroutine, or a cothread).
+This distinction determines how blocking operations may be carried out.
+
+Note that :py:class:`thread.SharedPV` uses a fixed size thread pool.
+This limits the number of concurrent callbacks.
 
 .. class:: SharedPVHandler
 
@@ -121,7 +111,7 @@ API Reference
 .. autofunction:: removeProvider
 
 
-.. currentmodule:: p4p.server.raw
+.. currentmodule:: p4p.server.thread
 
 .. autoclass:: SharedPV
 
@@ -148,13 +138,8 @@ API Reference
     .. automethod:: peer
 
 
-There is a SharedPV class for each of the four threading models.
-All have the same methods as :py:class:`raw.SharedPV`.
-
-.. currentmodule:: p4p.server.thread
-
-.. autoclass:: SharedPV
-
+There is a SharedPV class for each of other two threading models.
+All have the same methods as :py:class:`thread.SharedPV`.
 
 .. currentmodule:: p4p.server.asyncio
 
@@ -164,3 +149,25 @@ All have the same methods as :py:class:`raw.SharedPV`.
 .. currentmodule:: p4p.server.cothread
 
 .. autoclass:: SharedPV
+
+
+DynamicProvider Handler Interface
+---------------------------------
+
+A :py:class:`DynamicProvider` Handler class will define the following:
+
+.. class:: ProviderHandler
+
+    .. method:: testChannel(pvname)
+
+        Called with a PV name which some client is searching for.
+
+        :return: True to claim this PV.
+
+    .. method:: makeChannel(pvname, src):
+
+        Called when a client attempts to create a Channel for some PV.
+        The object which is returned will not be collected until
+        the client closes the Channel or becomes disconnected.
+
+        :return: A :py:class:`SharedPV` instance.

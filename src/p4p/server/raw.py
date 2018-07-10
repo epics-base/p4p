@@ -15,8 +15,6 @@ __all__ = (
 class ServOpWrap(object):
     def __init__(self, op, unwrap):
         self._op, self._unwrap = op, unwrap
-    def pvRequest(self):
-        return self._unwrap(self._op.pvRequest())
     def value(self):
         return self._unwrap(self._op.value())
     def __getattr__(self, key):
@@ -62,6 +60,10 @@ class SharedPV(_SharedPV):
         def onPut(pv, op):
             pass
 
+    The nt= or wrap= and unwrap= arguments can be used as a convience to allow
+    the open(), post(), and associated Operation.value() to be automatically
+    transform to/from :py:class:`Value` and more convienent Python types.
+    See :ref:`unwrap`
     """
     def __init__(self, handler=None, initial=None,
                  nt=None, wrap=None, unwrap=None):
@@ -76,9 +78,25 @@ class SharedPV(_SharedPV):
             self.open(self._wrap(initial))
 
     def open(self, value):
+        """Mark the PV as opened an provide its initial value.
+        This initial value is later updated with post().
+
+        :param value:  A Value, or appropriate object (see nt= and wrap= of the constructor).
+
+        Any clients which have begun connecting which began connecting while
+        this PV was in the close'd state will complete connecting.
+
+        Only those fields of the value which are marked as changed will be stored.
+        """
         _SharedPV.open(self, self._wrap(value))
 
     def post(self, value):
+        """Provide an update to the Value of this PV.
+
+        :param value:  A Value, or appropriate object (see nt= and wrap= of the constructor).
+
+        Only those fields of the value which are marked as changed will be stored.
+        """
         _SharedPV.post(self, self._wrap(value))
 
     def current(self):

@@ -352,6 +352,13 @@ class TestRawValue(RefTestCase):
         self.assertFalse(A.changed('x'))
         self.assertTrue(A.changed('y'))
 
+        A.unmark()
+
+        self.assertSetEqual(A.asSet(), set())
+        self.assertFalse(A.changed())
+        self.assertFalse(A.changed('x'))
+        self.assertFalse(A.changed('y'))
+
     def testBitSetRecurse(self):
         A= Value(Type([
             ('x', 'i'),

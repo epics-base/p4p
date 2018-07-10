@@ -32,6 +32,38 @@ Field values can also be changed
    >>> V.value = 43
    >>> V['value'] = 43
 
+.. _valchange:
+
+Change tracking
+^^^^^^^^^^^^^^^
+
+Each :py:class:`Value` maintains a mask marking which of its field have been initialized/changed.
+
+A newly created Value has no fields marked (empty mask). ::
+
+    V = Value(T)
+    assert V.asSet()==set()
+
+Initial values can be provided at construction. ::
+
+    V = Value(T, {'value': 42})
+    assert V.changed('value')
+    assert V.asSet()==set('value')
+
+Assignment of a new value automatically marks a field as changed. ::
+
+    V = Value(T)
+    assert not V.changed('value')
+    V.value = 42
+    assert V.changed('value')
+
+The change mask can be cleared if necessary.  eg. when passing the same Value to SharedPV.post() several times. ::
+
+    V = Value(T, {'value': 42})
+    assert V.changed('value')
+    V.unmark()
+    assert not V.changed('value')
+
 Type definitions
 ----------------
 
@@ -181,13 +213,15 @@ API Reference
 
     .. automethod:: changed
 
-    .. automethod:: changedSet
+    .. automethod:: asSet
 
     .. automethod:: mark
 
+    .. automethod:: unmark
+
     .. method:: asSet
 
-        Deprecated alias for changedSet()
+        Deprecated alias for asSet()
 
 .. autoclass:: Type
 
