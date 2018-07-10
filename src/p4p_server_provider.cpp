@@ -92,6 +92,9 @@ struct DynamicHandler : public pvas::DynamicProvider::Handler {
                     TRACE("CLAIM");
                     it->claim();
                     continue;
+                } else if(PyBytes_Check(cb.get()) && strcmp(PyBytes_AsString(cb.get()), "nocache")==0) {
+                    TRACE("NOCACHE");
+                    continue;
                 }
             } else {
                 TRACE("DEFUCT");

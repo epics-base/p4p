@@ -106,6 +106,8 @@ API Reference
 
 .. autoclass:: DynamicProvider
 
+    .. autoattribute:: NotYet
+
 .. autofunction:: installProvider
 
 .. autofunction:: removeProvider
@@ -162,7 +164,12 @@ A :py:class:`DynamicProvider` Handler class will define the following:
 
         Called with a PV name which some client is searching for.
 
-        :return: True to claim this PV.
+        :return: True to claim this PV.  False to "permenently" disclaim this PV.  Or :py:attr:`DynamicProvider.NotYet` to temporarily disclaim.
+
+        Each DynamicProvider maintains a cache of negative search results (when ```testChannel()==False```)
+        to avoid extra work on a subnet with many clients searching for non-existant PVs.
+        If it is desirable to defeat this behavour, for example as part of lazy pv creation,
+        then testChannel() can return :py:attr:`DynamicProvider.NotYet` instead of False.
 
     .. method:: makeChannel(pvname, src):
 

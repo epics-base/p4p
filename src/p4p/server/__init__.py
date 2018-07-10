@@ -128,7 +128,7 @@ class DynamicProvider(_DynamicProvider):
             class DynHandler(object):
                 def __init__(self):
                     self.pv = SharedPV()
-                def testChannel(self, name):
+                def testChannel(self, name): # return True, False, or DynamicProvider.NotYet
                     return name=="blah"
                 def makeChannel(self, name, peer):
                     assert name=="blah"
@@ -136,6 +136,11 @@ class DynamicProvider(_DynamicProvider):
             provider = DynamicProvider("arbitrary", DynHandler())
             server = Server(providers=[provider])
     """
+
+    # Return from Handler.testChannel() to prevent caching of negative result.
+    # Use when testChannel('name') might shortly return True
+    NotYet = b'nocache'
+
     def __init__(self, name, handler):
         _DynamicProvider.__init__(self, name, self._WrapHandler(handler))
 
