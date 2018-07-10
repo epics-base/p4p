@@ -3,9 +3,48 @@
 Getting Started
 ===============
 
-The following assumes a PVAccess server providing a PV named 'test:array' which is an NTScalarArray.
-See below for an example of how to set this up.
+For testing and evaluation, it is recommended to install from pypi.org into a (disposable) virtualenv. ::
 
+    $ virtualenv p4ptest
+    $ . p4ptest/bin/activate
+    $ python -m pip install -U pip
+    $ python -m pip install p4p
+    $ python -m nose p4p   # Optional: runs automatic tests
+
+With this complete, open three terminal instances.
+In the first run a PVA server.  Feel free to replace 'my:pv:name'
+with an arbitrary name string everywhere it occurs. ::
+
+    $ python -m p4p.server.cli my:pv:name=int
+    ...
+    INFO:p4p.server:Running server
+
+In a second terminal run the following. If successful, the last line will end with a zero value. ::
+
+    $ python -m p4p.client.cli monitor my:pv:name
+    ...
+    my:pv:name Mon Jul  9 19:24:01 2018 0L
+
+And finally, in a third terminal run the following.  If successful, the second terminal should show the new value. ::
+
+    $ pthon -m p4p.client.cli put my:pv:name=5
+    my:pv:name=5
+
+Troubleshooting network issues
+------------------------------
+
+If the preceeding didn't work as described, there is likely a networking problem.
+
+TODO: Troubleshooting procedure
+
+Client API Usage
+----------------
+
+First start a server in another terminal. ::
+
+    $ python -m p4p.server.cli test:array=areal
+
+Now start python interactive shell.  Either run 'python', or if available 'ipython'.
 
 Import and create a client :py:class:`p4p.client.thread.Context` for the PVAccess protocol. ::
 
@@ -46,17 +85,3 @@ which returns a :py:class:`p4p.client.thread.Subscription`. ::
    ctxt.put('test:array', [4,5,6])
    # subscription update with new value is printed
    S.close() # end subscription
-
-Demo IOC Setup
---------------
-
-If the pva2pva module is built (see :ref:`builddeps`) then create a demo database file: ::
-
-    cat <<EOF > p4p-demo.db
-    record(ao, "test:scalar") {}
-    record(waveform, "test:array") {
-        field(FTVL, "DOUBLE")
-        field(NELM, "100") # max element count
-    }
-    EOF
-    ./pva2pva/bin/linux-x86_64/softIocPVA -d p4p-demo.db

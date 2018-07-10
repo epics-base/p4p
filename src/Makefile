@@ -29,6 +29,7 @@ PY += p4p/server/raw.py
 PY += p4p/server/thread.py
 PY += p4p/server/cothread.py
 PY += p4p/server/asyncio.py
+PY += p4p/server/cli.py
 PY += p4p/nt/__init__.py
 PY += p4p/nt/common.py
 PY += p4p/nt/scalar.py

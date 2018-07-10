@@ -196,3 +196,9 @@ class NTScalar(object):
             return T(value.value)._store(value)
         except Exception as e:
             raise ValueError("Can't construct %s around %s (%s): %s"%(T, value, type(value), e))
+
+if sys.version_info<(3,0):
+    class ntlong(ntwrappercommon,long):
+        pass
+
+    NTScalar.typeMap[long] = ntlong
