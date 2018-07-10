@@ -34,10 +34,12 @@ __all__ = [
 
 if sys.version_info>=(3,0):
     unicode = str
+    TimeoutError = TimeoutError
 
-class TimeoutError(RuntimeError):
-    def __init__(self):
-        RuntimeError.__init__(self, 'Timeout')
+else:
+    class TimeoutError(RuntimeError):
+        def __init__(self):
+            RuntimeError.__init__(self, 'Timeout')
 
 class Subscription(object):
     """An active subscription.
@@ -147,9 +149,6 @@ class Context(raw.Context):
 
     name = ''
     "Provider name string"
-
-    providers = raw.Context.providers
-    set_debug = raw.Context.set_debug
 
     def __init__(self, provider, conf=None, useenv=True, unwrap=None,
                  maxsize=0, workers=4):
