@@ -1,10 +1,35 @@
 
 from __future__ import print_function
 
-import gc, inspect, unittest
+import gc, inspect, unittest, functools
 import fnmatch
 
 from .. import listRefs
+
+try:
+    import asyncio
+except ImportError:
+    pass
+else:
+    def inloop(fn):
+        """Decorator assumes wrapping method of object with .loop and maybe .timeout
+        """
+        @functools.wraps(fn)
+        def testmethod(self):
+            F = fn(self)
+            if not hasattr(self, 'loop'):
+                self.loop = asyncio.new_event_loop()
+                self.loop.set_debug(True)
+            timeout = getattr(self, 'timeout', None)
+            if timeout is not None:
+                F = asyncio.wait_for(F, timeout, loop=self.loop)
+            self.loop.run_until_complete(F)
+        return testmethod
+
+    def clearloop(self):
+        if hasattr(self, 'loop'):
+            self.loop.close()
+            del self.loop
 
 class RefTestMixin(object):
     # set to list of names to compare.  Set to None to disable

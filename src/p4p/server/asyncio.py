@@ -12,10 +12,9 @@ __all__ = (
         'SharedPV',
 )
 
-@asyncio.coroutine
 def _handle(loop, op, M, args):
     try:
-        yield from asyncio.ensure_future(M(*args)
+        task = asyncio.ensure_future(M(*args))
     except Exception as e:
         if op is not None:
             op.done(error=str(e))
@@ -23,11 +22,10 @@ def _handle(loop, op, M, args):
 
 class SharedPV(_SharedPV):
     def __init__(self, handler=None, loop=None, **kws):
-        handler.loop = self.loop = loop or asyncio.get_event_loop()
+        self.loop = loop or asyncio.get_event_loop()
         _SharedPV.__init__(self, handler=handler, **kws)
-        self._queue = queue or Callback()
+        self._handler.loop = self.loop
 
     def _exec(self, op, M, *args):
-        fn = partial(_handle, loop, op, M, args)
+        self.loop.call_soon_threadsafe(partial(_handle, self.loop, op, M, args))
         # 3.5 adds asyncio.run_coroutine_threadsafe()
-        self.loop.call_soon_threadsafe(lambda:asyncio.ensure_future(fn, loop=self.loop))
