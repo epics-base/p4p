@@ -152,18 +152,24 @@ class Context(raw.Context):
 
     def __init__(self, provider, conf=None, useenv=True, unwrap=None,
                  maxsize=0, workers=4):
+        self._channel_lock = threading.Lock()
+
         super(Context, self).__init__(provider, conf=conf, useenv=useenv, unwrap=unwrap)
+
         # lazy start threaded WorkQueue
         self._Q = self._T = None
 
         self._Qmax = maxsize
         self._Wcnt = workers
 
-        self._channel_lock = threading.Lock()
 
     def _channel(self, name):
         with self._channel_lock:
             return super(Context, self)._channel(name)
+
+    def disconnect(self, *args, **kws):
+        with self._channel_lock:
+            super(Context, self).disconnect(*args, **kws)
 
     def _queue(self):
         if self._Q is None:

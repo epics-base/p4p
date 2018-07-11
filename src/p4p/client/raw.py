@@ -197,8 +197,11 @@ class Context(object):
             self._channels[name] = chan
         return chan
 
-    def disconnect(self):
-        self._channels = {}
+    def disconnect(self, name=None):
+        if name is None:
+            self._channels = {}
+        else:
+            self._channels.pop(name)
 
     def _request(self, process=None, wait=None):
         """helper for building pvRequests

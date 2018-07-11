@@ -72,6 +72,7 @@ class TestGPM(RefTestCase):
             # https://github.com/epics-base/pvAccessCPP/issues/103
             #  also proves that our Channel cache is working...
             self.assertRaises(RuntimeError, ctxt.get, 'foo', timeout=0.1)
+            ctxt.disconnect('foo') # clear channel cache and force new channel to ensure we don't race to pick up the broken one
 
             V = ctxt.get('foo')
             self.assertEqual(V, 1.0)
