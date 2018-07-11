@@ -47,6 +47,20 @@ print('PY_INCDIRS :=',' '.join(incdirs), file=out)
 print('PY_LIBDIRS :=',' '.join(libdirs), file=out)
 print('HAVE_NUMPY :=',have_np, file=out)
 
+try:
+    import asyncio
+except ImportError:
+    print('HAVE_ASYNCIO := NO', file=out)
+else:
+    print('HAVE_ASYNCIO := YES', file=out)
+
+try:
+    import cothread
+except ImportError:
+    print('HAVE_COTHREAD := NO', file=out)
+else:
+    print('HAVE_COTHREAD := YES', file=out)
+
 print('PY_OK := YES', file=out)
 
 out.close()

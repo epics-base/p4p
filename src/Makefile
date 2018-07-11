@@ -47,11 +47,14 @@ PY += p4p/test/test_type.py
 PY += p4p/test/test_value.py
 PY += p4p/test/test_client_raw.py
 PY += p4p/test/test_client_thread.py
-PY += p4p/test/test_asyncio.py
 PY += p4p/test/test_server.py
 PY += p4p/test/test_rpc.py
 PY += p4p/test/test_nt.py
 PY += p4p/test/test_sharedpv.py
+
+ifeq ($(HAVE_ASYNCIO),YES)
+PY += p4p/test/test_asyncio.py
+endif
 
 include $(TOP)/configure/RULES
 include $(TOP)/configure/RULES_PY
