@@ -12,9 +12,21 @@ __all__ = (
         'SharedPV',
 )
 
+def _log_err(V):
+    if isinstance(V, Exception):
+        _log.error("Unhandled from SharedPV handler: %s", V)
+        # TODO: figure out how to show stack trace...
+        # until then, propagate in the hope that someone else will
+    return V
+
 def _handle(loop, op, M, args):
     try:
-        task = asyncio.ensure_future(M(*args))
+        _log.debug('SERVER HANDLE %s %s %s', op, M, args)
+        maybeco = M(*args)
+        if asyncio.iscoroutine(maybeco):
+            _log.debug('SERVER SCHEDULE %s', maybeco)
+            task = asyncio.ensure_future(maybeco)
+            task.add_done_callback(_log_err)
     except Exception as e:
         if op is not None:
             op.done(error=str(e))
