@@ -48,7 +48,7 @@ else:
         @asyncio.coroutine
         def test_getput(self):
             with Server(providers=[self.provider], isolate=True) as S:
-                with Context('pva', conf=S.conf(), useenv=False) as C:
+                with Context('pva', conf=S.conf(), useenv=False, loop=self.loop) as C:
                     self.assertEqual(0, (yield from C.get('foo')))
 
                     yield from C.put('foo', 5)
@@ -59,7 +59,7 @@ else:
         @asyncio.coroutine
         def test_monitor(self):
             with Server(providers=[self.provider], isolate=True) as S:
-                with Context('pva', conf=S.conf(), useenv=False) as C:
+                with Context('pva', conf=S.conf(), useenv=False, loop=self.loop) as C:
 
                     Q = asyncio.Queue(loop=self.loop)
 
