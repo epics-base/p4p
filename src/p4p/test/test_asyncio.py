@@ -21,6 +21,7 @@ else:
     from .utils import inloop, clearloop
 
     class Handler:
+        @asyncio.coroutine
         def put(self, pv, op):
             _log.debug("putting %s <- %s", op.name(), op.value())
             yield from asyncio.sleep(0, loop=self.loop) # prove that we can

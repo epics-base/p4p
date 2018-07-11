@@ -25,7 +25,7 @@ def _handle(loop, op, M, args):
         maybeco = M(*args)
         if asyncio.iscoroutine(maybeco):
             _log.debug('SERVER SCHEDULE %s', maybeco)
-            task = asyncio.ensure_future(maybeco)
+            task = loop.create_task(maybeco)
             task.add_done_callback(_log_err)
     except Exception as e:
         if op is not None:
