@@ -4,8 +4,6 @@ from __future__ import print_function
 import logging
 _log = logging.getLogger(__name__)
 
-from functools import wraps
-
 import warnings
 import atexit, sys
 from weakref import WeakSet
@@ -44,7 +42,6 @@ class RemoteError(RuntimeError):
 def unwrapHandler(handler, unwrap):
     """Wrap get/rpc handler to unwrap Value
     """
-    @wraps(handler)
     def dounwrap(code, msg, val):
         _log.debug("Handler (%s, %s, %s) -> %s", code, msg, val, handler)
         try:
@@ -81,7 +78,6 @@ def defaultBuilder(value):
     """Reasonably sensible default handling of put builder
     """
     if callable(value):
-        @wraps(value)
         def logbuilder(V):
             try:
                 value(V)
