@@ -11,6 +11,7 @@ addons:
     - perl
 install:
  - pip install -r requirements-${PROF}.txt
+ - pip install cothread
  - ./build-deps.sh
 script:
  - make PYTHON=`which python` -j2
