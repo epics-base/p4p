@@ -192,11 +192,6 @@ class Context(raw.Context):
             self._Q, self._T = None, None
         super(Context, self).close()
 
-    def __enter__(self):
-        return self
-    def __exit__(self,A,B,C):
-        self.close()
-
     def get(self, name, request=None, timeout=5.0, throw=True):
         """Fetch current value of some number of PVs.
         

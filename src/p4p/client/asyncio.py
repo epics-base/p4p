@@ -28,11 +28,6 @@ class Context(raw.Context):
         super(Context, self).__init__(provider, conf=conf, useenv=useenv, unwrap=unwrap)
         self.loop = loop or asyncio.get_event_loop()
 
-    def __enter__(self):
-        return self
-    def __exit__(self,A,B,C):
-        self.close()
-
     @asyncio.coroutine
     def get(self, name, request=None):
         singlepv = isinstance(name, (bytes, str))
@@ -181,6 +176,7 @@ class Subscription(object):
         try:
             while True:
                 E = yield from self._Q.get()
+                self._Q.task_done()
                 _log.debug("Subscription %s handle %s", self.name, E)
 
                 S = self._S
