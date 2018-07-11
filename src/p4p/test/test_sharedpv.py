@@ -8,7 +8,7 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from ..wrapper import Value, Type
-from ..client.thread import Context, TimeoutError
+from ..client.thread import Context, Disconnected, TimeoutError
 from ..server import Server, StaticProvider
 from ..server.thread import SharedPV, _defaultWorkQueue
 from ..util import WorkQueue
@@ -106,7 +106,10 @@ class TestGPM(RefTestCase):
             self.pv.open(1.0)
 
             Q = Queue(maxsize=4)
-            sub = ctxt.monitor('foo', Q.put)
+            sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
+
+            V = Q.get(timeout=self.timeout)
+            self.assertIsInstance(V, Disconnected)
 
             V = Q.get(timeout=self.timeout)
             self.assertEqual(V, 1.0)
@@ -115,6 +118,16 @@ class TestGPM(RefTestCase):
 
             V = Q.get(timeout=self.timeout)
             self.assertEqual(V, 8.0)
+
+            self.pv.close()
+
+            V = Q.get(timeout=self.timeout)
+            self.assertIsInstance(V, Disconnected)
+
+            self.pv.open(3.0)
+
+            V = Q.get(timeout=self.timeout)
+            self.assertEqual(V, 3.0)
 
         C = weakref.ref(ctxt)
         del ctxt

@@ -51,7 +51,7 @@ class Subscription(object):
         self._evt = threading.Event()
         if notify_disconnect:
             # all subscriptions are inittially disconnected
-            self._Q.push_wait(partial(cb, None))
+            self._Q.push_wait(partial(cb, Disconnected()))
     def close(self):
         """Close subscription.
         """
