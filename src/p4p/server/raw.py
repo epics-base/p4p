@@ -75,9 +75,9 @@ class SharedPV(_SharedPV):
 
         _SharedPV.__init__(self, self._whandler)
         if initial is not None:
-            self.open(self._wrap(initial))
+            self.open(initial, nt=nt, wrap=wrap, unwrap=unwrap)
 
-    def open(self, value):
+    def open(self, value, nt=None, wrap=None, unwrap=None):
         """Mark the PV as opened an provide its initial value.
         This initial value is later updated with post().
 
@@ -88,6 +88,10 @@ class SharedPV(_SharedPV):
 
         Only those fields of the value which are marked as changed will be stored.
         """
+
+        self._wrap = wrap or (nt and nt.wrap) or self._wrap
+        self._unwrap = unwrap or (nt and nt.unwrap) or self._unwrap
+
         _SharedPV.open(self, self._wrap(value))
 
     def post(self, value):
