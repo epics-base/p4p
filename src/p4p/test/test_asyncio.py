@@ -6,13 +6,14 @@ import unittest, sys, random, weakref, gc, threading
 from unittest.case import SkipTest
 
 from ..nt import NTScalar
-from ..server import Server, installProvider, removeProvider, StaticProvider
+from ..server import Server, StaticProvider
 from .utils import RefTestCase
 
 try:
     import asyncio
 except ImportError:
     raise SkipTest('No asyncio')
+    # not that this is going to help as 'yield from' is a syntax error in 2.7
 else:
     from ..client.asyncio import Context, Disconnected
     from ..server.asyncio import SharedPV
