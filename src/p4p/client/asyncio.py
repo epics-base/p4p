@@ -203,11 +203,15 @@ class Subscription(object):
                 elif S is None: # already close()'d
                     return
 
+                i = 0
                 while True:
                     E = S.pop()
                     if E is None or self._S is None:
                         break
                     yield from self._cb(E)
+                    i = (i+1)%4
+                    if i==0:
+                        yield from asyncio.sleep(0) # Not sure how necessary.  Ensure we go to the scheduler
 
                 if S.done:
                     _log.debug("Subscription complete")
