@@ -77,8 +77,8 @@ class Context(raw.Context):
         if singlepv:
             return (yield from self._put_one(name, values, request=request))
 
-        if not isinstance(request, list):
-            request = [request]
+        elif request is None:
+            request = [None]*len(name)
 
         assert len(name)==len(request), (name, request)
         assert len(name)==len(values), (name, values)

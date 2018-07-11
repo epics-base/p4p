@@ -42,8 +42,10 @@ class TestGPM(RefTestCase):
         }
 
         self.pv = SharedPV(handler=self.Times2Handler(), nt=NTScalar('d'))
+        self.pv2 = SharedPV(handler=self.Times2Handler(), nt=NTScalar('d'), initial=42.0)
         self.sprov = StaticProvider("serverend")
         self.sprov.add('foo', self.pv)
+        self.sprov.add('bar', self.pv2)
 
         self.server = Server(providers=[self.sprov], conf=conf, useenv=False)
 
@@ -56,6 +58,7 @@ class TestGPM(RefTestCase):
         del self.server
         del self.sprov
         del self.pv
+        del self.pv2
         gc.collect()
         R = [r() for r in R]
         self.assertListEqual(R, [None]*len(R))
@@ -78,6 +81,8 @@ class TestGPM(RefTestCase):
             self.assertEqual(V, 1.0)
             self.assertTrue(V.raw.changed('value'))
 
+            self.assertEqual(ctxt.get(['foo', 'bar']), [1.0, 42.0])
+
         C = weakref.ref(ctxt)
         del ctxt
         gc.collect()
@@ -95,6 +100,10 @@ class TestGPM(RefTestCase):
 
             V = ctxt.get('foo')
             self.assertEqual(V, 10.0)
+
+            ctxt.put(['foo', 'bar'], [5, 6])
+
+            self.assertEqual(ctxt.get(['foo', 'bar']), [5*2, 6*2])
 
         C = weakref.ref(ctxt)
         del ctxt

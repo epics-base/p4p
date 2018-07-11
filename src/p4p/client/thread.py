@@ -219,10 +219,9 @@ class Context(raw.Context):
         singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
             name = [name]
-            if request is not None:
-                request = [request]
+            request = [request]
 
-        if request is None:
+        elif request is None:
             request = [None]*len(name)
 
         assert len(name)==len(request), (name, request)
@@ -309,9 +308,10 @@ class Context(raw.Context):
         if singlepv:
             name = [name]
             values = [values]
-
-        if not isinstance(request, list):
             request = [request]
+
+        elif request is None:
+            request = [None]*len(name)
 
         assert len(name)==len(request), (name, request)
         assert len(name)==len(values), (name, values)

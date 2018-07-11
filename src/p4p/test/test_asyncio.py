@@ -37,11 +37,14 @@ else:
             super(TestGPM, self).setUp()
 
             self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=Handler(), loop=self.loop)
-            self.provider = StaticProvider('dut')
+            self.pv2 = SharedPV(handler=Handler(), nt=NTScalar('d'), initial=42.0)
+            self.provider = StaticProvider("serverend")
             self.provider.add('foo', self.pv)
+            self.provider.add('bar', self.pv2)
 
         def tearDown(self):
             del self.pv
+            del self.pv2
             del self.provider
             clearloop(self)
             super(TestGPM, self).tearDown()

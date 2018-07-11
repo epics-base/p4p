@@ -30,11 +30,14 @@ else:
             super(TestGPM, self).setUp()
 
             self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=Handler())
-            self.provider = StaticProvider('dut')
+            self.pv2 = SharedPV(handler=Handler(), nt=NTScalar('d'), initial=42.0)
+            self.provider = StaticProvider("serverend")
             self.provider.add('foo', self.pv)
+            self.provider.add('bar', self.pv2)
 
         def tearDown(self):
             del self.pv
+            del self.pv2
             del self.provider
             super(TestGPM, self).tearDown()
 
@@ -46,6 +49,12 @@ else:
                     C.put('foo', 5)
 
                     self.assertEqual(5*2, C.get('foo'))
+
+                    self.assertEqual([5*2, 42.0], C.get(['foo', 'bar']))
+
+                    C.put(['foo', 'bar'], [6, 7])
+
+                    self.assertEqual([6*2, 7*2], C.get(['foo', 'bar']))
 
         def test_monitor(self):
             with Server(providers=[self.provider], isolate=True) as S:
