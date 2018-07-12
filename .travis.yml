@@ -3,7 +3,9 @@ dist: trusty
 language: python
 compiler:
   - gcc
-env: REFTEST_IGNORE_TRANSIENT=YES
+env:
+  global:
+  - REFTEST_IGNORE_TRANSIENT=YES
 addons:
   apt:
     packages:
