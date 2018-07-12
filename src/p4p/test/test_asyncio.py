@@ -15,7 +15,7 @@ except ImportError:
     raise SkipTest('No asyncio')
     # not that this is going to help as 'yield from' is a syntax error in 2.7
 else:
-    from ..client.asyncio import Context, Disconnected
+    from ..client.asyncio import Context, Disconnected, timesout
     from ..server.asyncio import SharedPV
 
     from .utils import inloop, clearloop
@@ -89,3 +89,27 @@ else:
                     finally:
                         sub.close()
                         yield from sub.wait_closed()
+
+class TestTimeout(unittest.TestCase):
+    def tearDown(self):
+        clearloop(self)
+
+    @inloop
+    def test_timeout(self):
+        done = None
+
+        @timesout()
+        @asyncio.coroutine
+        def action(loop):
+            nonlocal done
+            done = False
+            yield from asyncio.sleep(5, loop=loop)
+            done = True
+
+        try:
+            yield from action(self.loop, timeout=0.01)
+            self.assertTrue(False)
+        except asyncio.TimeoutError:
+            pass
+
+        self.assertIs(done, False)

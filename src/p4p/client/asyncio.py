@@ -4,7 +4,7 @@ _log = logging.getLogger(__name__)
 
 import asyncio
 
-from functools import partial
+from functools import partial, wraps
 
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled
@@ -19,10 +19,88 @@ __all__ = [
     'Value',
     'Type',
     'RemoteError',
+    'timeout',
 ]
 
+def timesout(deftimeout=5.0):
+    """Decorate a coroutine to implement an overall timeout.
+
+    The decorated coroutine will have an additional keyword
+    argument 'timeout=' which gives a timeout in seconds,
+    or None to disable timeout.
+
+    :param float deftimeout: The default timeout= for the decorated coroutine.
+
+    It is suggested perform one overall timeout at a high level
+    rather than multiple timeouts on low-level operations. ::
+
+        @timesout()
+        @asyncio.coroutine
+        def dostuff(ctxt):
+            yield from ctxt.put('msg', 'Working')
+            A, B = yield from ctxt.get(['foo', 'bar'])
+            yield from ctxt.put('bar', A+B, wait=True)
+            yield from ctxt.put('msg', 'Done')
+
+        @asyncio.coroutine
+        def exec():
+            with Context('pva') as ctxt:
+                yield from asyncio.wait_for(dostuff(ctxt), timeout=5)
+    """
+    def decorate(fn):
+        assert asyncio.iscoroutinefunction(fn), "Place @timesout before @coroutine"
+        @wraps(fn)
+        @asyncio.coroutine
+        def wrapper(*args, timeout=deftimeout, **kws):
+            loop = kws.get('loop')
+            fut = fn(*args, **kws)
+            if timeout is None:
+                yield from fut
+            else:
+                yield from asyncio.wait_for(fut, timeout=timeout, loop=loop)
+        return wrapper
+    return decorate
 
 class Context(raw.Context):
+    """
+    :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
+    :param conf dict: Configuration to pass to provider.  Depends on provider selected.
+    :param bool useenv: Allow the provider to use configuration from the process environment.
+    :param callable unwrap: Controls :ref:`unwrap`.  Set False to disable
+
+    The methods of this Context will block the calling thread until completion or timeout
+
+    The meaning, and allowed keys, of the configuration dictionary depend on the provider.
+
+    The "pva" provider understands the following keys:
+
+    * EPICS_PVA_ADDR_LIST
+    * EPICS_PVA_AUTO_ADDR_LIST
+    * EPICS_PVA_SERVER_PORT
+    * EPICS_PVA_BROADCAST_PORT
+
+    Timeout and Cancellation
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+    All coroutines/Futures returned by Context methods can be cancelled.
+    The methods of Context do not directly implement a timeout.
+    Instead :py:meth:`asyncio.wait_for` should be used.
+    It is suggested perform one overall timeout at a high level
+    rather than multiple timeouts on low-level operations. ::
+
+        @timesout()
+        @asyncio.coroutine
+        def dostuff(ctxt):
+            yield from ctxt.put('msg', 'Working')
+            A, B = yield from ctxt.get(['foo', 'bar'])
+            yield from ctxt.put('bar', A+B, wait=True)
+            yield from ctxt.put('msg', 'Done')
+
+        @asyncio.coroutine
+        def exec():
+            with Context('pva') as ctxt:
+                yield from asyncio.wait_for(dostuff(ctxt), timeout=5)
+    """
     def __init__(self, provider, conf=None, useenv=True, unwrap=None,
                  loop=None):
         super(Context, self).__init__(provider, conf=conf, useenv=useenv, unwrap=unwrap)
@@ -30,6 +108,20 @@ class Context(raw.Context):
 
     @asyncio.coroutine
     def get(self, name, request=None):
+        """Fetch current value of some number of PVs.
+        
+        :param name: A single name string or list of name strings
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+
+        :returns: A p4p.Value, or list of same.  Subject to :py:ref:`unwrap`.
+
+        When invoked with a single name then returns is a single value.
+        When invoked with a list of name, then returns a list of values. ::
+
+            with Context('pva') as ctxt:
+                V    = yield from ctxt.get('pv:name')
+                A, B = yield from ctxt.get(['pv:1', 'pv:2'])
+        """
         singlepv = isinstance(name, (bytes, str))
         if singlepv:
             return (yield from self._get_one(name, request=request))
@@ -68,6 +160,30 @@ class Context(raw.Context):
 
     @asyncio.coroutine
     def put(self, name, values, request=None, process=None, wait=None):
+        """Write a new value of some number of PVs.
+
+        :param name: A single name string or list of name strings
+        :param values: A single value or a list of values
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param str process: Control remote processing.  May be 'true', 'false', 'passive', or None.
+        :param bool wait: Wait for all server processing to complete.
+
+        When invoked with a single name then returns is a single value.
+        When invoked with a list of name, then returns a list of values
+
+        If 'wait' or 'process' is specified, then 'request' must be omitted or None. ::
+
+            with Context('pva') as ctxt:
+                yield from ctxt.put('pv:name', 5.0)
+                yield from ctxt.put(['pv:1', 'pv:2'], [1.0, 2.0])
+                yield from ctxt.put('pv:name', {'value':5})
+
+        The provided value(s) will be automatically coerced to the target type.
+        If this is not possible then an Exception is raised/returned.
+
+        Unless the provided value is a dict, it is assumed to be a plain value
+        and an attempt is made to store it in '.value' field.
+        """
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:
@@ -111,6 +227,26 @@ class Context(raw.Context):
 
     @asyncio.coroutine
     def rpc(self, name, value, request=None):
+        """Perform a Remote Procedure Call (RPC) operation
+
+        :param str name: PV name string
+        :param Value value: Arguments.  Must be Value instance
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+
+        :returns: A Value.  Subject to :py:ref:`unwrap`.
+
+        For example: ::
+
+            uri = NTURI(['A','B'])
+            with Context('pva') as ctxt:
+                result = yield from ctxt.rpc('pv:name:add', uri.wrap('pv:name:add', 5, B=6))
+
+        The provided value(s) will be automatically coerced to the target type.
+        If this is not possible then an Exception is raised/returned.
+
+        Unless the provided value is a dict or Value, it is assumed to be a plain value
+        and an attempt is made to store it in '.value' field.
+        """
         F = asyncio.Future(loop=self.loop)
 
         def cb(value):
@@ -130,6 +266,20 @@ class Context(raw.Context):
             op.close()
 
     def monitor(self, name, cb, request=None, notify_disconnect = False):
+        """Create a subscription.
+        
+        :param str name: PV name string
+        :param callable cb: Processing callback
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param bool notify_disconnect: In additional to Values, the callback may also be call with instances of Exception.
+                                       Specifically: Disconnected , RemoteError, or Cancelled
+        :returns: a :py:class:`Subscription` instance
+
+        The callable will be invoked with one argument which is either.
+
+        * A p4p.Value (Subject to :py:ref:`unwrap`)
+        * A sub-class of Exception (Disconnected , RemoteError, or Cancelled)
+        """
         assert asyncio.iscoroutinefunction(cb), "monitor callback must be coroutine"
         R = Subscription(name, cb, notify_disconnect=notify_disconnect, loop=self.loop)
         cb = partial(self.loop.call_soon_threadsafe, R._event)
@@ -138,6 +288,8 @@ class Context(raw.Context):
         return R
 
 class Subscription(object):
+    """An active subscription.
+    """
     def __init__(self, name, cb, notify_disconnect = False, loop = None):
         self.name, self._S, self._cb, self.loop = name, None, cb, loop
         self._notify_disconnect = notify_disconnect
@@ -155,6 +307,8 @@ class Subscription(object):
         self.close()
 
     def close(self):
+        """Begin closing subscription.
+        """
         if self._S is not None:
             # after .close() self._event should never be called
             self._S.close()
@@ -163,6 +317,8 @@ class Subscription(object):
 
     @asyncio.coroutine
     def wait_closed(self):
+        """Wait until subscription is closed.
+        """
         assert self._S is None, "Not close()'d"
         yield from self._T
 

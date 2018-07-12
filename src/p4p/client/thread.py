@@ -129,10 +129,10 @@ class Context(raw.Context):
 
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
     :param conf dict: Configuration to pass to provider.  Depends on provider selected.
-    :param useenv bool: Allow the provider to use configuration from the process environment.
-    :param workers int: Size of thread pool in which monitor callbacks are run.  Default is 4
-    :param maxsize int: Size of internal work queue used for monitor callbacks.  Default is unlimited
-    :param unwrap: Controls :ref:`unwrap`.  Set False to disable
+    :param bool useenv: Allow the provider to use configuration from the process environment.
+    :param int workers: Size of thread pool in which monitor callbacks are run.  Default is 4
+    :param int maxsize: Size of internal work queue used for monitor callbacks.  Default is unlimited
+    :param callable unwrap: Controls :ref:`unwrap`.  Set False to disable
 
     The methods of this Context will block the calling thread until completion or timeout
 
@@ -370,9 +370,6 @@ class Context(raw.Context):
 
         :returns: A Value or Exception.  Subject to :py:ref:`unwrap`.
 
-        When invoked with a single name then returns is a single value.
-        When invoked with a list of names, then returns a list of values
-
         >>> ctxt = Context('pva')
         >>> ctxt.rpc('pv:name:add', {'A':5, 'B'; 6})
         >>>
@@ -406,14 +403,14 @@ class Context(raw.Context):
         :param str name: PV name string
         :param callable cb: Processing callback
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
-        :param bool notify_disconnect: Whether disconnect (and done) notifications are delivered to the callback (as None).
+        :param bool notify_disconnect: In additional to Values, the callback may also be call with instances of Exception.
+                                       Specifically: Disconnected , RemoteError, or Cancelled
         :returns: a :py:class:`Subscription` instance
 
         The callable will be invoked with one argument which is either.
 
         * A p4p.Value (Subject to :py:ref:`unwrap`)
-        * A sub-class of Exception
-        * None when the subscription is complete, and more updates will ever arrive.
+        * A sub-class of Exception (Disconnected , RemoteError, or Cancelled)
         """
         R = Subscription(self, name, cb, notify_disconnect=notify_disconnect)
 
