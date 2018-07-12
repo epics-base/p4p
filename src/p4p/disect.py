@@ -1,8 +1,14 @@
 """Python reference counter statistics.
 """
+
+from __future__ import print_function
+
 import sys, gc, inspect, time
 from glob import fnmatch
-from types import InstanceType
+try:
+    from types import InstanceType
+except ImportError: # py3
+    InstanceType = None
 
 class StatsDelta(object):
   """GC statistics tracking.
@@ -26,40 +32,40 @@ class StatsDelta(object):
     """
     cur = gcstats()
     Ncur = len(cur)
-    if self.stats is not None:
+    if self.stats is not None and file is not None:
       prev = self.stats
       Nprev = self.ntypes # may be less than len(prev)
 
       if Ncur!=Nprev:
-        print >>file,"# Types %d -> %d"%(Nprev,Ncur)
+        print("# Types %d -> %d"%(Nprev,Ncur), file=file)
 
       Scur, Sprev, first = set(cur), set(prev), True
       for T in Scur-Sprev: # new types
         if first:
-          print >>file,'New Types'
+          print('New Types', file=file)
           first=False
-        print >>file,' ',T,cur[T]
+        print(' ',T,cur[T], file=file)
 
       first = True
       for T in Sprev-Scur: # collected types
         if first:
-          print >>file,'Cleaned Types'
+          print('Cleaned Types', file=file)
           first=False
-        print >>file,' ',T,-prev[T]
+        print(' ',T,-prev[T], file=file)
 
       first = True
       for T in Scur&Sprev:
         if cur[T]==prev[T]:
           continue
         if first:
-          print >>file,'Known Types'
+          print('Known Types', file=file)
           first=False
-        print >>file,' ',T,cur[T],'delta',cur[T]-prev[T]
+        print(' ',T,cur[T],'delta',cur[T]-prev[T], file=file)
 
     else: # first call
-      print >>file,"All Types"
-      for T,C in cur.iteritems():
-        print >>file,' ',T,C
+      print("All Types", file=file)
+      for T,C in cur.items():
+        print(' ',T,C, file=file)
 
     self.stats, self.ntypes = cur, len(cur)
     #gc.collect()
@@ -135,11 +141,10 @@ def periodic(period=60.0, file=sys.stderr):
   T.start()
 
 if __name__=='__main__':
-  #for T,C in gcstats().iteritems():
+  #for T,C in gcstats().items():
   #  print T,C
   gc.set_debug(gc.DEBUG_COLLECTABLE|gc.DEBUG_INSTANCES|gc.DEBUG_OBJECTS)
   S=StatsDelta()
   while True:
-    print 'Iteration'
     S.collect()
     #gc.collect()
