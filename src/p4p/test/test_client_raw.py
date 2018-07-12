@@ -34,6 +34,7 @@ class TestPVA(RefTestCase):
         super(TestPVA, self).setUp()
         self.ctxt = Context("pva")
     def tearDown(self):
+        self.ctxt.close()
         self.ctxt = None
         gc.collect()
         super(TestPVA, self).tearDown()
