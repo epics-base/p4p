@@ -3,6 +3,7 @@
 
 #include <pv/configuration.h>
 #include <pv/logger.h>
+#include <pv/reftrack.h>
 #include <pva/client.h>
 #include "p4p.h"
 
@@ -13,11 +14,18 @@ typedef PyClassWrapper<pvac::ClientProvider> PyClientProvider;
 typedef PyClassWrapper<pvac::ClientChannel> PyClientChannel;
 
 struct ClientMonitor : public pvac::ClientChannel::MonitorCallback {
+    static size_t num_instances;
+
     pvac::Monitor monitor;
     PyRef cb;
 
+    ClientMonitor() {
+        REFTRACE_INCREMENT(num_instances);
+    }
+
     virtual ~ClientMonitor() {
         monitor.cancel(); // we should be the only reference, but ... paranoia
+        REFTRACE_DECREMENT(num_instances);
     }
 
     virtual void monitorEvent(const pvac::MonitorEvent& evt)
@@ -36,11 +44,15 @@ struct ClientMonitor : public pvac::ClientChannel::MonitorCallback {
     }
 };
 
+size_t ClientMonitor::num_instances;
+
 typedef PyClassWrapper<ClientMonitor> PyClientMonitor;
 
 struct ClientOperation : public pvac::ClientChannel::PutCallback,
                          public pvac::ClientChannel::GetCallback
 {
+    static size_t num_instances;
+
     pvac::ClientChannel chan;
     pvac::Operation op;
     pvd::PVStructure::const_shared_pointer pvRequest;
@@ -48,8 +60,12 @@ struct ClientOperation : public pvac::ClientChannel::PutCallback,
     PyRef builder;
     PyRef getval; // only for put
 
+    ClientOperation() {
+        REFTRACE_INCREMENT(num_instances);
+    }
     virtual ~ClientOperation() {
         op.cancel();
+        REFTRACE_DECREMENT(num_instances);
     }
 
     virtual void getDone(const pvac::GetEvent& evt)
@@ -147,6 +163,8 @@ struct ClientOperation : public pvac::ClientChannel::PutCallback,
         }
     }
 };
+
+size_t ClientOperation::num_instances;
 
 typedef PyClassWrapper<ClientOperation> PyClientOperation;
 
@@ -566,6 +584,9 @@ static int clientoperation_clear(PyObject *self)
 
 void p4p_client_register(PyObject *mod)
 {
+    epics::registerRefCounter("p4p._p4p.ClientMonitor", &ClientMonitor::num_instances);
+    epics::registerRefCounter("p4p._p4p.ClientOperation", &ClientOperation::num_instances);
+
     PyClientProvider::buildType();
 
     PyClientProvider::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_BASETYPE;
