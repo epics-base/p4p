@@ -17,7 +17,7 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled
+from .raw import Disconnected, RemoteError, Cancelled, Finished
 from ..wrapper import Value, Type
 from ..rpc import WorkQueue
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
@@ -113,12 +113,11 @@ class Subscription(object):
                 # re-schedule to mux with others
                 self._Q.push(partial(self._handle, True))
             elif S.done:
-                _log.debug("Subscription complete")
+                _log.debug('Subscription complete %s', self.name)
                 S.close()
                 S = None
-                _log.debug('Subscription disconnect %s', self.name)
                 if self._notify_disconnect:
-                    self._cb(Disconnected())
+                    self._cb(Finished())
         except:
             _log.exception("Error processing Subscription event: %s", E)
             self._S.close()

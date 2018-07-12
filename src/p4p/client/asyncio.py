@@ -7,7 +7,7 @@ import asyncio
 from functools import partial, wraps
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled
+from .raw import Disconnected, RemoteError, Cancelled, Finished
 from ..wrapper import Value, Type
 from ..rpc import WorkQueue
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
@@ -370,12 +370,11 @@ class Subscription(object):
                         yield from asyncio.sleep(0) # Not sure how necessary.  Ensure we go to the scheduler
 
                 if S.done:
-                    _log.debug("Subscription complete")
+                    _log.debug('Subscription complete %s', self.name)
                     S.close()
                     self._S = None
-                    _log.debug('Subscription disconnect %s', self.name)
                     if self._notify_disconnect:
-                        E = None
+                        E = Finished()
                         yield from self._cb(E)
                     break
         except:

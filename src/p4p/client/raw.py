@@ -29,12 +29,16 @@ __all__ = (
 
 class Cancelled(RuntimeError):
     "Cancelled from client (this) end."
-    def __init__(self):
-        RuntimeError.__init__(self, "Cancelled by client")
+    def __init__(self, msg=None):
+        RuntimeError.__init__(self, msg or "Cancelled by client")
 
 class Disconnected(RuntimeError):
-    def __init__(self):
-        RuntimeError.__init__(self, "Channel disconnected")
+    def __init__(self, msg=None):
+        RuntimeError.__init__(self, msg or "Channel disconnected")
+
+class Finished(Disconnected):
+    def __init__(self, msg=None):
+        Disconnected.__init__(self, msg or "Subscription Finished")
 
 class RemoteError(RuntimeError):
     "Throw with an error message which will be passed back to the caller"

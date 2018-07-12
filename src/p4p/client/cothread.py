@@ -9,7 +9,7 @@ import cothread
 from functools import partial
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled
+from .raw import Disconnected, RemoteError, Cancelled, Finished
 from .thread import TimeoutError
 from ..wrapper import Value, Type
 from ..rpc import WorkQueue
@@ -223,12 +223,11 @@ class Subscription(object):
                         cothread.Yield()
 
                 if S.done:
-                    _log.debug("Subscription complete")
+                    _log.debug('Subscription complete %s', self.name)
                     S.close()
                     self._S = None
-                    _log.debug('Subscription disconnect %s', self.name)
                     if self._notify_disconnect:
-                        E = None
+                        E = Finished()
                         self._cb(E)
                     break
         except:
