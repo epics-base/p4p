@@ -3,6 +3,7 @@ dist: trusty
 language: python
 compiler:
   - gcc
+env: REFTEST_IGNORE_TRANSIENT=YES
 addons:
   apt:
     packages:
