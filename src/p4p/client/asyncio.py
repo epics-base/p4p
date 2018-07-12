@@ -315,6 +315,15 @@ class Subscription(object):
             self._S = None
             self._Q.put_nowait(None)
 
+    @property
+    def done(self):
+        'Has all data for this subscription been received?'
+        return self._S is None or self._S.done()
+    @property
+    def empty(self):
+        'Is data pending in event queue?'
+        return self._S is None or self._S.empty()
+
     @asyncio.coroutine
     def wait_closed(self):
         """Wait until subscription is closed.

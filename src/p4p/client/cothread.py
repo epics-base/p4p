@@ -29,6 +29,23 @@ if sys.version_info>=(3,0):
 
 class Context(raw.Context):
     def get(self, name, request=None, timeout=5.0, throw=True):
+        """Fetch current value of some number of PVs.
+        
+        :param name: A single name string or list of name strings
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param float timeout: Operation timeout in seconds
+        :param bool throw: When true, operation error throws an exception.  If False then the Exception is returned instead of the Value
+
+        :returns: A p4p.Value or Exception, or list of same.  Subject to :py:ref:`unwrap`.
+
+        When invoked with a single name then returns is a single value.
+        When invoked with a list of name, then returns a list of values
+
+        >>> ctxt = Context('pva')
+        >>> V = ctxt.get('pv:name')
+        >>> A, B = ctxt.get(['pv:1', 'pv:2'])
+        >>>
+        """
         singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
             return self._get_one(name, request=request)
@@ -71,6 +88,36 @@ class Context(raw.Context):
         return ret
 
     def put(self, name, values, request=None, process=None, wait=None, timeout=5.0, throw=True):
+        """Write a new value of some number of PVs.
+        
+        :param name: A single name string or list of name strings
+        :param values: A single value or a list of values
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param float timeout: Operation timeout in seconds
+        :param bool throw: When true, operation error throws an exception.
+                     If False then the Exception is returned instead of the Value
+        :param str process: Control remote processing.  May be 'true', 'false', 'passive', or None.
+        :param bool wait: Wait for all server processing to complete.
+
+        :returns: A None or Exception, or list of same
+
+        When invoked with a single name then returns is a single value.
+        When invoked with a list of name, then returns a list of values
+
+        If 'wait' or 'process' is specified, then 'request' must be omitted or None.
+
+        >>> ctxt = Context('pva')
+        >>> ctxt.put('pv:name', 5.0)
+        >>> ctxt.put(['pv:1', 'pv:2'], [1.0, 2.0])
+        >>> ctxt.put('pv:name', {'value':5})
+        >>>
+
+        The provided value(s) will be automatically coerced to the target type.
+        If this is not possible then an Exception is raised/returned.
+
+        Unless the provided value is a dict, it is assumed to be a plain value
+        and an attempt is made to store it in '.value' field.
+        """
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:
@@ -119,6 +166,27 @@ class Context(raw.Context):
         return ret
 
     def rpc(self, name, value, request=None, timeout=5.0, throw=True):
+        """Perform a Remote Procedure Call (RPC) operation
+
+        :param str name: PV name string
+        :param Value value: Arguments.  Must be Value instance
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param float timeout: Operation timeout in seconds
+        :param bool throw: When true, operation error throws an exception.
+                     If False then the Exception is returned instead of the Value
+
+        :returns: A Value or Exception.  Subject to :py:ref:`unwrap`.
+
+        >>> ctxt = Context('pva')
+        >>> ctxt.rpc('pv:name:add', {'A':5, 'B'; 6})
+        >>>
+
+        The provided value(s) will be automatically coerced to the target type.
+        If this is not possible then an Exception is raised/returned.
+
+        Unless the provided value is a dict, it is assumed to be a plain value
+        and an attempt is made to store it in '.value' field.
+        """
         done = cothread.Event(auto_reset=False)
 
         def cb(value):
@@ -145,6 +213,20 @@ class Context(raw.Context):
         return ret
 
     def monitor(self, name, cb, request=None, notify_disconnect = False):
+        """Create a subscription.
+        
+        :param str name: PV name string
+        :param callable cb: Processing callback
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param bool notify_disconnect: In additional to Values, the callback may also be call with instances of Exception.
+                                       Specifically: Disconnected , RemoteError, or Cancelled
+        :returns: a :py:class:`Subscription` instance
+
+        The callable will be invoked with one argument which is either.
+
+        * A p4p.Value (Subject to :py:ref:`unwrap`)
+        * A sub-class of Exception (Disconnected , RemoteError, or Cancelled)
+        """
         R = Subscription(name, cb, notify_disconnect=notify_disconnect)
         cb = partial(cothread.Callback, R._event)
 
@@ -169,12 +251,22 @@ class Subscription(object):
         self.close()
 
     def close(self):
+        """Close subscription.
+        """
         if self._S is not None:
             # after .close() self._event should never be called
             self._S.close()
             self._S = None
             self._Q.Signal(None)
             self._T.Wait()
+    @property
+    def done(self):
+        'Has all data for this subscription been received?'
+        return self._S is None or self._S.done()
+    @property
+    def empty(self):
+        'Is data pending in event queue?'
+        return self._S is None or self._S.empty()
 
     def _event(self, value):
         if self._S is not None:
