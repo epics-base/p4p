@@ -67,9 +67,8 @@ class Server(object):
                 'EPICS_PVA_SERVER_PORT':'0',
                 'EPICS_PVA_BROADCAST_PORT':'0',
             }
+        _log.debug("Starting Server isolated=%s, %s", isolate, kws)
         self._S = _Server(**kws)
-        self.conf = self._S.conf
-        self.stop = self._S.stop
 
     def __enter__(self):
         return self
@@ -86,12 +85,13 @@ class Server(object):
                 with p4p.client.thread.Context('pva', conf=S.conf(), useenv=False) as C:
                     print(C.get("pv:name"))
         """
-        pass
+        return self._S.conf()
 
     def stop(self):
         """Force server to stop serving, and close connections to existing clients.
         """
-        pass
+        _log.debug("Stopping Server")
+        self._S.stop()
 
     @classmethod
     def forever(klass, *args, **kws):

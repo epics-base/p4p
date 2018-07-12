@@ -169,6 +169,7 @@ class Context(object):
             return
         self._ctxt.close()
         self._ctxt = None
+        self.disconnect()
 
         _all_contexts.discard(self)
 
