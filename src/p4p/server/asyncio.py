@@ -7,6 +7,7 @@ from functools import partial
 import asyncio
 
 from .raw import SharedPV as _SharedPV
+from ..client.thread import RemoteError
 
 __all__ = (
         'SharedPV',
@@ -27,10 +28,13 @@ def _handle(loop, op, M, args):
             _log.debug('SERVER SCHEDULE %s', maybeco)
             task = loop.create_task(maybeco)
             task.add_done_callback(_log_err)
+        return
+    except RemoteError as e:
+        pass
     except Exception as e:
-        if op is not None:
-            op.done(error=str(e))
         _log.exception("Unexpected")
+    if op is not None:
+        op.done(error=str(e))
 
 class SharedPV(_SharedPV):
     def __init__(self, handler=None, loop=None, **kws):

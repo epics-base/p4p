@@ -8,6 +8,7 @@ from threading import Thread
 
 from ..util import WorkQueue
 from .raw import SharedPV as _SharedPV
+from ..client.thread import RemoteError
 
 __all__ = (
     'SharedPV',
@@ -46,10 +47,13 @@ atexit.register(_defaultWorkQueue.stop)
 def _on_queue(op, M, *args):
     try:
         M(*args)
+        return
+    except RemoteError as e:
+        pass
     except Exception as e:
-        if op is not None:
-            op.done(error=str(e))
         _log.exception("Unexpected")
+    if op is not None:
+        op.done(error=str(e))
 
 class SharedPV(_SharedPV):
     """Shared state Process Variable.  Callback based implementation.

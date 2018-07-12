@@ -9,6 +9,7 @@ from functools import partial
 import cothread
 from cothread import Spawn, Callback
 from .raw import SharedPV as _SharedPV
+from ..client.thread import RemoteError
 
 __all__ = (
     'SharedPV',
@@ -17,10 +18,13 @@ __all__ = (
 def _handle(op, M, *args):
     try:
         M(*args)
+        return
+    except RemoteError as e:
+        pass
     except Exception as e:
-        if op is not None:
-            op.done(error=str(e))
         _log.exception("Unexpected")
+    if op is not None:
+        op.done(error=str(e))
 
 class SharedPV(_SharedPV):
     def __init__(self, queue=None, **kws):

@@ -100,3 +100,13 @@ API Reference
 .. autoclass:: Subscription
 
     .. automethod:: close
+
+.. autoclass:: Disconnected
+
+.. autoclass:: RemoteError
+
+.. autoclass:: Cancelled
+
+.. autoclass:: Finished
+
+.. autoclass:: TimeoutError
