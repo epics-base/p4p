@@ -1,4 +1,8 @@
 
+
+import logging
+_log = logging.getLogger(__name__)
+
 import time
 import numpy
 
@@ -7,7 +11,7 @@ from .common import alarm, timeStamp
 
 from .scalar import ntwrappercommon
 
-class NTNDArray(ntwrappercommon,numpy.ndarray):
+class ntndarray(ntwrappercommon,numpy.ndarray):
     """
     Augmented numpy.ndarray with additional attributes
 
@@ -18,7 +22,6 @@ class NTNDArray(ntwrappercommon,numpy.ndarray):
     * .raw_stamp - A tuple (seconds, nanoseconds)
     * .raw - The underlying :py:class:`p4p.Value`.
     """
-    Value = Value
 
     attrib = None
     def _store(self, value):
@@ -38,6 +41,10 @@ class NTNDArray(ntwrappercommon,numpy.ndarray):
 
         return self
 
+class NTNDArray(object):
+    Value = Value
+    ntndarray = ntndarray
+
     @staticmethod
     def buildType(extra=[]):
         """Build type
@@ -46,10 +53,10 @@ class NTNDArray(ntwrappercommon,numpy.ndarray):
             ('value', 'v'),
             ('alarm', alarm),
             ('timeStamp', timeStamp),
-            ('dimension', ('S', None, [
+            ('dimension', ('aS', None, [
                 ('size', 'i'),
             ])),
-            ('attribute', ('S', None, [
+            ('attribute', ('aS', None, [
                 ('name', 's'),
                 ('value', 'v'),
             ])),
@@ -58,20 +65,33 @@ class NTNDArray(ntwrappercommon,numpy.ndarray):
     def __init__(self, **kws):
         self.type = self.buildType(**kws)
 
-    #def wrap(self, value):
-        #S, NS = divmod(time.time(), 1.0)
-        #return Value(self.type, {
-            #'value': A.ravel(),
-            #'timeStamp': {
-                #'secondsPastEpoch': S,
-                #'nanoseconds': NS*1e9,
-            #},
-            #'attribute': [{'name':K, 'value':V} for K,V in value.attrib or {}],
-            #'dimension': [{'size':N} for N in value.shape],
-        #})
+    def wrap(self, value):
+        """Wrap numpy.ndarray as Value
+        """
+        S, NS = divmod(time.time(), 1.0)
+        value = numpy.asarray(value)
+        attrib = getattr(value, 'attrib', {})
+        if value.ndim==2:
+            assert attrib.get('ColorMode', 0)==0
+            attrib['ColorMode'] = 0
+            # gray scale
+            dims = list(value.shape)
+            dims.reverse()
+        else:
+            raise ValueError("I only know about ColorMode gray scale, not ndim=%d"%value.ndim)
+
+        return Value(self.type, {
+            'value': value.flatten(),
+            'timeStamp': {
+                'secondsPastEpoch': S,
+                'nanoseconds': NS*1e9,
+            },
+            'attribute': [{'name':K, 'value':V} for K,V in attrib.items()],
+            'dimension': [{'size':N} for N in dims],
+        })
 
     @classmethod
     def unwrap(klass, value):
         """Unwrap Value as NTNDArray
         """
-        return value.value.view(klass)._store(value)
+        return value.value.view(klass.ntndarray)._store(value)

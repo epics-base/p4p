@@ -221,3 +221,31 @@ class TestEnum(RefTestCase):
 
         self.assertEqual(V.a.value.index, 1)
         self.assertEqual(V.b.value.index, 0)
+
+class TestArray(RefTestCase):
+    def test_unwrap(self):
+        pixels = numpy.asarray([ # 2x3
+            [0, 1, 2],
+            [3, 4, 5],
+        ])
+        V = Value(nt.NTNDArray.buildType(), {
+            'value': pixels.flatten(),
+            'dimension': [
+                {'size': 3},
+                {'size': 2},
+            ],
+            'attribute': [
+                {'name':'ColorMode', 'value':0},
+            ],
+        })
+
+        img = nt.NTNDArray.unwrap(V)
+
+        self.assertEqual(img.shape, (2, 3))
+        assert_aequal(img, pixels)
+
+        V2 = nt.NTNDArray().wrap(img)
+
+        assert_aequal(V.value, V2.value)
+        self.assertEqual(V.dimension[0].size, V2.dimension[0].size)
+        self.assertEqual(V.dimension[1].size, V2.dimension[1].size)
