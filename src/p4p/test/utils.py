@@ -1,10 +1,15 @@
 
 from __future__ import print_function
 
-import gc, inspect, unittest, functools
+import logging, warnings
+_log = logging.getLogger(__name__)
+
+import gc, inspect, unittest, functools, time, os
 import fnmatch
 
 from .. import listRefs
+
+_ignore_transient = os.environ.get('REFTEST_IGNORE_TRANSIENT','')=='YES'
 
 try:
     import asyncio
@@ -32,27 +37,47 @@ else:
             del self.loop
 
 class RefTestMixin(object):
+    """Ensure that each test does not result in a net change in extension object counts
+    """
     # set to list of names to compare.  Set to None to disable
     ref_check = ('*',)
+
+    def __refs(self, refs=None):
+        refs = refs or listRefs()
+        _log.debug("REFS %s", refs)
+        names = set()
+        for pat in self.ref_check:
+            names |= set(fnmatch.filter(refs, pat))
+        return dict([(K,V) for K,V in refs.items() if K in names])
+
     def setUp(self):
         if self.ref_check is not None:
-            refs = self.__raw_before = listRefs()
-            self.__names = set()
-            for pat in self.ref_check:
-                self.__names |= set(fnmatch.filter(refs, pat))
-            self.__before = dict([(K,V) for K,V in refs.items() if K in self.__names])
-
+            self.__before = self.__refs()
         super(RefTestMixin, self).setUp()
+
     def tearDown(self):
         super(RefTestMixin, self).tearDown()
         if self.ref_check is not None:
             gc.collect()
-            refs = listRefs()
-            after = dict([(K,V) for K,V in refs.items() if K in self.__names])
-            # the compared ref counters should be unchanged after each case
+            after = self.__refs()
+
+            test1 = self.__before==after
+
+            if not test1:
+                _log.error("Mis-match, attempting to detect if transient")
+                time.sleep(1.0)
+                gc.collect()
+                after1, after = after, self.__refs()
+
             self.assertDictEqual(self.__before, after)
             # check for any obviously corrupt counters, even those not being compared
-            self.assertFalse(any([V>1000000 for V in refs.values()]), "before %s after %s"%(self.__raw_before, refs))
+            #self.assertFalse(any([V>1000000 for V in refs.values()]), "before %s after %s"%(self.__raw_before, refs))
+
+            if not test1:
+                if _ignore_transient:
+                    _log.info("IGNORE transient refs")
+                else:
+                    self.assertDictEqual(self.__before, after1)
 
 class RefTestCase(RefTestMixin, unittest.TestCase):
     def setUp(self):
