@@ -1,0 +1,45 @@
+init:
+  # Set autocrlf to make batch files work
+  - git config --global core.autocrlf true
+
+environment:
+  global:
+    # SDK v7.0 MSVC Express 2008's SetEnv.cmd script will fail if the
+    # /E:ON and /V:ON options are not enabled in the batch script intepreter
+    # See: http://stackoverflow.com/a/13751649/163740
+    CMD_IN_ENV: "cmd /E:ON /V:ON /C .\\.ci\\run_with_env.cmd"
+
+  matrix:
+
+    # Python 2.7.10 is the latest version and is not pre-installed.
+
+    - PYTHON: "C:\\Python27.10"
+      PYTHON_VERSION: "2.7.10"
+      PYTHON_ARCH: "32"
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      BRBASE: 3.16
+      BRPVD: master
+      BRPVA: master
+
+    - PYTHON: "C:\\Python35-x64"
+      PYTHON_VERSION: "3.5.0"
+      PYTHON_ARCH: "64"
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      BRBASE: 3.16
+      BRPVD: master
+      BRPVA: master
+
+install:
+  - ps: "ls \"C:/\""
+  - ps: "ls \"C:/Program Files (x86)\""
+  - ps: "ls \"C:/Program Files (x86)/Microsoft Visual Studio\""
+  - ps: if (-not(Test-Path($env:PYTHON))) { & ".\\.ci\\appveyor_install.ps1" }
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  - "python --version"
+  - "%CMD_IN_ENV% .ci\\appveyor-prepare.bat"
+
+build_script:
+  - "%CMD_IN_ENV% .ci\\appveyor-build.bat"
+
+test_script:
+  - "%CMD_IN_ENV% .ci\\appveyor-test.bat"

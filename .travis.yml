@@ -1,37 +1,98 @@
-sudo: false
-dist: trusty
 language: python
-compiler:
-  - gcc
+
 env:
   global:
   - REFTEST_IGNORE_TRANSIENT=YES
+
 addons:
   apt:
     packages:
     - libreadline6-dev
     - libncurses5-dev
     - perl
-install:
- - pip install -r requirements-${PROF}.txt
- - pip install cothread
- - ./build-deps.sh
-script:
- - make PYTHON=`which python` -j2
- - make PYTHON=`which python` nose
+
 matrix:
   include:
-  - python: "2.7"
+  - sudo: false
+    dist: trusty
+    language: python
+    python: "2.7"
     env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8
-  - python: "2.7"
+    install: ./.ci/travis-linux-prepare.sh
+    script: ./.ci/travis-linux-build.sh
+
+  - sudo: false
+    dist: trusty
+    language: python
+    python: "2.7"
     env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8 CMPLR=clang
-  - python: "3.4"
+    install: ./.ci/travis-linux-prepare.sh
+    script: ./.ci/travis-linux-build.sh
+
+  - sudo: false
+    dist: trusty
+    language: python
+    python: "3.4"
     env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8
-  - python: "3.6"
+    install: ./.ci/travis-linux-prepare.sh
+    script: ./.ci/travis-linux-build.sh
+
+  - sudo: false
+    dist: trusty
+    language: python
+    python: "3.5"
     env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9
-  - python: "2.7"
+    install: ./.ci/travis-linux-prepare.sh
+    script: ./.ci/travis-linux-build.sh
+
+  - sudo: false
+    dist: trusty
+    language: python
+    python: "3.6"
+    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9
+    install: ./.ci/travis-linux-prepare.sh
+    script: ./.ci/travis-linux-build.sh
+
+  - sudo: false
+    dist: trusty
+    language: python
+    python: "2.7"
     env: BRBASE=3.15 BRPVD=master BRPVA=master PROF=deb8
-  - python: "2.7"
+    install: ./.ci/travis-linux-prepare.sh
+    script: ./.ci/travis-linux-build.sh
+
+  - sudo: false
+    dist: trusty
+    language: python
+    python: "2.7"
     env: BRBASE=3.14 BRPVD=master BRPVA=master PROF=deb8
-  - python: "2.7"
-    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9
+    install: ./.ci/travis-linux-prepare.sh
+    script: ./.ci/travis-linux-build.sh
+
+  - os: osx
+    compiler: gcc
+    language: c
+    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9 PYTHON=python2 PYVER=2.7 URL=https://www.python.org/ftp/python/2.7.15/python-2.7.15-macosx10.6.pkg
+    install: ./.ci/travis-osx-prepare.sh
+    script: ./.ci/travis-osx-build.sh
+
+  - os: osx
+    compiler: gcc
+    language: c
+    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9 PYTHON=python3 PYVER=3.4 URL=https://www.python.org/ftp/python/3.4.4/python-3.4.4-macosx10.6.pkg
+    install: ./.ci/travis-osx-prepare.sh
+    script: ./.ci/travis-osx-build.sh
+
+  - os: osx
+    compiler: gcc
+    language: c
+    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9 PYTHON=python3 PYVER=3.5 URL=https://www.python.org/ftp/python/3.5.4/python-3.5.4-macosx10.6.pkg
+    install: ./.ci/travis-osx-prepare.sh
+    script: ./.ci/travis-osx-build.sh
+
+  - os: osx
+    compiler: gcc
+    language: c
+    env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb9 PYTHON=python3 PYVER=3.6 URL=https://www.python.org/ftp/python/3.6.5/python-3.6.5-macosx10.6.pkg
+    install: ./.ci/travis-osx-prepare.sh
+    script: ./.ci/travis-osx-build.sh
