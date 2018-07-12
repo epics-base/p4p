@@ -571,15 +571,17 @@ void Value::storefld(pvd::PVField* fld,
         pvd::BitSet::shared_pointer junk;
         pvd::PVStructureArray::svector arr;
 
+        PyRef iter(PyObject_GetIter(obj));
         while(1) {
-            PyRef iter(PyObject_GetIter(obj));
 
             PyRef I(PyIter_Next(iter.get()), nextiter());
             if(!I) break;
 
             pvd::PVStructurePtr elem(create->createPVStructure(T->getStructure()));
 
-            store_struct(elem.get(), ST, obj, junk);
+            store_struct(elem.get(), ST, I.get(), junk);
+
+            arr.push_back(elem);
         }
 
         F->replace(pvd::freeze(arr));

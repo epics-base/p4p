@@ -310,6 +310,27 @@ class TestRawValue(RefTestCase):
         V = Value(Type([('a', 'I')], id="foo"))
         self.assertEqual(V.getID(), "foo")
 
+    def testStructArr(self):
+        V = Value(Type([
+            ('a', ('aS', None, [
+                ('b', 'i'),
+            ])),
+        ]), {
+            'a': [
+                {'b': 4},
+                [('b', 5)],
+            ],
+        })
+
+        self.assertEqual(len(V.a), 2)
+        self.assertEqual(V.a[0].b, 4)
+        self.assertEqual(V.a[1].b, 5)
+
+        V.a = [{'b':1}]
+
+        self.assertEqual(len(V.a), 1)
+        self.assertEqual(V.a[0].b, 1)
+
     def testRepr(self):
         V = Value(Type([('a', 'I')]))
         self.assertEqual(repr(V), 'Value(id:structure, a:0)')
