@@ -199,7 +199,7 @@ class Context(raw.Context):
         assert len(name)==len(request), (name, request)
         assert len(name)==len(values), (name, values)
 
-        op = [self._put_one(N, V, request=R) for N, V, R in zip(name, values, request)]
+        futs = [self._put_one(N, V, request=R) for N, V, R in zip(name, values, request)]
 
         yield from asyncio.gather(futs, loop=self.loop)
 

@@ -62,20 +62,6 @@ class TestRawType(RefTestCase):
         self.assertEqual(T['X'].getID(), 'bar')
         self.assertEqual(T['X'].aspy(), T.aspy('X'))
         self.assertEqual(T['X'].aspy(), L[1][1])
-
-    def testStructArray(self):
-        L = [
-            ('a', 'i'),
-            ('X', ('aS', 'bar', [
-                ('m', 's'),
-            ])),
-            ('b', 'f'),
-        ]
-        T = _Type(L)
-
-        self.assertEqual(T.aspy(),
-                         ('S', 'structure', L))
-
     def testUnion(self):
         L = [
             ('a', 'i'),
@@ -91,6 +77,19 @@ class TestRawType(RefTestCase):
                          ('S', 'structure', L))
 
     def testStructArray(self):
+        L = [
+            ('a', 'i'),
+            ('X', ('aS', 'bar', [
+                ('m', 's'),
+            ])),
+            ('b', 'f'),
+        ]
+        T = _Type(L)
+
+        self.assertEqual(T.aspy(),
+                         ('S', 'structure', L))
+
+    def testStructArray2(self):
         L = [
             ('a', 'i'),
             ('X', ('aU', 'bar', [

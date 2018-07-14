@@ -143,7 +143,7 @@ def periodic(period=60.0, file=sys.stderr):
 if __name__=='__main__':
   #for T,C in gcstats().items():
   #  print T,C
-  gc.set_debug(gc.DEBUG_COLLECTABLE|gc.DEBUG_INSTANCES|gc.DEBUG_OBJECTS)
+  gc.set_debug(gc.DEBUG_COLLECTABLE)
   S=StatsDelta()
   while True:
     S.collect()

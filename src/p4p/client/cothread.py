@@ -197,9 +197,9 @@ class Context(raw.Context):
 
         cb = partial(cothread.Callback, cb)
 
-        op = super(Context, self).rpc(name, cb, builder=value, request=request)
+        op = super(Context, self).rpc(name, cb, value, request=request)
 
-        _log.debug('rpc %s %s request=%s', name, value, value, request)
+        _log.debug('rpc %s %s request=%s', name, value, request)
 
         try:
             ret = done.Wait(timeout)

@@ -3,6 +3,15 @@ import logging, inspect
 from functools import wraps, partial
 _log = logging.getLogger(__name__)
 
+from threading import Thread
+
+from .wrapper import Value, Type
+from .nt import NTURI
+from .client.raw import RemoteError
+from .server import DynamicProvider
+from .server.raw import SharedPV
+from .util import WorkQueue, Full, Empty
+
 __all__ = [
     'rpc',
     'rpccall',
@@ -11,13 +20,6 @@ __all__ = [
     'WorkQueue',
     'NTURIDispatcher',
 ]
-
-from .wrapper import Value, Type
-from .nt import NTURI
-from .client.raw import RemoteError
-from .server import DynamicProvider
-from .server.raw import SharedPV
-from .util import WorkQueue
 
 def rpc(rtype=None):
     """Decorator marks a proxy method for export.
