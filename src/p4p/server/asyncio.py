@@ -6,11 +6,12 @@ from functools import partial
 
 import asyncio
 
-from .raw import SharedPV as _SharedPV
+from .raw import SharedPV as _SharedPV, Handler
 from ..client.thread import RemoteError
 
 __all__ = (
         'SharedPV',
+        'Handler',
 )
 
 def _log_err(V):

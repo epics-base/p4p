@@ -138,6 +138,13 @@ There is a SharedPV class for each of other three concurrency models
 supported: OS threading, asyncio coroutines, and cothreads.
 All have the same methods as :py:class:`thread.SharedPV`.
 
+The difference between :py:class:`thread.SharedPV`, :py:class:`asyncio.SharedPV`, and :py:class:`cothread.SharedPV`
+is the context in which the handler methods are called (an OS thread, an asyncio coroutine, or a cothread).
+This distinction determines how blocking operations may be carried out.
+
+Note that :py:class:`thread.SharedPV` uses a fixed size thread pool.
+This limits the number of concurrent callbacks.
+
 
 SharedPV API
 ------------
@@ -153,6 +160,22 @@ SharedPV API
     .. automethod:: post
 
 
+SharedPV Handler Interface
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: Handler
+
+    .. automethod:: put
+
+    .. automethod:: rpc
+
+    .. automethod:: onFirstConnect
+
+    .. automethod:: onLastDisconnect
+
+asyncio or cothread
+^^^^^^^^^^^^^^^^^^^
+
 .. currentmodule:: p4p.server.asyncio
 
 .. class:: SharedPV
@@ -164,44 +187,3 @@ SharedPV API
 .. currentmodule:: p4p.server.cothread
 
 .. class:: SharedPV
-
-SharedPV Handler Interface
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-A :py:class:`SharedPV` Handler interface is as follows.
-The difference between :py:class:`thread.SharedPV`, :py:class:`asyncio.SharedPV`, and :py:class:`cothread.SharedPV`
-is the context in which the handler methods are called (an OS thread, an asyncio coroutine, or a cothread).
-This distinction determines how blocking operations may be carried out.
-
-Note that :py:class:`thread.SharedPV` uses a fixed size thread pool.
-This limits the number of concurrent callbacks.
-
-.. class:: SharedPVHandler
-
-    .. method:: rpc(pv, op)
-
-        Called each time a client issues a Remote Procedure Call
-        operation on this Channel.
-
-        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
-        :param ServerOperation op: The operation being initiated.
-
-    .. method:: put(pv, op)
-
-        Called each time a client issues a Put
-        operation on this Channel.
-
-        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
-        :param ServerOperation op: The operation being initiated.
-
-    .. method:: onFirstConnect(pv)
-
-        Called when the first Client channel is created.
-
-        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
-
-    .. method:: onLastDisconnect(pv)
-
-        Called when the last Client channel is closed.
-
-        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.

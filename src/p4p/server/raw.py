@@ -10,6 +10,7 @@ from .._p4p import SharedPV as _SharedPV
 
 __all__ = (
         'SharedPV',
+        'Handler',
 )
 
 class ServOpWrap(object):
@@ -19,6 +20,44 @@ class ServOpWrap(object):
         return self._unwrap(self._op.value())
     def __getattr__(self, key):
         return getattr(self._op, key)
+
+class Handler(object):
+    """Skeleton of SharedPV Handler
+
+    Use of this as a base class is optional.
+    """
+    def put(self, pv, op):
+        """
+        Called each time a client issues a Put
+        operation on this Channel.
+
+        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
+        :param ServerOperation op: The operation being initiated.
+        """
+        op.done(error='Not supported')
+    def rpc(self, pv, op):
+        """
+        Called each time a client issues a Remote Procedure Call
+        operation on this Channel.
+
+        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
+        :param ServerOperation op: The operation being initiated.
+        """
+        op.done(error='Not supported')
+    def onFirstConnect(self, pv):
+        """
+        Called when the first Client channel is created.
+
+        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
+        """
+        pass
+    def onLastDisconnect(self, pv):
+        """
+        Called when the last Client channel is closed.
+
+        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
+        """
+        pass
 
 class SharedPV(_SharedPV):
     """Shared state Process Variable.  Callback based implementation.

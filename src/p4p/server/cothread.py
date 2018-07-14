@@ -8,11 +8,12 @@ from functools import partial
 
 import cothread
 from cothread import Spawn, Callback
-from .raw import SharedPV as _SharedPV
+from .raw import SharedPV as _SharedPV, Handler
 from ..client.thread import RemoteError
 
 __all__ = (
     'SharedPV',
+    'Handler',
 )
 
 def _handle(op, M, *args):

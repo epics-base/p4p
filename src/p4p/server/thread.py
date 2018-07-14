@@ -7,11 +7,12 @@ from functools import partial
 from threading import Thread
 
 from ..util import WorkQueue
-from .raw import SharedPV as _SharedPV
+from .raw import SharedPV as _SharedPV, Handler
 from ..client.thread import RemoteError
 
 __all__ = (
     'SharedPV',
+    'Handler',
 )
 
 # lazy create a default work queue
