@@ -1,17 +1,9 @@
 
 #include <map>
 
-#include <time.h>
 #include <stddef.h>
 
-#ifndef CLOCK_MONOTONIC_COARSE
-#  ifdef CLOCK_MONOTONIC
-#    define CLOCK_MONOTONIC_COARSE CLOCK_MONOTONIC
-#  else
-#    define CLOCK_MONOTONIC_COARSE CLOCK_REALTIME
-#  endif
-#endif
-
+#include <epicsTime.h>
 #include <pv/serverContext.h>
 #include <pva/server.h>
 
@@ -38,7 +30,7 @@ struct DynamicHandler : public pvas::DynamicProvider::Handler {
 
     // cache negative search results (names we don't have)
     // map name -> expiration time
-    typedef std::map<std::string, timespec> search_cache_t;
+    typedef std::map<std::string, epicsTime> search_cache_t;
     search_cache_t search_cache;
     epicsMutex search_cache_lock;
 
@@ -56,8 +48,7 @@ struct DynamicHandler : public pvas::DynamicProvider::Handler {
     }
 
     virtual void hasChannels(pvas::DynamicProvider::search_type& name) {
-        timespec now = {0,0};
-        clock_gettime(CLOCK_MONOTONIC_COARSE, &now);
+        epicsTime now(epicsTime::getCurrent());
 
         for(pvas::DynamicProvider::search_type::iterator it(name.begin()), end(name.end()); it!=end; ++it) {
             TRACE("ENTER "<<it->name());
@@ -66,7 +57,7 @@ struct DynamicHandler : public pvas::DynamicProvider::Handler {
             {
                 Guard G(search_cache_lock);
                 search_cache_t::iterator it2 = search_cache.find(it->name());
-                if(it2!=search_cache.end() && it2->second.tv_sec < now.tv_sec) {
+                if(it2!=search_cache.end() && now >= it2->second) {
                     // stale entry
                     search_cache.erase(it2);
                     it2 = search_cache.end();
@@ -103,7 +94,7 @@ struct DynamicHandler : public pvas::DynamicProvider::Handler {
 
             // negative
 
-            now.tv_sec+=expireIn;
+            now += expireIn;
 
             {
                 Guard G(search_cache_lock);
