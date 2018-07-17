@@ -1,6 +1,12 @@
 from __future__ import print_function
 
-import unittest, random, weakref, sys, gc, inspect, threading
+import unittest
+import random
+import weakref
+import sys
+import gc
+import inspect
+import threading
 
 try:
     from Queue import Queue, Full, Empty
@@ -15,30 +21,32 @@ from ..util import WorkQueue
 from ..nt import NTScalar
 from .utils import RefTestCase
 
+
 class TestGPM(RefTestCase):
     maxDiff = 1000
     timeout = 1.0
 
     class Times2Handler(object):
+
         def put(self, pv, op):
             V = op.value()
             if V.raw.changed('value'):
-                if V<0:
+                if V < 0:
                     op.done(error="Must be non-negative")
-                V = V *2
+                V = V * 2
                 pv.post(V)
             op.done()
 
     def setUp(self):
-        #gc.set_debug(gc.DEBUG_LEAK)
+        # gc.set_debug(gc.DEBUG_LEAK)
         super(TestGPM, self).setUp()
 
         conf = {
-            'EPICS_PVAS_INTF_ADDR_LIST':'127.0.0.1',
-            'EPICS_PVA_ADDR_LIST':'127.0.0.1',
-            'EPICS_PVA_AUTO_ADDR_LIST':'0',
-            'EPICS_PVA_SERVER_PORT':'0',
-            'EPICS_PVA_BROADCAST_PORT':'0',
+            'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
+            'EPICS_PVA_ADDR_LIST': '127.0.0.1',
+            'EPICS_PVA_AUTO_ADDR_LIST': '0',
+            'EPICS_PVA_SERVER_PORT': '0',
+            'EPICS_PVA_BROADCAST_PORT': '0',
         }
 
         self.pv = SharedPV(handler=self.Times2Handler(), nt=NTScalar('d'))
@@ -61,21 +69,21 @@ class TestGPM(RefTestCase):
         del self.pv2
         gc.collect()
         R = [r() for r in R]
-        self.assertListEqual(R, [None]*len(R))
+        self.assertListEqual(R, [None] * len(R))
         super(TestGPM, self).tearDown()
 
     def testGet(self):
         with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
             # PV not yet opened
             self.assertRaises(TimeoutError, ctxt.get, 'foo', timeout=0.1)
-            
+
             self.pv.open(1.0)
 
             # TODO: this really shouldn't fail, but does due to:
             # https://github.com/epics-base/pvAccessCPP/issues/103
             #  also proves that our Channel cache is working...
             self.assertRaises(RuntimeError, ctxt.get, 'foo', timeout=0.1)
-            ctxt.disconnect('foo') # clear channel cache and force new channel to ensure we don't race to pick up the broken one
+            ctxt.disconnect('foo')  # clear channel cache and force new channel to ensure we don't race to pick up the broken one
 
             V = ctxt.get('foo')
             self.assertEqual(V, 1.0)
@@ -90,7 +98,7 @@ class TestGPM(RefTestCase):
 
     def testPutGet(self):
         with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
-            
+
             self.pv.open(1.0)
 
             V = ctxt.get('foo')
@@ -103,7 +111,7 @@ class TestGPM(RefTestCase):
 
             ctxt.put(['foo', 'bar'], [5, 6])
 
-            self.assertEqual(ctxt.get(['foo', 'bar']), [5*2, 6*2])
+            self.assertEqual(ctxt.get(['foo', 'bar']), [5 * 2, 6 * 2])
 
         C = weakref.ref(ctxt)
         del ctxt

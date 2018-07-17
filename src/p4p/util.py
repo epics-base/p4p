@@ -12,16 +12,22 @@ __all__ = [
     'WorkQueue',
 ]
 
+
 class WorkQueue(object):
+
     """A threaded work queue.
     """
     _stopit = object()
+
     def __init__(self, maxsize=5):
         self._Q = Queue(maxsize=maxsize)
+
     def push(self, callable):
-        self._Q.put_nowait(callable) # throws Queue.Full
+        self._Q.put_nowait(callable)  # throws Queue.Full
+
     def push_wait(self, callable):
         self._Q.put(callable)
+
     def interrupt(self):
         """Break one call to handle()
 
@@ -30,6 +36,7 @@ class WorkQueue(object):
         This call blocks if the queue is full.
         """
         self._Q.put(self._stopit)
+
     def handle(self):
         """Process queued work until interrupt() is called
         """
@@ -39,7 +46,7 @@ class WorkQueue(object):
             try:
                 callable = self._Q.get(True, 1.0)
             except Empty:
-                continue # retry on timeout
+                continue  # retry on timeout
             try:
                 if callable is self._stopit:
                     break

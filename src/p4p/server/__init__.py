@@ -1,21 +1,22 @@
 
-import logging, warnings
+import logging
+import warnings
 _log = logging.getLogger(__name__)
 
 import time
 import atexit
 
 from .._p4p import (Server as _Server,
-                   installProvider,
-                   removeProvider,
-                   clearProviders,
-                   StaticProvider as _StaticProvider,
-                   DynamicProvider as _DynamicProvider,
-                   ServerOperation,
-                   )
+                    installProvider,
+                    removeProvider,
+                    clearProviders,
+                    StaticProvider as _StaticProvider,
+                    DynamicProvider as _DynamicProvider,
+                    ServerOperation,
+                    )
 
 __all__ = (
-        'Server',
+    'Server',
         'installProvider',
         'removeProvider',
         'StaticProvider',
@@ -25,7 +26,9 @@ __all__ = (
 
 atexit.register(clearProviders)
 
+
 class Server(object):
+
     """Server(conf=None, useenv=True, providers=[""])
 
     :param providers: A list of provider names or instances.
@@ -57,21 +60,23 @@ class Server(object):
     The providers list must be a list of name strings (cf. installProvider()),
     or a list of Provider instances.  A mixture is not yet supported.
     """
+
     def __init__(self, isolate=False, **kws):
         if isolate:
             kws['useenv'] = False
             kws['conf'] = {
-                'EPICS_PVAS_INTF_ADDR_LIST':'127.0.0.1',
-                'EPICS_PVA_ADDR_LIST':'127.0.0.1',
-                'EPICS_PVA_AUTO_ADDR_LIST':'0',
-                'EPICS_PVA_SERVER_PORT':'0',
-                'EPICS_PVA_BROADCAST_PORT':'0',
+                'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
+                'EPICS_PVA_ADDR_LIST': '127.0.0.1',
+                'EPICS_PVA_AUTO_ADDR_LIST': '0',
+                'EPICS_PVA_SERVER_PORT': '0',
+                'EPICS_PVA_BROADCAST_PORT': '0',
             }
         _log.debug("Starting Server isolated=%s, %s", isolate, kws)
         self._S = _Server(**kws)
 
     def __enter__(self):
         return self
+
     def __exit__(self, A, B, C):
         self.stop()
 
@@ -114,17 +119,21 @@ class Server(object):
             finally:
                 _log.info("Stopping server")
 
+
 class StaticProvider(_StaticProvider):
+
     """A channel provider which servers from a clearly defined list of names.
     This list may change at any time.
     """
 
+
 class DynamicProvider(_DynamicProvider):
+
     """A channel provider which does not maintain a list of provided channel names.
 
        The following example shows a simple case, in fact so simple that StaticProvider
        is a better fit. ::
-    
+
             class DynHandler(object):
                 def __init__(self):
                     self.pv = SharedPV()
@@ -145,14 +154,18 @@ class DynamicProvider(_DynamicProvider):
         _DynamicProvider.__init__(self, name, self._WrapHandler(handler))
 
     class _WrapHandler(object):
+
         "Wrapper around user Handler which logs exception"
+
         def __init__(self, real):
             self._real = real
+
         def testChannel(self, name):
             try:
                 return self._real.testChannel(name)
             except:
                 _log.exception("Unexpected")
+
         def makeChannel(self, name, peer):
             try:
                 return self._real.makeChannel(name, peer)

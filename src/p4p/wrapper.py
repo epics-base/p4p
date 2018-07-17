@@ -10,20 +10,25 @@ __all__ = (
     'UnionArray',
 )
 
+
 def Struct(spec=None, id=None):
     return ('S', id, spec)
+
 
 def Union(spec=None, id=None):
     return ('U', id, spec)
 
+
 def StructArray(spec=None, id=None):
     return ('aS', id, spec)
+
 
 def UnionArray(spec=None, id=None):
     return ('aU', id, spec)
 
+
 class Type(_Type):
-    __slots__ = [] # we don't allow custom attributes for now
+    __slots__ = []  # we don't allow custom attributes for now
     __contains__ = _Type.has
 
     def __iter__(self):
@@ -38,13 +43,14 @@ class Type(_Type):
 
     def __repr__(self):
         S, id, fields = self.aspy()
-        return 'Type(%s, id="%s")'%(fields, id)
+        return 'Type(%s, id="%s")' % (fields, id)
     __str__ = __repr__
 
 _Type._magic(Type)
 
+
 class Value(_Value):
-    __slots__ = [] # prevent attribute access to invalid fields
+    __slots__ = []  # prevent attribute access to invalid fields
 
     __contains__ = _Value.has
 

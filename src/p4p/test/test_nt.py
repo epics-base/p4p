@@ -13,7 +13,9 @@ from .utils import RefTestCase
 import numpy
 from numpy.testing import assert_array_almost_equal as assert_aequal
 
+
 class TestScalar(RefTestCase):
+
     def test_float_wrap(self, code='d', value=5.0):
         NT = nt.NTScalar(code)
 
@@ -24,9 +26,9 @@ class TestScalar(RefTestCase):
 
         NT = nt.NTScalar(code, display=True)
         V = NT.wrap({
-            'value':value,
-            'alarm':{
-                'severity':1,
+            'value': value,
+            'alarm': {
+                'severity': 1,
             },
         })
         self.assertEqual(V.value, value)
@@ -45,9 +47,9 @@ class TestScalar(RefTestCase):
     def test_float_unwrap(self, code='d', value=5.0):
         NT = nt.NTScalar(code)
         V = NT.wrap({
-            'value':value,
-            'alarm':{
-                'severity':1,
+            'value': value,
+            'alarm': {
+                'severity': 1,
             },
         })
 
@@ -62,7 +64,7 @@ class TestScalar(RefTestCase):
     test_str_unwrap = partial(test_float_unwrap, code='s', value='foo')
 
     def test_array_wrap(self):
-        NT = nt.NTScalar('ad') # array of double
+        NT = nt.NTScalar('ad')  # array of double
 
         A = numpy.asarray([1.0, 5.0])
         V = NT.wrap(A)
@@ -70,9 +72,8 @@ class TestScalar(RefTestCase):
         self.assertEqual(V.alarm.severity, 0)
         self.assertTrue(V.changed('value'))
 
-
     def test_array_unwrap(self):
-        NT = nt.NTScalar('ad') # array of double
+        NT = nt.NTScalar('ad')  # array of double
         A = numpy.asarray(range(10))[2:5]
         V = NT.wrap(A)
 
@@ -82,7 +83,7 @@ class TestScalar(RefTestCase):
         self.assertEqual(P.severity, 0)
 
     def test_string_array_wrap(self):
-        NT = nt.NTScalar('as') # array of string
+        NT = nt.NTScalar('as')  # array of string
 
         A = ["hello", "world"]
         V = NT.wrap(A)
@@ -92,14 +93,15 @@ class TestScalar(RefTestCase):
 
 
 class TestTable(RefTestCase):
+
     def test_wrap(self):
         NT = nt.NTTable(columns=[
             ('a', 'i'),
             ('b', 's'),
         ])
         V = NT.wrap([
-            {'a': 5, 'b':'one'},
-            {'a': 6, 'b':'two'},
+            {'a': 5, 'b': 'one'},
+            {'a': 6, 'b': 'two'},
         ])
 
         assert_aequal(V.value.a, [5, 6])
@@ -112,7 +114,7 @@ class TestTable(RefTestCase):
         ])
         V = Value(T, {
             'labels': ['a', 'b'],
-            'value':{
+            'value': {
                 'a': [5, 6],
                 'b': ['one', 'two'],
             },
@@ -125,7 +127,9 @@ class TestTable(RefTestCase):
             OrderedDict([('a', 6), ('b', u'two')]),
         ])
 
+
 class TestURI(RefTestCase):
+
     def test_build(self):
         NT = nt.NTURI([
             ('a', 'I'),
@@ -138,35 +142,37 @@ class TestURI(RefTestCase):
 
         V = NT.wrap('fn', (5,))
         self.assertEqual(V.query.a, 5)
-        self.assertRaises(AttributeError, lambda:V.query.b)
-        self.assertRaises(AttributeError, lambda:V.query.c)
+        self.assertRaises(AttributeError, lambda: V.query.b)
+        self.assertRaises(AttributeError, lambda: V.query.c)
 
         V = NT.wrap('fn', (6, 'foo'))
         self.assertEqual(V.query.a, 6)
         self.assertEqual(V.query.b, 'foo')
-        self.assertRaises(AttributeError, lambda:V.query.c)
+        self.assertRaises(AttributeError, lambda: V.query.c)
 
-        V = NT.wrap('fn', (7,), {'b':'bar'})
+        V = NT.wrap('fn', (7,), {'b': 'bar'})
         self.assertEqual(V.query.a, 7)
         self.assertEqual(V.query.b, 'bar')
-        self.assertRaises(AttributeError, lambda:V.query.c)
+        self.assertRaises(AttributeError, lambda: V.query.c)
 
-        V = NT.wrap('fn', (), {'a':8, 'b':'bar'})
+        V = NT.wrap('fn', (), {'a': 8, 'b': 'bar'})
         self.assertEqual(V.query.a, 8)
         self.assertEqual(V.query.b, 'bar')
-        self.assertRaises(AttributeError, lambda:V.query.c)
+        self.assertRaises(AttributeError, lambda: V.query.c)
 
-        V = NT.wrap('fn', (), {'a':8, 'b':'bar', 'c':{'x':1,'y':2}})
+        V = NT.wrap('fn', (), {'a': 8, 'b': 'bar', 'c': {'x': 1, 'y': 2}})
         self.assertEqual(V.query.a, 8)
         self.assertEqual(V.query.c.x, 1)
         self.assertEqual(V.query.c.y, 2)
 
+
 class TestEnum(RefTestCase):
+
     def testStore(self):
         T = nt.NTEnum.buildType()
 
         V = Value(T, {
-            'value.choices':['zero', 'one', 'two'],
+            'value.choices': ['zero', 'one', 'two'],
         })
 
         V.value = 'one'
@@ -183,7 +189,7 @@ class TestEnum(RefTestCase):
 
     def testStoreBad(self):
         V = Value(nt.NTEnum.buildType(), {
-            'value.choices':['zero', 'one', 'two'],
+            'value.choices': ['zero', 'one', 'two'],
         })
 
         V.value.index = 42
@@ -200,11 +206,12 @@ class TestEnum(RefTestCase):
 
         self.assertEqual(V.value.index, 42)
 
-        if sys.version_info>=(3,0):
+        if sys.version_info >= (3, 0):
             V.value.choices = []
+
             def fn():
                 V.value = '1'
-            self.assertWarns(UserWarning, fn) # warns of empty choices
+            self.assertWarns(UserWarning, fn)  # warns of empty choices
 
             self.assertEqual(V.value.index, 1)
 
@@ -213,18 +220,20 @@ class TestEnum(RefTestCase):
             ('a', nt.NTEnum.buildType()),
             ('b', nt.NTEnum.buildType()),
         ]), {
-            'a.value.choices':['A','B'],
-            'b.value.choices':['X','Y'],
+            'a.value.choices': ['A', 'B'],
+            'b.value.choices': ['X', 'Y'],
         })
 
-        V.a = {'value':'B'}
+        V.a = {'value': 'B'}
 
         self.assertEqual(V.a.value.index, 1)
         self.assertEqual(V.b.value.index, 0)
 
+
 class TestArray(RefTestCase):
+
     def test_unwrap(self):
-        pixels = numpy.asarray([ # 2x3
+        pixels = numpy.asarray([  # 2x3
             [0, 1, 2],
             [3, 4, 5],
         ])
@@ -235,7 +244,7 @@ class TestArray(RefTestCase):
                 {'size': 2},
             ],
             'attribute': [
-                {'name':'ColorMode', 'value':0},
+                {'name': 'ColorMode', 'value': 0},
             ],
         })
 

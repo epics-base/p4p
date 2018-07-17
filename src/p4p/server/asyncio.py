@@ -1,5 +1,6 @@
 
-import logging, warnings
+import logging
+import warnings
 _log = logging.getLogger(__name__)
 
 from functools import partial
@@ -10,9 +11,10 @@ from .raw import SharedPV as _SharedPV, Handler
 from ..client.thread import RemoteError
 
 __all__ = (
-        'SharedPV',
+    'SharedPV',
         'Handler',
 )
+
 
 def _log_err(V):
     if isinstance(V, Exception):
@@ -20,6 +22,7 @@ def _log_err(V):
         # TODO: figure out how to show stack trace...
         # until then, propagate in the hope that someone else will
     return V
+
 
 def _handle(loop, op, M, args):
     try:
@@ -37,7 +40,9 @@ def _handle(loop, op, M, args):
     if op is not None:
         op.done(error=str(e))
 
+
 class SharedPV(_SharedPV):
+
     def __init__(self, handler=None, loop=None, **kws):
         self.loop = loop or asyncio.get_event_loop()
         _SharedPV.__init__(self, handler=handler, **kws)

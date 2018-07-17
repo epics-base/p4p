@@ -1,7 +1,9 @@
 
 from __future__ import absolute_import
 
-import logging, warnings, sys
+import logging
+import warnings
+import sys
 _log = logging.getLogger(__name__)
 
 import cothread
@@ -24,13 +26,15 @@ __all__ = [
     'RemoteError',
 ]
 
-if sys.version_info>=(3,0):
+if sys.version_info >= (3, 0):
     unicode = str
 
+
 class Context(raw.Context):
+
     def get(self, name, request=None, timeout=5.0, throw=True):
         """Fetch current value of some number of PVs.
-        
+
         :param name: A single name string or list of name strings
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :param float timeout: Operation timeout in seconds
@@ -51,14 +55,14 @@ class Context(raw.Context):
             return self._get_one(name, request=request)
 
         elif request is None:
-            request = [None]*len(name)
+            request = [None] * len(name)
 
-        assert len(name)==len(request), (name, request)
+        assert len(name) == len(request), (name, request)
 
         return cothread.WaitForAll(
             [cothread.Spawn(self._get_one, N, request=R, timeout=timeout, throw=throw,
                             raise_on_wait=True)
-            for N,R in zip(name, request)]
+             for N, R in zip(name, request)]
         )
 
     def _get_one(self, name, request=None, timeout=5.0, throw=True):
@@ -72,7 +76,7 @@ class Context(raw.Context):
 
         cb = partial(cothread.Callback, cb)
 
-        op = super(Context, self).get(name, cb,request=request)
+        op = super(Context, self).get(name, cb, request=request)
 
         _log.debug('get %s request=%s', name, request)
 
@@ -89,7 +93,7 @@ class Context(raw.Context):
 
     def put(self, name, values, request=None, process=None, wait=None, timeout=5.0, throw=True):
         """Write a new value of some number of PVs.
-        
+
         :param name: A single name string or list of name strings
         :param values: A single value or a list of values
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
@@ -121,22 +125,22 @@ class Context(raw.Context):
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:
-            request = 'field()record[block=%s,process=%s]'%('true' if wait else 'false', process or 'passive')
+            request = 'field()record[block=%s,process=%s]' % ('true' if wait else 'false', process or 'passive')
 
         singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
             return self._put_one(name, values, request=request, timeout=timeout, throw=throw)
 
         elif request is None:
-            request = [None]*len(name)
+            request = [None] * len(name)
 
-        assert len(name)==len(request), (name, request)
-        assert len(name)==len(values), (name, values)
+        assert len(name) == len(request), (name, request)
+        assert len(name) == len(values), (name, values)
 
         return cothread.WaitForAll(
             [cothread.Spawn(self._put_one, N, V, request=R, timeout=timeout, throw=throw,
                             raise_on_wait=True)
-            for N,V,R in zip(name, values, request)]
+             for N, V, R in zip(name, values, request)]
         )
 
     def _put_one(self, name, value, request=None, timeout=5.0, throw=True):
@@ -212,9 +216,9 @@ class Context(raw.Context):
 
         return ret
 
-    def monitor(self, name, cb, request=None, notify_disconnect = False):
+    def monitor(self, name, cb, request=None, notify_disconnect=False):
         """Create a subscription.
-        
+
         :param str name: PV name string
         :param callable cb: Processing callback
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
@@ -233,21 +237,24 @@ class Context(raw.Context):
         R._S = super(Context, self).monitor(name, cb, request)
         return R
 
+
 class Subscription(object):
-    def __init__(self, name, cb, notify_disconnect = False):
+
+    def __init__(self, name, cb, notify_disconnect=False):
         self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
 
         self._Q = cothread.EventQueue()
 
         if notify_disconnect:
-            self._Q.Signal(Disconnected()) # all subscriptions are inittially disconnected
+            self._Q.Signal(Disconnected())  # all subscriptions are inittially disconnected
 
         self._T = cothread.Spawn(self._handle)
 
     def __enter__(self):
         return self
-    def __exit__(self,A,B,C):
+
+    def __exit__(self, A, B, C):
         self.close()
 
     def close(self):
@@ -259,10 +266,12 @@ class Subscription(object):
             self._S = None
             self._Q.Signal(None)
             self._T.Wait()
+
     @property
     def done(self):
         'Has all data for this subscription been received?'
         return self._S is None or self._S.done()
+
     @property
     def empty(self):
         'Is data pending in event queue?'
@@ -271,7 +280,6 @@ class Subscription(object):
     def _event(self, value):
         if self._S is not None:
             self._Q.Signal(value)
-
 
     def _handle(self):
         E = None
@@ -301,7 +309,7 @@ class Subscription(object):
                         _log.error("Subscription Error %s", E)
                     return
 
-                elif S is None: # already close()'d
+                elif S is None:  # already close()'d
                     return
 
                 i = 0
@@ -310,8 +318,8 @@ class Subscription(object):
                     if E is None or self._S is None:
                         break
                     self._cb(E)
-                    i = (i+1)%4
-                    if i==0:
+                    i = (i + 1) % 4
+                    if i == 0:
                         cothread.Yield()
 
                 if S.done:

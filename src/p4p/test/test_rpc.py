@@ -1,6 +1,11 @@
 from __future__ import print_function
 
-import unittest, random, weakref, sys, gc, threading
+import unittest
+import random
+import weakref
+import sys
+import gc
+import threading
 
 from ..wrapper import Value, Type
 from ..client.thread import Context
@@ -9,33 +14,37 @@ from ..rpc import NTURIDispatcher, WorkQueue, rpc, rpccall, rpcproxy
 from ..nt import NTScalar, NTURI
 from .utils import RefTestCase
 
+
 class TestService(object):
-   @rpc(NTScalar('d'))
-   def add(self, lhs, rhs):
-        return float(lhs)+float(rhs)
+
+    @rpc(NTScalar('d'))
+    def add(self, lhs, rhs):
+        return float(lhs) + float(rhs)
 
 
 class TestRPCFull(RefTestCase):
+
     """Test end to end
-    
+
     full server and client communicating through the loopback
     """
     runserver = True
     provider = 'pva'
-    getconfig = lambda self:self.server.conf()
+    getconfig = lambda self: self.server.conf()
+
     def setUp(self):
         super(TestRPCFull, self).setUp()
 
         conf = {
-            'EPICS_PVAS_INTF_ADDR_LIST':'127.0.0.1',
-            'EPICS_PVA_ADDR_LIST':'127.0.0.1',
-            'EPICS_PVA_AUTO_ADDR_LIST':'0',
-            'EPICS_PVA_SERVER_PORT':'0',
-            'EPICS_PVA_BROADCAST_PORT':'0',
+            'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
+            'EPICS_PVA_ADDR_LIST': '127.0.0.1',
+            'EPICS_PVA_AUTO_ADDR_LIST': '0',
+            'EPICS_PVA_SERVER_PORT': '0',
+            'EPICS_PVA_BROADCAST_PORT': '0',
         }
 
         # random PV prefix
-        self.prefix = 'rpctest:%u:'%random.randint(0, 1024)
+        self.prefix = 'rpctest:%u:' % random.randint(0, 1024)
 
         service = TestService()
 
@@ -68,7 +77,7 @@ class TestRPCFull(RefTestCase):
         gc.collect()
         D = self._dispatch()
         if D is not None:
-            print("dispatcher lives! ",sys.getrefcount(D)," refs  referrers:")
+            print("dispatcher lives! ", sys.getrefcount(D), " refs  referrers:")
             import inspect
             for R in gc.get_referrers(D):
                 print(R)
@@ -79,42 +88,48 @@ class TestRPCFull(RefTestCase):
         args = NTURI([
             ('lhs', 'd'),
             ('rhs', 'd'),
-        ]).wrap(self.prefix+'add', kws={
+        ]).wrap(self.prefix + 'add', kws={
             'lhs': 1,
             'rhs': 1,
         }, scheme='pva')
         with Context(self.provider, useenv=False, conf=self.getconfig(), unwrap=False) as ctxt:
             self.assertEqual(ctxt.name, self.provider)
-            sum = ctxt.rpc(self.prefix+'add', args)
+            sum = ctxt.rpc(self.prefix + 'add', args)
             self.assertEqual(sum.value, 2.0)
 
     def testAdd3(self):
         args = NTURI([
             ('lhs', 'd'),
             ('rhs', 'd'),
-        ]).wrap(self.prefix+'add', kws={
+        ]).wrap(self.prefix + 'add', kws={
             'lhs': 1,
             'rhs': 2,
         }, scheme='pva')
         with Context(self.provider, useenv=False, conf=self.getconfig(), unwrap=False) as ctxt:
-            sum = ctxt.rpc(self.prefix+'add', args)
+            sum = ctxt.rpc(self.prefix + 'add', args)
             self.assertEqual(sum.value, 3.0)
 
+
 class TestRPCProvider(TestRPCFull):
+
     """end to end w/o network
     """
     runserver = False
     provider = 'server:TestRPC'
-    getconfig = lambda self:{}
+    getconfig = lambda self: {}
+
 
 class TestProxy(RefTestCase):
+
     class MockContext(object):
         name = 'fake'
+
         def rpc(self, *args, **kws):
             return args, kws
 
     @rpcproxy
     class MyProxy(object):
+
         def __init__(self, myarg=5):
             self.myarg = myarg
 

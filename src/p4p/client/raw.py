@@ -5,7 +5,8 @@ import logging
 _log = logging.getLogger(__name__)
 
 import warnings
-import atexit, sys
+import atexit
+import sys
 from weakref import WeakSet
 
 try:
@@ -18,7 +19,7 @@ from .. import _p4p
 from ..wrapper import Value
 from ..nt import _default_wrap, _default_unwrap
 
-if sys.version_info>=(3,0):
+if sys.version_info >= (3, 0):
     unicode = str
 
 __all__ = (
@@ -27,21 +28,31 @@ __all__ = (
     'RemoteError',
 )
 
+
 class Cancelled(RuntimeError):
+
     "Cancelled from client (this) end."
+
     def __init__(self, msg=None):
         RuntimeError.__init__(self, msg or "Cancelled by client")
 
+
 class Disconnected(RuntimeError):
+
     def __init__(self, msg=None):
         RuntimeError.__init__(self, msg or "Channel disconnected")
 
+
 class Finished(Disconnected):
+
     def __init__(self, msg=None):
         Disconnected.__init__(self, msg or "Subscription Finished")
 
+
 class RemoteError(RuntimeError):
+
     "Throw with an error message which will be passed back to the caller"
+
 
 def unwrapHandler(handler, unwrap):
     """Wrap get/rpc handler to unwrap Value
@@ -49,9 +60,9 @@ def unwrapHandler(handler, unwrap):
     def dounwrap(code, msg, val):
         _log.debug("Handler (%s, %s, %s) -> %s", code, msg, val, handler)
         try:
-            if code==0:
+            if code == 0:
                 handler(RemoteError(msg))
-            elif code==1:
+            elif code == 1:
                 handler(Cancelled())
             if val is not None:
                 fn = unwrap.get(val.getID())
@@ -62,21 +73,23 @@ def unwrapHandler(handler, unwrap):
             _log.exception("Exception in Operation handler")
     return dounwrap
 
+
 def monHandler(handler):
     def cb(code, msg):
         _log.debug("Update (%s, %s) -> %s", code, msg, handler)
         try:
-            if code==1:
+            if code == 1:
                 handler(RemoteError(msg))
-            elif code==2:
+            elif code == 2:
                 handler(Cancelled())
-            elif code==4:
+            elif code == 4:
                 handler(Disconnected())
-            elif code==8:
+            elif code == 8:
                 handler(None)
         except:
             _log.exception("Exception in Monitor handler")
     return cb
+
 
 def defaultBuilder(value):
     """Reasonably sensible default handling of put builder
@@ -87,27 +100,30 @@ def defaultBuilder(value):
                 value(V)
             except:
                 _log.exception("Error in Builder")
-                raise # will be logged again
+                raise  # will be logged again
         return logbuilder
 
     def builder(V):
         try:
             if isinstance(value, dict):
-                for k,v in value.items():
+                for k, v in value.items():
                     V[k] = v
             else:
                 V.value = value
         except:
             _log.exception("Exception in Put builder")
-            raise # will be printed to stdout from extension code.
+            raise  # will be printed to stdout from extension code.
     return builder
+
 
 def wrapRequest(request):
     if request is None or isinstance(request, Value):
         return request
     return Context.makeRequest(request)
 
+
 class Subscription(_p4p.ClientMonitor):
+
     """Interface to monitor subscription FIFO
 
     Use method poll() to try to pop an item from the FIFO.
@@ -119,11 +135,13 @@ class Subscription(_p4p.ClientMonitor):
 
     cancel() aborts the subscription.
     """
+
     def __init__(self, context=None, unwrap=None, **kws):
         _log.debug("Subscription(%s)", kws)
         super(Subscription, self).__init__(**kws)
         self.context = context
         self._unwrap = unwrap or {}
+
     def pop(self):
         val = super(Subscription, self).pop()
         if val is not None:
@@ -132,21 +150,27 @@ class Subscription(_p4p.ClientMonitor):
                 val = fn(val)
         _log.debug("poll() -> %s", val)
         return val
+
     @property
     def done(self):
         return self.complete()
+
     def __enter__(self):
         return self
-    def __exit__(self,A,B,C):
+
+    def __exit__(self, A, B, C):
         self.close()
 
+
 class Context(object):
+
     """
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
     :param conf dict: Configuration to pass to provider.  Depends on provider selected.
     :param bool useenv: Allow the provider to use configuration from the process environment.
     :param dict unwrap: Controls :ref:`unwrap`.  None uses defaults.  Set False to disable
     """
+
     def __init__(self, provider=None, conf=None, useenv=None, unwrap=None, **kws):
         self.name = provider
         super(Context, self).__init__(**kws)
@@ -159,7 +183,7 @@ class Context(object):
             self._unwrap = _default_unwrap.copy()
             self._unwrap.update(unwrap)
         else:
-            raise ValueError("unwrap must be None, False, or dict, not %s"%unwrap)
+            raise ValueError("unwrap must be None, False, or dict, not %s" % unwrap)
 
         # initialize channel cache
         self.disconnect()
@@ -179,12 +203,13 @@ class Context(object):
 
     def __del__(self):
         if self._ctxt is not None:
-            warnings.warn("%s collected without close()"%self.__class__)
+            warnings.warn("%s collected without close()" % self.__class__)
         self.close()
 
     def __enter__(self):
         return self
-    def __exit__(self,A,B,C):
+
+    def __exit__(self, A, B, C):
         self.close()
 
     def _channel(self, name):
@@ -194,7 +219,7 @@ class Context(object):
         try:
             chan = self._channels[name]
         except KeyError:
-            chan = _p4p.ClientChannel(self._ctxt, name) # TODO: expose address and priority?
+            chan = _p4p.ClientChannel(self._ctxt, name)  # TODO: expose address and priority?
             self._channels[name] = chan
         return chan
 
@@ -212,18 +237,17 @@ class Context(object):
         """
         opts = []
         if process is not None:
-            opts.append('process=%s'%process)
+            opts.append('process=%s' % process)
         if wait is not None:
             if wait:
                 opts.append('wait=true')
             else:
                 opts.append('wait=false')
-        return 'field()record[%s]'%(','.join(opts))
-        
+        return 'field()record[%s]' % (','.join(opts))
 
     def get(self, name, handler, request=None):
         """Begin Fetch of current value of a PV
-        
+
         :param name: A single name string or list of name strings
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :param callable handler: Completion notification.  Called with a Value, RemoteError, or Cancelled
@@ -286,6 +310,7 @@ Context.set_debug = _p4p.ClientProvider.set_debug
 Context.makeRequest = _p4p.ClientProvider.makeRequest
 
 _all_contexts = WeakSet()
+
 
 def _cleanup_contexts():
     _log.debug("Closing all Client contexts")

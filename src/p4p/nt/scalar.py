@@ -1,15 +1,18 @@
 
-import time, sys
+import time
+import sys
 import numpy
 
 from ..wrapper import Type, Value
 from .common import alarm, timeStamp
 
-if sys.version_info>=(3,0):
+if sys.version_info >= (3, 0):
     unicode = str
+
 
 class ntwrappercommon(object):
     raw = timestamp = None
+
     def _store(self, value):
         assert isinstance(value, Value), value
         self.raw = value
@@ -17,14 +20,17 @@ class ntwrappercommon(object):
         self.status = value.get('alarm.status', 0)
         S, NS = value.get('timeStamp.secondsPastEpoch', 0), value.get('timeStamp.nanoseconds', 0)
         self.raw_stamp = S, NS
-        self.timestamp = S+NS*1e-9
+        self.timestamp = S + NS * 1e-9
         # TODO: unpack display/control
         return self
+
     def __str__(self):
         V = super(ntwrappercommon, self).__repr__()
-        return '%s %s'%(time.ctime(self.timestamp), V)
+        return '%s %s' % (time.ctime(self.timestamp), V)
 
-class ntfloat(ntwrappercommon,float):
+
+class ntfloat(ntwrappercommon, float):
+
     """
     Augmented float with additional attributes
 
@@ -35,7 +41,9 @@ class ntfloat(ntwrappercommon,float):
     * .raw - The underlying :py:class:`p4p.Value`.
     """
 
-class ntint(ntwrappercommon,int):
+
+class ntint(ntwrappercommon, int):
+
     """
     Augmented integer with additional attributes
 
@@ -46,7 +54,9 @@ class ntint(ntwrappercommon,int):
     * .raw - The underlying :py:class:`p4p.Value`.
     """
 
-class ntstr(ntwrappercommon,unicode):
+
+class ntstr(ntwrappercommon, unicode):
+
     """
     Augmented string with additional attributes
 
@@ -57,7 +67,9 @@ class ntstr(ntwrappercommon,unicode):
     * .raw - The underlying :py:class:`p4p.Value`.
     """
 
-class ntnumericarray(ntwrappercommon,numpy.ndarray):
+
+class ntnumericarray(ntwrappercommon, numpy.ndarray):
+
     """
     Augmented numpy.ndarray with additional attributes
 
@@ -70,12 +82,14 @@ class ntnumericarray(ntwrappercommon,numpy.ndarray):
 
     @classmethod
     def build(klass, val):
-        assert len(val.shape)==1, val.shape
+        assert len(val.shape) == 1, val.shape
         # clone
         return klass(shape=val.shape, dtype=val.dtype, buffer=val.data,
                      strides=val.strides)
 
-class ntstringarray(ntwrappercommon,list):
+
+class ntstringarray(ntwrappercommon, list):
+
     """
     Augmented list of strings with additional attributes
 
@@ -86,9 +100,11 @@ class ntstringarray(ntwrappercommon,list):
     * .raw - The underlying :py:class:`p4p.Value`.
     """
 
+
 class NTScalar(object):
+
     """Describes a single scalar or array of scalar values and associated meta-data
-    
+
     >>> stype = NTScalar.buildType('d') # scalar double
     >>> V = Value(stype, {'value': 4.2})
 
@@ -100,7 +116,7 @@ class NTScalar(object):
     @staticmethod
     def buildType(valtype, extra=[], display=False, control=False, valueAlarm=False):
         """Build a Type
-        
+
         :param str valtype: A type code to be used with the 'value' field.
         :param list extra: A list of tuples describing additional non-standard fields
         :param bool display: Include optional fields for display meta-data
@@ -108,7 +124,7 @@ class NTScalar(object):
         :param bool valueAlarm: Include optional fields for alarm level meta-data
         :returns: A :py:class:`Type`
         """
-        isarray = valtype[:1]=='a'
+        isarray = valtype[:1] == 'a'
         F = [
             ('value', valtype),
             ('alarm', alarm),
@@ -156,7 +172,7 @@ class NTScalar(object):
 
     def wrap(self, value):
         """Pack python value into Value
-        
+
         Accepts dict to explicitly initialize fields be name.
         Any other type is assigned to the 'value' field.
         """
@@ -170,7 +186,7 @@ class NTScalar(object):
                 'value': value,
                 'timeStamp': {
                     'secondsPastEpoch': S,
-                    'nanoseconds': NS*1e9,
+                    'nanoseconds': NS * 1e9,
                 },
             })
 
@@ -191,14 +207,14 @@ class NTScalar(object):
         try:
             T = klass.typeMap[type(V)]
         except KeyError:
-            raise ValueError("Can't unwrap value of type %s"%type(V))
+            raise ValueError("Can't unwrap value of type %s" % type(V))
         try:
             return T(value.value)._store(value)
         except Exception as e:
-            raise ValueError("Can't construct %s around %s (%s): %s"%(T, value, type(value), e))
+            raise ValueError("Can't construct %s around %s (%s): %s" % (T, value, type(value), e))
 
-if sys.version_info<(3,0):
-    class ntlong(ntwrappercommon,long):
+if sys.version_info < (3, 0):
+    class ntlong(ntwrappercommon, long):
         pass
 
     NTScalar.typeMap[long] = ntlong

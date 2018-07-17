@@ -4,7 +4,9 @@ from __future__ import print_function
 import logging
 _log = logging.getLogger(__name__)
 
-import sys, time, json
+import sys
+import time
+import json
 try:
     from itertools import izip
 except ImportError:
@@ -17,10 +19,11 @@ from .. import Value
 from .. import nt
 from . import thread
 
+
 def op_get(ctxt, args):
-    requests = [args.request]*len(args.names)
+    requests = [args.request] * len(args.names)
     results = ctxt.get(args.names, requests, timeout=args.timeout, throw=False)
-    ret= 0
+    ret = 0
     for name, val in izip(args.names, results):
         if isinstance(val, Exception):
             ret = 1
@@ -29,8 +32,9 @@ def op_get(ctxt, args):
             print(name, val)
     sys.exit(ret)
 
+
 def op_put(ctxt, args):
-    requests = [args.request]*len(args.names)
+    requests = [args.request] * len(args.names)
 
     names, values = [], []
     for pair in args.names:
@@ -47,7 +51,7 @@ def op_put(ctxt, args):
 
     results = ctxt.put(names, values, requests, timeout=args.timeout, throw=False)
 
-    ret= 0
+    ret = 0
     for name, val in izip(args.names, results):
         if isinstance(val, Exception):
             ret = 1
@@ -57,6 +61,7 @@ def op_put(ctxt, args):
         else:
             print(name, val.tolist())
     sys.exit(ret)
+
 
 def op_monitor(ctxt, args):
     subs = []
@@ -81,6 +86,7 @@ def op_monitor(ctxt, args):
     [S.close() for S in subs]
     sys.exit(ret)
 
+
 def op_rpc(ctxt, args):
     anames = []
     kws = {}
@@ -95,7 +101,7 @@ def op_rpc(ctxt, args):
         anames.append((K, 's'))
         kws[K] = V
 
-    uri = nt.NTURI(anames).wrap(args.name, kws=kws) # only keyword arguments
+    uri = nt.NTURI(anames).wrap(args.name, kws=kws)  # only keyword arguments
 
     ret = ctxt.rpc(args.name, uri, request=args.request, timeout=args.timeout, throw=False)
     if isinstance(ret, Exception):
@@ -104,15 +110,16 @@ def op_rpc(ctxt, args):
     else:
         print(ret.tolist())
 
+
 def getargs():
     from argparse import ArgumentParser
     P = ArgumentParser()
     P.add_argument('-r', '--request', default='')
     P.add_argument('-w', '--timeout', type=float, default=5.0)
     P.add_argument('-p', '--provider', default='pva')
-    P.add_argument('-d','--debug', action='store_true')
+    P.add_argument('-d', '--debug', action='store_true')
     P.add_argument('--raw', action='store_false', default=None)
-    P.set_defaults(func=lambda ctxt,args:P.print_help())
+    P.set_defaults(func=lambda ctxt, args: P.print_help())
 
     SP = P.add_subparsers()
 
@@ -135,11 +142,12 @@ def getargs():
 
     return P.parse_args()
 
+
 def main(args):
     with thread.Context(args.provider, unwrap=args.raw) as ctxt:
         args.func(ctxt, args)
 
-if __name__=='__main__':
+if __name__ == '__main__':
     args = getargs()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
     main(args)

@@ -1,7 +1,8 @@
 
 from __future__ import absolute_import
 
-import logging, warnings
+import logging
+import warnings
 _log = logging.getLogger(__name__)
 
 from functools import partial
@@ -16,6 +17,7 @@ __all__ = (
     'Handler',
 )
 
+
 def _handle(op, M, *args):
     try:
         M(*args)
@@ -27,7 +29,9 @@ def _handle(op, M, *args):
     if op is not None:
         op.done(error=str(e))
 
+
 class SharedPV(_SharedPV):
+
     def __init__(self, queue=None, **kws):
         _SharedPV.__init__(self, **kws)
         self._queue = queue or Callback

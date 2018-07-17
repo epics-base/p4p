@@ -1,5 +1,6 @@
 
-import logging, warnings
+import logging
+import warnings
 _log = logging.getLogger(__name__)
 
 import atexit
@@ -16,22 +17,28 @@ __all__ = (
 )
 
 # lazy create a default work queue
+
+
 class _DefaultWorkQueue(object):
-    def __init__(self, workers=4): # TODO: configurable?
+
+    def __init__(self, workers=4):  # TODO: configurable?
         self.Q = self.T = None
         self.N = workers
+
     def __del__(self):
         self.stop()
+
     def __call__(self):
         if self.Q is None:
             self.T = []
             self.Q = WorkQueue(maxsize=0)
             for _i in range(self.N):
                 T = Thread(name="p4p.server.thread worker", target=self.Q.handle)
-                T.daemon = True # otherwise the MainThread exit handler tries to join too early
+                T.daemon = True  # otherwise the MainThread exit handler tries to join too early
                 T.start()
                 self.T.append(T)
         return self.Q
+
     def stop(self):
         if self.Q is None:
             return
@@ -45,6 +52,7 @@ _defaultWorkQueue = _DefaultWorkQueue()
 
 atexit.register(_defaultWorkQueue.stop)
 
+
 def _on_queue(op, M, *args):
     try:
         M(*args)
@@ -56,9 +64,11 @@ def _on_queue(op, M, *args):
     if op is not None:
         op.done(error=str(e))
 
+
 class SharedPV(_SharedPV):
+
     """Shared state Process Variable.  Callback based implementation.
-    
+
     .. note:: if initial=None, the PV is initially **closed** and
               must be :py:meth:`open()`'d before any access is possible.
 
@@ -98,6 +108,7 @@ class SharedPV(_SharedPV):
             pass
 
     """
+
     def __init__(self, queue=None, **kws):
         _SharedPV.__init__(self, **kws)
         self._queue = queue or _defaultWorkQueue()

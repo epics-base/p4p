@@ -1,8 +1,14 @@
 
-import logging, warnings
+import logging
+import warnings
 _log = logging.getLogger(__name__)
 
-import unittest, sys, random, weakref, gc, threading
+import unittest
+import sys
+import random
+import weakref
+import gc
+import threading
 from unittest.case import SkipTest
 
 from ..nt import NTScalar
@@ -21,15 +27,16 @@ else:
     from .utils import inloop, clearloop
 
     class Handler:
+
         @asyncio.coroutine
         def put(self, pv, op):
             _log.debug("putting %s <- %s", op.name(), op.value())
-            yield from asyncio.sleep(0, loop=self.loop) # prove that we can
-            pv.post(op.value()*2)
+            yield from asyncio.sleep(0, loop=self.loop)  # prove that we can
+            pv.post(op.value() * 2)
             op.done()
 
     class TestGPM(RefTestCase):
-        timeout = 5 # overall timeout for each test method
+        timeout = 5  # overall timeout for each test method
 
         @inloop
         @asyncio.coroutine
@@ -58,7 +65,7 @@ else:
 
                     yield from C.put('foo', 5)
 
-                    self.assertEqual(5*2, (yield from C.get('foo')))
+                    self.assertEqual(5 * 2, (yield from C.get('foo')))
 
         @inloop
         @asyncio.coroutine
@@ -76,7 +83,7 @@ else:
 
                         yield from C.put('foo', 2)
 
-                        self.assertEqual(2*2, (yield from Q.get()))
+                        self.assertEqual(2 * 2, (yield from Q.get()))
 
                         self.pv.close()
 
@@ -90,7 +97,9 @@ else:
                         sub.close()
                         yield from sub.wait_closed()
 
+
 class TestTimeout(unittest.TestCase):
+
     def tearDown(self):
         clearloop(self)
 
@@ -98,7 +107,7 @@ class TestTimeout(unittest.TestCase):
     def test_timeout(self):
         done = None
 
-        if sys.version_info>=(3,4) and sys.version_info<(3,5):
+        if sys.version_info >= (3, 4) and sys.version_info < (3, 5):
             raise SkipTest("wait_for() kind of broken in 3.4")
             # I'm seeing a test failure with "got Future <Future pending> attached to a different loop"
             # but I can't find where the different loop gets mixed in.

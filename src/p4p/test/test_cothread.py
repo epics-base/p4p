@@ -1,8 +1,14 @@
 
-import logging, warnings
+import logging
+import warnings
 _log = logging.getLogger(__name__)
 
-import unittest, sys, random, weakref, gc, threading
+import unittest
+import sys
+import random
+import weakref
+import gc
+import threading
 from unittest.case import SkipTest
 
 from ..nt import NTScalar
@@ -18,10 +24,11 @@ else:
     from ..server.cothread import SharedPV
 
     class Handler:
+
         def put(self, pv, op):
             _log.debug("putting %s <- %s", op.name(), op.value())
-            cothread.Yield() # because we can
-            pv.post(op.value()*2)
+            cothread.Yield()  # because we can
+            pv.post(op.value() * 2)
             op.done()
 
     class TestGPM(RefTestCase):
@@ -48,13 +55,13 @@ else:
 
                     C.put('foo', 5)
 
-                    self.assertEqual(5*2, C.get('foo'))
+                    self.assertEqual(5 * 2, C.get('foo'))
 
-                    self.assertEqual([5*2, 42.0], C.get(['foo', 'bar']))
+                    self.assertEqual([5 * 2, 42.0], C.get(['foo', 'bar']))
 
                     C.put(['foo', 'bar'], [6, 7])
 
-                    self.assertEqual([6*2, 7*2], C.get(['foo', 'bar']))
+                    self.assertEqual([6 * 2, 7 * 2], C.get(['foo', 'bar']))
 
         def test_monitor(self):
             with Server(providers=[self.provider], isolate=True) as S:
@@ -69,7 +76,7 @@ else:
 
                         C.put('foo', 2)
 
-                        self.assertEqual(2*2, Q.Wait())
+                        self.assertEqual(2 * 2, Q.Wait())
 
                         self.pv.close()
 
@@ -78,4 +85,3 @@ else:
                         self.pv.open(3)
 
                         self.assertEqual(3, Q.Wait())
-

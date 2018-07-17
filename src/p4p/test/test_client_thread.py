@@ -2,13 +2,16 @@
 from __future__ import print_function
 
 import unittest
-import weakref, gc
+import weakref
+import gc
 
 from ..client.thread import Context, TimeoutError
 from .utils import gctrace
 from .utils import RefTestCase
 
+
 class TestTimeout(RefTestCase):
+
     def setUp(self):
         super(TestTimeout, self).setUp()
         self.ctxt = Context('pva')

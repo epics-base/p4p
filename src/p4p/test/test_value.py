@@ -1,7 +1,8 @@
 
 from __future__ import print_function
 
-import weakref, gc
+import weakref
+import gc
 import unittest
 
 import numpy as np
@@ -11,16 +12,18 @@ from ..wrapper import Type, Value
 from .. import pvdVersion
 from .utils import RefTestCase
 
+
 class TestRawValue(RefTestCase):
+
     def testToString(self):
         V = Value(Type([
             ('ival', 'i'),
             ('dval', 'd'),
             ('sval', 's'),
         ]), {
-            'ival':42,
-            'dval':4.2,
-            'sval':'hello',
+            'ival': 42,
+            'dval': 4.2,
+            'sval': 'hello',
         })
 
         # attempt to normalize to avoid comparing whitespace
@@ -28,21 +31,21 @@ class TestRawValue(RefTestCase):
             return list([l.split() for l in s.splitlines()])
 
         self.assertEqual(proc(str(V)),
-                         proc('''structure 
+                         proc('''structure
     int ival 42
     double dval 4.2
     string sval hello
 '''))
-        
+
     def testScalar(self):
         V = Value(Type([
             ('ival', 'i'),
             ('dval', 'd'),
             ('sval', 's'),
         ]), {
-            'ival':42,
-            'dval':4.2,
-            'sval':'hello',
+            'ival': 42,
+            'dval': 4.2,
+            'sval': 'hello',
         })
 
         self.assertListEqual(V.tolist(), [
@@ -83,9 +86,9 @@ class TestRawValue(RefTestCase):
             ('dval', 'd'),
             ('sval', 's'),
         ]), {
-            'ival':42,
-            'dval':4.2,
-            'sval':'hello',
+            'ival': 42,
+            'dval': 4.2,
+            'sval': 'hello',
         })
 
         self.assertEqual(100, V.get('foo', 100))
@@ -103,7 +106,7 @@ class TestRawValue(RefTestCase):
             ('dval', 'd'),
             ('sval', 's'),
         ])
-        self.assertRaises(KeyError, Value, T, {'invalid':42})
+        self.assertRaises(KeyError, Value, T, {'invalid': 42})
 
     def testArray(self):
         V = Value(Type([
@@ -128,8 +131,8 @@ class TestRawValue(RefTestCase):
                 ('b', 'i'),
             ])),
         ]), {
-            'ival':42,
-            'str':{
+            'ival': 42,
+            'str': {
                 'a': 1,
                 'b': 2,
             },
@@ -163,21 +166,21 @@ class TestRawValue(RefTestCase):
         self.assertEqual(V['str.a'], 1)
 
         self.assertEqual(V.type().aspy(),
-            ('S', 'structure', [
-                ('ival', 'i'),
-                ('str', ('S', 'foo', [
-                    ('a', 'i'),
-                    ('b', 'i'),
-                ])),
-            ]),
-        )
+                         ('S', 'structure', [
+                          ('ival', 'i'),
+                          ('str', ('S', 'foo', [
+                                   ('a', 'i'),
+                                   ('b', 'i'),
+                                   ])),
+                          ]),
+                         )
 
         self.assertEqual(V.type('str').aspy(),
-            ('S', 'foo', [
-                ('a', 'i'),
-                ('b', 'i'),
-            ]),
-        )
+                         ('S', 'foo', [
+                          ('a', 'i'),
+                          ('b', 'i'),
+                          ]),
+                         )
 
         self.assertRaises(KeyError, V.type, 'invalid')
 
@@ -206,13 +209,13 @@ class TestRawValue(RefTestCase):
         self.assertEqual(V.x, u'test')
 
         V.x = np.asarray([1, 2])
-        assert_aequal(V.x, np.asarray([1,2]))
+        assert_aequal(V.x, np.asarray([1, 2]))
 
         V.x = np.asfarray([1, 2])
-        assert_aequal(V.x, np.asfarray([1,2]))
+        assert_aequal(V.x, np.asfarray([1, 2]))
 
         # clearing unions is broken prior to 7.0.0
-        if pvdVersion()>=(7,0,0,0):
+        if pvdVersion() >= (7, 0, 0, 0):
             V.x = None
             self.assertIsNone(V.x)
 
@@ -237,12 +240,12 @@ class TestRawValue(RefTestCase):
         self.assertEqual(V.x, u'world')
 
         # uses previously selected 'b'
-        V.x = 128;
+        V.x = 128
         self.assertEqual(V.x, u'128')
 
         # clearing unions is broken prior to 7.0.0
-        if pvdVersion()>=(7,0,0,0):
-            V.x = None # another way to clear
+        if pvdVersion() >= (7, 0, 0, 0):
+            V.x = None  # another way to clear
             self.assertIsNone(V.x)
 
     def testUnionArray(self):
@@ -275,7 +278,7 @@ class TestRawValue(RefTestCase):
         self.assertListEqual(V.y, [2, 5, u'bar'])
 
     def testUnionArrayStruct(self):
-        S= Value(Type([
+        S = Value(Type([
             ('x', 'i'),
         ]), {
             'x': 42,
@@ -326,7 +329,7 @@ class TestRawValue(RefTestCase):
         self.assertEqual(V.a[0].b, 4)
         self.assertEqual(V.a[1].b, 5)
 
-        V.a = [{'b':1}]
+        V.a = [{'b': 1}]
 
         self.assertEqual(len(V.a), 1)
         self.assertEqual(V.a[0].b, 1)
@@ -334,18 +337,18 @@ class TestRawValue(RefTestCase):
     def testRepr(self):
         V = Value(Type([('a', 'I')]))
         self.assertEqual(repr(V), 'Value(id:structure, a:0)')
-        
+
         V = Value(Type([('a', 'I'), ('value', 'd')]))
         self.assertEqual(repr(V), 'Value(id:structure, value:0.0)')
 
         V = Value(Type([('a', 'I')], id='foo'))
         self.assertEqual(repr(V), 'Value(id:foo, a:0)')
-        
+
         V = Value(Type([('a', 'I'), ('value', 'd')], id='foo'))
         self.assertEqual(repr(V), 'Value(id:foo, value:0.0)')
 
     def testBitSet(self):
-        A= Value(Type([
+        A = Value(Type([
             ('x', 'i'),
             ('y', 'i'),
         ]), {
@@ -381,7 +384,7 @@ class TestRawValue(RefTestCase):
         self.assertFalse(A.changed('y'))
 
     def testBitSetRecurse(self):
-        A= Value(Type([
+        A = Value(Type([
             ('x', 'i'),
             ('y', 'i'),
             ('z', ('S', None, [
@@ -407,7 +410,7 @@ class TestRawValue(RefTestCase):
         self.assertTrue(A.changed('z.a'))
         self.assertFalse(A.changed('z.b'))
 
-        Z = A.z # A and Z share fields and bitset
+        Z = A.z  # A and Z share fields and bitset
         self.assertTrue(Z.changed('a'))
         self.assertFalse(Z.changed('b'))
 
@@ -422,7 +425,9 @@ class TestRawValue(RefTestCase):
         self.assertFalse(Z.changed('a'))
         self.assertTrue(Z.changed('b'))
 
+
 class TestReInit(RefTestCase):
+
     def testCopySubStruct(self):
         A = Value(Type([
             ('x', ('S', None, [
@@ -435,26 +440,26 @@ class TestReInit(RefTestCase):
                 ])),
             ])),
         ]), {
-            'x.y':42,
-            'x.z':range(3),
-            'x.q':'hello',
-            'x.m':['hello', 52],
-            'x.a.A':100,
+            'x.y': 42,
+            'x.z': range(3),
+            'x.q': 'hello',
+            'x.m': ['hello', 52],
+            'x.a.A': 100,
         })
 
         B = Value(A.type(), {
-            'x.y':43,
-            'x.z':range(4),
-            'x.q':15,
-            'x.m':['world', 62],
-            'x.a.A':101,
+            'x.y': 43,
+            'x.z': range(4),
+            'x.q': 15,
+            'x.m': ['world', 62],
+            'x.a.A': 101,
         })
 
         print(A.x, B.x)
         B.x = A.x
 
         self.assertEqual(B.x.y, 42)
-        assert_aequal(B.x.z, [0,1,2])
+        assert_aequal(B.x.z, [0, 1, 2])
         self.assertEqual(B.x.q, 'hello')
         self.assertEqual(B.x.m, ['hello', 52])
         self.assertEqual(B.x.a.A, 100)

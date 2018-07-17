@@ -1,7 +1,9 @@
 
 from __future__ import print_function
 
-import logging, warnings, sys
+import logging
+import warnings
+import sys
 _log = logging.getLogger(__name__)
 
 try:
@@ -9,7 +11,8 @@ try:
 except ImportError:
     izip = zip
 from functools import partial
-import json, threading
+import json
+import threading
 
 try:
     from Queue import Queue, Full, Empty
@@ -32,19 +35,23 @@ __all__ = [
     'TimeoutError',
 ]
 
-if sys.version_info>=(3,0):
+if sys.version_info >= (3, 0):
     unicode = str
     TimeoutError = TimeoutError
 
 else:
     class TimeoutError(RuntimeError):
+
         def __init__(self):
             RuntimeError.__init__(self, 'Timeout')
 
+
 class Subscription(object):
+
     """An active subscription.
     """
-    def __init__(self, ctxt, name, cb, notify_disconnect = False):
+
+    def __init__(self, ctxt, name, cb, notify_disconnect=False):
         self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
         self._Q = ctxt._queue()
@@ -52,6 +59,7 @@ class Subscription(object):
         if notify_disconnect:
             # all subscriptions are inittially disconnected
             self._Q.push_wait(partial(cb, Disconnected()))
+
     def close(self):
         """Close subscription.
         """
@@ -61,27 +69,33 @@ class Subscription(object):
             # wait for Cancelled to be delivered
             self._evt.wait()
             self._S = None
+
     def __enter__(self):
         return self
-    def __exit__(self,A,B,C):
+
+    def __exit__(self, A, B, C):
         self.close()
+
     @property
     def done(self):
         'Has all data for this subscription been received?'
         return self._S is None or self._S.done()
+
     @property
     def empty(self):
         'Is data pending in event queue?'
         return self._S is None or self._S.empty()
+
     def _event(self, E):
         try:
             assert self._S is not None, self._S
-            #TODO: ensure ordering of error and data events
+            # TODO: ensure ordering of error and data events
             _log.debug('Subscription wakeup for %s with %s', self.name, E)
             self._inprog = True
             self._Q.push(partial(self._handle, E))
         except:
             _log.exception("Lost Subscription update: %s", E)
+
     def _handle(self, E):
         try:
             S = self._S
@@ -98,9 +112,8 @@ class Subscription(object):
                     _log.error("Subscription Error %s", E)
                 return
 
-            elif S is None: # already close()'d
+            elif S is None:  # already close()'d
                 return
-
 
             for n in range(4):
                 E = S.pop()
@@ -123,7 +136,9 @@ class Subscription(object):
             self._S.close()
             self._S = None
 
+
 class Context(raw.Context):
+
     """Context(provider, conf=None, useenv=True)
 
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
@@ -161,7 +176,6 @@ class Context(raw.Context):
         self._Qmax = maxsize
         self._Wcnt = workers
 
-
     def _channel(self, name):
         with self._channel_lock:
             return super(Context, self)._channel(name)
@@ -190,7 +204,7 @@ class Context(raw.Context):
         if self._Q is not None:
             for T in self._T:
                 self._Q.interrupt()
-            for n,T in enumerate(self._T):
+            for n, T in enumerate(self._T):
                 _log.debug('Join Context worker %d', n)
                 T.join()
             _log.debug('Joined Context workers')
@@ -199,7 +213,7 @@ class Context(raw.Context):
 
     def get(self, name, request=None, timeout=5.0, throw=True):
         """Fetch current value of some number of PVs.
-        
+
         :param name: A single name string or list of name strings
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :param float timeout: Operation timeout in seconds
@@ -221,19 +235,19 @@ class Context(raw.Context):
             request = [request]
 
         elif request is None:
-            request = [None]*len(name)
+            request = [None] * len(name)
 
-        assert len(name)==len(request), (name, request)
+        assert len(name) == len(request), (name, request)
 
         # use Queue instead of Event to allow KeyboardInterrupt
         done = Queue()
-        result = [TimeoutError()]*len(name)
-        ops = [None]*len(name)
+        result = [TimeoutError()] * len(name)
+        ops = [None] * len(name)
 
         raw_get = super(Context, self).get
 
         try:
-            for i,(N, req) in enumerate(izip(name, request)):
+            for i, (N, req) in enumerate(izip(name, request)):
                 def cb(value, i=i):
                     try:
                         if not isinstance(value, Cancelled):
@@ -269,7 +283,7 @@ class Context(raw.Context):
     def put(self, name, values, request=None, timeout=5.0, throw=True,
             process=None, wait=None):
         """Write a new value of some number of PVs.
-        
+
         :param name: A single name string or list of name strings
         :param values: A single value or a list of values
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
@@ -301,7 +315,7 @@ class Context(raw.Context):
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:
-            request = 'field()record[block=%s,process=%s]'%('true' if wait else 'false', process or 'passive')
+            request = 'field()record[block=%s,process=%s]' % ('true' if wait else 'false', process or 'passive')
 
         singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
@@ -310,25 +324,25 @@ class Context(raw.Context):
             request = [request]
 
         elif request is None:
-            request = [None]*len(name)
+            request = [None] * len(name)
 
-        assert len(name)==len(request), (name, request)
-        assert len(name)==len(values), (name, values)
+        assert len(name) == len(request), (name, request)
+        assert len(name) == len(values), (name, values)
 
         # use Queue instead of Event to allow KeyboardInterrupt
         done = Queue()
-        result = [TimeoutError()]*len(name)
-        ops = [None]*len(name)
+        result = [TimeoutError()] * len(name)
+        ops = [None] * len(name)
 
         raw_put = super(Context, self).put
 
         try:
-            for i,(n, value, req) in enumerate(izip(name, values, request)):
-                if isinstance(value, (bytes, unicode)) and value[:1]=='{':
+            for i, (n, value, req) in enumerate(izip(name, values, request)):
+                if isinstance(value, (bytes, unicode)) and value[:1] == '{':
                     try:
                         value = json.loads(value)
                     except ValueError:
-                        raise ValueError("Unable to interpret '%s' as json"%value)
+                        raise ValueError("Unable to interpret '%s' as json" % value)
 
                 # completion callback
                 def cb(value, i=i):
@@ -396,9 +410,9 @@ class Context(raw.Context):
             op.close()
             raise
 
-    def monitor(self, name, cb, request=None, notify_disconnect = False):
+    def monitor(self, name, cb, request=None, notify_disconnect=False):
         """Create a subscription.
-        
+
         :param str name: PV name string
         :param callable cb: Processing callback
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.

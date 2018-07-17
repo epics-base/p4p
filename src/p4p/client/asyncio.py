@@ -1,5 +1,7 @@
 
-import logging, warnings, sys
+import logging
+import warnings
+import sys
 _log = logging.getLogger(__name__)
 
 import asyncio
@@ -21,6 +23,7 @@ __all__ = [
     'RemoteError',
     'timeout',
 ]
+
 
 def timesout(deftimeout=5.0):
     """Decorate a coroutine to implement an overall timeout.
@@ -49,6 +52,7 @@ def timesout(deftimeout=5.0):
     """
     def decorate(fn):
         assert asyncio.iscoroutinefunction(fn), "Place @timesout before @coroutine"
+
         @wraps(fn)
         @asyncio.coroutine
         def wrapper(*args, timeout=deftimeout, **kws):
@@ -61,7 +65,9 @@ def timesout(deftimeout=5.0):
         return wrapper
     return decorate
 
+
 class Context(raw.Context):
+
     """
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
     :param conf dict: Configuration to pass to provider.  Depends on provider selected.
@@ -101,6 +107,7 @@ class Context(raw.Context):
             with Context('pva') as ctxt:
                 yield from asyncio.wait_for(dostuff(ctxt), timeout=5)
     """
+
     def __init__(self, provider, conf=None, useenv=True, unwrap=None,
                  loop=None):
         super(Context, self).__init__(provider, conf=conf, useenv=useenv, unwrap=unwrap)
@@ -109,7 +116,7 @@ class Context(raw.Context):
     @asyncio.coroutine
     def get(self, name, request=None):
         """Fetch current value of some number of PVs.
-        
+
         :param name: A single name string or list of name strings
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
 
@@ -127,11 +134,11 @@ class Context(raw.Context):
             return (yield from self._get_one(name, request=request))
 
         elif request is None:
-            request = [None]*len(name)
+            request = [None] * len(name)
 
-        assert len(name)==len(request), (name, request)
+        assert len(name) == len(request), (name, request)
 
-        futs = [self._get_one(N, request=R) for N,R in zip(name, request)]
+        futs = [self._get_one(N, request=R) for N, R in zip(name, request)]
 
         ret = yield from asyncio.gather(futs, loop=self.loop)
 
@@ -143,14 +150,14 @@ class Context(raw.Context):
 
         def cb(value):
             if F.cancelled() or F.done():
-                return # ignore
+                return  # ignore
             elif isinstance(value, (RemoteError, Disconnected, Cancelled)):
                 F.set_exception(value)
             else:
                 F.set_result(value)
         cb = partial(self.loop.call_soon_threadsafe, cb)
 
-        op = super(Context, self).get(name, cb,request=request)
+        op = super(Context, self).get(name, cb, request=request)
 
         _log.debug('get %s request=%s', name, request)
         try:
@@ -187,17 +194,17 @@ class Context(raw.Context):
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:
-            request = 'field()record[block=%s,process=%s]'%('true' if wait else 'false', process or 'passive')
+            request = 'field()record[block=%s,process=%s]' % ('true' if wait else 'false', process or 'passive')
 
         singlepv = isinstance(name, (bytes, str))
         if singlepv:
             return (yield from self._put_one(name, values, request=request))
 
         elif request is None:
-            request = [None]*len(name)
+            request = [None] * len(name)
 
-        assert len(name)==len(request), (name, request)
-        assert len(name)==len(values), (name, values)
+        assert len(name) == len(request), (name, request)
+        assert len(name) == len(values), (name, values)
 
         futs = [self._put_one(N, V, request=R) for N, V, R in zip(name, values, request)]
 
@@ -210,7 +217,7 @@ class Context(raw.Context):
         def cb(value):
             _log.debug("put done %s %s", name, value)
             if F.cancelled() or F.done():
-                return # ignore
+                return  # ignore
             elif isinstance(value, (RemoteError, Disconnected, Cancelled)):
                 F.set_exception(value)
             else:
@@ -251,7 +258,7 @@ class Context(raw.Context):
 
         def cb(value):
             if F.cancelled() or F.done():
-                return # ignore
+                return  # ignore
             elif isinstance(value, (RemoteError, Disconnected, Cancelled)):
                 F.set_exception(value)
             else:
@@ -265,9 +272,9 @@ class Context(raw.Context):
         finally:
             op.close()
 
-    def monitor(self, name, cb, request=None, notify_disconnect = False):
+    def monitor(self, name, cb, request=None, notify_disconnect=False):
         """Create a subscription.
-        
+
         :param str name: PV name string
         :param callable cb: Processing callback
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
@@ -287,23 +294,27 @@ class Context(raw.Context):
         R._S = super(Context, self).monitor(name, cb, request)
         return R
 
+
 class Subscription(object):
+
     """An active subscription.
     """
-    def __init__(self, name, cb, notify_disconnect = False, loop = None):
+
+    def __init__(self, name, cb, notify_disconnect=False, loop=None):
         self.name, self._S, self._cb, self.loop = name, None, cb, loop
         self._notify_disconnect = notify_disconnect
 
         self._Q = asyncio.Queue(loop=self.loop)
 
         if notify_disconnect:
-            self._Q.put_nowait(Disconnected()) # all subscriptions are inittially disconnected
+            self._Q.put_nowait(Disconnected())  # all subscriptions are inittially disconnected
 
         self._T = self.loop.create_task(self._handle())
 
     def __enter__(self):
         return self
-    def __exit__(self,A,B,C):
+
+    def __exit__(self, A, B, C):
         self.close()
 
     def close(self):
@@ -319,6 +330,7 @@ class Subscription(object):
     def done(self):
         'Has all data for this subscription been received?'
         return self._S is None or self._S.done()
+
     @property
     def empty(self):
         'Is data pending in event queue?'
@@ -365,7 +377,7 @@ class Subscription(object):
                         _log.error("Subscription Error %s", E)
                     return
 
-                elif S is None: # already close()'d
+                elif S is None:  # already close()'d
                     return
 
                 i = 0
@@ -374,9 +386,9 @@ class Subscription(object):
                     if E is None or self._S is None:
                         break
                     yield from self._cb(E)
-                    i = (i+1)%4
-                    if i==0:
-                        yield from asyncio.sleep(0) # Not sure how necessary.  Ensure we go to the scheduler
+                    i = (i + 1) % 4
+                    if i == 0:
+                        yield from asyncio.sleep(0)  # Not sure how necessary.  Ensure we go to the scheduler
 
                 if S.done:
                     _log.debug('Subscription complete %s', self.name)

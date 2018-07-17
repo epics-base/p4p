@@ -4,7 +4,9 @@ from __future__ import absolute_import
 from ..wrapper import Type, Value
 from .common import alarm, timeStamp
 
+
 class NTEnum(object):
+
     @staticmethod
     def buildType(extra=[], display=False, control=False, valueAlarm=False):
         F = [
@@ -24,4 +26,4 @@ class NTEnum(object):
     def wrap(self, value):
         """Pack python value into Value
         """
-        return Value(self.type, {'value':value})
+        return Value(self.type, {'value': value})

@@ -1,13 +1,16 @@
 
 from __future__ import print_function
 
-import weakref, gc
+import weakref
+import gc
 import unittest
 
 from ..wrapper import Type as _Type
 from .utils import RefTestCase
 
+
 class TestRawType(RefTestCase):
+
     def testScalar(self):
         L = [
             ('a', 'i'),
@@ -28,13 +31,13 @@ class TestRawType(RefTestCase):
         ]
         T = _Type(spec=L)
 
-        self.assertTrue (T.has('a'))
-        self.assertTrue (T.has('b'))
+        self.assertTrue(T.has('a'))
+        self.assertTrue(T.has('b'))
         self.assertFalse(T.has('c'))
         self.assertListEqual(T.keys(), ['a', 'b'])
 
-        self.assertTrue ('a' in T)
-        self.assertTrue ('b' in T)
+        self.assertTrue('a' in T)
+        self.assertTrue('b' in T)
         self.assertFalse('c' in T)
 
     def testID(self):
@@ -62,6 +65,7 @@ class TestRawType(RefTestCase):
         self.assertEqual(T['X'].getID(), 'bar')
         self.assertEqual(T['X'].aspy(), T.aspy('X'))
         self.assertEqual(T['X'].aspy(), L[1][1])
+
     def testUnion(self):
         L = [
             ('a', 'i'),

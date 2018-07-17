@@ -22,16 +22,18 @@ defs = {
     'enum': nt.NTEnum().wrap(0),
 }
 
+
 def getargs():
     from argparse import ArgumentParser
 
     P = ArgumentParser()
-    P.add_argument('-d','--debug', action='store_true')
-    #P.add_argument('-f', '--file', help='Persistence file')
+    P.add_argument('-d', '--debug', action='store_true')
+    # P.add_argument('-f', '--file', help='Persistence file')
 
     P.add_argument('pvs', metavar='name=def', nargs='*', help='PV definitions')
 
     return P.parse_args()
+
 
 def main(args):
     db = {}
@@ -39,11 +41,12 @@ def main(args):
 
     for pv in args.pvs:
         name, sep, type = pv.partition('=')
-        if sep=='':
+        if sep == '':
             print("Invalid definition, missing '=' :", pv)
             sys.exit(1)
 
         pv = SharedPV(initial=defs[type])
+
         @pv.put
         def handler(pv, op):
             pv.post(op.value())
@@ -54,7 +57,7 @@ def main(args):
 
     Server.forever(providers=[provider])
 
-if __name__=='__main__':
+if __name__ == '__main__':
     args = getargs()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
     main(args)

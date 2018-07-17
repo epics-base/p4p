@@ -1,5 +1,6 @@
 
-import logging, warnings
+import logging
+import warnings
 _log = logging.getLogger(__name__)
 
 from functools import partial
@@ -9,23 +10,30 @@ from threading import Thread
 from .._p4p import SharedPV as _SharedPV
 
 __all__ = (
-        'SharedPV',
+    'SharedPV',
         'Handler',
 )
 
+
 class ServOpWrap(object):
+
     def __init__(self, op, unwrap):
         self._op, self._unwrap = op, unwrap
+
     def value(self):
         return self._unwrap(self._op.value())
+
     def __getattr__(self, key):
         return getattr(self._op, key)
 
+
 class Handler(object):
+
     """Skeleton of SharedPV Handler
 
     Use of this as a base class is optional.
     """
+
     def put(self, pv, op):
         """
         Called each time a client issues a Put
@@ -35,6 +43,7 @@ class Handler(object):
         :param ServerOperation op: The operation being initiated.
         """
         op.done(error='Not supported')
+
     def rpc(self, pv, op):
         """
         Called each time a client issues a Remote Procedure Call
@@ -44,6 +53,7 @@ class Handler(object):
         :param ServerOperation op: The operation being initiated.
         """
         op.done(error='Not supported')
+
     def onFirstConnect(self, pv):
         """
         Called when the first Client channel is created.
@@ -51,6 +61,7 @@ class Handler(object):
         :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
         """
         pass
+
     def onLastDisconnect(self, pv):
         """
         Called when the last Client channel is closed.
@@ -59,9 +70,11 @@ class Handler(object):
         """
         pass
 
+
 class SharedPV(_SharedPV):
+
     """Shared state Process Variable.  Callback based implementation.
-    
+
     .. note:: if initial=None, the PV is initially **closed** and
               must be :py:meth:`open()`'d before any access is possible.
 
@@ -104,13 +117,14 @@ class SharedPV(_SharedPV):
     transform to/from :py:class:`Value` and more convienent Python types.
     See :ref:`unwrap`
     """
+
     def __init__(self, handler=None, initial=None,
                  nt=None, wrap=None, unwrap=None):
         self._handler = handler or self._DummyHandler()
         self._whandler = self._WrapHandler(self, self._handler)
 
-        self._wrap = wrap or (nt and nt.wrap) or (lambda x:x)
-        self._unwrap = unwrap or (nt and nt.unwrap) or (lambda x:x)
+        self._wrap = wrap or (nt and nt.wrap) or (lambda x: x)
+        self._unwrap = unwrap or (nt and nt.unwrap) or (lambda x: x)
 
         _SharedPV.__init__(self, self._whandler)
         if initial is not None:
@@ -145,7 +159,7 @@ class SharedPV(_SharedPV):
     def current(self):
         return self._unwrap(_SharedPV.current(self))
 
-    def _exec(self, op, M, *args): # sub-classes will replace this
+    def _exec(self, op, M, *args):  # sub-classes will replace this
         try:
             M(*args)
         except Exception as e:
@@ -157,13 +171,15 @@ class SharedPV(_SharedPV):
         pass
 
     class _WrapHandler(object):
+
         "Wrapper around user Handler which logs exceptions"
+
         def __init__(self, pv, real):
-            self._pv = pv # this creates a reference cycle, which should be collectable since SharedPV supports GC
+            self._pv = pv  # this creates a reference cycle, which should be collectable since SharedPV supports GC
             self._real = real
 
         def onFirstConnect(self):
-            try: # user handler may omit onFirstConnect()
+            try:  # user handler may omit onFirstConnect()
                 M = self._real.onFirstConnect
             except AttributeError:
                 return
@@ -195,16 +211,19 @@ class SharedPV(_SharedPV):
         def decorate(fn):
             self._handler.onFirstConnect = fn
         return decorate
+
     @property
     def onLastDisconnect(self):
         def decorate(fn):
             self._handler.onLastDisconnect = fn
         return decorate
+
     @property
     def put(self):
         def decorate(fn):
             self._handler.put = fn
         return decorate
+
     @property
     def rpc(self):
         def decorate(fn):
@@ -213,7 +232,7 @@ class SharedPV(_SharedPV):
 
     def __repr__(self):
         if self.isOpen():
-            return '%s(value=%s)'%(self.__class__.__name__, self.current())
+            return '%s(value=%s)' % (self.__class__.__name__, self.current())
         else:
-            return "%s(<closed>)"%(self.__class__.__name__,)
+            return "%s(<closed>)" % (self.__class__.__name__,)
     __str__ = __repr__

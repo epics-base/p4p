@@ -11,7 +11,9 @@ from .common import alarm, timeStamp
 
 from .scalar import ntwrappercommon
 
-class ntndarray(ntwrappercommon,numpy.ndarray):
+
+class ntndarray(ntwrappercommon, numpy.ndarray):
+
     """
     Augmented numpy.ndarray with additional attributes
 
@@ -24,14 +26,15 @@ class ntndarray(ntwrappercommon,numpy.ndarray):
     """
 
     attrib = None
+
     def _store(self, value):
         ntwrappercommon._store(self, value)
         self.attrib = {}
         for elem in value.get('attribute', []):
             self.attrib[elem.name] = elem.value
 
-            if elem.name=='ColorMode' and elem.value!=0:
-                raise ValueError("I only know about ColorMode gray scale, not mode=%d"%elem.value)
+            if elem.name == 'ColorMode' and elem.value != 0:
+                raise ValueError("I only know about ColorMode gray scale, not mode=%d" % elem.value)
 
         shape = [D.size for D in value.dimension]
         shape.reverse()
@@ -40,6 +43,7 @@ class ntndarray(ntwrappercommon,numpy.ndarray):
         self.shape = shape
 
         return self
+
 
 class NTNDArray(object):
     Value = Value
@@ -71,23 +75,23 @@ class NTNDArray(object):
         S, NS = divmod(time.time(), 1.0)
         value = numpy.asarray(value)
         attrib = getattr(value, 'attrib', {})
-        if value.ndim==2:
-            assert attrib.get('ColorMode', 0)==0
+        if value.ndim == 2:
+            assert attrib.get('ColorMode', 0) == 0
             attrib['ColorMode'] = 0
             # gray scale
             dims = list(value.shape)
             dims.reverse()
         else:
-            raise ValueError("I only know about ColorMode gray scale, not ndim=%d"%value.ndim)
+            raise ValueError("I only know about ColorMode gray scale, not ndim=%d" % value.ndim)
 
         return Value(self.type, {
             'value': value.flatten(),
             'timeStamp': {
                 'secondsPastEpoch': S,
-                'nanoseconds': NS*1e9,
+                'nanoseconds': NS * 1e9,
             },
-            'attribute': [{'name':K, 'value':V} for K,V in attrib.items()],
-            'dimension': [{'size':N} for N in dims],
+            'attribute': [{'name': K, 'value': V} for K, V in attrib.items()],
+            'dimension': [{'size': N} for N in dims],
         })
 
     @classmethod

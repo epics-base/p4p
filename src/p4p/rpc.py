@@ -1,5 +1,6 @@
 
-import logging, inspect
+import logging
+import inspect
 from functools import wraps, partial
 _log = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ __all__ = [
     'NTURIDispatcher',
 ]
 
+
 def rpc(rtype=None):
     """Decorator marks a proxy method for export.
 
@@ -36,7 +38,7 @@ def rpc(rtype=None):
         pass
     elif isinstance(type, (list, tuple)):
         rtype = Type(rtype)
-    elif hasattr(rtype, 'type'): # eg. one of the NT* helper classes
+    elif hasattr(rtype, 'type'):  # eg. one of the NT* helper classes
         wrap = rtype.wrap
         rtype = rtype.type
     else:
@@ -45,6 +47,7 @@ def rpc(rtype=None):
     def wrapper(fn):
         if wrap is not None:
             orig = fn
+
             @wraps(orig)
             def wrapper2(*args, **kws):
                 return wrap(orig(*args, **kws))
@@ -54,9 +57,10 @@ def rpc(rtype=None):
         return fn
     return wrapper
 
+
 def rpccall(pvname, rtype=None, request=None):
     """Decorator marks a client proxy method.
-    
+
     The method to be decorated must have all keyword arguments,
     where the keywords are type code strings or :class:`~p4p.Type`.
     """
@@ -67,19 +71,20 @@ def rpccall(pvname, rtype=None, request=None):
         return fn
     return wrapper
 
+
 class RPCDispatcherBase(DynamicProvider):
     # wrapper to use for request Structures
     Value = Value
 
     def __init__(self, queue, target=None, channels=set(), name=None):
-        DynamicProvider.__init__(self, name, self) # we are our own Handler
+        DynamicProvider.__init__(self, name, self)  # we are our own Handler
         self.queue = queue
         self.target = target
         self.channels = set(channels)
         self.name = name
         self.__pv = SharedPV(
-            handler=self, # no per-channel state, and only RPC used, so only need on PV
-            initial=Value(Type([])), # we don't support get/put/monitor, so use empty struct
+            handler=self,  # no per-channel state, and only RPC used, so only need on PV
+            initial=Value(Type([])),  # we don't support get/put/monitor, so use empty struct
         )
         M = self.methods = {}
         for name, mem in inspect.getmembers(target):
@@ -99,7 +104,7 @@ class RPCDispatcherBase(DynamicProvider):
     def makeChannel(self, name, src):
         if self.testChannel(name):
             _log.debug("Open RPC channel %s", name)
-            return self.__pv # no per-channel tracking needed
+            return self.__pv  # no per-channel tracking needed
         else:
             _log.warn("Ignore RPC channel %s", name)
 
@@ -137,9 +142,10 @@ class RPCDispatcherBase(DynamicProvider):
         except:
             _log.exception("Error handling RPC %s", request)
             op.done(error="Error handling RPC")
-        
+
 
 class NTURIDispatcher(RPCDispatcherBase):
+
     """RPC dispatcher using NTURI (a al. eget)
 
     Method names are prefixed with a fixed string.
@@ -165,7 +171,7 @@ class NTURIDispatcher(RPCDispatcherBase):
     def __init__(self, queue, prefix=None, **kws):
         RPCDispatcherBase.__init__(self, queue, **kws)
         self.prefix = prefix
-        self.methods = dict([(prefix+meth, fn) for meth, fn in self.methods.items()])
+        self.methods = dict([(prefix + meth, fn) for meth, fn in self.methods.items()])
         self.channels = set(self.methods.keys())
         _log.debug('NTURI methods: %s', ', '.join(self.channels))
 
@@ -175,6 +181,8 @@ class NTURIDispatcher(RPCDispatcherBase):
 
 # legecy for MASAR only
 # do not use in new code
+
+
 class MASARDispatcher(RPCDispatcherBase):
 
     def __init__(self, queue, **kws):
@@ -184,7 +192,8 @@ class MASARDispatcher(RPCDispatcherBase):
     def getMethodNameArgs(self, request):
         # all through a single PV, method name in request
         # {'function':'rpcname', 'name':['name', ...], 'value':['val', ...]}
-        return request.function, dict(zip(request.get('name',[]), request.get('value',[])))
+        return request.function, dict(zip(request.get('name', []), request.get('value', [])))
+
 
 def quickRPCServer(provider, prefix, target,
                    maxsize=20,
@@ -210,8 +219,8 @@ def quickRPCServer(provider, prefix, target,
     threads = []
     server = Server(providers=[provider], useenv=useenv, conf=conf)
     try:
-        for n in range(1,workers):
-            T = Thread(name='%s Worker %d'%(provider, n), target=queue.handle)
+        for n in range(1, workers):
+            T = Thread(name='%s Worker %d' % (provider, n), target=queue.handle)
             threads.append(T)
             T.start()
         # handle calls in the current thread until KeyboardInterrupt
@@ -225,7 +234,9 @@ def quickRPCServer(provider, prefix, target,
             # we really need to do this or the process will hang on exit
             server.stop()
 
+
 class RPCProxyBase(object):
+
     """Base class for automatically generated proxy classes
     """
     context = None
@@ -238,37 +249,39 @@ class RPCProxyBase(object):
     "Authority string sent with NTURI requests"
     throw = True
     "Whether call errors raise an exception, or return it"
-    scheme = None # set to override automatic
+    scheme = None  # set to override automatic
+
 
 def _wrapMethod(K, V):
     pv, req = V._call_PV, V._call_Request
     S = inspect.getargspec(V)
 
     if S.varargs is not None or S.keywords is not None:
-        raise TypeError("vararg not supported for proxy method %s"%K)
+        raise TypeError("vararg not supported for proxy method %s" % K)
 
-    if len(S.args)!=len(S.defaults):
-        raise TypeError("proxy method %s must specify types for all arguments"%K)
+    if len(S.args) != len(S.defaults):
+        raise TypeError("proxy method %s must specify types for all arguments" % K)
 
     try:
         NT = NTURI(zip(S.args, S.defaults))
     except Exception as e:
-        raise TypeError("%s : failed to build method from %s, %s"%(e, S.args, S.defaults))
+        raise TypeError("%s : failed to build method from %s, %s" % (e, S.args, S.defaults))
 
     @wraps(V)
     def mcall(self, *args, **kws):
-        pvname = pv%self.format
+        pvname = pv % self.format
         try:
             uri = NT.wrap(pvname, args, kws, scheme=self.scheme or self.context.name, authority=self.authority)
         except Exception as e:
-            raise ValueError("Unable to wrap %s %s as %s (%s)"%(args, kws, NT, e))
+            raise ValueError("Unable to wrap %s %s as %s (%s)" % (args, kws, NT, e))
         return self.context.rpc(pvname, uri, request=req, timeout=self.timeout, throw=self.throw)
 
     return mcall
 
+
 def rpcproxy(spec):
     """Decorator to enable this class to proxy RPC client calls
-    
+
     The decorated class constructor takes two additional arugments,
     the first "context" is required to be a :class:`~p4p.client.thread.Context`.
     The second optional "format" can be a string, tuple, or dictionary and is applied
@@ -287,14 +300,15 @@ def rpcproxy(spec):
     The decorated class will by a sub-class of the provided class and :class:`RPCProxyBase`.
     """
     # inject our ctor first so we don't have to worry about super() non-sense.
+
     def _proxyinit(self, context=None, format={}, **kws):
         assert context is not None, context
         self.context = context
         self.format = format
         spec.__init__(self, **kws)
-    obj = {'__init__':_proxyinit}
-        
-    for K,V in inspect.getmembers(spec, lambda M:hasattr(M, '_call_PV')):
+    obj = {'__init__': _proxyinit}
+
+    for K, V in inspect.getmembers(spec, lambda M: hasattr(M, '_call_PV')):
         obj[K] = _wrapMethod(K, V)
 
     return type(spec.__name__, (RPCProxyBase, spec), obj)
