@@ -3,10 +3,11 @@ from __future__ import absolute_import
 
 from ..wrapper import Type, Value
 from .common import alarm, timeStamp
-
+from .scalar import _metaHelper
 
 class NTEnum(object):
-
+    """Describes a string selected from among a list of possible choices.  Stored internally as an integer
+    """
     @staticmethod
     def buildType(extra=[], display=False, control=False, valueAlarm=False):
         F = [
@@ -17,6 +18,7 @@ class NTEnum(object):
             ('alarm', alarm),
             ('timeStamp', timeStamp),
         ]
+        _metaHelper(F, 'i', display=display, control=control, valueAlarm=valueAlarm)
         F.extend(extra)
         return Type(id="epics:nt/NTEnum:1.0", spec=F)
 

@@ -100,36 +100,7 @@ class ntstringarray(ntwrappercommon, list):
     * .raw - The underlying :py:class:`p4p.Value`.
     """
 
-
-class NTScalar(object):
-
-    """Describes a single scalar or array of scalar values and associated meta-data
-
-    >>> stype = NTScalar.buildType('d') # scalar double
-    >>> V = Value(stype, {'value': 4.2})
-
-    >>> stype = NTScalar.buildType('ad') # vector double
-    >>> V = Value(stype, {'value': [4.2, 4.3]})
-    """
-    Value = Value
-
-    @staticmethod
-    def buildType(valtype, extra=[], display=False, control=False, valueAlarm=False):
-        """Build a Type
-
-        :param str valtype: A type code to be used with the 'value' field.
-        :param list extra: A list of tuples describing additional non-standard fields
-        :param bool display: Include optional fields for display meta-data
-        :param bool control: Include optional fields for control meta-data
-        :param bool valueAlarm: Include optional fields for alarm level meta-data
-        :returns: A :py:class:`Type`
-        """
-        isarray = valtype[:1] == 'a'
-        F = [
-            ('value', valtype),
-            ('alarm', alarm),
-            ('timeStamp', timeStamp),
-        ]
+def _metaHelper(F, valtype, display=False, control=False, valueAlarm=False):
         if display and valtype not in '?su':
             F.extend([
                 ('display', ('S', None, [
@@ -163,6 +134,37 @@ class NTScalar(object):
                     ('hysteresis', 'd'),
                 ])),
             ])
+
+class NTScalar(object):
+
+    """Describes a single scalar or array of scalar values and associated meta-data
+
+    >>> stype = NTScalar.buildType('d') # scalar double
+    >>> V = Value(stype, {'value': 4.2})
+
+    >>> stype = NTScalar.buildType('ad') # vector double
+    >>> V = Value(stype, {'value': [4.2, 4.3]})
+    """
+    Value = Value
+
+    @staticmethod
+    def buildType(valtype, extra=[], display=False, control=False, valueAlarm=False):
+        """Build a Type
+
+        :param str valtype: A type code to be used with the 'value' field.
+        :param list extra: A list of tuples describing additional non-standard fields
+        :param bool display: Include optional fields for display meta-data
+        :param bool control: Include optional fields for control meta-data
+        :param bool valueAlarm: Include optional fields for alarm level meta-data
+        :returns: A :py:class:`Type`
+        """
+        isarray = valtype[:1] == 'a'
+        F = [
+            ('value', valtype),
+            ('alarm', alarm),
+            ('timeStamp', timeStamp),
+        ]
+        _metaHelper(F, valtype, display=display, control=control, valueAlarm=valueAlarm)
         F.extend(extra)
         return Type(id="epics:nt/NTScalarArray:1.0" if isarray else "epics:nt/NTScalar:1.0",
                     spec=F)
