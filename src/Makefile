@@ -17,7 +17,7 @@ _p4p_SRCS += p4p_server_sharedpv.cpp
 
 _p4p_SRCS += p4p_client.cpp
 
-_p4p_LIBS += pvAccessCA pvAccess pvData Com
+_p4p_LIBS += pvAccess pvData Com
 
 PY += p4p/__init__.py
 PY += p4p/disect.py
