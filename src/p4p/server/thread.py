@@ -79,6 +79,7 @@ class SharedPV(_SharedPV):
     :param callable wrap: As an alternative to providing 'nt=', A callable to transform Values passed to open() and post().
     :param callable unwrap: As an alternative to providing 'nt=', A callable to transform Values returned Operations in Put/RPC handlers.
     :param WorkQueue queue: The threaded :py:class:`WorkQueue` on which handlers will be run.
+    :param dict options: A dictionary of configuration options.
 
     Creating a PV in the open state, with no handler for Put or RPC (attempts will error). ::
 

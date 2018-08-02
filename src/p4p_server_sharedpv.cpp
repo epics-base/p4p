@@ -119,19 +119,47 @@ size_t PVHandler::num_instances;
 
 static int sharedpv_init(PyObject* self, PyObject *args, PyObject *kwds) {
     TRY {
-        const char *names[] = {"handler", NULL};
-        PyObject *handler = Py_None;
-        if(!PyArg_ParseTupleAndKeywords(args, kwds, "|O", (char**)names, &handler))
+        const char *names[] = {"handler", "options", NULL};
+        PyObject *handler = Py_None, *pyopts = Py_None;
+        if(!PyArg_ParseTupleAndKeywords(args, kwds, "|OO", (char**)names, &handler, &pyopts))
             return -1;
+
+        pvas::SharedPV::Config conf;
+        if(pyopts!=Py_None) {
+            PyRef val;
+
+            // eg. {'dropEmptyUpdates':True}
+            val.reset(PyObject_CallMethod(pyopts, "get", "sO", "dropEmptyUpdates", Py_None));
+            if(val.get()!=Py_None) {
+                conf.dropEmptyUpdates = PyObject_IsTrue(val.get());
+            }
+
+            // eg. {'mapperMode':0}
+            val.reset(PyObject_CallMethod(pyopts, "get", "sO", "mapperMode", Py_None));
+            if(val.get()!=Py_None) {
+                PyString pystr(val.get());
+                std::string str(pystr.str());
+                if(str=="Mask") {
+                    conf.mapperMode = pvd::PVRequestMapper::Mask;
+                } else if(str=="Slice") {
+                    conf.mapperMode = pvd::PVRequestMapper::Slice;
+                } else {
+                    PyErr_Format(PyExc_ValueError, "Invalid mapperMode %s", str.c_str());
+                    return -1;
+                }
+            }
+
+            // TODO: warn about unknown options?
+        }
 
         if(SELF) {
             // already set by P4PSharedPV_wrap()
         } else if(handler != Py_None) {
             PVHandler::shared_pointer H(new PVHandler(handler));
 
-            SELF = pvas::SharedPV::build(H);
+            SELF = pvas::SharedPV::build(H, &conf);
         } else {
-            SELF = pvas::SharedPV::buildReadOnly();
+            SELF = pvas::SharedPV::buildReadOnly(&conf);
         }
 
         return 0;

@@ -84,6 +84,7 @@ class SharedPV(_SharedPV):
     :param nt: An object with methods wrap() and unwrap().  eg :py:class:`p4p.nt.NTScalar`.
     :param callable wrap: As an alternative to providing 'nt=', A callable to transform Values passed to open() and post().
     :param callable unwrap: As an alternative to providing 'nt=', A callable to transform Values returned Operations in Put/RPC handlers.
+    :param dict options: A dictionary of configuration options.
 
     Creating a PV in the open state, with no handler for Put or RPC (attempts will error). ::
 
@@ -119,14 +120,14 @@ class SharedPV(_SharedPV):
     """
 
     def __init__(self, handler=None, initial=None,
-                 nt=None, wrap=None, unwrap=None):
+                 nt=None, wrap=None, unwrap=None, **kws):
         self._handler = handler or self._DummyHandler()
         self._whandler = self._WrapHandler(self, self._handler)
 
         self._wrap = wrap or (nt and nt.wrap) or (lambda x: x)
         self._unwrap = unwrap or (nt and nt.unwrap) or (lambda x: x)
 
-        _SharedPV.__init__(self, self._whandler)
+        _SharedPV.__init__(self, self._whandler, **kws)
         if initial is not None:
             self.open(initial, nt=nt, wrap=wrap, unwrap=unwrap)
 
