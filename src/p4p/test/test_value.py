@@ -356,7 +356,7 @@ class TestRawValue(RefTestCase):
         })
         # initially all un-"changed" (at default)
 
-        self.assertSetEqual(A.asSet(), {'y'})
+        self.assertSetEqual(A.changedSet(), {'y'})
         self.assertFalse(A.changed())
         self.assertFalse(A.changed('x'))
         self.assertTrue(A.changed('y'))
@@ -364,21 +364,21 @@ class TestRawValue(RefTestCase):
 
         A.mark('x')
 
-        self.assertSetEqual(A.asSet(), {'x', 'y'})
+        self.assertSetEqual(A.changedSet(), {'x', 'y'})
         self.assertFalse(A.changed())
         self.assertTrue(A.changed('x'))
         self.assertTrue(A.changed('y'))
 
         A.mark('x', False)
 
-        self.assertSetEqual(A.asSet(), {'y'})
+        self.assertSetEqual(A.changedSet(), {'y'})
         self.assertFalse(A.changed())
         self.assertFalse(A.changed('x'))
         self.assertTrue(A.changed('y'))
 
         A.unmark()
 
-        self.assertSetEqual(A.asSet(), set())
+        self.assertSetEqual(A.changedSet(), set())
         self.assertFalse(A.changed())
         self.assertFalse(A.changed('x'))
         self.assertFalse(A.changed('y'))
@@ -394,7 +394,7 @@ class TestRawValue(RefTestCase):
         ]), {
         })
 
-        self.assertSetEqual(A.asSet(), set())
+        self.assertSetEqual(A.changedSet(), set())
         self.assertFalse(A.changed())
         self.assertFalse(A.changed('x'))
         self.assertFalse(A.changed('y'))
@@ -403,7 +403,7 @@ class TestRawValue(RefTestCase):
 
         A.mark('y')
         A.mark('z.a')
-        self.assertSetEqual(A.asSet(), {'y', 'z.a'})
+        self.assertSetEqual(A.changedSet(), {'y', 'z.a'})
         self.assertFalse(A.changed())
         self.assertFalse(A.changed('x'))
         self.assertTrue(A.changed('y'))
@@ -425,6 +425,22 @@ class TestRawValue(RefTestCase):
         self.assertFalse(Z.changed('a'))
         self.assertTrue(Z.changed('b'))
 
+    def testBitSetSubStruct(self):
+        A = Value(Type([
+            ('x', 'i'),
+            ('y', 'i'),
+            ('z', ('S', None, [
+                ('a', 'i'),
+                ('b', 'i'),
+            ])),
+        ]), {
+        })
+
+        self.assertSetEqual(A.changedSet(), set())
+        A.mark('z')
+        self.assertSetEqual(A.changedSet(), {'z'})
+        self.assertSetEqual(A.changedSet(expand=False), {'z'})
+        self.assertSetEqual(A.changedSet(expand=True), {'z.a', 'z.b'})
 
 class TestReInit(RefTestCase):
 

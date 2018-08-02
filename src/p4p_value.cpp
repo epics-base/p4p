@@ -1191,32 +1191,45 @@ PyObject* P4PValue_unmark(PyObject *self)
     return NULL;
 }
 
-PyObject* P4PValue_changedSet(PyObject *self)
+PyObject* P4PValue_changedSet(PyObject *self, PyObject *args, PyObject *kws)
 {
+    static const char* names[] = {"expand", NULL};
+    PyObject *pyexpand = Py_False;
+    if(!PyArg_ParseTupleAndKeywords(args, kws, "|O", (char**)names, &pyexpand))
+        return NULL;
     TRY {
-        size_t b0 = SELF.V->getFieldOffset(),
-               b1 = SELF.V->getNextFieldOffset();
-
+        // use of PVField::getFullName() prefixes with names of parents,
+        // which can't be used to index of this sub-structure.
         if(SELF.V->getParent())
             return PyErr_Format(PyExc_NotImplementedError, "changedSet not implemented for sub-struct");
 
+        size_t b0 = SELF.V->getFieldOffset(),
+               b1 = SELF.V->getNextFieldOffset();
+
+        bool expand = PyObject_IsTrue(pyexpand);
+
+        pvd::BitSet changed;
+        if(SELF.I && !SELF.I->get(0)) {
+            changed = *SELF.I;
+        } else {
+            // no tracking, or all changed
+            for(size_t i=b0+1; i<b1; i++)
+                changed.set(i);
+        }
+
         PyRef ret(PySet_New(NULL));
 
-        //TODO: doesn't break down struct bits
+        for(pvd::int32 i=changed.nextSetBit(b0+1); i>=0 && size_t(i)<b1; i=changed.nextSetBit(i+1)) {
+            const pvd::PVField& subfld = *SELF.V->getSubFieldT(i);
+            if(!expand || subfld.getField()->getType()!=pvd::structure) {
+                PyRef N(PyUnicode_FromString(subfld.getFullName().c_str()));
+                if(PySet_Add(ret.get(), N.get()))
+                    return NULL;
 
-        if(!SELF.I || SELF.I->get(b0)) {
-            for(size_t i=b0+1; i<b1; i++) {
-                //TODO: not FullName, shouldn't include prefix of this field
-                PyRef N(PyUnicode_FromString(SELF.V->getSubFieldT(i)->getFullName().c_str()));
-                if(PySet_Add(ret.get(), N.get()))
-                    return NULL;
-            }
-        } else {
-            for(epicsInt32 i=SELF.I->nextSetBit(b0+1); i>=0; i = SELF.I->nextSetBit(i+1)) {
-                //TODO: not FullName, shouldn't include prefix of this field
-                PyRef N(PyUnicode_FromString(SELF.V->getSubFieldT(i)->getFullName().c_str()));
-                if(PySet_Add(ret.get(), N.get()))
-                    return NULL;
+            } else { // !compress && fld->getField()->getType()==pvd::structure
+                for(size_t j=i+1, J=subfld.getNextFieldOffset(); j<J; j++) {
+                    changed.set(j);
+                }
             }
         }
 
@@ -1337,8 +1350,11 @@ static PyMethodDef P4PValue_methods[] = {
     {"unmark", (PyCFunction)&P4PValue_unmark, METH_NOARGS,
      "unmark()\n\n"
      "clear all field changed flag."},
-    {"changedSet", (PyCFunction)&P4PValue_changedSet, METH_NOARGS,
-     "changedSet() -> set(['...'])\n\n"
+    {"changedSet", (PyCFunction)&P4PValue_changedSet, METH_VARARGS|METH_KEYWORDS,
+     "changedSet(expand=False) -> set(['...'])\n\n"
+     ":param bool expand: Whether to include compress/shorthand when entire sub-structures are marked as changed."
+     "  If True, then compress bits are expanded and only leaf fields will be included."
+     ":returns: A set of names of those fields marked as changed.\n"
      "set all changed fields"},
     {"_magic", (PyCFunction)P4PValue_magic, METH_VARARGS|METH_STATIC,
      "Don't call this!"},
