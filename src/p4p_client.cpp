@@ -79,8 +79,7 @@ struct ClientOperation : public pvac::ClientChannel::PutCallback,
         if(evt.value) {
             pvd::PVStructure::shared_pointer value(pvd::getPVDataCreate()->createPVStructure(evt.value->getStructure()));
             value->copyUnchecked(*evt.value);
-            pvd::BitSet::shared_pointer valid(new pvd::BitSet(1));
-            valid->set(0); // TODO: communicate actual valid mask
+            pvd::BitSet::shared_pointer valid(new pvd::BitSet(*evt.valid));
 
             pyvalue.reset(P4PValue_wrap(P4PValue_type, value, valid));
         } else {
