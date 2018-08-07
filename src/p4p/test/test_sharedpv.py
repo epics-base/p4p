@@ -43,21 +43,13 @@ class TestGPM(RefTestCase):
         # gc.set_debug(gc.DEBUG_LEAK)
         super(TestGPM, self).setUp()
 
-        conf = {
-            'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
-            'EPICS_PVA_ADDR_LIST': '127.0.0.1',
-            'EPICS_PVA_AUTO_ADDR_LIST': '0',
-            'EPICS_PVA_SERVER_PORT': '0',
-            'EPICS_PVA_BROADCAST_PORT': '0',
-        }
-
         self.pv = SharedPV(handler=self.Times2Handler(), nt=NTScalar('d'))
         self.pv2 = SharedPV(handler=self.Times2Handler(), nt=NTScalar('d'), initial=42.0)
         self.sprov = StaticProvider("serverend")
         self.sprov.add('foo', self.pv)
         self.sprov.add('bar', self.pv2)
 
-        self.server = Server(providers=[self.sprov], conf=conf, useenv=False)
+        self.server = Server(providers=[self.sprov], isolate=True)
 
     def tearDown(self):
         self.server.stop()
