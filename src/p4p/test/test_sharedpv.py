@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import logging
 import unittest
 import random
 import weakref
@@ -21,6 +22,7 @@ from ..util import WorkQueue
 from ..nt import NTScalar
 from .utils import RefTestCase
 
+_log = logging.getLogger(__name__)
 
 class TestGPM(RefTestCase):
     maxDiff = 1000
@@ -153,3 +155,92 @@ class TestGPM(RefTestCase):
         del Q
         gc.collect()
         self.assertIsNone(C())
+
+
+class TestPVRequestMask(RefTestCase):
+    maxDiff = 1000
+    timeout = 1.0
+    mode = 'Mask'
+
+    class Handler(object):
+        def put(self, pv, op):
+            val = op.value()
+            _log.debug("Putting %s %s", val.raw.changedSet(), str(val.raw))
+            pv.post(op.value())
+            op.done()
+
+    def setUp(self):
+        # gc.set_debug(gc.DEBUG_LEAK)
+        super(TestPVRequestMask, self).setUp()
+
+        self.pv = SharedPV(handler=self.Handler(),
+                           nt=NTScalar('d'),
+                           initial=1.0,
+                           options={'mapperMode':self.mode})
+        self.sprov = StaticProvider("serverend")
+        self.sprov.add('foo', self.pv)
+
+        self.server = Server(providers=[self.sprov], isolate=True)
+
+    def tearDown(self):
+        self.server.stop()
+        _defaultWorkQueue.stop()
+        self.pv._handler._pv = None
+        R = [weakref.ref(r) for r in (self.server, self.sprov, self.pv, self.pv._whandler, self.pv._handler)]
+        r = None
+        del self.server
+        del self.sprov
+        del self.pv
+        gc.collect()
+        R = [r() for r in R]
+        self.assertListEqual(R, [None] * len(R))
+        super(TestPVRequestMask, self).tearDown()
+
+    def testGetPut(self):
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+            V = ctxt.get('foo', request='value')
+
+            self.assertEqual(V.value, 1.0)
+
+            self.assertTrue(V.changed('value'))
+
+            if self.mode=='Mask':
+                self.assertSetEqual(V.changedSet(), {'value'})
+            else:
+                self.assertListEqual(V.keys(), ['value'])
+
+            ctxt.put('foo', {'value':2.0}, request='value')
+
+            V = ctxt.get('foo', request='value')
+
+            self.assertEqual(V.value, 2.0)
+
+    def testMonitor(self):
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+
+            Q = Queue(maxsize=4)
+            sub = ctxt.monitor('foo', Q.put, request='value')
+
+            V = Q.get(timeout=self.timeout)
+            self.assertEqual(V.value, 1.0)
+
+            if self.mode=='Mask':
+                self.assertSetEqual(V.changedSet(), {'value'})
+            else:
+                self.assertListEqual(V.keys(), ['value'])
+
+            ctxt.put('foo', {'alarm.severity':1}) # should be dropped
+
+            ctxt.put('foo', {'value':3.0}, request='value')
+
+            V = Q.get(timeout=self.timeout)
+            self.assertEqual(V.value, 3.0)
+
+            if self.mode=='Mask':
+                self.assertSetEqual(V.changedSet(), {'value'})
+            else:
+                self.assertListEqual(V.keys(), ['value'])
+
+
+class TestPVRequestSlice(TestPVRequestMask):
+    mode = 'Slice'
