@@ -21,6 +21,12 @@ from glob import glob
 #  cp34-none-win_amd64
 #  cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64
 
+requirments = {
+    'Linux':'requirements-deb8.txt',
+    'Windows':'requirements-windows.txt',
+    'Darwin':'requirements-deb8.txt',
+}[platform.system()]
+
 def call_py(args, **kws):
     print('EXEC', sys.executable, args, kws, 'in', os.getcwd())
     sys.stdout.flush()
@@ -39,7 +45,7 @@ def docker(args):
 
 def prepare(args):
     call_py(['-m', 'pip', 'install', '-U', 'pip'])
-    call_py(['-m', 'pip', 'install', '-r', 'requirements-deb8.txt'])
+    call_py(['-m', 'pip', 'install', '-r', requirments])
     call_py(['-m', 'pip', 'install', '-U', 'wheel', 'setuptools_dso', 'epicscorelibs', 'twine'])
 
 def build(args):
