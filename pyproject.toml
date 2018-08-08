@@ -1,2 +1,2 @@
 [build-system]
-requires = ["setuptools", "setuptools_dso", "wheel", "epicscorelibs>=7.0.1.99.2"]
+requires = ["setuptools", "setuptools_dso", "wheel", "epicscorelibs>=7.0.1.99.10.1a1"]
