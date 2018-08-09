@@ -80,6 +80,50 @@ class TestRawValue(RefTestCase):
         self.assertEqual(V.sval, u'world')
         self.assertEqual(V['sval'], u'world')
 
+    def testIntegerRange(self):
+        # test limits of intger ranges
+        V = Value(Type([
+            ('i32', 'i'),
+            ('u32', 'I'),
+            ('i64', 'l'),
+            ('u64', 'L'),
+        ]), {
+            'i32': 0x7fffffff,
+            'u32': 0xffffffff,
+            'i64': 0x7fffffffffffffff,
+            'u64': 0xffffffffffffffff,
+        })
+
+        self.assertEqual(V.i32, 0x7fffffff)
+        self.assertEqual(V.u32, 0xffffffff)
+        self.assertEqual(V.i64, 0x7fffffffffffffff)
+        self.assertEqual(V.u64, 0xffffffffffffffff)
+
+        V.i32 = -0x80000000
+        V.i64 = -0x8000000000000000
+
+        self.assertEqual(V.i32, -0x80000000)
+        self.assertEqual(V.i64, -0x8000000000000000)
+
+        # test setting out of range
+        # TODO: not great...
+
+        V.i64 = 0x8000000000000000
+        self.assertEqual(V.i64, -0x8000000000000000)
+
+        with self.assertRaises(OverflowError):
+            V.i64 = 0x10000000000000000
+        with self.assertRaises(OverflowError):
+            V.i64 = -0x8000000000000001
+        with self.assertRaises(OverflowError):
+            V.u64 = 0x10000000000000000
+
+        V.i32 = 0x80000000
+        self.assertEqual(V.i32, -0x80000000)
+
+        V.i32 = 0x100000000
+        self.assertEqual(V.i32, 0)
+
     def testFieldAccess(self):
         V = Value(Type([
             ('ival', 'i'),

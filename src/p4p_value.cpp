@@ -8,6 +8,10 @@
 //#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
 
+#ifndef HAVE_LONG_LONG
+#  error Require long long
+#endif
+
 namespace {
 
 namespace pvd = epics::pvData;
@@ -483,7 +487,19 @@ void Value::storefld(pvd::PVField* fld,
             F->putFrom<pvd::uint64>(PyInt_AsLong(obj));
 #endif
         } else if(PyLong_Check(obj) || PyArray_IsScalar(obj, Integer)) {
-            F->putFrom<pvd::uint64>(PyLong_AsLong(obj));
+            int oflow = 0;
+            long long temp = PyLong_AsLongLongAndOverflow(obj, &oflow);
+            if(!PyErr_Occurred()) {
+                if(oflow==0) {
+                    F->putFrom<pvd::int64>(temp);
+                } else if(oflow==1) { // triggered when obj > 0x7fffffffffffffff
+                    F->putFrom<pvd::uint64>(PyLong_AsUnsignedLongLong(obj));
+                } else {
+                    PyErr_Format(PyExc_OverflowError, "long out of range low");
+                }
+            }
+            if(PyErr_Occurred())
+                throw std::runtime_error("XXX");
         } else if(PyFloat_Check(obj) || PyArray_IsScalar(obj, Number)) {
             F->putFrom(PyFloat_AsDouble(obj));
         } else if(PyBytes_Check(obj)) {
@@ -653,10 +669,11 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
 #else
             return PyLong_FromLong(F->getAs<pvd::int32>());
 #endif
-        case pvd::pvUInt:
         case pvd::pvLong:
-        case pvd::pvULong:
             return PyLong_FromLongLong(F->getAs<pvd::int64>());
+        case pvd::pvUInt:
+        case pvd::pvULong:
+            return PyLong_FromUnsignedLongLong(F->getAs<pvd::uint64>());
         case pvd::pvFloat:
         case pvd::pvDouble:
             return PyFloat_FromDouble(F->getAs<double>());
