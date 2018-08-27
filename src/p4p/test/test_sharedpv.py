@@ -236,3 +236,86 @@ class TestPVRequestMask(RefTestCase):
 
 class TestPVRequestSlice(TestPVRequestMask):
     mode = 'Slice'
+
+class TestFirstLast(RefTestCase):
+    maxDiff = 1000
+    timeout = 1.0
+    mode = 'Mask'
+
+    class Handler:
+        def __init__(self):
+            self.evt = threading.Event()
+            self.conn = None
+        def onFirstConnect(self, pv):
+            _log.debug("onFirstConnect")
+            self.conn = True
+            self.evt.set()
+        def onLastDisconnect(self, pv):
+            _log.debug("onLastDisconnect")
+            self.conn = False
+            self.evt.set()
+
+    def setUp(self):
+        # gc.set_debug(gc.DEBUG_LEAK)
+        super(TestFirstLast, self).setUp()
+
+        self.H = self.Handler()
+        self.pv = SharedPV(handler=self.H,
+                           nt=NTScalar('d'),
+                           options={'mapperMode':self.mode})
+        self.sprov = StaticProvider("serverend")
+        self.sprov.add('foo', self.pv)
+
+        self.server = Server(providers=[self.sprov], isolate=True)
+
+    def tearDown(self):
+        self.server.stop()
+        _defaultWorkQueue.stop()
+        self.pv._handler._pv = None
+        R = [weakref.ref(r) for r in (self.server, self.sprov, self.pv, self.pv._whandler, self.pv._handler)]
+        r = None
+        del self.server
+        del self.sprov
+        del self.pv
+        del self.H
+        gc.collect()
+        R = [r() for r in R]
+        self.assertListEqual(R, [None] * len(R))
+        super(TestFirstLast, self).tearDown()
+
+    def testDisconn(self):
+        self.pv.open(1.0)
+
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+            Q = Queue(maxsize=4)
+            sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
+
+            Q.get(timeout=self.timeout)
+
+            _log.debug('TEST')
+            self.H.evt.wait(self.timeout)
+            self.H.evt.clear()
+            self.assertTrue(self.H.conn)
+        self.H.evt.wait(self.timeout)
+        _log.debug('SHUTDOWN')
+        self.assertFalse(self.H.conn)
+
+    def testClose(self):
+        self.pv.open(1.0)
+
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+            Q = Queue(maxsize=4)
+            sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
+
+            Q.get(timeout=self.timeout)
+
+            _log.debug('TEST')
+            self.H.evt.wait(self.timeout)
+            self.H.evt.clear()
+            self.assertTrue(self.H.conn)
+
+            self.pv.close()
+
+            self.H.evt.wait(self.timeout)
+            _log.debug('CLOSE')
+            self.assertFalse(self.H.conn)
