@@ -50,6 +50,11 @@ pv = SharedPV(nt=NTScalar('d'),
 provider = StaticProvider('move') # 'move' is an arbitrary name
 provider.add("foo", pv)
 
-Server.forever(providers=[provider])
+with Server(providers=[provider]):
+    print('Running')
+    try:
+        cothread.WaitForQuit()
+    except KeyboardInterrupt:
+        pass
 
 print('Done')
