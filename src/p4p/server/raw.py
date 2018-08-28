@@ -203,7 +203,7 @@ class SharedPV(_SharedPV):
         def rpc(self, op):
             _log.debug('RPC %s %s', self._pv, op)
             try:
-                self._pv._exec(op, self._real.rpc, self._pv, ServOpWrap(op, self._pv._unwrap))
+                self._pv._exec(op, self._real.rpc, self._pv, op)
             except AttributeError:
                 op.done(error="RPC not supported")
 

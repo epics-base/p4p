@@ -182,7 +182,7 @@ class Context(raw.Context):
         :returns: A Value or Exception.  Subject to :py:ref:`unwrap`.
 
         >>> ctxt = Context('pva')
-        >>> ctxt.rpc('pv:name:add', {'A':5, 'B'; 6})
+        >>> V = ctxt.rpc('pv:name:add', {'A':5, 'B'; 6})
         >>>
 
         The provided value(s) will be automatically coerced to the target type.

@@ -11,7 +11,7 @@ import gc
 import threading
 from unittest.case import SkipTest
 
-from ..nt import NTScalar
+from ..nt import NTScalar, NTURI
 from ..server import Server, StaticProvider
 from .utils import RefTestCase
 
@@ -24,12 +24,18 @@ else:
     from ..server.cothread import SharedPV
 
     class Handler:
+        def __init__(self):
+            self.lastrpc = None
 
         def put(self, pv, op):
             _log.debug("putting %s <- %s", op.name(), op.value())
             cothread.Yield()  # because we can
             pv.post(op.value() * 2)
             op.done()
+
+        def rpc(self, pv, op):
+            self.lastrpc = op.value()
+            op.done(NTScalar('i').wrap(42))
 
     class TestGPM(RefTestCase):
 
@@ -85,3 +91,30 @@ else:
                         self.pv.open(3)
 
                         self.assertEqual(3, Q.Wait())
+
+    class TestRPC(RefTestCase):
+
+        def setUp(self):
+            super(TestRPC, self).setUp()
+
+            self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=Handler())
+            self.provider = StaticProvider("serverend")
+            self.provider.add('foo', self.pv)
+
+        def tearDown(self):
+            del self.pv
+            del self.provider
+            super(TestRPC, self).tearDown()
+
+        def test_rpc(self):
+            with Server(providers=[self.provider], isolate=True) as S:
+                with Context('pva', conf=S.conf(), useenv=False) as C:
+
+                    args = NTURI([
+                        ('lhs', 'd'),
+                        ('rhs', 'd'),
+                    ])
+
+                    ret = C.rpc('foo', args.wrap('foo', kws={'lhs':1, 'rhs':2}))
+                    _log.debug("RET %s", ret)
+                    self.assertEqual(ret, 42)
