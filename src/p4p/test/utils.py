@@ -3,8 +3,8 @@ from __future__ import print_function
 
 import logging
 import warnings
-_log = logging.getLogger(__name__)
 
+import sys
 import gc
 import inspect
 import unittest
@@ -12,8 +12,11 @@ import functools
 import time
 import os
 import fnmatch
+import weakref
 
 from .. import listRefs
+
+_log = logging.getLogger(__name__)
 
 _ignore_transient = os.environ.get('REFTEST_IGNORE_TRANSIENT', '') == 'YES'
 
@@ -59,13 +62,19 @@ class RefTestMixin(object):
         return dict([(K, V) for K, V in refs.items() if K in names])
 
     def setUp(self):
+        self.__traceme = set()
         if self.ref_check is not None:
             self.__before = self.__refs()
         super(RefTestMixin, self).setUp()
 
+    def traceme(self, obj):
+        self.__traceme.add(weakref.ref(obj))
+
     def tearDown(self):
         super(RefTestMixin, self).tearDown()
         if self.ref_check is not None:
+            traceme = list(self.__traceme)
+            del self.__traceme
             gc.collect()
             after = self.__refs()
 
@@ -76,6 +85,17 @@ class RefTestMixin(object):
                 time.sleep(1.0)
                 gc.collect()
                 after1, after = after, self.__refs()
+
+            frame = inspect.currentframe()
+            for T in traceme:
+                O = T()
+                if O is None:
+                    continue
+                nrefs = sys.getrefcount(O)
+                refs = sys.get_referrers(O)
+                nrefs -= len(refs) # exclude tracked refs
+                refs = filter(lambda o:o not in (frame, traceme), refs)
+                _log.debug("ALIVE %s -> %s + %d ext refs", O, refs, nrefs)
 
             self.assertDictEqual(self.__before, after)
             # check for any obviously corrupt counters, even those not being compared
