@@ -29,6 +29,7 @@ A server with a single "mailbox" PV. ::
     @pv.put
     def handle(pv, op):
         pv.post(op) # just store and update subscribers
+        op.done()
 
     provider = StaticProvider('arbitrary')
     provider.add('demo:pv:name', pv) # PV name only appears here
