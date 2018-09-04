@@ -219,12 +219,17 @@ static PyObject* sharedpv_current(PyObject* self) {
 }
 
 
-static PyObject* sharedpv_close(PyObject* self) {
+static PyObject* sharedpv_close(PyObject* self, PyObject *args, PyObject *kwds) {
     TRY {
+        const char *names[] = {"destroy", NULL};
+        PyObject *destroy = Py_False;
+        if(!PyArg_ParseTupleAndKeywords(args, kwds, "|O", (char**)names, &destroy))
+            return NULL;
+
         TRACE("");
         {
             PyUnlock U;
-            SELF->close();
+            SELF->close(PyObject_IsTrue(destroy));
         }
         Py_RETURN_NONE;
     }CATCH()
@@ -280,7 +285,7 @@ static PyMethodDef SharedPV_methods[] = {
     {"current", (PyCFunction)&sharedpv_current, METH_NOARGS,
      "current() -> Value\n"
      "The current Value of this PV.  The result of the initial value, and all accumulated post() calls."},
-    {"close", (PyCFunction)&sharedpv_close, METH_NOARGS,
+    {"close", (PyCFunction)&sharedpv_close, METH_VARARGS|METH_KEYWORDS,
      "Mark PV as closed"},
     {"isOpen", (PyCFunction)&sharedpv_isOpen, METH_NOARGS,
      "Has open() been called?"},
