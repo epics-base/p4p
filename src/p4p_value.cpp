@@ -881,10 +881,16 @@ int P4PValue_setattr(PyObject *self, PyObject *name, PyObject *value)
 PyObject* P4PValue_getattr(PyObject *self, PyObject *name)
 {
     TRY {
+        PyObject *ret = PyObject_GenericGetAttr((PyObject*)self, name);
+        if(ret)
+            return ret;
+        // there is an AttributeError
+
         PyString S(name);
         pvd::PVFieldPtr fld = SELF.V->getSubField(S.str());
         if(!fld)
-            return PyObject_GenericGetAttr((PyObject*)self, name);
+            return 0;
+        PyErr_Clear(); // clear AttributeError
 
         // return sub-struct as Value
         return SELF.fetchfld(fld.get(),

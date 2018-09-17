@@ -158,6 +158,17 @@ class TestRawType(RefTestCase):
         self.assertEqual(T.aspy(),
                          ('S', 'structure', L))
 
+    def testReserved(self):
+        L = [
+            ("name", "as"),
+            ("field", "aI"),
+            ("type", "as"),
+        ]
+        T = _Type(L)
+
+        self.assertEqual(T.aspy(),
+                         ('S', 'structure', L))
+
     def testGC(self):
         T = _Type([('a', 'I')])
         self.assertTrue(gc.is_tracked(T))

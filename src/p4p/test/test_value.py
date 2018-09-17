@@ -144,6 +144,25 @@ class TestRawValue(RefTestCase):
         self.assertRaises(KeyError, V.__setitem__, 'foo', 5)
         self.assertRaises(AttributeError, setattr, V, 'foo', 5)
 
+    def testReserved(self):
+        L = [
+            ("name", "s"),
+            ("field", "I"),
+            ("type", "s"),
+        ]
+        T = Type(L)
+        V = Value(T)
+
+        # item access works as always
+        V['type'] = 'hello'
+        self.assertEqual(V['type'], 'hello')
+
+        # 'type' field hidden by method
+        T2 = V.type() # ensure Value.type() isn't hidden
+
+        # can't prevent overwriting the method...
+        V.type = 4
+
     def testBadField(self):
         T = Type([
             ('ival', 'i'),
