@@ -192,6 +192,10 @@ class TestRPC(RefTestCase):
                 _log.debug("RET %s", ret)
                 self.assertEqual(ret, 42)
 
+                ret = C.rpc('foo', None)
+                _log.debug("RET %s", ret)
+                self.assertEqual(ret, 42)
+
 
 class TestPVRequestMask(RefTestCase):
     maxDiff = 1000

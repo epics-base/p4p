@@ -16,7 +16,7 @@ except ImportError:
 
 from .. import _p4p
 
-from ..wrapper import Value
+from ..wrapper import Value, Type
 from ..nt import _default_wrap, _default_unwrap
 
 if sys.version_info >= (3, 0):
@@ -285,6 +285,8 @@ class Context(object):
         :returns: A object with a method cancel() which may be used to abort the operation.
         """
         chan = self._channel(name)
+        if value is None:
+            value = Value(Type([]))
         return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._unwrap),
                                     value=value, pvRequest=wrapRequest(request), rpc=True)
 
