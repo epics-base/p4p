@@ -384,6 +384,5 @@ class TestFirstLast(RefTestCase):
 
             self.pv.close(destroy=True)
 
-            self.H.evt.wait(self.timeout)
             _log.debug('CLOSE')
             self.assertFalse(self.H.conn)
