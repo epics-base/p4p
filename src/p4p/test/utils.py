@@ -25,6 +25,8 @@ try:
 except ImportError:
     pass
 else:
+    # we should never implicitly use the default loop.
+    asyncio.get_event_loop().close()
     def inloop(fn):
         """Decorator assumes wrapping method of object with .loop and maybe .timeout
         """
@@ -70,6 +72,9 @@ class RefTestMixin(object):
     def traceme(self, obj):
         self.__traceme.add(weakref.ref(obj))
 
+    def _sleep(self, delay):
+        time.sleep(delay)
+
     def tearDown(self):
         super(RefTestMixin, self).tearDown()
         if self.ref_check is not None:
@@ -82,7 +87,7 @@ class RefTestMixin(object):
 
             if not test1:
                 _log.error("Mis-match, attempting to detect if transient")
-                time.sleep(1.0)
+                self._sleep(1.0)
                 gc.collect()
                 after1, after = after, self.__refs()
 

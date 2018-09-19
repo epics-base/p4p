@@ -38,20 +38,30 @@ else:
             op.done(NTScalar('i').wrap(42))
 
     class TestGPM(RefTestCase):
+        def _sleep(self, delay):
+            cothread.Sleep(delay)
 
         def setUp(self):
             super(TestGPM, self).setUp()
 
             self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=Handler())
+            self.wpv = weakref.ref(self.pv)
             self.pv2 = SharedPV(handler=Handler(), nt=NTScalar('d'), initial=42.0)
             self.provider = StaticProvider("serverend")
             self.provider.add('foo', self.pv)
             self.provider.add('bar', self.pv2)
 
         def tearDown(self):
+            self.pv.close(destroy=True)
+            self.pv2.close(destroy=True)
             del self.pv
             del self.pv2
             del self.provider
+            gc.collect()
+            pv = self.wpv()
+            if pv is not None:
+                _log.error("Live PV %s %s", sys.getrefcount(pv), gc.get_referrers(pv))
+            del pv
             super(TestGPM, self).tearDown()
 
         def test_getput(self):
@@ -93,6 +103,8 @@ else:
                         self.assertEqual(3, Q.Wait())
 
     class TestRPC(RefTestCase):
+        def _sleep(self, delay):
+            cothread.Sleep(delay)
 
         def setUp(self):
             super(TestRPC, self).setUp()
@@ -102,6 +114,7 @@ else:
             self.provider.add('foo', self.pv)
 
         def tearDown(self):
+            self.pv.close(destroy=True)
             del self.pv
             del self.provider
             super(TestRPC, self).tearDown()
