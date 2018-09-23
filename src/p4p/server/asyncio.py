@@ -4,6 +4,7 @@ import warnings
 _log = logging.getLogger(__name__)
 
 from functools import partial
+from weakref import WeakSet
 
 import asyncio
 
@@ -15,6 +16,39 @@ __all__ = (
         'Handler',
 )
 
+@asyncio.coroutine
+def _sync(loop):
+    # wait until any pending callbacks are run
+    evt = asyncio.Event(loop=loop)
+    loop.call_soon(evt.set)
+    yield from evt.wait()
+
+    evt.clear() # reuse
+
+    wait4 = set(loop._SharedPV_handlers) # snapshot of in-progress
+
+    # like asyncio.wait() but non-invasive if further callbacks are added.
+    # eg. like overlapping calls of _sync()
+    # We're abusing the callback chain to avoid creating an Event for
+    # each inprogress Future on the assumption that calls to _sync()
+    # are relatively rare.
+
+    cnt = len(wait4)
+    fut = asyncio.Future(loop=loop)
+
+    def _done(V):
+        nonlocal cnt
+        cnt -= 1
+        if cnt==0 and not fut.cancelled():
+            fut.set_result(None)
+        return V # pass result along
+
+    if cnt==0:
+        fut.set_result(None)
+    else:
+        [W.add_done_callback(_done) for W in wait4]
+
+    yield from fut
 
 def _log_err(V):
     if isinstance(V, Exception):
@@ -32,6 +66,8 @@ def _handle(loop, op, M, args):
             _log.debug('SERVER SCHEDULE %s', maybeco)
             task = loop.create_task(maybeco)
             task.add_done_callback(_log_err)
+
+            loop._SharedPV_handlers.add(task) # track in-progress
         return
     except RemoteError as e:
         pass
@@ -47,7 +83,18 @@ class SharedPV(_SharedPV):
         self.loop = loop or asyncio.get_event_loop()
         _SharedPV.__init__(self, handler=handler, **kws)
         self._handler.loop = self.loop
+        if not hasattr(loop, '_SharedPV_handlers'):
+            loop._SharedPV_handlers = WeakSet() # holds our in-progress Futures
 
     def _exec(self, op, M, *args):
         self.loop.call_soon_threadsafe(partial(_handle, self.loop, op, M, args))
         # 3.5 adds asyncio.run_coroutine_threadsafe()
+
+    def close(self, destroy=False):
+        """Close PV, disconnecting any clients.  (but not preventing reconnect attempts).
+        With destroy=True, returns an asyncio.Future which completes after onLastConnect() is delivered (if appropriate).
+        With destory=False, returns None.
+        """
+        _SharedPV.close(self, destroy)
+        if destroy:
+            return _sync(self.loop)

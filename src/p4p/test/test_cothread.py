@@ -8,7 +8,6 @@ import sys
 import random
 import weakref
 import gc
-import threading
 from unittest.case import SkipTest
 
 from ..nt import NTScalar, NTURI
@@ -122,3 +121,100 @@ else:
                     ret = C.rpc('foo', args.wrap('foo', kws={'lhs':1, 'rhs':2}))
                     _log.debug("RET %s", ret)
                     self.assertEqual(ret, 42)
+
+
+    class TestFirstLast(RefTestCase):
+        maxDiff = 1000
+        timeout = 1.0
+        mode = 'Mask'
+
+        class Handler:
+            def __init__(self):
+                self.evt = cothread.Event(auto_reset=False)
+                self.conn = None
+            def onFirstConnect(self, pv):
+                _log.debug("onFirstConnect")
+                self.conn = True
+                self.evt.Signal()
+            def onLastDisconnect(self, pv):
+                _log.debug("onLastDisconnect")
+                self.conn = False
+                self.evt.Signal()
+
+        def setUp(self):
+            # gc.set_debug(gc.DEBUG_LEAK)
+            super(TestFirstLast, self).setUp()
+
+            self.H = self.Handler()
+            self.pv = SharedPV(handler=self.H,
+                            nt=NTScalar('d'),
+                            options={'mapperMode':self.mode})
+            self.sprov = StaticProvider("serverend")
+            self.sprov.add('foo', self.pv)
+
+            self.server = Server(providers=[self.sprov], isolate=True)
+
+        def tearDown(self):
+            self.server.stop()
+            del self.server
+            del self.sprov
+            del self.pv
+            del self.H
+            super(TestFirstLast, self).tearDown()
+
+        def testClientDisconn(self):
+            self.pv.open(1.0)
+
+            with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+                Q = cothread.EventQueue()
+                with ctxt.monitor('foo', Q.Signal, notify_disconnect=True):
+
+                    Q.Wait(timeout=self.timeout) # initial update
+
+                    _log.debug('TEST')
+                    self.H.evt.Wait(self.timeout) # onFirstConnect()
+                    self.H.evt.Reset()
+                    self.assertTrue(self.H.conn)
+
+            self.H.evt.Wait(self.timeout) # onLastDisconnect()
+            _log.debug('SHUTDOWN')
+            self.assertFalse(self.H.conn)
+
+        def testServerShutdown(self):
+            self.pv.open(1.0)
+
+            with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+                Q = cothread.EventQueue()
+                with ctxt.monitor('foo', Q.Signal, notify_disconnect=True):
+
+                    Q.Wait(timeout=self.timeout)
+
+                    _log.debug('TEST')
+                    self.H.evt.Wait(self.timeout) # initial update
+                    self.H.evt.Reset()
+                    self.assertIs(self.H.conn, True)
+
+                    self.server.stop()
+
+                    self.H.evt.Wait(self.timeout) # wait for
+                    _log.debug('SHUTDOWN')
+                    self.assertIs(self.H.conn, False)
+
+        def testPVClose(self):
+            self.pv.open(1.0)
+
+            with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+                Q = cothread.EventQueue()
+                with ctxt.monitor('foo', Q.Signal, notify_disconnect=True):
+
+                    Q.Wait(timeout=self.timeout) # initial update
+
+                    _log.debug('TEST')
+                    self.H.evt.Wait(self.timeout)
+                    self.H.evt.Reset()
+                    self.assertTrue(self.H.conn)
+
+                    self.pv.close(destroy=True)
+
+                    _log.debug('CLOSE')
+                    self.assertFalse(self.H.conn)

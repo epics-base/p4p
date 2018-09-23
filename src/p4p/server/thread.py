@@ -116,3 +116,8 @@ class SharedPV(_SharedPV):
 
     def _exec(self, op, M, *args):
         self._queue.push(partial(_on_queue, op, M, *args))
+
+    def close(self, destroy=False):
+        _SharedPV.close(self, destroy)
+        if destroy:
+            _defaultWorkQueue.stop()

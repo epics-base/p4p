@@ -319,16 +319,10 @@ class TestFirstLast(RefTestCase):
     def tearDown(self):
         self.server.stop()
         _defaultWorkQueue.stop()
-        self.pv._handler._pv = None
-        R = [weakref.ref(r) for r in (self.server, self.sprov, self.pv, self.pv._whandler, self.pv._handler)]
-        r = None
         del self.server
         del self.sprov
         del self.pv
         del self.H
-        gc.collect()
-        R = [r() for r in R]
-        self.assertListEqual(R, [None] * len(R))
         super(TestFirstLast, self).tearDown()
 
     def testClientDisconn(self):
@@ -336,15 +330,16 @@ class TestFirstLast(RefTestCase):
 
         with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
             Q = Queue(maxsize=4)
-            sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
+            with ctxt.monitor('foo', Q.put, notify_disconnect=True):
 
-            Q.get(timeout=self.timeout)
+                Q.get(timeout=self.timeout) # initial update
 
-            _log.debug('TEST')
-            self.H.evt.wait(self.timeout)
-            self.H.evt.clear()
-            self.assertTrue(self.H.conn)
-        self.H.evt.wait(self.timeout)
+                _log.debug('TEST')
+                self.H.evt.wait(self.timeout) # onFirstConnect()
+                self.H.evt.clear()
+                self.assertTrue(self.H.conn)
+
+        self.H.evt.wait(self.timeout) # onLastDisconnect()
         _log.debug('SHUTDOWN')
         self.assertFalse(self.H.conn)
 
@@ -353,36 +348,36 @@ class TestFirstLast(RefTestCase):
 
         with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
             Q = Queue(maxsize=4)
-            sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
+            with ctxt.monitor('foo', Q.put, notify_disconnect=True):
 
-            Q.get(timeout=self.timeout)
+                Q.get(timeout=self.timeout) # initial update
 
-            _log.debug('TEST')
-            self.H.evt.wait(self.timeout)
-            self.H.evt.clear()
-            self.assertIs(self.H.conn, True)
+                _log.debug('TEST')
+                self.H.evt.wait(self.timeout) # onFirstConnect()
+                self.H.evt.clear()
+                self.assertIs(self.H.conn, True)
 
-            self.server.stop()
+                self.server.stop()
 
-            self.H.evt.wait(self.timeout)
-            _log.debug('SHUTDOWN')
-            self.assertIs(self.H.conn, False)
+                self.H.evt.wait(self.timeout) # onLastDisconnect()
+                _log.debug('SHUTDOWN')
+                self.assertIs(self.H.conn, False)
 
     def testPVClose(self):
         self.pv.open(1.0)
 
         with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
             Q = Queue(maxsize=4)
-            sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
+            with ctxt.monitor('foo', Q.put, notify_disconnect=True):
 
-            Q.get(timeout=self.timeout)
+                Q.get(timeout=self.timeout) # initial update
 
-            _log.debug('TEST')
-            self.H.evt.wait(self.timeout)
-            self.H.evt.clear()
-            self.assertTrue(self.H.conn)
+                _log.debug('TEST')
+                self.H.evt.wait(self.timeout) # onFirstConnect()
+                self.H.evt.clear()
+                self.assertTrue(self.H.conn)
 
-            self.pv.close(destroy=True)
+                self.pv.close(destroy=True) # onLastDisconnect()
 
-            _log.debug('CLOSE')
-            self.assertFalse(self.H.conn)
+                _log.debug('CLOSE')
+                self.assertFalse(self.H.conn)

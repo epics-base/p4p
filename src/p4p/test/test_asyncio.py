@@ -8,94 +8,89 @@ import sys
 import random
 import weakref
 import gc
-import threading
 from unittest.case import SkipTest
 
 from ..nt import NTScalar
 from ..server import Server, StaticProvider
 from .utils import RefTestCase
 
-try:
-    import asyncio
-except ImportError:
-    raise SkipTest('No asyncio')
-    # not that this is going to help as 'yield from' is a syntax error in 2.7
-else:
-    from ..client.asyncio import Context, Disconnected, timesout
-    from ..server.asyncio import SharedPV
+import asyncio
 
-    from .utils import inloop, clearloop
+from ..client.asyncio import Context, Disconnected, timesout
+from ..server.asyncio import SharedPV
 
-    class Handler:
+from .utils import inloop, clearloop
 
-        @asyncio.coroutine
-        def put(self, pv, op):
-            _log.debug("putting %s <- %s", op.name(), op.value())
-            yield from asyncio.sleep(0, loop=self.loop)  # prove that we can
-            pv.post(op.value() * 2)
-            op.done()
+class Handler:
 
-    class TestGPM(RefTestCase):
-        timeout = 3  # overall timeout for each test method
+    @asyncio.coroutine
+    def put(self, pv, op):
+        _log.debug("putting %s <- %s", op.name(), op.value())
+        yield from asyncio.sleep(0, loop=self.loop)  # prove that we can
+        pv.post(op.value() * 2)
+        op.done()
 
-        @inloop
-        @asyncio.coroutine
-        def setUp(self):
-            super(TestGPM, self).setUp()
+class TestGPM(RefTestCase):
+    timeout = 3  # overall timeout for each test method
 
-            self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=Handler(), loop=self.loop)
-            self.pv2 = SharedPV(handler=Handler(), nt=NTScalar('d'), initial=42.0, loop=self.loop)
-            self.provider = StaticProvider("serverend")
-            self.provider.add('foo', self.pv)
-            self.provider.add('bar', self.pv2)
+    @inloop
+    @asyncio.coroutine
+    def setUp(self):
+        super(TestGPM, self).setUp()
 
-        def tearDown(self):
-            del self.pv
-            del self.pv2
-            del self.provider
-            clearloop(self)
-            super(TestGPM, self).tearDown()
+        self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=Handler(), loop=self.loop)
+        self.pv2 = SharedPV(handler=Handler(), nt=NTScalar('d'), initial=42.0, loop=self.loop)
+        self.provider = StaticProvider("serverend")
+        self.provider.add('foo', self.pv)
+        self.provider.add('bar', self.pv2)
 
-        @inloop
-        @asyncio.coroutine
-        def test_getput(self):
-            with Server(providers=[self.provider], isolate=True) as S:
-                with Context('pva', conf=S.conf(), useenv=False, loop=self.loop) as C:
-                    self.assertEqual(0, (yield from C.get('foo')))
+    def tearDown(self):
+        del self.pv
+        del self.pv2
+        del self.provider
+        clearloop(self)
+        super(TestGPM, self).tearDown()
 
-                    yield from C.put('foo', 5)
+    @inloop
+    @asyncio.coroutine
+    def test_getput(self):
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False, loop=self.loop) as C:
+                self.assertEqual(0, (yield from C.get('foo')))
 
-                    self.assertEqual(5 * 2, (yield from C.get('foo')))
+                yield from C.put('foo', 5)
 
-        @inloop
-        @asyncio.coroutine
-        def test_monitor(self):
-            with Server(providers=[self.provider], isolate=True) as S:
-                with Context('pva', conf=S.conf(), useenv=False, loop=self.loop) as C:
+                self.assertEqual(5 * 2, (yield from C.get('foo')))
 
-                    Q = asyncio.Queue(loop=self.loop)
+    @inloop
+    @asyncio.coroutine
+    def test_monitor(self):
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False, loop=self.loop) as C:
 
-                    sub = C.monitor('foo', Q.put, notify_disconnect=True)
-                    try:
-                        self.assertIsInstance((yield from Q.get()), Disconnected)
+                Q = asyncio.Queue(loop=self.loop)
 
-                        self.assertEqual(0, (yield from Q.get()))
+                sub = C.monitor('foo', Q.put, notify_disconnect=True)
+                try:
+                    self.assertIsInstance((yield from Q.get()), Disconnected)
 
-                        yield from C.put('foo', 2)
+                    self.assertEqual(0, (yield from Q.get()))
 
-                        self.assertEqual(2 * 2, (yield from Q.get()))
+                    yield from C.put('foo', 2)
 
-                        self.pv.close()
+                    self.assertEqual(2 * 2, (yield from Q.get()))
 
-                        self.assertIsInstance((yield from Q.get()), Disconnected)
+                    self.pv.close()
 
-                        self.pv.open(3)
+                    self.assertIsInstance((yield from Q.get()), Disconnected)
 
-                        self.assertEqual(3, (yield from Q.get()))
+                    self.pv.open(3)
 
-                    finally:
-                        sub.close()
-                        yield from sub.wait_closed()
+                    self.assertEqual(3, (yield from Q.get()))
+
+                finally:
+                    sub.close()
+                    yield from sub.wait_closed()
 
 
 class TestTimeout(unittest.TestCase):
@@ -128,3 +123,125 @@ class TestTimeout(unittest.TestCase):
             pass
 
         self.assertIs(done, False)
+
+class TestFirstLast(RefTestCase):
+    maxDiff = 1000
+    timeout = 1.0
+    mode = 'Mask'
+
+    class Handler:
+        def __init__(self, loop):
+            self.evt = asyncio.Event(loop=loop)
+            self.conn = None
+        def onFirstConnect(self, pv):
+            _log.debug("onFirstConnect")
+            self.conn = True
+            self.evt.set()
+        def onLastDisconnect(self, pv):
+            _log.debug("onLastDisconnect")
+            self.conn = False
+            self.evt.set()
+
+    @inloop
+    @asyncio.coroutine
+    def setUp(self):
+        # gc.set_debug(gc.DEBUG_LEAK)
+        super(TestFirstLast, self).setUp()
+
+        self.H = self.Handler(self.loop)
+        self.pv = SharedPV(handler=self.H,
+                           nt=NTScalar('d'),
+                           options={'mapperMode':self.mode},
+                           loop=self.loop)
+        self.sprov = StaticProvider("serverend")
+        self.sprov.add('foo', self.pv)
+
+        self.server = Server(providers=[self.sprov], isolate=True)
+
+    def tearDown(self):
+        self.server.stop()
+        #_defaultWorkQueue.stop()
+        del self.server
+        del self.sprov
+        del self.pv
+        del self.H
+        clearloop(self)
+        super(TestFirstLast, self).tearDown()
+
+    @inloop
+    @asyncio.coroutine
+    def testClientDisconn(self):
+        self.pv.open(1.0)
+
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}, loop=self.loop) as ctxt:
+            Q = asyncio.Queue(maxsize=4, loop=self.loop)
+            sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
+            try:
+
+                yield from Q.get() # initial update
+
+                _log.debug('TEST')
+                yield from self.H.evt.wait() # onFirstConnect()
+                self.H.evt.clear()
+                self.assertTrue(self.H.conn)
+
+            finally:
+                sub.close()
+                yield from sub.wait_closed()
+
+        yield from self.H.evt.wait() # onLastDisconnect()
+        _log.debug('SHUTDOWN')
+        self.assertFalse(self.H.conn)
+
+    @inloop
+    @asyncio.coroutine
+    def testServerShutdown(self):
+        self.pv.open(1.0)
+
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}, loop=self.loop) as ctxt:
+            Q = asyncio.Queue(maxsize=4, loop=self.loop)
+            sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
+            try:
+
+                yield from Q.get() # initial update
+
+                _log.debug('TEST')
+                yield from self.H.evt.wait() # onFirstConnect()
+                self.H.evt.clear()
+                self.assertIs(self.H.conn, True)
+
+                self.server.stop()
+
+                yield from self.H.evt.wait() # onLastDisconnect()
+                _log.debug('SHUTDOWN')
+                self.assertIs(self.H.conn, False)
+
+            finally:
+                sub.close()
+                yield from sub.wait_closed()
+
+    @inloop
+    @asyncio.coroutine
+    def testPVClose(self):
+        self.pv.open(1.0)
+
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}, loop=self.loop) as ctxt:
+            Q = asyncio.Queue(maxsize=4, loop=self.loop)
+            sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
+            try:
+
+                yield from Q.get() # initial update
+
+                _log.debug('TEST')
+                yield from self.H.evt.wait() # onFirstConnect()
+                self.H.evt.clear()
+                self.assertTrue(self.H.conn)
+
+                yield from self.pv.close(destroy=True) # onLastDisconnect()
+
+                _log.debug('CLOSE')
+                self.assertFalse(self.H.conn)
+
+            finally:
+                sub.close()
+                yield from sub.wait_closed()
