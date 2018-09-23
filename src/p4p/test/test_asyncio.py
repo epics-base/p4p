@@ -34,7 +34,6 @@ else:
             yield from asyncio.sleep(0, loop=self.loop)  # prove that we can
             pv.post(op.value() * 2)
             op.done()
-            _log.debug("put complete %s <- %s", op.name(), op.value())
 
     class TestGPM(RefTestCase):
         timeout = 3  # overall timeout for each test method
@@ -50,14 +49,7 @@ else:
             self.provider.add('foo', self.pv)
             self.provider.add('bar', self.pv2)
 
-        @inloop
-        @asyncio.coroutine
-        def cleanup(self):
-            yield from self.pv.shutdown()
-            yield from self.pv2.shutdown()
-
         def tearDown(self):
-            self.cleanup()
             del self.pv
             del self.pv2
             del self.provider

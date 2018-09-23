@@ -168,12 +168,6 @@ class SharedPV(_SharedPV):
                 op.done(error=str(e))
             _log.exception("Unexpected")
 
-    def _onFirstConnect(self):
-        pass # sub-class hook just before user onFirstConnect()
-
-    def _onLastDisconnect(self):
-        pass # sub-class hook just after user onLastDisconnect()
-
     class _DummyHandler(object):
         pass
 
@@ -185,38 +179,28 @@ class SharedPV(_SharedPV):
             self._pv = pv  # this creates a reference cycle, which should be collectable since SharedPV supports GC
             self._real = real
 
-        def onFirstConnect(self): # actual entry point from extension code
-            self._pv._exec(None, self._onFirstConnect)
-
-        def _onFirstConnect(self): # run from sub-class worker
-            self._pv._onFirstConnect()
+        def onFirstConnect(self):
             try:  # user handler may omit onFirstConnect()
                 M = self._real.onFirstConnect
             except AttributeError:
-                M = lambda X:None
-            M(self._pv)
+                return
+            self._pv._exec(None, M, self._pv)
 
-        def onLastDisconnect(self): # actual entry point from extension code
-            self._pv._exec(None, self._onLastDisconnect)
-
-        def _onLastDisconnect(self): # run from sub-class worker
+        def onLastDisconnect(self):
             try:
                 M = self._real.onLastDisconnect
             except AttributeError:
-                M = lambda X:None
-            try:
-                M(self._pv)
-            finally:
-                self._pv._onLastDisconnect()
+                return
+            self._pv._exec(None, M, self._pv)
 
-        def put(self, op): # actual entry point from extension code
+        def put(self, op):
             _log.debug('PUT %s %s', self._pv, op)
             try:
                 self._pv._exec(op, self._real.put, self._pv, ServOpWrap(op, self._pv._unwrap))
             except AttributeError:
                 op.done(error="Put not supported")
 
-        def rpc(self, op): # actual entry point from extension code
+        def rpc(self, op):
             _log.debug('RPC %s %s', self._pv, op)
             try:
                 self._pv._exec(op, self._real.rpc, self._pv, op)
