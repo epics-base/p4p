@@ -52,7 +52,7 @@ class Context(raw.Context):
         """
         singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
-            return self._get_one(name, request=request)
+            return self._get_one(name, request=request, timeout=timeout, throw=throw)
 
         elif request is None:
             request = [None] * len(name)
