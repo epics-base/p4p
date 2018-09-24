@@ -505,6 +505,36 @@ class TestRawValue(RefTestCase):
         self.assertSetEqual(A.changedSet(expand=False), {'z'})
         self.assertSetEqual(A.changedSet(expand=True), {'z.a', 'z.b'})
 
+    def testSubStructAssignment(self):
+        A = Value(Type([
+            ('x', 'i'),
+            ('y', 'i'),
+            ('z', ('S', None, [
+                ('a', 'i'),
+                ('b', 'i'),
+                ('c', 'i'),
+            ])),
+            ('q', 'v'),
+        ]), {
+        })
+
+        B = Value(Type([
+            ('a', 'i'),
+            ('b', 'i'),
+        ]), {
+            'a':42,
+            'b':43,
+        })
+
+        A.z = B # copy alike structure (absense of 'c' is ok)
+        A.q = B # variant union assignment (absense of 'c' also ok)
+
+        self.assertEqual(A.z.a, 42)
+        self.assertEqual(A.z.b, 43)
+        self.assertEqual(A.q.a, 42)
+        self.assertEqual(A.q.b, 43)
+        self.assertSetEqual(A.changedSet(), {'z.a', 'z.b', 'q'})
+
 class TestReInit(RefTestCase):
 
     def testCopySubStruct(self):

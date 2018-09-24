@@ -251,6 +251,8 @@ void Value::store_struct(pvd::PVStructure* fld,
             pvd::AnyScalar temp;
             S->getAs(temp);
             F->putFrom(temp);
+            if(bset)
+                bset->set(F->getFieldOffset());
         }
             break;
         case pvd::scalarArray: {
@@ -259,6 +261,8 @@ void Value::store_struct(pvd::PVStructure* fld,
             pvd::shared_vector<const void> temp;
             S->getAs(temp);
             F->putFrom(temp);
+            if(bset)
+                bset->set(F->getFieldOffset());
         }
             break;
         case pvd::structure: {
@@ -284,12 +288,16 @@ void Value::store_struct(pvd::PVStructure* fld,
             }
 
             F->replace(pvd::freeze(dest));
+            if(bset)
+                bset->set(F->getFieldOffset());
         }
             break;
         case pvd::union_: {
             pvd::PVUnion* F = static_cast<pvd::PVUnion*>(dest.get());
             pvd::PVUnion* S = static_cast<pvd::PVUnion*>(fields[i].get());
             store_union(F, F->getUnion().get(), *S);
+            if(bset)
+                bset->set(F->getFieldOffset());
         }
             break;
         case pvd::unionArray: {
@@ -308,6 +316,8 @@ void Value::store_struct(pvd::PVStructure* fld,
             }
 
             F->replace(pvd::freeze(dest));
+            if(bset)
+                bset->set(F->getFieldOffset());
         }
             break;
         default:
