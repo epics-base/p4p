@@ -15,7 +15,7 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from ..wrapper import Value, Type
-from ..client.thread import Context, Disconnected, TimeoutError
+from ..client.thread import Context, Disconnected, TimeoutError, RemoteError
 from ..server import Server, StaticProvider
 from ..server.thread import SharedPV, _defaultWorkQueue
 from ..util import WorkQueue
@@ -150,18 +150,12 @@ class TestGPM(RefTestCase):
 
 class TestRPC(RefTestCase):
     class Handler:
-        def __init__(self):
-            self.lastrpc = None
-
-        def put(self, pv, op):
-            _log.debug("putting %s <- %s", op.name(), op.value())
-            cothread.Yield()  # because we can
-            pv.post(op.value() * 2)
-            op.done()
-
         def rpc(self, pv, op):
-            self.lastrpc = op.value()
-            op.done(NTScalar('i').wrap(42))
+            V = op.value()
+            if V.get('query.oops'):
+                op.done(error='oops')
+            else:
+                op.done(NTScalar('i').wrap(42))
 
     def setUp(self):
         super(TestRPC, self).setUp()
@@ -196,6 +190,16 @@ class TestRPC(RefTestCase):
                 _log.debug("RET %s", ret)
                 self.assertEqual(ret, 42)
 
+    def test_rpc_error(self):
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+
+                args = NTURI([
+                    ('oops', '?'),
+                ])
+
+                with self.assertRaisesRegexp(RemoteError, 'oops'):
+                    ret = C.rpc('foo', args.wrap('foo', kws={'oops':True}))
 
 class TestPVRequestMask(RefTestCase):
     maxDiff = 1000
