@@ -69,6 +69,7 @@ class Context(raw.Context):
         done = cothread.Event(auto_reset=False)
 
         def cb(value):
+            assert not done, value # spurious second callback
             if isinstance(value, (RemoteError, Disconnected, Cancelled)):
                 done.SignalException(value)
             else:
@@ -147,6 +148,7 @@ class Context(raw.Context):
         done = cothread.Event(auto_reset=False)
 
         def cb(value):
+            assert not done, value
             if isinstance(value, (RemoteError, Disconnected, Cancelled)):
                 done.SignalException(value)
             else:
@@ -194,6 +196,7 @@ class Context(raw.Context):
         done = cothread.Event(auto_reset=False)
 
         def cb(value):
+            assert not done, value
             if isinstance(value, (RemoteError, Disconnected, Cancelled)):
                 done.SignalException(value)
             else:

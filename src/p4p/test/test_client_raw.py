@@ -57,7 +57,7 @@ class TestPVA(RefTestCase):
 
         op.close()
 
-        self.assertIsNone(_X[0])
+        self.assertIsInstance(_X[0], Cancelled)
 
     def testGetAbortGC(self):
         _X = [None]

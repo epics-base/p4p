@@ -64,11 +64,12 @@ def unwrapHandler(handler, unwrap):
                 handler(RemoteError(msg))
             elif code == 1:
                 handler(Cancelled())
-            if val is not None:
-                fn = unwrap.get(val.getID())
-                if fn:
-                    val = fn(val)
-            handler(val)
+            else:
+                if val is not None:
+                    fn = unwrap.get(val.getID())
+                    if fn:
+                        val = fn(val)
+                handler(val)
         except:
             _log.exception("Exception in Operation handler")
     return dounwrap
