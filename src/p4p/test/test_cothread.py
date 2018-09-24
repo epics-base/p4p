@@ -21,6 +21,7 @@ except ImportError:
 else:
     from ..client.cothread import Context, Disconnected, RemoteError
     from ..server.cothread import SharedPV
+    from ..server import cothread as srv_cothread
 
     class GPMHandler:
         def put(self, pv, op):
@@ -53,6 +54,8 @@ else:
             del self.pv
             del self.pv2
             del self.provider
+            gc.collect()
+            self.assertSetEqual(set(srv_cothread._handlers), set()) # ensure no outstanding server handlers
             super(TestGPM, self).tearDown()
 
         def test_getput(self):
@@ -107,6 +110,8 @@ else:
         def tearDown(self):
             del self.pv
             del self.provider
+            gc.collect()
+            self.assertSetEqual(set(srv_cothread._handlers), set()) # ensure no outstanding server handlers
             super(TestRPC, self).tearDown()
 
         def test_rpc(self):
@@ -170,6 +175,8 @@ else:
             del self.sprov
             del self.pv
             del self.H
+            gc.collect()
+            self.assertSetEqual(set(srv_cothread._handlers), set()) # ensure no outstanding server handlers
             super(TestFirstLast, self).tearDown()
 
         def testClientDisconn(self):

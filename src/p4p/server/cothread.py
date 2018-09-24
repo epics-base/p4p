@@ -26,7 +26,8 @@ class WeakSpawn(Spawn):
 class WeakEvent(Event):
     __slots__=['__weakref__']
 
-# a set of objects having a method 'Wait()'
+# a set of WeakSpawn and/or WeakEvent
+# in progress _handle() cothreads, or _sync() events
 _handlers = WeakSet()
 
 def _sync():
@@ -41,16 +42,20 @@ def _sync():
 
     evt.Reset() # reuse
 
+    # grab the current set of inprogress cothreads/events
     wait4 = set(_handlers)
+    # because Spawn.Wait() can only be called once, remove them and
+    # use 'evt' as a proxy for what I'm waiting on so that overlapping
+    # calls to _sync() will wait for these as well.
     _handlers.clear()
-    # use 'evt' as a proxy for all of the cothreads I'm waiting on,
-    # so that later calls to _sync() will wait for these as well.
     _handlers.add(evt)
 
-    WaitForAll(wait4)
-
-    evt.Signal()
-    _handlers.remove(evt)
+    try:
+        WaitForAll(wait4)
+    except Exception as e:
+        evt.SignalException(e) # pass along error to next concurrent _sync()
+    else:
+        evt.Signal() # pass along success
 
 # Callback() runs me in the main thread
 def _fromMain(_handle, op, M, args):
