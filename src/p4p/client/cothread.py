@@ -206,10 +206,11 @@ class Context(raw.Context):
         _log.debug('rpc %s %s request=%s', name, value, request)
 
         try:
-            ret = done.Wait(timeout)
-        except cothread.Timedout:
-            ret = TimeoutError()
-            if throw:
+            try:
+                ret = done.Wait(timeout)
+            except cothread.Timedout:
+                ret = TimeoutError()
+            if throw and isinstance(ret, Exception):
                 raise ret
         finally:
             op.close()
