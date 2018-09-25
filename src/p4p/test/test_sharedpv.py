@@ -53,7 +53,7 @@ class TestGPM(RefTestCase):
 
     def tearDown(self):
         self.server.stop()
-        _defaultWorkQueue.stop()
+        _defaultWorkQueue.sync()
         #self.pv._handler._pv = None
         R = [weakref.ref(r) for r in (self.server, self.sprov, self.pv, self.pv._whandler, self.pv._handler)]
         r = None
@@ -169,7 +169,7 @@ class TestRPC(RefTestCase):
         self.traceme(self.provider)
         del self.pv
         del self.provider
-        _defaultWorkQueue.stop()
+        _defaultWorkQueue.sync()
             
         super(TestRPC, self).tearDown()
 
@@ -228,7 +228,7 @@ class TestPVRequestMask(RefTestCase):
 
     def tearDown(self):
         self.server.stop()
-        _defaultWorkQueue.stop()
+        _defaultWorkQueue.sync()
         self.pv._handler._pv = None
         R = [weakref.ref(r) for r in (self.server, self.sprov, self.pv, self.pv._whandler, self.pv._handler)]
         r = None
@@ -322,7 +322,7 @@ class TestFirstLast(RefTestCase):
 
     def tearDown(self):
         self.server.stop()
-        _defaultWorkQueue.stop()
+        _defaultWorkQueue.sync()
         del self.server
         del self.sprov
         del self.pv

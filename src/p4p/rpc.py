@@ -11,7 +11,7 @@ from .nt import NTURI
 from .client.raw import RemoteError
 from .server import DynamicProvider
 from .server.raw import SharedPV
-from .util import WorkQueue, Full, Empty
+from .util import ThreadedWorkQueue, WorkQueue, Full, Empty
 
 __all__ = [
     'rpc',
@@ -213,26 +213,15 @@ def quickRPCServer(provider, prefix, target,
     :param useenv: Passed to :class:`~p4p.server.Server`
     :param conf: Passed to :class:`~p4p.server.Server`
     """
-    from p4p.server import Server, installProvider, removeProvider
-    queue = WorkQueue(maxsize=maxsize)
+    from p4p.server import Server
+    import time
+    queue = ThreadedWorkQueue(maxsize=maxsize, workers=workers)
     provider = NTURIDispatcher(queue, target=target, prefix=prefix, name=provider)
     threads = []
     server = Server(providers=[provider], useenv=useenv, conf=conf)
-    try:
-        for n in range(1, workers):
-            T = Thread(name='%s Worker %d' % (provider, n), target=queue.handle)
-            threads.append(T)
-            T.start()
-        # handle calls in the current thread until KeyboardInterrupt
-        queue.handle()
-    finally:
-        try:
-            for T in threads:
-                queue.interrupt()
-                T.join()
-        finally:
-            # we really need to do this or the process will hang on exit
-            server.stop()
+    with server, queue:
+        while True:
+            time.sleep(10.0)
 
 
 class RPCProxyBase(object):

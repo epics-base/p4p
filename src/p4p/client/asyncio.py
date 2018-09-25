@@ -11,7 +11,6 @@ from functools import partial, wraps
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished
 from ..wrapper import Value, Type
-from ..rpc import WorkQueue
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                     logLevelInfo, logLevelWarn, logLevelError,
                     logLevelFatal, logLevelOff)

@@ -7,7 +7,7 @@ import atexit
 from functools import partial
 from threading import Thread
 
-from ..util import WorkQueue
+from ..util import ThreadedWorkQueue
 from .raw import SharedPV as _SharedPV, Handler
 from ..client.thread import RemoteError
 
@@ -16,37 +16,35 @@ __all__ = (
     'Handler',
 )
 
-# lazy create a default work queue
+# lazy create a default work queues
 
 
 class _DefaultWorkQueue(object):
 
     def __init__(self, workers=4):  # TODO: configurable?
-        self.Q = self.T = None
-        self.N = workers
+        self.W = [None]*workers
+        self.n = 0
 
     def __del__(self):
         self.stop()
 
     def __call__(self):
-        if self.Q is None:
-            self.T = []
-            self.Q = WorkQueue(maxsize=0)
-            for _i in range(self.N):
-                T = Thread(name="p4p.server.thread worker", target=self.Q.handle)
-                T.daemon = True  # otherwise the MainThread exit handler tries to join too early
-                T.start()
-                self.T.append(T)
-        return self.Q
+        W = self.W[self.n]
+        if W is None:
+            #  daemon=True  otherwise the MainThread exit handler tries to join too early
+            W = self.W[self.n] = ThreadedWorkQueue(maxsize=0, daemon=True).start()
+
+        # sort of load balancing by giving different queues to each SharedPV
+        # but preserve ordering or callbacks as each SharedPV has only one queue
+        self.n = (self.n+1)%len(self.W)
+        return W
+
+    def sync(self):
+        [W.sync() for W in self.W if W is not None]
 
     def stop(self):
-        if self.Q is None:
-            return
-        for T in self.T:
-            self.Q.interrupt()
-        for T in self.T:
-            T.join()
-        self.Q = self.T = None
+        [W.stop() for W in self.W if W is not None]
+        self.W = [None]*len(self.W)
 
 _defaultWorkQueue = _DefaultWorkQueue()
 
@@ -120,4 +118,4 @@ class SharedPV(_SharedPV):
     def close(self, destroy=False):
         _SharedPV.close(self, destroy)
         if destroy:
-            _defaultWorkQueue.stop()
+            self._queue.sync()
