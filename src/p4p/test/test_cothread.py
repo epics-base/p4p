@@ -231,6 +231,7 @@ else:
                     self.H.evt.Reset()
                     self.assertTrue(self.H.conn)
 
+                    self.sprov.remove('foo') # prevent new connections while destroying
                     self.pv.close(destroy=True)
 
                     _log.debug('CLOSE')
