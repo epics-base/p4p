@@ -10,8 +10,8 @@
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
-typedef PyClassWrapper<pvac::ClientProvider> PyClientProvider;
-typedef PyClassWrapper<pvac::ClientChannel> PyClientChannel;
+typedef PyClassWrapper<pvac::ClientProvider, true> PyClientProvider;
+typedef PyClassWrapper<pvac::ClientChannel, true> PyClientChannel;
 
 struct ClientMonitor : public pvac::ClientChannel::MonitorCallback {
     static size_t num_instances;

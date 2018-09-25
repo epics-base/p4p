@@ -5,8 +5,8 @@
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
-typedef PyClassWrapper<pvas::Operation> PyOperation;
-typedef PyClassWrapper<pvas::SharedPV::shared_pointer> PySharedPV;
+typedef PyClassWrapper<pvas::Operation, true> PyOperation;
+typedef PyClassWrapper<pvas::SharedPV::shared_pointer, true> PySharedPV;
 
 PyClassWrapper_DEF(PyOperation, "ServerOperation")
 PyClassWrapper_DEF(PySharedPV, "SharedPV")

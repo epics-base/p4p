@@ -253,7 +253,7 @@ PyObject *P4PSharedPV_wrap(const std::tr1::shared_ptr<pvas::SharedPV>& pv);
     }; \
     template<> size_t TYPE::num_instances = 0;
 
-template<class C>
+template<class C, bool unlockdtor = false>
 struct PyClassWrapper {
     PyObject_HEAD
 
@@ -322,7 +322,12 @@ struct PyClassWrapper {
             (klass->tp_clear)(raw);
         REFTRACE_DECREMENT(num_instances);
         try {
-            self->I.~C();
+            if(unlockdtor) {
+                PyUnlock U;
+                self->I.~C();
+            } else {
+                self->I.~C();
+            }
         } CATCH()
         Py_TYPE(self)->tp_free((PyObject*)self);
     }

@@ -12,8 +12,8 @@
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
-typedef PyClassWrapper<pvas::DynamicProvider::shared_pointer> PyDynamicProvider;
-typedef PyClassWrapper<pvas::StaticProvider::shared_pointer> PyStaticProvider;
+typedef PyClassWrapper<pvas::DynamicProvider::shared_pointer, true> PyDynamicProvider;
+typedef PyClassWrapper<pvas::StaticProvider::shared_pointer, true> PyStaticProvider;
 
 const unsigned maxCache = 100;
 const unsigned expireIn = 5;
