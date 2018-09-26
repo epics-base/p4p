@@ -24,7 +24,10 @@ struct ClientMonitor : public pvac::ClientChannel::MonitorCallback {
     }
 
     virtual ~ClientMonitor() {
-        monitor.cancel(); // we should be the only reference, but ... paranoia
+        {
+            PyUnlock U;
+            monitor.cancel(); // we should be the only reference, but ... paranoia
+        }
         REFTRACE_DECREMENT(num_instances);
     }
 
@@ -64,7 +67,10 @@ struct ClientOperation : public pvac::ClientChannel::PutCallback,
         REFTRACE_INCREMENT(num_instances);
     }
     virtual ~ClientOperation() {
-        op.cancel();
+        {
+            PyUnlock U;
+            op.cancel();
+        }
         REFTRACE_DECREMENT(num_instances);
     }
 
@@ -224,7 +230,10 @@ static PyObject *clientprovider_close(PyObject *self)
 {
     TRY {
         TRACE("");
-        SELF.reset();
+        {
+            PyUnlock U;
+            SELF.reset();
+        }
         Py_RETURN_NONE;
     }CATCH()
     return 0;
@@ -386,7 +395,10 @@ static PyObject *clientmonitor_close(PyObject *self)
 {
     TRY {
         TRACE("");
-        SELF.monitor.cancel();
+        {
+            PyUnlock U;
+            SELF.monitor.cancel();
+        }
         Py_RETURN_NONE;
     }CATCH()
     return 0;
@@ -527,7 +539,10 @@ static PyObject *clientoperation_close(PyObject *self)
 {
     TRY {
         TRACE("");
-        SELF.op.cancel();
+        {
+            PyUnlock U;
+            SELF.op.cancel();
+        }
         Py_RETURN_NONE;
     }CATCH()
     return 0;
