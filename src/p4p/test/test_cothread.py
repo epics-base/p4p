@@ -38,6 +38,8 @@ else:
                 op.done(NTScalar('i').wrap(42))
 
     class TestGPM(RefTestCase):
+        timeout = 1.0
+
         def _sleep(self, delay):
             cothread.Sleep(delay)
 
@@ -81,23 +83,25 @@ else:
                     Q = cothread.EventQueue()
 
                     with C.monitor('foo', Q.Signal, notify_disconnect=True) as sub:
-                        self.assertIsInstance(Q.Wait(), Disconnected)
+                        self.assertIsInstance(Q.Wait(timeout=self.timeout), Disconnected)
 
-                        self.assertEqual(0, Q.Wait())
+                        self.assertEqual(0, Q.Wait(timeout=self.timeout))
 
                         C.put('foo', 2)
 
-                        self.assertEqual(2 * 2, Q.Wait())
+                        self.assertEqual(2 * 2, Q.Wait(timeout=self.timeout))
 
                         self.pv.close()
 
-                        self.assertIsInstance(Q.Wait(), Disconnected)
+                        self.assertIsInstance(Q.Wait(timeout=self.timeout), Disconnected)
 
                         self.pv.open(3)
 
-                        self.assertEqual(3, Q.Wait())
+                        self.assertEqual(3, Q.Wait(timeout=self.timeout))
 
     class TestRPC(RefTestCase):
+        timeout = 1.0
+
         def _sleep(self, delay):
             cothread.Sleep(delay)
 
@@ -234,8 +238,9 @@ else:
                     self.H.evt.Reset()
                     self.assertTrue(self.H.conn)
 
+                    _log.debug('CLOSING')
                     self.sprov.remove('foo') # prevent new connections while destroying
                     self.pv.close(destroy=True)
 
-                    _log.debug('CLOSE')
+                    _log.debug('CLOSED')
                     self.assertFalse(self.H.conn)
