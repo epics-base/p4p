@@ -256,7 +256,11 @@ static PyObject* staticprovider_remove(PyObject *self, PyObject *args, PyObject 
             return NULL;
 
         pvas::SharedPV::shared_pointer sharedpv;
-        pvas::StaticProvider::ChannelBuilder::shared_pointer pv(SELF->remove(name));
+        pvas::StaticProvider::ChannelBuilder::shared_pointer pv;
+        {
+            PyUnlock U;
+            pv = SELF->remove(name);
+        }
 
         if(!pv) {
             return PyErr_Format(PyExc_KeyError, "No Such PV %s", name);
