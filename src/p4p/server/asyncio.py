@@ -83,12 +83,25 @@ class SharedPV(_SharedPV):
         self.loop = loop or asyncio.get_event_loop()
         _SharedPV.__init__(self, handler=handler, **kws)
         self._handler.loop = self.loop
-        if not hasattr(loop, '_SharedPV_handlers'):
-            loop._SharedPV_handlers = WeakSet() # holds our in-progress Futures
+        self._disconnected = asyncio.Event(loop=self.loop)
+        self._disconnected.set()
+        if not hasattr(self.loop, '_SharedPV_handlers'):
+            self.loop._SharedPV_handlers = WeakSet() # holds our in-progress Futures
 
     def _exec(self, op, M, *args):
         self.loop.call_soon_threadsafe(partial(_handle, self.loop, op, M, args))
         # 3.5 adds asyncio.run_coroutine_threadsafe()
+
+    def _onFirstConnect(self, _junk):
+        self._disconnected.clear()
+
+    def _onLastDisconnect(self, _junk):
+        self._disconnected.set()
+
+    @asyncio.coroutine
+    def _wait_closed(self):
+        yield from _sync(self.loop)
+        yield from self._disconnected.wait()
 
     def close(self, destroy=False):
         """Close PV, disconnecting any clients.  (but not preventing reconnect attempts).
@@ -97,4 +110,4 @@ class SharedPV(_SharedPV):
         """
         _SharedPV.close(self, destroy)
         if destroy:
-            return _sync(self.loop)
+            return self._wait_closed()

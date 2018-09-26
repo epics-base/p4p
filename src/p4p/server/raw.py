@@ -168,6 +168,12 @@ class SharedPV(_SharedPV):
                 op.done(error=str(e))
             _log.exception("Unexpected")
 
+    def _onFirstConnect(self, _junk):
+        pass # see sub-classes.  run before user onFirstConnect()
+
+    def _onLastDisconnect(self, _junk):
+        pass # see sub-classes.  run after user onLastDisconnect()
+
     class _DummyHandler(object):
         pass
 
@@ -180,6 +186,7 @@ class SharedPV(_SharedPV):
             self._real = real
 
         def onFirstConnect(self):
+            self._pv._exec(None, self._pv._onFirstConnect, None)
             try:  # user handler may omit onFirstConnect()
                 M = self._real.onFirstConnect
             except AttributeError:
@@ -190,8 +197,10 @@ class SharedPV(_SharedPV):
             try:
                 M = self._real.onLastDisconnect
             except AttributeError:
-                return
-            self._pv._exec(None, M, self._pv)
+                pass
+            else:
+                self._pv._exec(None, M, self._pv)
+            self._pv._exec(None, self._pv._onLastDisconnect, None)
 
         def put(self, op):
             _log.debug('PUT %s %s', self._pv, op)

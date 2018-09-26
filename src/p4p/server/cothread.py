@@ -81,11 +81,21 @@ class SharedPV(_SharedPV):
     def __init__(self, queue=None, **kws):
         _SharedPV.__init__(self, **kws)
         self._queue = queue or Callback
+        self._disconnected = Event(auto_reset=False)
+        self._disconnected.Signal()
 
     def _exec(self, op, M, *args):
         self._queue(_fromMain, _handle, op, M, args)
 
+    def _onFirstConnect(self, _junk):
+        self._disconnected.Reset()
+
+    def _onLastDisconnect(self, _junk):
+        self._disconnected.Signal()
+
     def close(self, destroy=False):
         _SharedPV.close(self, destroy)
         if destroy:
+            # TODO: still not syncing PVA workers...
             _sync()
+            self._disconnected.Wait()

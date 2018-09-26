@@ -5,7 +5,7 @@ _log = logging.getLogger(__name__)
 
 import atexit
 from functools import partial
-from threading import Thread
+from threading import Thread, Event
 
 from ..util import ThreadedWorkQueue
 from .raw import SharedPV as _SharedPV, Handler
@@ -111,11 +111,21 @@ class SharedPV(_SharedPV):
     def __init__(self, queue=None, **kws):
         _SharedPV.__init__(self, **kws)
         self._queue = queue or _defaultWorkQueue()
+        self._disconnected = Event()
+        self._disconnected.set()
 
     def _exec(self, op, M, *args):
         self._queue.push(partial(_on_queue, op, M, *args))
 
+    def _onFirstConnect(self, _junk):
+        self._disconnected.clear()
+
+    def _onLastDisconnect(self, _junk):
+        self._disconnected.set()
+
     def close(self, destroy=False):
         _SharedPV.close(self, destroy)
         if destroy:
+            # TODO: still not syncing PVA workers...
             self._queue.sync()
+            self._disconnected.wait()

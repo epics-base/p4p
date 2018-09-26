@@ -20,7 +20,7 @@ except ImportError:
     raise SkipTest('No cothread')
 else:
     from ..client.cothread import Context, Disconnected, RemoteError
-    from ..server.cothread import SharedPV
+    from ..server.cothread import SharedPV, _sync
     from ..server import cothread as srv_cothread
 
     class GPMHandler:
@@ -54,6 +54,7 @@ else:
             del self.pv
             del self.pv2
             del self.provider
+            _sync()
             gc.collect()
             self.assertSetEqual(set(srv_cothread._handlers), set()) # ensure no outstanding server handlers
             super(TestGPM, self).tearDown()
@@ -110,6 +111,7 @@ else:
         def tearDown(self):
             del self.pv
             del self.provider
+            _sync()
             gc.collect()
             self.assertSetEqual(set(srv_cothread._handlers), set()) # ensure no outstanding server handlers
             super(TestRPC, self).tearDown()
@@ -175,6 +177,7 @@ else:
             del self.sprov
             del self.pv
             del self.H
+            _sync()
             gc.collect()
             self.assertSetEqual(set(srv_cothread._handlers), set()) # ensure no outstanding server handlers
             super(TestFirstLast, self).tearDown()
