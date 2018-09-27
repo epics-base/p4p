@@ -240,7 +240,7 @@ else:
 
                     _log.debug('CLOSING')
                     self.sprov.remove('foo') # prevent new connections while destroying
-                    self.pv.close(destroy=True)
+                    self.pv.close(destroy=True, timeout=self.timeout)
 
                     _log.debug('CLOSED')
                     self.assertFalse(self.H.conn)

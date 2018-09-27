@@ -89,7 +89,7 @@ class ThreadedWorkQueue(WorkQueue):
 
         return self # allow chaining
 
-    def sync(self):
+    def sync(self, timeout=None):
         wait1 = [Event() for _n in range(len(self._T))]
         wait2 = [Event() for _n in range(len(self._T))]
 
@@ -101,7 +101,7 @@ class ThreadedWorkQueue(WorkQueue):
 
         # wait for all workers to ready wait1 barrier
         for W in wait1:
-            W.wait()
+            W.wait(timeout=timeout)
 
         # allow workers to proceeed
         for W in wait2:

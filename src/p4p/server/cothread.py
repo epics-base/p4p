@@ -30,7 +30,7 @@ class WeakEvent(Event):
 # in progress _handle() cothreads, or _sync() events
 _handlers = WeakSet()
 
-def _sync():
+def _sync(timeout=None):
     """I will wait until all pending handlers cothreads have completed
     """
     evt = WeakEvent(auto_reset=False)
@@ -38,7 +38,7 @@ def _sync():
     # first ensure that any pending callbacks from worker threads have been delivered
     # these are calls of _fromMain()
     Callback(evt.Signal)
-    evt.Wait()
+    evt.Wait(timeout=timeout)
 
     evt.Reset() # reuse
 
@@ -47,11 +47,13 @@ def _sync():
     # because Spawn.Wait() can only be called once, remove them and
     # use 'evt' as a proxy for what I'm waiting on so that overlapping
     # calls to _sync() will wait for these as well.
+    # However, this means that our failure will must cascade to subsequent
+    # calls to _sync() before we complete.
     _handlers.clear()
     _handlers.add(evt)
 
     try:
-        WaitForAll(wait4)
+        WaitForAll(wait4, timeout=timeout)
     except Exception as e:
         evt.SignalException(e) # pass along error to next concurrent _sync()
     else:
@@ -59,6 +61,7 @@ def _sync():
 
 # Callback() runs me in the main thread
 def _fromMain(_handle, op, M, args):
+    #_log.debug("_fromMain %s", M)
     co = WeakSpawn(_handle, op, M, args)
     _handlers.add(co)
 
@@ -85,6 +88,7 @@ class SharedPV(_SharedPV):
         self._disconnected.Signal()
 
     def _exec(self, op, M, *args):
+        #_log.debug("_exec %s", M)
         self._queue(_fromMain, _handle, op, M, args)
 
     def _onFirstConnect(self, _junk):
@@ -93,9 +97,13 @@ class SharedPV(_SharedPV):
     def _onLastDisconnect(self, _junk):
         self._disconnected.Signal()
 
-    def close(self, destroy=False):
+    def close(self, destroy=False, timeout=None):
+        """Close PV, disconnecting any clients.  (but not preventing reconnect attempts).
+        
+        When destroy=True, block until any pending onLastDisconnect() is delivered (timeout applies).
+        """
         _SharedPV.close(self, destroy)
         if destroy:
             # TODO: still not syncing PVA workers...
             _sync()
-            self._disconnected.Wait()
+            self._disconnected.Wait(timeout=timeout)

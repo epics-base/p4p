@@ -123,7 +123,11 @@ class SharedPV(_SharedPV):
     def _onLastDisconnect(self, _junk):
         self._disconnected.set()
 
-    def close(self, destroy=False):
+    def close(self, destroy=False, timeout=None):
+        """Close PV, disconnecting any clients.  (but not preventing reconnect attempts).
+        
+        When destroy=True, block until any pending onLastDisconnect() is delivered (timeout applies).
+        """
         _SharedPV.close(self, destroy)
         if destroy:
             # TODO: still not syncing PVA workers...
