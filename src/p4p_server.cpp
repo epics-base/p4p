@@ -116,9 +116,14 @@ int P4PServer_init(PyObject *self, PyObject *args, PyObject *kwds)
 
         SELF.conf = B.build();
 
-        pva::ServerContext::shared_pointer S(pva::ServerContext::create(pva::ServerContext::Config()
-                                                                        .providers(SELF.provider_inst)
-                                                                        .config(SELF.conf)));
+        pva::ServerContext::shared_pointer S;
+        {
+            PyUnlock U;
+            S = pva::ServerContext::create(pva::ServerContext::Config()
+                                           .providers(SELF.provider_inst)
+                                           .config(SELF.conf));
+        }
+
         TRACE("ServerContext use_count="<<S.use_count());
         SELF.server = S;
 
@@ -149,7 +154,10 @@ PyObject* P4PServer_run(PyObject *self)
 
         SELF.server.reset();
 
-        S->shutdown();
+        {
+            PyUnlock U;
+            S->shutdown();
+        }
 
         TRACE("EXIT");
         Py_RETURN_NONE;
@@ -165,8 +173,9 @@ PyObject* P4PServer_stop(PyObject *self)
             TRACE("SHUTDOWN");
             PyUnlock U;
             SELF.server->shutdown();
-        } else
+        } else {
             TRACE("SKIP");
+        }
         Py_RETURN_NONE;
     }CATCH()
     return NULL;
@@ -181,7 +190,11 @@ PyObject* P4PServer_conf(PyObject *self)
 
         PyRef ret(PyDict_New());
 
-        pva::Configuration::shared_pointer conf(SELF.server->getCurrentConfig());
+        pva::Configuration::shared_pointer conf;
+        {
+            PyUnlock U;
+            conf = SELF.server->getCurrentConfig();
+        }
         pva::Configuration::keys_t keys(conf->keys());
 
         for(pva::Configuration::keys_t::const_iterator it = keys.begin(); it!=keys.end(); ++it)

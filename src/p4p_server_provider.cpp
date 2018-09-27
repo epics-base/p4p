@@ -220,7 +220,10 @@ static int staticprovider_init(PyObject *self, PyObject *args, PyObject *kwds) {
 
 static PyObject* staticprovider_close(PyObject *self) {
     TRY {
-        SELF->close();
+        {
+            PyUnlock U;
+            SELF->close();
+        }
 
         Py_RETURN_NONE;
     }CATCH()
@@ -237,7 +240,10 @@ static PyObject* staticprovider_add(PyObject *self, PyObject *args, PyObject *kw
 
         if(PyObject_IsInstance(pypv, (PyObject*)P4PSharedPV_type)) {
 
-            SELF->add(name, P4PSharedPV_unwrap(pypv));
+            {
+                PyUnlock U;
+                SELF->add(name, P4PSharedPV_unwrap(pypv));
+            }
 
         } else {
             return PyErr_Format(PyExc_ValueError, "pv= must be SharedPV instance");

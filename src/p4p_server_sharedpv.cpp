@@ -212,7 +212,11 @@ static PyObject* sharedpv_current(PyObject* self) {
         TRACE("");
         pvd::PVStructure::shared_pointer val(SELF->build());
         pvd::BitSet::shared_pointer changed(new pvd::BitSet);
-        SELF->fetch(*val, *changed);
+
+        {
+            PyUnlock U;
+            SELF->fetch(*val, *changed);
+        }
         return P4PValue_wrap(P4PValue_type, val, changed);
     }CATCH()
     return NULL;
@@ -239,7 +243,13 @@ static PyObject* sharedpv_close(PyObject* self, PyObject *args, PyObject *kwds) 
 static PyObject* sharedpv_isOpen(PyObject* self) {
     TRY {
         TRACE("");
-        if(SELF->isOpen())
+        bool opened;
+
+        {
+            PyUnlock U;
+            opened = SELF->isOpen();
+        }
+        if(opened)
             Py_RETURN_TRUE;
         else
             Py_RETURN_FALSE;
