@@ -1,16 +1,23 @@
 
+echo [INFO] Clone deps.
 git clone --quiet --depth 5 --branch "%BRBASE%" https://github.com/epics-base/epics-base.git epics-base
 git clone --quiet --depth 5 --branch "%BRPVD%" https://github.com/epics-base/pvDataCPP.git pvDataCPP
 git clone --quiet --depth 5 --branch "%BRPVA%" https://github.com/epics-base/pvAccessCPP.git pvAccessCPP
 
-echo EPICS_BASE=%CD%/epics-base > pvDataCPP\configure\RELEASE.local
+echo EPICS_BASE=%CD%\epics-base> pvDataCPP\configure\RELEASE.local
+echo [INFO] pvDataCPP\configure\RELEASE.local
+cat pvDataCPP\configure\RELEASE.local
 
-echo EPICS_BASE=%CD%/epics-base > pvAccessCPP\configure\RELEASE.local
-echo PVDATA=%CD%/pvDataCPP >> pvAccessCPP\configure\RELEASE.local
+echo EPICS_BASE=%CD%\epics-base> pvAccessCPP\configure\RELEASE.local
+echo PVDATA=%CD%\pvDataCPP>> pvAccessCPP\configure\RELEASE.local
+echo [INFO] pvAccessCPP\configure\RELEASE.local
+cat pvAccessCPP\configure\RELEASE.local
 
-echo EPICS_BASE=%CD%/epics-base > configure\RELEASE.local
-echo PVDATA=%CD%/pvDataCPP >> configure\RELEASE.local
-echo PVACCESS=%CD%/pvAccessCPP >> configure\RELEASE.local
+echo EPICS_BASE=%CD%\epics-base> configure\RELEASE.local
+echo PVDATA=%CD%\pvDataCPP>> configure\RELEASE.local
+echo PVACCESS=%CD%\pvAccessCPP>> configure\RELEASE.local
+echo [INFO] configure\RELEASE.local
+cat configure\RELEASE.local
 
 set BASEDIR=%CD%
 
@@ -72,6 +79,16 @@ echo [INFO] Make version
 echo [INFO] Perl version
 perl --version
 
+echo [INFO] pre-clean Base
+%MAKE% -j2 -C epics-base distclean
+echo [INFO] pre-clean PVD
+%MAKE% -j2 -C pvDataCPP distclean
+echo [INFO] pre-clean PVA
+%MAKE% -j2 -C pvAccessCPP distclean
+
+echo [INFO] Building Base
 %MAKE% -j2 -C epics-base %*
+echo [INFO] Building PVD
 %MAKE% -j2 -C pvDataCPP %*
+echo [INFO] Building PVA
 %MAKE% -j2 -C pvAccessCPP %*
