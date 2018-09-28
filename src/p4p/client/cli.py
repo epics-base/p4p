@@ -17,6 +17,7 @@ _log = logging.getLogger(__name__)
 
 from .. import Value
 from .. import nt
+from .. import set_debug
 from . import thread
 
 
@@ -117,7 +118,8 @@ def getargs():
     P.add_argument('-r', '--request', default='')
     P.add_argument('-w', '--timeout', type=float, default=5.0)
     P.add_argument('-p', '--provider', default='pva')
-    P.add_argument('-d', '--debug', action='store_true')
+    P.add_argument('-d', '--debug', action='store_const', const=logging.DEBUG, default=logging.INFO)
+    P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
     P.add_argument('--raw', action='store_false', default=None)
     P.set_defaults(func=lambda ctxt, args: P.print_help())
 
@@ -149,5 +151,6 @@ def main(args):
 
 if __name__ == '__main__':
     args = getargs()
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+    set_debug(args.debug)
+    logging.basicConfig(level=args.verbose)
     main(args)

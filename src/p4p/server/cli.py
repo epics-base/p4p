@@ -9,6 +9,7 @@ import sys
 from . import Server, StaticProvider
 from .thread import SharedPV
 from .. import nt
+from .. import set_debug
 
 defs = {
     'int': nt.NTScalar('l').wrap(0),
@@ -27,10 +28,11 @@ def getargs():
     from argparse import ArgumentParser
 
     P = ArgumentParser()
-    P.add_argument('-d', '--debug', action='store_true')
+    P.add_argument('-d', '--debug', action='store_const', const=logging.DEBUG, default=logging.INFO)
+    P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
     # P.add_argument('-f', '--file', help='Persistence file')
 
-    P.add_argument('pvs', metavar='name=def', nargs='*', help='PV definitions')
+    P.add_argument('pvs', metavar='name=def', nargs='+', help='PV definitions')
 
     return P.parse_args()
 
@@ -59,5 +61,6 @@ def main(args):
 
 if __name__ == '__main__':
     args = getargs()
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+    set_debug(args.debug)
+    logging.basicConfig(level=args.verbose)
     main(args)
