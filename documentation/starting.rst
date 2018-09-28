@@ -5,11 +5,11 @@ Getting Started
 
 For testing and evaluation, it is recommended to install from pypi.org into a (disposable) virtualenv. ::
 
-    $ virtualenv p4ptest
-    $ . p4ptest/bin/activate
-    $ python -m pip install -U pip
-    $ python -m pip install p4p
-    $ python -m nose p4p   # Optional: runs automatic tests
+    python -m virtualenv p4ptest
+    . p4ptest/bin/activate
+    python -m pip install -U pip
+    python -m pip install p4p
+    python -m nose p4p   # Optional: runs automatic tests
 
 With this complete, open three terminal instances.
 In the first run a PVA server.  Feel free to replace 'my:pv:name'
@@ -34,8 +34,15 @@ Troubleshooting network issues
 ------------------------------
 
 If the preceeding didn't work as described, there is likely a networking problem.
+Restart both server and client with an added argument '-d'.
+Look for lines like: ::
 
-TODO: Troubleshooting procedure
+    2018-09-27T17:00:44.164 Broadcast address #0: 10.65.15.255:5076. (not unicast)
+    2018-09-27T17:00:44.164 Broadcast address #1: 192.168.210.255:5076. (not unicast)
+
+This indicates the two network interfaces were discovered on this host.
+If no interfaces are found, then check the system network configuration.
+If interfaces are found, ensure that no firewalls are applied.
 
 Client API Introduction
 -----------------------
