@@ -162,6 +162,9 @@ else:
                 self.conn = False
                 self.evt.Signal()
 
+        def _sleep(self, delay):
+            cothread.Sleep(delay)
+
         def setUp(self):
             # gc.set_debug(gc.DEBUG_LEAK)
             super(TestFirstLast, self).setUp()
