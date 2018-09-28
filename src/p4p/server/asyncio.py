@@ -66,6 +66,7 @@ def _handle(loop, op, M, args):
             _log.debug('SERVER SCHEDULE %s', maybeco)
             task = loop.create_task(maybeco)
             task.add_done_callback(_log_err)
+            task._log_destroy_pending = False # hack as we don't currently provide a way to join
 
             loop._SharedPV_handlers.add(task) # track in-progress
         return
