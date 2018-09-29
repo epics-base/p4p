@@ -121,6 +121,7 @@ class SharedPV(_SharedPV):
 
     def __init__(self, handler=None, initial=None,
                  nt=None, wrap=None, unwrap=None, **kws):
+        self.nt = nt
         self._handler = handler or self._DummyHandler()
         self._whandler = self._WrapHandler(self, self._handler)
 

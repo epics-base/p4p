@@ -172,18 +172,20 @@ class NTScalar(object):
     def __init__(self, valtype='d', **kws):
         self.type = self.buildType(valtype, **kws)
 
-    def wrap(self, value):
+    def wrap(self, value, timestamp=None):
         """Pack python value into Value
 
         Accepts dict to explicitly initialize fields be name.
         Any other type is assigned to the 'value' field.
         """
-        if isinstance(value, ntwrappercommon):
+        if isinstance(value, Value):
+            return value
+        elif isinstance(value, ntwrappercommon):
             return value.raw
         elif isinstance(value, dict):
             return self.Value(self.type, value)
         else:
-            S, NS = divmod(time.time(), 1.0)
+            S, NS = divmod(float(timestamp or time.time()), 1.0)
             return self.Value(self.type, {
                 'value': value,
                 'timeStamp': {
