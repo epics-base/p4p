@@ -90,7 +90,7 @@ void py2struct(pvd::FieldBuilderPtr& builder, PyObject *o)
 
         const char *key;
         PyObject *val;
-        if(!PyArg_ParseTuple(ent.get(), "sO;Expected list of tuples (str, object) or (str, str, object)", &key, &val))
+        if(!PyArg_ParseTuple(ent.get(), "sO;Expected list of tuples eg. (str, object) or (str, ('S', str, object))", &key, &val))
             throw std::runtime_error("XXX");
 
         if(0) {

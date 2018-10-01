@@ -83,7 +83,7 @@ class NTTable(object):
     def buildType(columns=[], extra=[]):
         """Build a table
 
-        :param list columns: List of columns
+        :param list columns: List of column names and types. eg [('colA', 'd')]
         :param list extra: A list of tuples describing additional non-standard fields
         :returns: A :py:class:`Type`
         """
@@ -115,6 +115,8 @@ class NTTable(object):
             {'A':43, 'B':'two'},
         ])
         """
+        if isinstance(values, Value):
+            return values
         cols = dict([(L, []) for L in self.labels])
         try:
             # unzip list of dict
@@ -139,8 +141,6 @@ class NTTable(object):
                 _log.error("Failed to encode '%s' with %s", cols, self.labels)
                 raise
         except:
-            if hasattr(values[0], 'keys'):
-                _log.error("Columns")
             _log.exception("Failed to wrap: %s", values)
             raise
 
