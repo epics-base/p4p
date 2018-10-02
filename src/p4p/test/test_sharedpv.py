@@ -381,7 +381,7 @@ class TestFirstLast(RefTestCase):
                 self.H.evt.clear()
                 self.assertTrue(self.H.conn)
 
-                self.pv.close(destroy=True, timeout=self.timeout) # onLastDisconnect()
+                self.pv.close(destroy=True, sync=True, timeout=self.timeout) # onLastDisconnect()
 
                 _log.debug('CLOSE')
                 self.assertFalse(self.H.conn)

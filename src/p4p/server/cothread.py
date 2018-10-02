@@ -97,13 +97,20 @@ class SharedPV(_SharedPV):
     def _onLastDisconnect(self, _junk):
         self._disconnected.Signal()
 
-    def close(self, destroy=False, timeout=None):
-        """Close PV, disconnecting any clients.  (but not preventing reconnect attempts).
-        
-        When destroy=True, block until any pending onLastDisconnect() is delivered (timeout applies).
+    def close(self, destroy=False, sync=False, timeout=None):
+        """Close PV, disconnecting any clients.
+
+        :param bool destroy: Indicate "permanent" closure.  Current clients will not see subsequent open().
+        :param bool sync: When block until any pending onLastDisconnect() is delivered (timeout applies).
+        :param float timeout: Applies only when sync=True.  None for no timeout, otherwise a non-negative floating point value.
+
+        close() with destory=True or sync=True will not prevent clients from re-connecting.
+        New clients may prevent sync=True from succeeding.
+        Prevent reconnection by __first__ stopping the Server, removing with :py:method:`StaticProvider.remove()`,
+        or preventing a :py:class:`DynamicProvider` from making new channels to this SharedPV.
         """
         _SharedPV.close(self, destroy)
-        if destroy:
+        if sync:
             # TODO: still not syncing PVA workers...
             _sync()
             self._disconnected.Wait(timeout=timeout)

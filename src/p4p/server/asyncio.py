@@ -104,11 +104,18 @@ class SharedPV(_SharedPV):
         yield from _sync(self.loop)
         yield from self._disconnected.wait()
 
-    def close(self, destroy=False):
-        """Close PV, disconnecting any clients.  (but not preventing reconnect attempts).
-        With destroy=True, returns an asyncio.Future which completes after onLastConnect() is delivered (if appropriate).
-        With destory=False, returns None.
+    def close(self, destroy=False, sync=False):
+        """Close PV, disconnecting any clients.
+
+        :param bool destroy: Indicate "permanent" closure.  Current clients will not see subsequent open().
+        :param bool sync: When block until any pending onLastDisconnect() is delivered (timeout applies).
+        :param float timeout: Applies only when sync=True.  None for no timeout, otherwise a non-negative floating point value.
+
+        close() with destory=True or sync=True will not prevent clients from re-connecting.
+        New clients may prevent sync=True from succeeding.
+        Prevent reconnection by __first__ stopping the Server, removing with :py:method:`StaticProvider.remove()`,
+        or preventing a :py:class:`DynamicProvider` from making new channels to this SharedPV.
         """
         _SharedPV.close(self, destroy)
-        if destroy:
+        if sync:
             return self._wait_closed()
