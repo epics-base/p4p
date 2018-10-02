@@ -1,4 +1,17 @@
+"""Helper for handling NTNDArray a la. areaDetector.
 
+Known attributes
+
+"ColorMode"   (inner-most left, as given in NDArray.cpp, numpy.ndarray.shape is reversed from this)
+ 0 - Mono   [Nx, Ny]
+ 1 - Bayer  [Nx, Ny]
+ 2 - RGB1   [3, Nx, Ny]
+ 3 - RGB2   [Nx, 3, Ny]
+ 4 - RGB3   [Nx, Ny, 3]
+ 5 - YUV444 ?
+ 6 - YUV422 ??
+ 7 - YUV411 ???
+"""
 
 import logging
 _log = logging.getLogger(__name__)
@@ -32,9 +45,6 @@ class ntndarray(ntwrappercommon, numpy.ndarray):
         self.attrib = {}
         for elem in value.get('attribute', []):
             self.attrib[elem.name] = elem.value
-
-            if elem.name == 'ColorMode' and elem.value != 0:
-                raise ValueError("I only know about ColorMode gray scale, not mode=%d" % elem.value)
 
         shape = [D.size for D in value.dimension]
         shape.reverse()
@@ -76,15 +86,13 @@ class NTNDArray(object):
         """
         S, NS = divmod(time.time(), 1.0)
         value = numpy.asarray(value)
+        dims = list(value.shape)
+        dims.reverse() # inner-most sent as left
+
         attrib = getattr(value, 'attrib', {})
-        if value.ndim == 2:
-            assert attrib.get('ColorMode', 0) == 0
-            attrib['ColorMode'] = 0
-            # gray scale
-            dims = list(value.shape)
-            dims.reverse()
-        else:
-            raise ValueError("I only know about ColorMode gray scale, not ndim=%d" % value.ndim)
+        if 'ColorMode' not in attrib:
+            attrib['ColorMode'] = 0 if value.ndim==2 else 4 # NDArray::getInfo() treats unknown as RGB3
+        # else: assume caller knows what ColorMode means
 
         return Value(self.type, {
             'value': value.flatten(),

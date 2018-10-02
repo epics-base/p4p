@@ -232,16 +232,20 @@ class TestEnum(RefTestCase):
 
 class TestArray(RefTestCase):
 
-    def test_unwrap(self):
+    def test_unwrap_mono(self):
         pixels = numpy.asarray([  # 2x3
             [0, 1, 2],
             [3, 4, 5],
         ])
+        # check my understanding of numpy
+        self.assertTupleEqual(pixels.shape, (2, 3)) # inner-most right (in a pixel loop)
+        assert_aequal(pixels.flatten(), [0, 1, 2, 3, 4, 5]) # row major
+
         V = Value(nt.NTNDArray.buildType(), {
-            'value': pixels.flatten(),
+            'value': numpy.arange(6),
             'dimension': [
-                {'size': 3},
-                {'size': 2},
+                {'size': 3}, # X, columns
+                {'size': 2}, # Y, rows
             ],
             'attribute': [
                 {'name': 'ColorMode', 'value': 0},
@@ -258,3 +262,36 @@ class TestArray(RefTestCase):
         assert_aequal(V.value, V2.value)
         self.assertEqual(V.dimension[0].size, V2.dimension[0].size)
         self.assertEqual(V.dimension[1].size, V2.dimension[1].size)
+
+    def test_unwrap_3d(self):
+        pixels = numpy.array([[[ 0,  1,  2,  3],
+            [ 4,  5,  6,  7],
+            [ 8,  9, 10, 11]],
+
+           [[12, 13, 14, 15],
+            [16, 17, 18, 19],
+            [20, 21, 22, 23]]])
+
+        V = Value(nt.NTNDArray.buildType(), {
+            'value': numpy.arange(24),
+            'dimension': [
+                {'size': 4}, # X, columns
+                {'size': 3}, # Y, rows
+                {'size': 2}, # "color"
+            ],
+            'attribute': [
+                {'name': 'ColorMode', 'value': 4},
+            ],
+        })
+
+        img = nt.NTNDArray.unwrap(V)
+
+        self.assertEqual(img.shape, (2, 3, 4))
+        assert_aequal(img, pixels)
+
+        V2 = nt.NTNDArray().wrap(img)
+
+        assert_aequal(V.value, V2.value)
+        self.assertEqual(V.dimension[0].size, V2.dimension[0].size)
+        self.assertEqual(V.dimension[1].size, V2.dimension[1].size)
+        self.assertEqual(V.dimension[2].size, V2.dimension[2].size)
