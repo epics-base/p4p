@@ -1384,11 +1384,7 @@ static PyMethodDef P4PValue_methods[] = {
      "unmark()\n\n"
      "clear all field changed flag."},
     {"changedSet", (PyCFunction)&P4PValue_changedSet, METH_VARARGS|METH_KEYWORDS,
-     "changedSet(expand=False) -> set(['...'])\n\n"
-     ":param bool expand: Whether to include compress/shorthand when entire sub-structures are marked as changed."
-     "  If True, then compress bits are expanded and only leaf fields will be included."
-     ":returns: A set of names of those fields marked as changed.\n"
-     "set all changed fields"},
+     "changedSet(expand=False) -> set(['...'])\n\n"},
     {"_magic", (PyCFunction)P4PValue_magic, METH_VARARGS|METH_STATIC,
      "Don't call this!"},
     {NULL}
