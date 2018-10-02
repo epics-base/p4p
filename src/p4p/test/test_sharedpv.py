@@ -149,7 +149,16 @@ class TestGPM(RefTestCase):
         self.assertIsNone(C())
 
 class TestRPC(RefTestCase):
+    maxDiff = 1000
+    timeout = 1.0
+
     class Handler:
+        def onFirstConnect(self, pv):
+            _log.debug("onFirstConnect")
+
+        def onLastDisconnect(self, pv):
+            _log.debug("onLastDisconnect")
+
         def rpc(self, pv, op):
             V = op.value()
             if V.get('query.oops'):
@@ -160,11 +169,12 @@ class TestRPC(RefTestCase):
     def setUp(self):
         super(TestRPC, self).setUp()
 
-        self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=self.Handler())
+        self.pv = SharedPV(nt=NTScalar('i'), handler=self.Handler())
         self.provider = StaticProvider("serverend")
         self.provider.add('foo', self.pv)
 
     def tearDown(self):
+        self.pv.close(sync=True, timeout=self.timeout)
         self.traceme(self.pv)
         self.traceme(self.provider)
         del self.pv
@@ -182,6 +192,7 @@ class TestRPC(RefTestCase):
                     ('rhs', 'd'),
                 ])
 
+                # self.pv not open()'d
                 ret = C.rpc('foo', args.wrap('foo', kws={'lhs':1, 'rhs':2}))
                 _log.debug("RET %s", ret)
                 self.assertEqual(ret, 42)
