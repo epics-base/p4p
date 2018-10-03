@@ -74,6 +74,20 @@ struct ClientOperation : public pvac::ClientChannel::PutCallback,
         REFTRACE_DECREMENT(num_instances);
     }
 
+    void prepvalue(PyRef& pyvalue, const pvd::PVStructure::const_shared_pointer& value, const pvd::BitSet* mask)
+    {
+        if(value) {
+            assert(mask);
+            pvd::PVStructure::shared_pointer V(pvd::getPVDataCreate()->createPVStructure(value->getStructure()));
+            V->copyUnchecked(*value);
+            pvd::BitSet::shared_pointer valid(new pvd::BitSet(*mask));
+
+            pyvalue.reset(P4PValue_wrap(P4PValue_type, V, valid));
+        } else {
+            pyvalue.reset(Py_None, borrow());
+        }
+    }
+
     virtual void getDone(const pvac::GetEvent& evt)
     {
         PyLock L;
@@ -82,37 +96,16 @@ struct ClientOperation : public pvac::ClientChannel::PutCallback,
         if(!cb) return;
 
         PyRef pyvalue;
-        if(evt.value) {
-            pvd::PVStructure::shared_pointer value(pvd::getPVDataCreate()->createPVStructure(evt.value->getStructure()));
-            value->copyUnchecked(*evt.value);
-            pvd::BitSet::shared_pointer valid(new pvd::BitSet(*evt.valid));
-
-            pyvalue.reset(P4PValue_wrap(P4PValue_type, value, valid));
-        } else {
-            pyvalue.reset(Py_None, borrow());
-        }
+        prepvalue(pyvalue, evt.value, evt.valid.get());
         assert(pyvalue);
 
-        if(!builder) {
-            // this is only a get op
-
-            PyRef ret(PyObject_CallFunction(cb.get(), "isO", int(evt.event), evt.message.c_str(), pyvalue.get()), allownull());
-            if(!ret) {
-                TRACE("ERROR");
-                PyErr_Print();
-                PyErr_Clear();
-            }
-
-        } else {
-            assert(chan);
-            // this is a get before a put
-            TRACE("PUT");
-
-            getval.swap(pyvalue);
-
-            op = chan.put(this, pvRequest);
+        PyRef ret(PyObject_CallFunction(cb.get(), "isO", int(evt.event), evt.message.c_str(), pyvalue.get()), allownull());
+        if(!ret) {
+            TRACE("ERROR");
+            PyErr_Print();
+            PyErr_Clear();
         }
-    }
+   }
 
     virtual void putBuild(const pvd::StructureConstPtr& build,
                           pvac::ClientChannel::PutCallback::Args& args)
@@ -120,7 +113,7 @@ struct ClientOperation : public pvac::ClientChannel::PutCallback,
         PyLock L;
 
         PyRef pyvalue;
-        pyvalue.swap(getval);
+        prepvalue(pyvalue, args.previous, &args.previousmask);
         TRACE(pyvalue.get());
 
         if(!pyvalue) {
@@ -503,22 +496,17 @@ static int clientoperation_init(PyObject *self, PyObject *args, PyObject *kws)
              rpc = PyObject_IsTrue(doRPC);
         TRACE(get<<" "<<put<<" "<<rpc);
 
-        if(!get && put && !rpc) {
-            TRACE("only put");
-            SELF.op = channel.put(&SELF, pvRequest);
-        } else if(get && !rpc) {
-            // only get, or get then put
-            if(put) {
-                if(!PyCallable_Check(builder)) {
-                    PyErr_Format(PyExc_ValueError, "Operation put=True requires builder= callable");
-                    return -1;
-                }
-                // getDone() checks builder!=NULL to start put
-                SELF.builder.reset(builder, borrow());
-                TRACE("get before put");
-            } else {
-                TRACE("only get");
+        if(put && !rpc) {
+            TRACE("put"<<(get?" w/ get":""));
+            if(!PyCallable_Check(builder)) {
+                PyErr_Format(PyExc_ValueError, "Operation put=True requires builder= callable");
+                return -1;
             }
+            SELF.builder.reset(builder, borrow());
+            SELF.op = channel.put(&SELF, pvRequest, get);
+        } else if(get && !put && !rpc) {
+            // only get
+            TRACE("only get");
             SELF.op = channel.get(&SELF, pvRequest);
         } else if(!get && !put && rpc) {
             TRACE("rpc");
