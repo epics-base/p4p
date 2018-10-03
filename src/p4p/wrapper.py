@@ -133,8 +133,9 @@ class Value(_Value):
 
     def changedSet(self, expand=False):
         """
-        :param bool expand: Whether to include compress/shorthand fields when entire sub-structures are marked as changed.
-                            If True, then compress bits are expanded.  If false, then only leaf fields will be included.
+        :param bool expand: Whether to expand compress/shorthand fields when entire sub-structures are marked as changed.
+                            If True, then compress bits are expanded and only leaf fields will be included.
+                            If false, then a direct translation is made, which may include both leaf and sub-structure fields.
         :returns: A :py:class:`set` of names of those fields marked as changed.
 
         Return a :py:class:`set` containing the names of all changed fields. ::
