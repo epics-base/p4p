@@ -163,6 +163,8 @@ class TestRPC(RefTestCase):
             V = op.value()
             if V.get('query.oops'):
                 op.done(error='oops')
+            elif V.get('query.null'):
+                op.done()
             else:
                 op.done(NTScalar('i').wrap(42))
 
@@ -200,6 +202,20 @@ class TestRPC(RefTestCase):
                 ret = C.rpc('foo', None)
                 _log.debug("RET %s", ret)
                 self.assertEqual(ret, 42)
+
+    def test_rpc_null(self):
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+
+                args = NTURI([
+                    ('null', '?'),
+                ])
+
+                # self.pv not open()'d
+                ret = C.rpc('foo', args.wrap('foo', kws={'null':True}))
+                _log.debug("RET %s", ret)
+                self.assertIsInstance(ret, Value)
+                self.assertListEqual(ret.keys(), [])
 
     def test_rpc_error(self):
         with Server(providers=[self.provider], isolate=True) as S:
