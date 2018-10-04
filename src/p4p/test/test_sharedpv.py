@@ -151,13 +151,20 @@ class TestGPM(RefTestCase):
 class TestRPC(RefTestCase):
     maxDiff = 1000
     timeout = 1.0
+    openclose = False
 
     class Handler:
+        def __init__(self, openclose):
+            self.openclose = openclose
         def onFirstConnect(self, pv):
             _log.debug("onFirstConnect")
+            if self.openclose:
+                pv.open(0)
 
         def onLastDisconnect(self, pv):
             _log.debug("onLastDisconnect")
+            if self.openclose:
+                pv.close()
 
         def rpc(self, pv, op):
             V = op.value()
@@ -171,7 +178,7 @@ class TestRPC(RefTestCase):
     def setUp(self):
         super(TestRPC, self).setUp()
 
-        self.pv = SharedPV(nt=NTScalar('i'), handler=self.Handler())
+        self.pv = SharedPV(nt=NTScalar('i'), handler=self.Handler(self.openclose))
         self.provider = StaticProvider("serverend")
         self.provider.add('foo', self.pv)
 
@@ -214,6 +221,7 @@ class TestRPC(RefTestCase):
                 # self.pv not open()'d
                 ret = C.rpc('foo', args.wrap('foo', kws={'null':True}))
                 _log.debug("RET %s", ret)
+                #self.assertIsNone(ret)
                 self.assertIsInstance(ret, Value)
                 self.assertListEqual(ret.keys(), [])
 
@@ -227,6 +235,9 @@ class TestRPC(RefTestCase):
 
                 with self.assertRaisesRegexp(RemoteError, 'oops'):
                     ret = C.rpc('foo', args.wrap('foo', kws={'oops':True}))
+
+class TestRPC2(TestRPC):
+    openclose = True
 
 class TestPVRequestMask(RefTestCase):
     maxDiff = 1000
