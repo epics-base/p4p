@@ -131,11 +131,12 @@ class Value(_Value):
     def __iter__(self):
         return iter(self.type())
 
-    def changedSet(self, expand=False):
+    def changedSet(self, expand=False, parents=False):
         """
-        :param bool expand: Whether to expand compress/shorthand fields when entire sub-structures are marked as changed.
-                            If True, then compress bits are expanded and only leaf fields will be included.
-                            If false, then a direct translation is made, which may include both leaf and sub-structure fields.
+        :param bool expand: Whether to expand when entire sub-structures are marked as changed.
+                            If True, then sub-structures are expanded and only leaf fields will be included.
+                            If False, then a direct translation is made, which may include both leaf and sub-structure fields.
+        :param bool parents: If True, include fake entries for parent sub-structures with leaf fields marked as changed.
         :returns: A :py:class:`set` of names of those fields marked as changed.
 
         Return a :py:class:`set` containing the names of all changed fields. ::
@@ -155,8 +156,21 @@ class Value(_Value):
             A.mark('z.a') # redundant
             assert A.changedSet(expand=False) == {'z', 'z.a'}
             assert A.changedSet(expand=True) == {'z.a', 'z.b'}
+            A.unmark('z')
+            assert A.changedSet(expand=False) == {'z.a'}
+            assert A.changedSet(expand=True) == {'z.a'}
+            assert A.changedSet(expand=False, parents=True) == {'z', 'z.a'}
+            assert A.changedSet(expand=True, parents=True) == {'z', 'z.a'}
+
+
+        * expand=False, parents=False gives a direct mapping of the underlying BitSet as it would (get/monitor),
+          or have been (put/rpc), moved over the network.
+        * expand=True, parents=False gives the effective set of leaf fields which will be moved over the network.
+          taking into account the use of whole sub-structure compress/shorthand bits.
+        * expand=False, parents=True gives a way of testing if anything changed within a set of interesting fields
+          (cf. set.intersect).
         """
-        return _Value.changedSet(self, expand)
+        return _Value.changedSet(self, expand, parents)
 
     # TODO: deprecate
     asSet = changedSet

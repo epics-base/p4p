@@ -1226,9 +1226,9 @@ PyObject* P4PValue_unmark(PyObject *self)
 
 PyObject* P4PValue_changedSet(PyObject *self, PyObject *args, PyObject *kws)
 {
-    static const char* names[] = {"expand", NULL};
-    PyObject *pyexpand = Py_False;
-    if(!PyArg_ParseTupleAndKeywords(args, kws, "|O", (char**)names, &pyexpand))
+    static const char* names[] = {"expand", "parents", NULL};
+    PyObject *pyexpand = Py_False, *pyparents = Py_False;
+    if(!PyArg_ParseTupleAndKeywords(args, kws, "|OO", (char**)names, &pyexpand, &pyparents))
         return NULL;
     TRY {
         // use of PVField::getFullName() prefixes with names of parents,
@@ -1240,6 +1240,7 @@ PyObject* P4PValue_changedSet(PyObject *self, PyObject *args, PyObject *kws)
                b1 = SELF.V->getNextFieldOffset();
 
         bool expand = PyObject_IsTrue(pyexpand);
+        bool parents = PyObject_IsTrue(pyparents);
 
         pvd::BitSet changed;
         if(SELF.I && !SELF.I->get(0)) {
@@ -1259,9 +1260,17 @@ PyObject* P4PValue_changedSet(PyObject *self, PyObject *args, PyObject *kws)
                 if(PySet_Add(ret.get(), N.get()))
                     return NULL;
 
-            } else { // !compress && fld->getField()->getType()==pvd::structure
+            } else {
                 for(size_t j=i+1, J=subfld.getNextFieldOffset(); j<J; j++) {
                     changed.set(j);
+                }
+            }
+            if(parents) {
+                // all parents except the root
+                for(const pvd::PVStructure *parent = subfld.getParent(); parent && parent->getParent(); parent=parent->getParent()) {
+                    PyRef N(PyUnicode_FromString(parent->getFullName().c_str()));
+                    if(PySet_Add(ret.get(), N.get()))
+                        return NULL;
                 }
             }
         }

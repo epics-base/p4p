@@ -495,15 +495,33 @@ class TestRawValue(RefTestCase):
             ('z', ('S', None, [
                 ('a', 'i'),
                 ('b', 'i'),
+                ('q', ('S', None, [
+                    ('m', 'i'),
+                ])),
             ])),
         ]), {
         })
 
         self.assertSetEqual(A.changedSet(), set())
         A.mark('z')
-        self.assertSetEqual(A.changedSet(), {'z'})
-        self.assertSetEqual(A.changedSet(expand=False), {'z'})
-        self.assertSetEqual(A.changedSet(expand=True), {'z.a', 'z.b'})
+        self.assertSetEqual(A.changedSet(expand=False, parents=False), {'z'})
+        self.assertSetEqual(A.changedSet(expand=True, parents=False),  {     'z.a', 'z.b',        'z.q.m'})
+        self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z'})
+        self.assertSetEqual(A.changedSet(expand=True, parents=True),   {'z', 'z.a', 'z.b', 'z.q', 'z.q.m'})
+
+        A.unmark()
+        A.mark('z.a')
+        self.assertSetEqual(A.changedSet(expand=False, parents=False), {     'z.a'})
+        self.assertSetEqual(A.changedSet(expand=True, parents=False),  {     'z.a'})
+        self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z', 'z.a'})
+        self.assertSetEqual(A.changedSet(expand=True, parents=True),   {'z', 'z.a'})
+
+        A.unmark()
+        A.mark('z.q')
+        self.assertSetEqual(A.changedSet(expand=False, parents=False), {     'z.q'})
+        self.assertSetEqual(A.changedSet(expand=True, parents=False),  {            'z.q.m'})
+        self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z', 'z.q'})
+        self.assertSetEqual(A.changedSet(expand=True, parents=True),   {'z', 'z.q', 'z.q.m'})
 
     def testSubStructAssignment(self):
         A = Value(Type([
