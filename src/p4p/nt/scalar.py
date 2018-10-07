@@ -101,39 +101,40 @@ class ntstringarray(ntwrappercommon, list):
     """
 
 def _metaHelper(F, valtype, display=False, control=False, valueAlarm=False):
-        if display and valtype not in '?su':
-            F.extend([
-                ('display', ('S', None, [
-                    ('limitLow', valtype[-1:]),
-                    ('limitHigh', valtype[-1:]),
-                    ('description', 's'),
-                    ('format', 's'),
-                    ('units', 's'),
-                ])),
-            ])
-        if control and valtype not in '?su':
-            F.extend([
-                ('display', ('S', None, [
-                    ('limitLow', valtype[-1:]),
-                    ('limitHigh', valtype[-1:]),
-                    ('minStep', valtype[-1:]),
-                ])),
-            ])
-        if valueAlarm and valtype not in '?su':
-            F.extend([
-                ('valueAlarm', ('S', None, [
-                    ('active', '?'),
-                    ('lowAlarmLimit', valtype[-1:]),
-                    ('lowWarningLimit', valtype[-1:]),
-                    ('highWarningLimit', valtype[-1:]),
-                    ('highAlarmLimit', valtype[-1:]),
-                    ('lowAlarmSeverity', 'i'),
-                    ('lowWarningSeverity', 'i'),
-                    ('highWarningSeverity', 'i'),
-                    ('highAlarmSeverity', 'i'),
-                    ('hysteresis', 'd'),
-                ])),
-            ])
+    isnumeric = valtype[-1:] not in '?su'
+    if display and isnumeric:
+        F.extend([
+            ('display', ('S', None, [
+                ('limitLow', valtype[-1:]),
+                ('limitHigh', valtype[-1:]),
+                ('description', 's'),
+                ('format', 's'),
+                ('units', 's'),
+            ])),
+        ])
+    if control and isnumeric:
+        F.extend([
+            ('display', ('S', None, [
+                ('limitLow', valtype[-1:]),
+                ('limitHigh', valtype[-1:]),
+                ('minStep', valtype[-1:]),
+            ])),
+        ])
+    if valueAlarm and isnumeric:
+        F.extend([
+            ('valueAlarm', ('S', None, [
+                ('active', '?'),
+                ('lowAlarmLimit', valtype[-1:]),
+                ('lowWarningLimit', valtype[-1:]),
+                ('highWarningLimit', valtype[-1:]),
+                ('highAlarmLimit', valtype[-1:]),
+                ('lowAlarmSeverity', 'i'),
+                ('lowWarningSeverity', 'i'),
+                ('highWarningSeverity', 'i'),
+                ('highAlarmSeverity', 'i'),
+                ('hysteresis', 'd'),
+            ])),
+        ])
 
 class NTScalar(object):
 

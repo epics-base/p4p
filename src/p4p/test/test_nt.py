@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import logging
 import sys
 import unittest
 
@@ -13,6 +14,7 @@ from .utils import RefTestCase
 import numpy
 from numpy.testing import assert_array_almost_equal as assert_aequal
 
+_log = logging.getLogger(__name__)
 
 class TestScalar(RefTestCase):
 
@@ -31,18 +33,22 @@ class TestScalar(RefTestCase):
                 'severity': 1,
             },
         })
+
         self.assertEqual(V.value, value)
         self.assertEqual(V.alarm.severity, 1)
-        self.assertEqual(V.display.tolist(), [
-            ('limitLow', 0.0),
-            ('limitHigh', 0.0),
-            ('description', u''),
-            ('format', u''),
-            ('units', u'')
-        ])
+        if code!='s':
+            self.assertEqual(V.display.tolist(), [
+                ('limitLow', 0.0),
+                ('limitHigh', 0.0),
+                ('description', u''),
+                ('format', u''),
+                ('units', u'')
+            ])
 
-    test_int_wrap = partial(test_float_wrap, code='i', value=42)
-    test_str_wrap = partial(test_float_wrap, code='s', value='foo')
+    def test_int_wrap(self):
+        self.test_float_wrap(code='i', value=42)
+    def test_str_wrap(self):
+        self.test_float_wrap(code='s', value='foo')
 
     def test_float_unwrap(self, code='d', value=5.0):
         NT = nt.NTScalar(code)
@@ -60,8 +66,10 @@ class TestScalar(RefTestCase):
         V2 = NT.wrap(P)
         self.assertIs(V, V2)
 
-    test_int_unwrap = partial(test_float_unwrap, code='i', value=42)
-    test_str_unwrap = partial(test_float_unwrap, code='s', value='foo')
+    def test_int_unwrap(self):
+        self.test_float_unwrap(code='i', value=42)
+    def test_str_unwrap(self):
+        self.test_float_unwrap(code='s', value='foo')
 
     def test_array_wrap(self):
         NT = nt.NTScalar('ad')  # array of double
