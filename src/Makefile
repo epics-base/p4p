@@ -54,16 +54,18 @@ PY += p4p/test/test_nt.py
 PY += p4p/test/test_sharedpv.py
 PY += p4p/test/test_cothread.py
 
-ifeq ($(HAVE_ASYNCIO),YES)
 PY += p4p/test/test_asyncio.py
-endif
 
 include $(TOP)/configure/RULES
 include $(TOP)/configure/RULES_PY
 
+ifneq ($(HAVE_ASYNCIO),YES)
+NOSEFLAGS=--ignore-files=asyncio
+endif
+
 ifneq (,$(T_A))
 nose:
-	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose -P p4p
+	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose -P p4p $(NOSEFLAGS)
 
 # bounce back down to the sphinx generated Makefile
 # aren't Makefiles fun...
