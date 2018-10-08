@@ -186,6 +186,8 @@ class Context(object):
         else:
             raise ValueError("unwrap must be None, False, or dict, not %s" % unwrap)
 
+        self._ctxt = None
+
         # initialize channel cache
         self.disconnect()
 
@@ -225,10 +227,16 @@ class Context(object):
         return chan
 
     def disconnect(self, name=None):
+        """Clear internal Channel cache, allowing currently unused channels to be implictly closed.
+
+        :param str name: None, to clear the entire cache, or a name string to clear only a certain entry.
+        """
         if name is None:
             self._channels = {}
         else:
             self._channels.pop(name)
+        if self._ctxt is not None:
+            self._ctxt.disconnect(name)
 
     def _request(self, process=None, wait=None):
         """helper for building pvRequests

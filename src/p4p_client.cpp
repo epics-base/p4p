@@ -232,6 +232,25 @@ static PyObject *clientprovider_close(PyObject *self)
     return 0;
 }
 
+static PyObject* clientprovider_disconnect(PyObject *self, PyObject *args, PyObject *kws)
+{
+    TRY {
+        static const char* names[] = {"name", NULL};
+        const char *pchannel = NULL;
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "|z", (char**)names, &pchannel))
+            return NULL;
+
+        TRACE(pchannel);
+
+        if(pchannel)
+            SELF.disconnect(pchannel);
+        else
+            SELF.disconnect();
+
+        Py_RETURN_NONE;
+    }CATCH()
+    return NULL;
+}
 
 PyObject*  clientprovider_providers(PyObject *junk)
 {
@@ -293,6 +312,9 @@ static PyMethodDef clientprovider_methods[] = {
     {"close", (PyCFunction)&clientprovider_close, METH_NOARGS,
      "close()\n"
      "Shutdown provider and close all channels."},
+    {"disconnect", (PyCFunction)&clientprovider_disconnect, METH_VARARGS|METH_KEYWORDS,
+     "disconnect(channel=None)\n"
+     "Clear internal channel cache.  Allows unused ClientChannels to implicitly close."},
     {"providers", (PyCFunction)&clientprovider_providers, METH_NOARGS|METH_STATIC,
      "providers() -> ['name', ...]\n"
      ":returns: A list of all currently registered provider names.\n\n"
