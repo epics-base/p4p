@@ -420,7 +420,7 @@ class TestRawValue(RefTestCase):
         # initially all un-"changed" (at default)
 
         self.assertSetEqual(A.changedSet(), {'y'})
-        self.assertFalse(A.changed())
+        self.assertTrue(A.changed())
         self.assertFalse(A.changed('x'))
         self.assertTrue(A.changed('y'))
         self.assertRaises(KeyError, A.changed, 'invalid')
@@ -428,14 +428,14 @@ class TestRawValue(RefTestCase):
         A.mark('x')
 
         self.assertSetEqual(A.changedSet(), {'x', 'y'})
-        self.assertFalse(A.changed())
+        self.assertTrue(A.changed())
         self.assertTrue(A.changed('x'))
         self.assertTrue(A.changed('y'))
 
         A.mark('x', False)
 
         self.assertSetEqual(A.changedSet(), {'y'})
-        self.assertFalse(A.changed())
+        self.assertTrue(A.changed())
         self.assertFalse(A.changed('x'))
         self.assertTrue(A.changed('y'))
 
@@ -467,7 +467,7 @@ class TestRawValue(RefTestCase):
         A.mark('y')
         A.mark('z.a')
         self.assertSetEqual(A.changedSet(), {'y', 'z.a'})
-        self.assertFalse(A.changed())
+        self.assertTrue(A.changed())
         self.assertFalse(A.changed('x'))
         self.assertTrue(A.changed('y'))
         self.assertTrue(A.changed('z.a'))
@@ -480,7 +480,7 @@ class TestRawValue(RefTestCase):
         Z.mark('a', False)
         Z.mark('b', True)
 
-        self.assertFalse(A.changed())
+        self.assertTrue(A.changed())
         self.assertFalse(A.changed('x'))
         self.assertTrue(A.changed('y'))
         self.assertFalse(A.changed('z.a'))

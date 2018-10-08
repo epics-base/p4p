@@ -1,4 +1,7 @@
-
+# This module defines sub-classes of C extension classes
+# which add functionality that is better expressed in python.
+# These types are then pushed (by _magic) down into extension
+# code where they will be used as the types passed to callbacks.
 from ._p4p import (Type as _Type, Value as _Value)
 
 __all__ = (
@@ -130,6 +133,18 @@ class Value(_Value):
 
     def __iter__(self):
         return iter(self.type())
+
+    def changed(self, *fields):
+        """Test if one or more fields have changed.
+
+        A field is considered to have changed if it has been marked as changed,
+        or if any of its parent, or child, fields have been marked as changed.
+        """
+        S = super(Value, self).changed
+        for fld in fields or (None,): # no args tests for any change
+            if S(fld):
+                return True
+        return False
 
     def changedSet(self, expand=False, parents=False):
         """

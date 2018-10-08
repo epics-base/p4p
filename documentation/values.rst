@@ -213,7 +213,7 @@ API Reference
 
     .. automethod:: changed
 
-    .. automethod:: asSet
+    .. automethod:: changedSet
 
     .. automethod:: mark
 

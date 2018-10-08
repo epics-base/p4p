@@ -1168,14 +1168,24 @@ PyObject* P4PValue_changed(PyObject *self, PyObject *args, PyObject *kws)
         if(!fld)
             return PyErr_Format(PyExc_KeyError, "%s", fname);
 
-        if(SELF.I->get(fld->getFieldOffset()))
+        // is the bit associated with this field set?
+        const size_t offset = fld->getFieldOffset();
+        if(SELF.I->get(offset))
             Py_RETURN_TRUE;
 
+        // are any parent bits set?
         for(pvd::PVStructure *parent = fld->getParent(); parent; parent = parent->getParent())
         {
             if(SELF.I->get(parent->getFieldOffset()))
                 Py_RETURN_TRUE;
         }
+
+        // are any child bits set?
+        const size_t nextoffset = fld->getNextFieldOffset();
+        const size_t nextset = SELF.I->nextSetBit(offset+1);
+
+        if(nextset>offset && nextset<nextoffset)
+            Py_RETURN_TRUE;
 
         Py_RETURN_FALSE;
     }CATCH()
