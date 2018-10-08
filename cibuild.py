@@ -10,6 +10,8 @@ import shutil
 import subprocess as SP
 from glob import glob
 
+PY2 = sys.version_info<(3,0)
+
 # https://www.python.org/dev/peps/pep-0513/
 # https://www.python.org/dev/peps/pep-0425/
 # eg.
@@ -58,10 +60,6 @@ def build(args):
     shutil.rmtree('dist', ignore_errors=True)
     shutil.rmtree('build', ignore_errors=True)
 
-    # hack for tests requiring py3
-    if sys.version_info<(3,0):
-        os.remove(os.path.join('src', 'p4p', 'test', 'test_asyncio.py'))
-
     call_py(['setup.py', 'sdist'])
     call_py(['setup.py', '-v', 'bdist_wheel'])
 
@@ -75,7 +73,10 @@ def build(args):
     call_py(['-m', 'pip', 'install', results[0]])
     # prevent overzealous nose from inspecting src/
     os.chdir('dist')
-    call_py(['-m', 'nose', 'p4p'])
+    nose = ['-m', 'nose', 'p4p']
+    if PY2:
+        nose.append('--ignore-files=asyncio')
+    call_py(nose)
     os.chdir('..')
     call_py(['-m', 'change_tag', '--rm', '--tag', tag, results[0]])
 
