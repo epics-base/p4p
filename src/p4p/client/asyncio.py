@@ -47,7 +47,7 @@ def timesout(deftimeout=5.0):
         @asyncio.coroutine
         def exec():
             with Context('pva') as ctxt:
-                yield from asyncio.wait_for(dostuff(ctxt), timeout=5)
+                yield from dostuff(ctxt, timeout=5)
     """
     def decorate(fn):
         assert asyncio.iscoroutinefunction(fn), "Place @timesout before @coroutine"
@@ -104,7 +104,7 @@ class Context(raw.Context):
         @asyncio.coroutine
         def exec():
             with Context('pva') as ctxt:
-                yield from asyncio.wait_for(dostuff(ctxt), timeout=5)
+                yield from dostuff(ctxt, timeout=5)
     """
 
     def __init__(self, provider, conf=None, useenv=True, unwrap=None,
