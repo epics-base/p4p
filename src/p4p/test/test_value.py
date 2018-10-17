@@ -510,6 +510,26 @@ class TestRawValue(RefTestCase):
         self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z', 'z.q'})
         self.assertSetEqual(A.changedSet(expand=True, parents=True),   {'z', 'z.q', 'z.q.m'})
 
+    def testTopAssignment(self):
+        A = Value(Type([
+            ('x', 'i'),
+            ('y', 'i'),
+            ('z', ('S', None, [
+                ('a', 'i'),
+                ('b', 'i'),
+                ('c', 'i'),
+            ])),
+            ('q', 'v'),
+        ]))
+
+        A[None] = {'x':1, 'z':{'a':2}, 'z.b':3}
+
+        self.assertEqual(A.x, 1)
+        self.assertEqual(A.y, 0) # not changed
+        self.assertEqual(A.z.a, 2)
+        self.assertEqual(A.z.b, 3)
+        self.assertSetEqual(A.changedSet(), {'x', 'z.a', 'z.b'})
+
     def testSubStructAssignment(self):
         A = Value(Type([
             ('x', 'i'),

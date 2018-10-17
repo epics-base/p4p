@@ -1309,11 +1309,18 @@ Py_ssize_t P4PValue_len(PyObject *self)
 int P4PValue_setitem(PyObject *self, PyObject *name, PyObject *value)
 {
     TRY {
-        PyString S(name);
-        pvd::PVFieldPtr fld = SELF.V->getSubField(S.str());
-        if(!fld) {
-            PyErr_SetString(PyExc_KeyError, S.str().c_str());
-            return -1;
+        pvd::PVFieldPtr fld;
+        if(name == Py_None) {
+            fld = SELF.V;
+            assert(!!fld);
+
+        } else {
+            PyString S(name);
+            fld = SELF.V->getSubField(S.str());
+            if(!fld) {
+                PyErr_SetString(PyExc_KeyError, S.str().c_str());
+                return -1;
+            }
         }
 
         SELF.storefld(fld.get(),
