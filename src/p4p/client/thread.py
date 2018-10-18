@@ -133,7 +133,8 @@ class Subscription(object):
                     self._cb(Finished())
         except:
             _log.exception("Error processing Subscription event: %s", E)
-            self._S.close()
+            if self._S is not None:
+                self._S.close()
             self._S = None
 
 
