@@ -44,7 +44,7 @@ ext = Extension(
 
 setup(
     name='p4p',
-    version='1.1a35',
+    version='1.1a36',
     description="Python interface to PVAccess protocol client",
     url='https://mdavidsaver.github.io/p4p',
     author='Michael Davidsaver',
