@@ -108,3 +108,34 @@ class ThreadedWorkQueue(WorkQueue):
             W.set()
 
         return self # allow chaining
+
+# lazy create a default work queues
+
+class _DefaultWorkQueue(object):
+
+    def __init__(self, workers=4):  # TODO: configurable?
+        self.W = [None]*workers
+        self.n = 0
+
+    def __del__(self):
+        self.stop()
+
+    def __call__(self):
+        W = self.W[self.n]
+        if W is None:
+            #  daemon=True  otherwise the MainThread exit handler tries to join too early
+            W = self.W[self.n] = ThreadedWorkQueue(maxsize=0, daemon=True).start()
+
+        # sort of load balancing by giving different queues to each SharedPV
+        # but preserve ordering or callbacks as each SharedPV has only one queue
+        self.n = (self.n+1)%len(self.W)
+        return W
+
+    def sync(self):
+        [W.sync() for W in self.W if W is not None]
+
+    def stop(self):
+        [W.stop() for W in self.W if W is not None]
+        self.W = [None]*len(self.W)
+
+_defaultWorkQueue = _DefaultWorkQueue()

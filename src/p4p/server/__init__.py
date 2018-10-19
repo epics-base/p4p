@@ -4,7 +4,6 @@ import warnings
 _log = logging.getLogger(__name__)
 
 import time
-import atexit
 
 from .._p4p import (Server as _Server,
                     installProvider,
@@ -23,9 +22,6 @@ __all__ = (
         'DynamicProvider',
         'ServerOperation',
 )
-
-atexit.register(clearProviders)
-
 
 class Server(object):
 

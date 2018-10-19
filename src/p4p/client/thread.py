@@ -21,6 +21,7 @@ except ImportError:
 
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished
+from ..util import _defaultWorkQueue
 from ..wrapper import Value, Type
 from ..rpc import WorkQueue
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
@@ -51,10 +52,10 @@ class Subscription(object):
     """An active subscription.
     """
 
-    def __init__(self, ctxt, name, cb, notify_disconnect=False):
+    def __init__(self, ctxt, name, cb, notify_disconnect=False, queue=None):
         self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
-        self._Q = ctxt._queue()
+        self._Q = queue or ctxt._Q or _defaultWorkQueue()
         self._evt = threading.Event()
         if notify_disconnect:
             # all subscriptions are inittially disconnected
@@ -148,6 +149,7 @@ class Context(raw.Context):
     :param int workers: Size of thread pool in which monitor callbacks are run.  Default is 4
     :param int maxsize: Size of internal work queue used for monitor callbacks.  Default is unlimited
     :param callable unwrap: Controls :ref:`unwrap`.  Set False to disable
+    :param WorkQueue queue: A work queue through which monitor callbacks are dispatched.
 
     The methods of this Context will block the calling thread until completion or timeout
 
@@ -166,7 +168,7 @@ class Context(raw.Context):
     "Provider name string"
 
     def __init__(self, provider, conf=None, useenv=True, unwrap=None,
-                 maxsize=0, workers=4):
+                 maxsize=0, queue=None):
         self._channel_lock = threading.Lock()
 
         super(Context, self).__init__(provider, conf=conf, useenv=useenv, unwrap=unwrap)
@@ -174,8 +176,7 @@ class Context(raw.Context):
         # lazy start threaded WorkQueue
         self._Q = self._T = None
 
-        self._Qmax = maxsize
-        self._Wcnt = workers
+        self._Q = queue
 
     def _channel(self, name):
         with self._channel_lock:
@@ -411,7 +412,7 @@ class Context(raw.Context):
             op.close()
             raise
 
-    def monitor(self, name, cb, request=None, notify_disconnect=False):
+    def monitor(self, name, cb, request=None, notify_disconnect=False, queue=None):
         """Create a subscription.
 
         :param str name: PV name string
@@ -419,6 +420,7 @@ class Context(raw.Context):
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :param bool notify_disconnect: In additional to Values, the callback may also be call with instances of Exception.
                                        Specifically: Disconnected , RemoteError, or Cancelled
+        :param WorkQueue queue: A work queue through which monitor callbacks are dispatched.
         :returns: a :py:class:`Subscription` instance
 
         The callable will be invoked with one argument which is either.
@@ -426,7 +428,7 @@ class Context(raw.Context):
         * A p4p.Value (Subject to :py:ref:`unwrap`)
         * A sub-class of Exception (Disconnected , RemoteError, or Cancelled)
         """
-        R = Subscription(self, name, cb, notify_disconnect=notify_disconnect)
+        R = Subscription(self, name, cb, notify_disconnect=notify_disconnect, queue=queue)
 
         R._S = super(Context, self).monitor(name, R._event, request)
         return R

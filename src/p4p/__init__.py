@@ -1,10 +1,14 @@
 import logging
+import sys
+import atexit
 from .wrapper import Value, Type
 from ._p4p import (pvdVersion, pvaVersion, listRefs, Cancelled, ClientProvider as _ClientProvider)
 
 from ._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                    logLevelInfo, logLevelWarn, logLevelError,
                    logLevelFatal, logLevelOff)
+
+_log = logging.getLogger(__name__)
 
 __all__ = (
     'Value',
@@ -41,3 +45,22 @@ def set_debug(lvl):
     _ClientProvider.set_debug(lvl)
 
 version = (1, 1, 0)
+
+def cleanup():
+    """P4P sequenced shutdown.  Intended to be atexit.  Idenpotent.
+    """
+    _log.debug("P4P atexit begins")
+    # clean provider registry
+    from .server import clearProviders
+    clearProviders()
+
+    # close client contexts
+    from .client.raw import _cleanup_contexts
+    _cleanup_contexts()
+
+    # shutdown default work queue
+    from .util import _defaultWorkQueue
+    _defaultWorkQueue.stop()
+    _log.debug("P4P atexit completes")
+
+atexit.register(cleanup)

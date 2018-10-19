@@ -5,7 +5,6 @@ import logging
 _log = logging.getLogger(__name__)
 
 import warnings
-import atexit
 import sys
 from weakref import WeakSet
 
@@ -328,5 +327,3 @@ def _cleanup_contexts():
     contexts = list(_all_contexts)
     for ctxt in contexts:
         ctxt.close()
-
-atexit.register(_cleanup_contexts)
