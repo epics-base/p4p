@@ -183,6 +183,8 @@ API Reference
 
     .. automethod:: tolist
 
+    .. automethod:: tostr
+
     .. automethod:: items
 
     .. automethod:: getID

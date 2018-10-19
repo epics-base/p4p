@@ -193,4 +193,8 @@ class Value(_Value):
     def clear(self):
         self.mark(None, False)
 
+    def __str__(self):
+        return self.tostr(limit=100)
+    __repr__ = __str__
+
 _Value._magic(Value)

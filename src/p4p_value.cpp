@@ -911,59 +911,6 @@ PyObject* P4PValue_getattr(PyObject *self, PyObject *name)
     return NULL;
 }
 
-PyObject* P4PValue_str(PyObject *self)
-{
-    TRY {
-
-        std::ostringstream strm;
-        strm<<SELF.V;
-
-        return PyUnicode_FromString(strm.str().c_str());
-    }CATCH()
-    return NULL;
-}
-
-PyObject* P4PValue_repr(PyObject *self)
-{
-    TRY {
-        PyRef args(PyDict_New());
-        {
-            std::string id(SELF.V->getStructure()->getID());
-            PyRef S(PyUnicode_FromString(id.c_str()));
-            PyObject *X = Py_None;
-            if(!id.empty())
-                X = S.get();
-            if(PyDict_SetItemString(args.get(), "id", X))
-                return NULL;
-        }
-
-        pvd::PVFieldPtr val(SELF.V->getSubField("value"));
-        if(!val) {
-            val = SELF.V->getSubField(SELF.V->getFieldOffset()+1);
-        }
-
-        if(val) {
-            PyRef S(PyUnicode_FromString(val->getFullName().c_str()));
-            if(PyDict_SetItemString(args.get(), "name", S.get()))
-                return NULL;
-
-            PyRef V(SELF.fetchfld(val.get(), val->getField().get(), pvd::BitSetPtr(), true));
-            if(PyDict_SetItemString(args.get(), "val", V.get()))
-                return NULL;
-
-        } else {
-            if(PyDict_SetItemString(args.get(), "name", Py_None))
-                return NULL;
-            if(PyDict_SetItemString(args.get(), "val", Py_None))
-                return NULL;
-        }
-
-        PyRef fmt(PyUnicode_FromString("Value(id:%(id)s, %(name)s:%(val)s)"));
-        return PyUnicode_Format(fmt.get(), args.get());
-    }CATCH()
-    return NULL;
-}
-
 PyObject* P4PValue_toList(PyObject *self, PyObject *args)
 {
     TRY {
@@ -1047,6 +994,46 @@ PyObject* P4PValue_items(PyObject *self, PyObject *args)
                              SELF.I,
                              true, false);
 
+    }CATCH()
+    return NULL;
+}
+
+struct limited_strbuf : public std::streambuf {
+    std::vector<std::streambuf::char_type> buf;
+    size_t limit;
+    explicit limited_strbuf(size_t limit)
+        :buf(limit+4, '\0')
+        ,limit(limit)
+    {
+        setp(&buf[0], &buf[limit]);
+        buf[limit] = '.';
+        buf[limit+1] = '.';
+        buf[limit+2] = '.';
+        // limit+3 = '\0'
+    }
+};
+
+PyObject* P4PValue_tostr(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    TRY {
+        const char *names[] = {"limit", NULL};
+        unsigned long limit = 0;
+        if(!PyArg_ParseTupleAndKeywords(args, kwds, "|k", (char**)names, &limit))
+            return NULL;
+
+        if(limit==0) {
+            std::ostringstream strm;
+            strm<<SELF.V;
+
+            return PyUnicode_FromString(strm.str().c_str());
+        } else {
+            limited_strbuf buf(limit);
+            std::ostream strm(&buf);
+
+            strm<<SELF.V;
+
+            return PyUnicode_FromString(&buf.buf[0]);
+        }
     }CATCH()
     return NULL;
 }
@@ -1404,6 +1391,9 @@ static PyMethodDef P4PValue_methods[] = {
      "clear all field changed flag."},
     {"changedSet", (PyCFunction)&P4PValue_changedSet, METH_VARARGS|METH_KEYWORDS,
      "changedSet(expand=False) -> set(['...'])\n\n"},
+    {"tostr", (PyCFunction)&P4PValue_tostr, METH_VARARGS|METH_KEYWORDS,
+     "tostr(limit=0) -> str\n"
+     "Return a string representation of the Value.  If limit!=0, output is truncated after ~this many charactors."},
     {"_magic", (PyCFunction)P4PValue_magic, METH_VARARGS|METH_STATIC,
      "Don't call this!"},
     {NULL}
@@ -1430,8 +1420,6 @@ void p4p_value_register(PyObject *mod)
     P4PValue::type.tp_init = &P4PValue_init;
     P4PValue::type.tp_getattro = &P4PValue_getattr;
     P4PValue::type.tp_setattro = &P4PValue_setattr;
-    P4PValue::type.tp_str = &P4PValue_str;
-    P4PValue::type.tp_repr = &P4PValue_repr;
 
     P4PValue::type.tp_as_mapping = &P4PValue_mapping;
 

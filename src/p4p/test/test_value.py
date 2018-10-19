@@ -30,7 +30,7 @@ class TestRawValue(RefTestCase):
         def proc(s):
             return list([l.split() for l in s.splitlines()])
 
-        self.assertEqual(proc(str(V)),
+        self.assertListEqual(proc(str(V)),
                          proc('''structure
     int ival 42
     double dval 4.2
@@ -396,19 +396,6 @@ class TestRawValue(RefTestCase):
 
         self.assertEqual(len(V.a), 1)
         self.assertEqual(V.a[0].b, 1)
-
-    def testRepr(self):
-        V = Value(Type([('a', 'I')]))
-        self.assertEqual(repr(V), 'Value(id:structure, a:0)')
-
-        V = Value(Type([('a', 'I'), ('value', 'd')]))
-        self.assertEqual(repr(V), 'Value(id:structure, value:0.0)')
-
-        V = Value(Type([('a', 'I')], id='foo'))
-        self.assertEqual(repr(V), 'Value(id:foo, a:0)')
-
-        V = Value(Type([('a', 'I'), ('value', 'd')], id='foo'))
-        self.assertEqual(repr(V), 'Value(id:foo, value:0.0)')
 
     def testBitSet(self):
         A = Value(Type([
