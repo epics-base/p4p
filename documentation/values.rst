@@ -100,7 +100,7 @@ S    struct
 A :py:class:`Type` is build with a list of tuples,
 where each tuple defines a field.
 
-For all type codes except struct 's' and discriminating union 'u' only the type code is needed.
+For all type codes except struct 'S' and discriminating union 'U' only the type code is needed.
 
    >>> T = Type([
       ('value', 's'), # string

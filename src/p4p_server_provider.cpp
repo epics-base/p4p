@@ -292,7 +292,7 @@ static PyMethodDef StaticProvider_methods[] = {
      "Add a new SharedPV instance to be served by this provider."},
     {"remove", (PyCFunction)&staticprovider_remove, METH_VARARGS|METH_KEYWORDS,
      "remove(name) -> pv\n"
-     "Remove a SharedPV from this provider.  Raises KeyError in named PV doesn't exist.\n"
+     "Remove a SharedPV from this provider.  Raises KeyError if named PV doesn't exist.\n"
      "Returns the PV which has been removed.\n"
      "Implicitly close()s the PV before returning, disconnecting any clients."},
     {NULL}

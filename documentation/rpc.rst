@@ -46,7 +46,7 @@ This can be tested using the "eget" utility from the pvAccessCPP module.
 Client Example
 --------------
 
-Remote Procedure calls are make through the :meth:`~p4p.client.thread.Context.rpc` method of a :class:`~p4p.client.thread.Context`.
+Remote procedure calls are made through the :meth:`~p4p.client.thread.Context.rpc` method of a :class:`~p4p.client.thread.Context`.
 To assist in encoding arguments, a proxy object can be created with the :func:`rpcproxy` decorator.
 A proxy for the preceding example would be: ::
 
@@ -65,7 +65,7 @@ This proxy must be associated with a Context. ::
     print proxy.add(1, 1)
 
 
-Decorated proxy class has two additional contructor arguments.
+A decorated proxy class has two additional contructor arguments.
 
 API Reference
 -------------
