@@ -286,7 +286,7 @@ def rpcproxy(spec):
        ctxt = Context('pva')
        proxy = MyProxy(ctxt, "tst:")
 
-    The decorated class will by a sub-class of the provided class and :class:`RPCProxyBase`.
+    The decorated class will be a sub-class of the provided class and :class:`RPCProxyBase`.
     """
     # inject our ctor first so we don't have to worry about super() non-sense.
 

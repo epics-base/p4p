@@ -458,7 +458,7 @@ static PyMethodDef clientmonitor_methods[] = {
      "Pop next element from subscription FIFO"},
     {"complete", (PyCFunction)&clientmonitor_complete, METH_NOARGS,
      "complete() -> bool\n"
-     "Has this subscription seen it's final update.  Call after poll()."},
+     "Has this subscription seen its final update.  Call after poll()."},
     {NULL}
 };
 

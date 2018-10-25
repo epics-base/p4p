@@ -4,7 +4,7 @@
 Building
 ========
 
-Release tars available from https://github.com/mdavidsaver/p4p/releasess
+Release tars available from https://github.com/mdavidsaver/p4p/releases
 
 The P4P modules requires:
 
@@ -51,7 +51,7 @@ Set location of EPICS modules.  With EPICS >= 7.0.1::
 See below for details on building EPICS from source.
 
 By default P4P will build using 'python' found in the system search path.
-To explicitly specify a particular version.::
+To explicitly specify a particular version. ::
 
    make distclean
    make PYTHON=python3.4
@@ -81,7 +81,7 @@ another version.  This will not remove the final tree. ::
 Building EPICS dependencies
 ---------------------------
 
-If the necessary EPICS modules are not present, then they may be built form source.
+If the necessary EPICS modules are not present, then they may be built from source.
 Note that the 'pva2pva' module is not required to build P4P, and may be omitted.
 It is used in the :ref:`starting` demo. ::
 
@@ -91,7 +91,7 @@ It is used in the :ref:`starting` demo. ::
    echo "EPICS_BASE=$PWD/epics-base" > ../p4p/configure/RELEASE.local
 
 When building against EPICS < 7.0.1 the pvDataCPP and pvAccessCPP modules
-must be built seperately.
+must be built separately.
 
 CLI and unittests
 -----------------
@@ -100,7 +100,7 @@ To run the unittests: ::
 
    make nose
 
-or (change path as approriate)::
+or (change path as appropriate)::
 
    PYTHONPATH=$PWD/python2.7/linux-x86_86 nosetests
 

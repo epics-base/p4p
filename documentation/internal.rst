@@ -1,8 +1,8 @@
 Internal API
 ============
 
-This section is intended to help P4P devlopers.
-The API described is _not_ considered a public or stable API.
+This section is intended to help P4P developers.
+The API described is *not* considered a public or stable API.
 It may change without notice.
 
 Ownership
@@ -11,11 +11,11 @@ Ownership
 The ownership relations between the various objects in the C++
 extensions are shown in the following diagrams.
 
-* Python objects have blue blue oval
+* Python objects are blue ovals
 * C++ objects are black boxes
 
 * red lines are shared_ptr<>
-* grean lines are weak_ptr<>
+* green lines are weak_ptr<>
 * blue lines are python refs. (aka stored PyObject*)
 * dashed lines are explicit breaks of a ref. loop
 

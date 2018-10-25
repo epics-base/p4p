@@ -27,7 +27,7 @@ In a second terminal run the following. If successful, the last line will end wi
 
 And finally, in a third terminal run the following.  If successful, the second terminal should show the new value. ::
 
-    $ pthon -m p4p.client.cli put my:pv:name=5
+    $ python -m p4p.client.cli put my:pv:name=5
     my:pv:name=5
 
 Troubleshooting network issues
@@ -71,7 +71,7 @@ Which can be treated as a normal numpy array with additional attributes to acces
     print val.severity
 
 The underlying :py:class:`p4p.Value` can be accessed with the 'raw' attribute.
-For types which are not automatically unwrap, a :py:class:`p4p.Value` is returned. ::
+For types which are not automatically unwrapped, a :py:class:`p4p.Value` is returned. ::
 
     print val.raw.value
     print val.raw.alarm.severity
