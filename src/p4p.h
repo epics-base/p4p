@@ -132,7 +132,7 @@ struct PyString
             if(!temp)
                 throw std::runtime_error("PyString Unicode Error");
         } else if(!PyBytes_Check(b))
-            throw std::runtime_error("Not bytes or unicode");
+            throw std::runtime_error(SB()<<Py_TYPE(b)->tp_name<<" is not bytes or unicode");
     }
     std::string str() {
         PyObject *X = temp ? temp.get() : base;
