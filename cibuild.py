@@ -48,7 +48,8 @@ def docker(args):
 def prepare(args):
     call_py(['-m', 'pip', 'install', '-U', 'pip'])
     call_py(['-m', 'pip', 'install', '-r', requirments])
-    call_py(['-m', 'pip', 'install', '-U', 'wheel', 'setuptools_dso', 'epicscorelibs', 'twine'])
+    call_py(['-m', 'pip', 'install', '-U', 'wheel', 'setuptools', 'twine'])
+    call_py(['-m', 'pip', 'install', '-U', '--pre', 'setuptools_dso', 'epicscorelibs'])
 
 def build(args):
     tag = args.pop(0)
