@@ -49,7 +49,8 @@ def prepare(args):
     call_py(['-m', 'pip', 'install', '-U', 'pip'])
     call_py(['-m', 'pip', 'install', '-r', requirments])
     call_py(['-m', 'pip', 'install', '-U', 'wheel', 'setuptools', 'twine'])
-    call_py(['-m', 'pip', 'install', '-U', '--pre', 'setuptools_dso', 'epicscorelibs'])
+    call_py(['-m', 'pip', 'install', '-U', '--pre', 'setuptools_dso'])
+    call_py(['-m', 'pip', 'install', '-U', '--pre', '--only-binary', ':all:', 'epicscorelibs'])
 
 def build(args):
     tag = args.pop(0)
