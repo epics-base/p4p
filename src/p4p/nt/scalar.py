@@ -28,6 +28,7 @@ class ntwrappercommon(object):
         V = super(ntwrappercommon, self).__repr__()
         return '%s %s' % (time.ctime(self.timestamp), V)
 
+    tostr = __str__
 
 class ntfloat(ntwrappercommon, float):
     """
