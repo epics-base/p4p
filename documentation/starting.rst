@@ -1,7 +1,7 @@
 .. _starting:
 
-Getting Started
-===============
+Quick Start
+===========
 
 For testing and evaluation, it is recommended to install from pypi.org into a (disposable) virtualenv. ::
 

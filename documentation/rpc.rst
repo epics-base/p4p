@@ -1,3 +1,5 @@
+.. _rpcapi:
+
 RPC Server Helpers
 ==================
 
@@ -15,7 +17,7 @@ For example: ::
     from p4p.nt import NTScalar
     class Summer(object):
         @rpc(NTScalar("d"))
-        def add(self, lhs, rhs):
+        def add(self, lhs, rhs): # 'lhs' and 'rhs' are arbitrary names.  The method name 'add' will be part of the PV name
             return float(lhs) + float(rhs)
     adder = Summer()
 
@@ -27,17 +29,25 @@ Turn on logging to see RPC related errors. ::
 Now run a server with :func:`quickRPCServer`. ::
 
     quickRPCServer(provider="Example", 
-                   prefix="pv:call:",
+                   prefix="pv:call:",  # A prefix for method PV names.
                    target=adder)
 
 At this point the server is active.
-This can be tested using the "eget" utility from the pvAccessCPP module.
+
+Beginning with EPICS 7.0.2 this can be tested using the "pvcall" utility
+
+.. code-block:: sh
+
+    $ pvcall pv:call:add lhs=1 rhs=1
+    2018-10-30 19:49:34.834  2
+
+Previous to EPICS 7.0.2 this can be tested using the "eget" utility from the pvAccessCPP module.
 
 .. code-block:: sh
 
     $ eget -s pv:call:add -a lhs=1 -a rhs=1
     2
-    $ eget -s pv:call:add -a lhs=1 -a rhs=1 -N
+    $ eget -s pv:call:add -a lhs=1 -a rhs=1 -N  # for more detail
     epics:nt/NTScalar:1.0 
         double value 2
         alarm_t alarm NO_ALARM NO_STATUS <no message>

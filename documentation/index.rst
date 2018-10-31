@@ -1,16 +1,20 @@
-.. P4P documentation master file, created by
-   sphinx-quickstart on Thu Apr 13 15:13:21 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 PVAccess for Python (P4P)
 =========================
 
 The canonical version of this page is https://mdavidsaver.github.io/p4p/
 
-Install from pypi on supported targets/versions. ::
+**P4P** is a wrapper around the PVAccess (aka. PVA) protocol network client and server.
+P4P is part of the **EPICS** (Experimental Physics and Industrial Control System) ecosystem
+for creating large (and small) scale distributed process control and data acqisition sytems.
+https://epics.anl.gov/
 
-   pip install p4p
+Install from pypi.org.  Supports Linux, OSX, and Windows.  With python 2.7, 3.4, 3.5, and 3.6 . ::
+
+    python -m virtualenv p4ptest
+    . p4ptest/bin/activate
+    python -m pip install -U pip
+    python -m pip install p4p
+    python -m nose p4p   # Optional: runs automatic tests
 
 Release tars can be downloaded from https://github.com/mdavidsaver/p4p/releases
 
@@ -22,6 +26,7 @@ Contents:
    :maxdepth: 2
 
    starting
+   overview
    building
    client
    nt

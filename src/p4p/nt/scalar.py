@@ -30,7 +30,6 @@ class ntwrappercommon(object):
 
 
 class ntfloat(ntwrappercommon, float):
-
     """
     Augmented float with additional attributes
 
@@ -43,7 +42,6 @@ class ntfloat(ntwrappercommon, float):
 
 
 class ntint(ntwrappercommon, int):
-
     """
     Augmented integer with additional attributes
 
@@ -56,7 +54,6 @@ class ntint(ntwrappercommon, int):
 
 
 class ntstr(ntwrappercommon, unicode):
-
     """
     Augmented string with additional attributes
 
@@ -69,7 +66,6 @@ class ntstr(ntwrappercommon, unicode):
 
 
 class ntnumericarray(ntwrappercommon, numpy.ndarray):
-
     """
     Augmented numpy.ndarray with additional attributes
 
@@ -89,7 +85,6 @@ class ntnumericarray(ntwrappercommon, numpy.ndarray):
 
 
 class ntstringarray(ntwrappercommon, list):
-
     """
     Augmented list of strings with additional attributes
 
@@ -152,7 +147,7 @@ class NTScalar(object):
     def buildType(valtype, extra=[], display=False, control=False, valueAlarm=False):
         """Build a Type
 
-        :param str valtype: A type code to be used with the 'value' field.
+        :param str valtype: A type code to be used with the 'value' field.  See :ref:`valuecodes`
         :param list extra: A list of tuples describing additional non-standard fields
         :param bool display: Include optional fields for display meta-data
         :param bool control: Include optional fields for control meta-data

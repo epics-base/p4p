@@ -24,9 +24,19 @@ __all__ = [
 
 
 def rpc(rtype=None):
-    """Decorator marks a proxy method for export.
+    """Decorator marks a method for export.
 
-    :param type: A :py:class:`Type` which the RPC will return
+    :param type: Specifies which :py:class:`Type` this method will return.
+
+    The return type (rtype) must be one of:
+
+    - An instance of :py:class:`p4p.Type`
+    - None, in which case the method must return a :py:class:`p4p.Value`
+    - One of the NT helper classes (eg :py:class:`p4p.nt.NTScalar`).
+    - A list or tuple used to construct a :py:class:`p4p.Type`.
+
+    Exported methods raise an :py:class:`Exception` to indicate an error to the remote caller.
+    :py:class:`RemoteError` may be raised to send a specific message describing the error condition.
 
     >>> class Example(object):
         @rpc(NTScalar.buildType('d'))
@@ -58,11 +68,15 @@ def rpc(rtype=None):
     return wrapper
 
 
-def rpccall(pvname, rtype=None, request=None):
+def rpccall(pvname, request=None, rtype=None):
     """Decorator marks a client proxy method.
+
+    :param str pvname: The PV name, which will be formated using the 'format' argument of the proxy class constructor.
+    :param request: A pvRequest string or :py:class:`p4p.Value` passed to eg. :py:meth:`p4p.client.thread.Context.rpc`.
 
     The method to be decorated must have all keyword arguments,
     where the keywords are type code strings or :class:`~p4p.Type`.
+
     """
     def wrapper(fn):
         fn._call_PV = pvname
@@ -73,9 +87,6 @@ def rpccall(pvname, rtype=None, request=None):
 
 
 class RPCDispatcherBase(DynamicProvider):
-    # wrapper to use for request Structures
-    Value = Value
-
     def __init__(self, queue, target=None, channels=set(), name=None):
         DynamicProvider.__init__(self, name, self)  # we are our own Handler
         self.queue = queue
@@ -127,7 +138,7 @@ class RPCDispatcherBase(DynamicProvider):
 
             if not isinstance(R, Value):
                 try:
-                    R = self.Value(rtype, R)
+                    R = Value(rtype, R)
                 except:
                     _log.exception("Error encoding %s as %s", R, rtype)
                     op.done(error="Error encoding reply")

@@ -1,3 +1,6 @@
+
+.. _clientapi:
+
 Client Blocking API
 ===================
 
@@ -19,7 +22,7 @@ Start by creating a client :py:class:`Context`. ::
 Get/Put
 ^^^^^^^
 
-Get and Put operations can be performed on on single PVs or a list of PVs. ::
+Get and Put operations can be performed on single PVs or a list of PVs. ::
 
    >>> V = ctxt.get('pv:name')
    >>> A, B = ctxt.get(['pv:1', 'pv:2'])

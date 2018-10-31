@@ -96,7 +96,7 @@ class SharedPV(_SharedPV):
 
         close() with destory=True or sync=True will not prevent clients from re-connecting.
         New clients may prevent sync=True from succeeding.
-        Prevent reconnection by __first__ stopping the Server, removing with :py:method:`StaticProvider.remove()`,
+        Prevent reconnection by __first__ stopping the Server, removing with :py:meth:`StaticProvider.remove()`,
         or preventing a :py:class:`DynamicProvider` from making new channels to this SharedPV.
         """
         _SharedPV.close(self, destroy)

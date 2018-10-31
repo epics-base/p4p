@@ -42,14 +42,15 @@ if sys.version_info >= (3, 0):
 
 else:
     class TimeoutError(RuntimeError):
-
+        "Local timeout has expired"
         def __init__(self):
             RuntimeError.__init__(self, 'Timeout')
 
 
 class Subscription(object):
-
     """An active subscription.
+
+    Created by :py:meth:`Context.monitor`.
     """
 
     def __init__(self, ctxt, name, cb, notify_disconnect=False, queue=None):

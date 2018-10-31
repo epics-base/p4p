@@ -1,14 +1,24 @@
+.. _valueapi:
+
 Working with Value and Type
 ===========================
 
 .. currentmodule:: p4p
+
+Each :py:class:`Value` corresponds conceptually with a C/C++ struct in that it consists
+of zero or more data fields.  Values are strongly typed, with each Value having a corresponding
+:py:class:`Type`.  Each field has a concrete type, which may in turn be a sub-structure.
+
+Further, each Value holds a bit mask which identifies fields which have "changed".
+This bit mask is used during PVA protocol operations to select a subset of fields
+which will actually be transfered over the network.
 
 Working with Type and Value
 ---------------------------
 
 :py:class:`Value` is initialized in two steps.
 First a :py:class:`Type` describing the data structure is created,
-then the Value container is build, and optionally initialized.
+then the Value container is built, and optionally initialized.
 
    >>> from p4p import Type, Value
    >>> T = Type([('value', 'i')])
@@ -63,6 +73,8 @@ The change mask can be cleared if necessary.  eg. when passing the same Value to
     assert V.changed('value')
     V.unmark()
     assert not V.changed('value')
+
+.. _valuecodes:
 
 Type definitions
 ----------------

@@ -12,16 +12,32 @@ The P4P modules requires:
 * numpy >=1.6
 * nosetests (to run unittests)
 
-* EPICS >= 7.0.1
+* EPICS >= 7.0.2
 
 or
 
 * EPICS Base >= 3.14.12
-* pvDataCPP >=7.0.0
-* pvAccessCPP >=6.0.0
+* pvDataCPP >=7.1.0
+* pvAccessCPP >=6.1.0
 
-Build from source
------------------
+P4P can be built and installed in one of two ways.
+As a python package, preferably managed by PIP.
+As an EPICS module.
+
+Build as Python package
+-----------------------
+
+The process for building as a python package using sources from pypi.org. ::
+
+    python -m virtualenv p4ptest
+    . p4ptest/bin/activate
+    python -m pip install -U pip
+    python -m pip install nose numpy # Optional: avoids building numpy from source (slow)
+    python -m pip install --no-binary :all: p4p
+    python -m nose p4p   # Optional: runs automatic tests
+
+Build as EPICS Module
+---------------------
 
 Install python dependencies on a Debian Linux host::
 
@@ -64,7 +80,7 @@ Alternately, the full path of the interpreter can be used. ::
 For convenience PYTHON can also be set in configure/CONFIG_SITE
 
 Multiple Python Versions
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 To build for multiple python versions it is necessary to do a partial clean before building
 another version.  This will not remove the final tree. ::
@@ -79,22 +95,20 @@ another version.  This will not remove the final tree. ::
 .. _builddeps:
 
 Building EPICS dependencies
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If the necessary EPICS modules are not present, then they may be built from source.
-Note that the 'pva2pva' module is not required to build P4P, and may be omitted.
-It is used in the :ref:`starting` demo. ::
+If the necessary EPICS modules are not present, then they may be built from source. ::
 
    sudo apt-get install libreadline6-dev libncurses5-dev perl
-   git clone --branch core/master --recursive https://github.com/epics-base/epics-base.git
+   git clone --recursive https://github.com/epics-base/epics-base.git
    make -C epics-base
    echo "EPICS_BASE=$PWD/epics-base" > ../p4p/configure/RELEASE.local
 
-When building against EPICS < 7.0.1 the pvDataCPP and pvAccessCPP modules
+When building against EPICS < 7.0.1, the pvDataCPP and pvAccessCPP modules
 must be built separately.
 
 CLI and unittests
------------------
+~~~~~~~~~~~~~~~~~
 
 To run the unittests: ::
 

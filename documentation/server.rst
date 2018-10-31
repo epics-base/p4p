@@ -1,3 +1,5 @@
+.. _serverapi:
+
 Server API
 ==========
 

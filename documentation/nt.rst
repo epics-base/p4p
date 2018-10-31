@@ -1,3 +1,5 @@
+.. _ntapi:
+
 Common Types
 ============
 

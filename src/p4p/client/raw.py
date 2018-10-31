@@ -29,29 +29,25 @@ __all__ = (
 
 
 class Cancelled(RuntimeError):
-
-    "Cancelled from client (this) end."
-
+    "Cancelled from client end."
     def __init__(self, msg=None):
         RuntimeError.__init__(self, msg or "Cancelled by client")
 
 
 class Disconnected(RuntimeError):
-
+    "Channel becomes disconected."
     def __init__(self, msg=None):
         RuntimeError.__init__(self, msg or "Channel disconnected")
 
 
 class Finished(Disconnected):
-
+    "Special case of Disconnected when a Subscription has received the updates it will ever receive."
     def __init__(self, msg=None):
         Disconnected.__init__(self, msg or "Subscription Finished")
 
 
 class RemoteError(RuntimeError):
-
-    "Throw with an error message which will be passed back to the caller"
-
+    "Thrown with an error message which has been sent by a server to its remote client"
 
 def unwrapHandler(handler, unwrap):
     """Wrap get/rpc handler to unwrap Value
