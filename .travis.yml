@@ -91,25 +91,7 @@ matrix:
 
     - os: osx
       language: generic
-      env: PYTHON=python3 PYVER=3.4 URL=https://www.python.org/ftp/python/3.4.4/python-3.4.4-macosx10.6.pkg
-      install:
-        - ./travis-osx.sh
-        - python3 cibuild.py prepare
-      script:
-        - python3 cibuild.py build cp27-cp27m-macosx_10_6_intel.macosx_10_6_x86_64
-
-    - os: osx
-      language: generic
-      env: PYTHON=python3 PYVER=3.5 URL=https://www.python.org/ftp/python/3.5.4/python-3.5.4-macosx10.6.pkg
-      install:
-        - ./travis-osx.sh
-        - python3 cibuild.py prepare
-      script:
-        - python3 cibuild.py build cp35-cp35m-macosx_10_6_intel.macosx_10_6_x86_64
-
-    - os: osx
-      language: generic
-      env: PYTHON=python3 PYVER=3.6 URL=https://www.python.org/ftp/python/3.6.5/python-3.6.5-macosx10.6.pkg
+      env: PYTHON=python3 PYVER=3.6 URL=https://www.python.org/ftp/python/3.6.7/python-3.6.7-macosx10.6.pkg
       install:
         - ./travis-osx.sh
         - python3 cibuild.py prepare
