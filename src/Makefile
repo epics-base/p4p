@@ -55,13 +55,10 @@ PY += p4p/test/test_sharedpv.py
 PY += p4p/test/test_cothread.py
 
 PY += p4p/test/test_asyncio.py
+PY += p4p/test/asynciotest.py
 
 include $(TOP)/configure/RULES
 include $(TOP)/configure/RULES_PY
-
-ifneq ($(HAVE_ASYNCIO),YES)
-NOSEFLAGS=--ignore-files=asyncio
-endif
 
 ifneq (,$(T_A))
 nose:
