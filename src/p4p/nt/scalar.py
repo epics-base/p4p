@@ -136,8 +136,9 @@ class NTScalar(object):
 
     """Describes a single scalar or array of scalar values and associated meta-data
 
-    >>> stype = NTScalar.buildType('d') # scalar double
-    >>> V = Value(stype, {'value': 4.2})
+    >>> stype = NTScalar('d') # scalar double
+    >>> V = stype.wrap(4.2)
+    >>> assert isinstance(V, Value)
 
     >>> stype = NTScalar.buildType('ad') # vector double
     >>> V = Value(stype, {'value': [4.2, 4.3]})

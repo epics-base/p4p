@@ -1,13 +1,18 @@
 
 .. _clientapi:
 
-Client Blocking API
-===================
+Client API
+==========
 
 .. currentmodule:: p4p.client.thread
 
 This module provides :py:class:`Context` for use in interactive and/or multi-threaded environment.
 Most methods will block the calling thread until a return is available, or an error occurs.
+
+Two alternatives to `p4p.client.thread.Context` are provided
+`p4p.client.cothread.Context` and `p4p.client.asyncio.Context`.
+These differ in how blocking for I/O operation is performed,
+and the environment in which Monitor callbacks are run.
 
 Usage
 -----
@@ -18,6 +23,11 @@ Start by creating a client :py:class:`Context`. ::
    >>> Context.providers()
    ['pva', ....]
    >>> ctxt = Context('pva')
+
+.. note:: The default network configuration taken from the process environment
+          may be overridden by passing 'conf=' to the `Context` class constructor.
+
+See `overviewpva` for background on PVAccess protocol.
 
 Get/Put
 ^^^^^^^
@@ -30,32 +40,6 @@ Get and Put operations can be performed on single PVs or a list of PVs. ::
    >>> ctxt.put('pv:name', {'value': 5}) # equivalent to previous
 
 By default the values returned by :py:meth:`Context.get` are subject to :py:ref:`unwrap`.
-
-RPC
-^^^
-
-The RPC operation is similar to get+put except that the argument value must already
-be a :py:class:`Value`. ::
-
-    from p4p import Type, Value
-    V = Value(Type([
-        ('schema', 's'),
-        ('path', 's'),
-        ('query', ('s', None, [
-            ('lhs', 'd'),
-            ('rhs', 'd'),
-        ])),
-    ]), {
-        'schema': 'pva',
-        'path': 'pv:add',
-        'query': {
-            'lhs': 1,
-            'rhs': 2,
-        },
-    })
-    result = ctxt.rpc(V)
-
-By default the values returned by :py:meth:`Context.rpc` are subject to :py:ref:`unwrap`.
 
 Monitor
 ^^^^^^^
@@ -74,6 +58,21 @@ The monitor method returns a :py:class:`Subscription` which has a close method
 to end the subscription.
 
 By default the values passed to monitor callbacks are subject to :py:ref:`unwrap`.
+
+`p4p.client.thread.Context` Runs callbacks in a worker thread pool.
+
+`p4p.client.cothread.Context` Runs callbacks in a per-subscription cothread.
+
+`p4p.client.asyncio.Context` Runs callbacks in a per-subscription coroutine.
+
+In all cases it is safe for a callback to block/yield.
+Subsequent updates for a `Subscription` will not be delivered until the current callback has completed.
+However, updates for other Subscriptions may be delivered.
+
+RPC
+^^^
+
+See `rpcapi`.
 
 API Reference
 -------------

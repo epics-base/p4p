@@ -286,7 +286,7 @@ static PyObject* staticprovider_remove(PyObject *self, PyObject *args, PyObject 
 static PyMethodDef StaticProvider_methods[] = {
     {"close", (PyCFunction)&staticprovider_close, METH_NOARGS,
      "close()\n"
-     "Equivalent to calling close() on every SharedPV add()'d"},
+     "Equivalent to calling `SharedPV.close()` on every SharedPV `add()`'d"},
     {"add", (PyCFunction)&staticprovider_add, METH_VARARGS|METH_KEYWORDS,
      "add(name, pv)\n"
      "Add a new SharedPV instance to be served by this provider."},
@@ -294,7 +294,7 @@ static PyMethodDef StaticProvider_methods[] = {
      "remove(name) -> pv\n"
      "Remove a SharedPV from this provider.  Raises KeyError if named PV doesn't exist.\n"
      "Returns the PV which has been removed.\n"
-     "Implicitly close()s the PV before returning, disconnecting any clients."},
+     "Implicitly `close()` s the PV before returning, disconnecting any clients."},
     {NULL}
 };
 

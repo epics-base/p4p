@@ -8,7 +8,9 @@ P4P is part of the **EPICS** (Experimental Physics and Industrial Control System
 for creating large (and small) scale distributed process control and data acqisition sytems.
 https://epics.anl.gov/
 
-Install from pypi.org.  Supports Linux, OSX, and Windows.  With python 2.7, 3.4, 3.5, and 3.6 . ::
+Supports Linux, OSX, and Windows.  With python 2.7, 3.4, 3.5, and 3.6 .
+
+The recommended starting point is to install from pypi.org. ::
 
     python -m virtualenv p4ptest
     . p4ptest/bin/activate

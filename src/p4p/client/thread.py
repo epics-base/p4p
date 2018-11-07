@@ -50,7 +50,7 @@ else:
 class Subscription(object):
     """An active subscription.
 
-    Created by :py:meth:`Context.monitor`.
+    Returned by `Context.monitor`.
     """
 
     def __init__(self, ctxt, name, cb, notify_disconnect=False, queue=None):
@@ -145,7 +145,7 @@ class Context(raw.Context):
     """Context(provider, conf=None, useenv=True)
 
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
-    :param conf dict: Configuration to pass to provider.  Depends on provider selected.
+    :param dict conf: Configuration to pass to provider.  Depends on provider selected.
     :param bool useenv: Allow the provider to use configuration from the process environment.
     :param int workers: Size of thread pool in which monitor callbacks are run.  Default is 4
     :param int maxsize: Size of internal work queue used for monitor callbacks.  Default is unlimited
@@ -155,6 +155,8 @@ class Context(raw.Context):
     The methods of this Context will block the calling thread until completion or timeout
 
     The meaning, and allowed keys, of the configuration dictionary depend on the provider.
+    conf= will override values taken from the process environment.  Pass useenv=False to
+    ensure that environment variables are completely ignored.
 
     The "pva" provider understands the following keys:
 

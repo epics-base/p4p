@@ -209,7 +209,7 @@ class MASARDispatcher(RPCDispatcherBase):
 def quickRPCServer(provider, prefix, target,
                    maxsize=20,
                    workers=1,
-                   useenv=True, conf=None):
+                   useenv=True, conf=None, isolate=False):
     """Run an RPC server in the current thread
 
     Calls are handled sequentially, and always in the current thread, if workers=1 (the default).
@@ -223,13 +223,14 @@ def quickRPCServer(provider, prefix, target,
     :param int workers: Number of worker threads (default 1)
     :param useenv: Passed to :class:`~p4p.server.Server`
     :param conf: Passed to :class:`~p4p.server.Server`
+    :param isolate: Passed to :class:`~p4p.server.Server`
     """
     from p4p.server import Server
     import time
     queue = ThreadedWorkQueue(maxsize=maxsize, workers=workers)
     provider = NTURIDispatcher(queue, target=target, prefix=prefix, name=provider)
     threads = []
-    server = Server(providers=[provider], useenv=useenv, conf=conf)
+    server = Server(providers=[provider], useenv=useenv, conf=conf, isolate=isolate)
     with server, queue:
         while True:
             time.sleep(10.0)
@@ -282,11 +283,11 @@ def _wrapMethod(K, V):
 def rpcproxy(spec):
     """Decorator to enable this class to proxy RPC client calls
 
-    The decorated class constructor takes two additional arugments,
-    the first "context" is required to be a :class:`~p4p.client.thread.Context`.
-    The second optional "format" can be a string, tuple, or dictionary and is applied
+    The decorated class constructor takes two additional arguments,
+    `context=` is required to be a :class:`~p4p.client.thread.Context`.
+    `format`= can be a string, tuple, or dictionary and is applied
     to PV name strings given to :py:func:`rpcall`.
-    Other arguments are passed to the user/base class constructor. ::
+    Other arguments are passed to the user class constructor. ::
 
        @rpcproxy
        class MyProxy(object):
@@ -295,7 +296,7 @@ def rpcproxy(spec):
                pass
 
        ctxt = Context('pva')
-       proxy = MyProxy(ctxt, "tst:")
+       proxy = MyProxy(context=ctxt, format="tst:")  # evaluates "%s:add"%"tst:"
 
     The decorated class will be a sub-class of the provided class and :class:`RPCProxyBase`.
     """

@@ -31,7 +31,10 @@ def UnionArray(spec=None, id=None):
 
 
 class Type(_Type):
-    """Type([fields..., id=None])
+    """Type(fields, id=None)
+
+    :param list fields: A list of tuples describing members of this data structure.
+    :param str id: Type label string.
 
     A definition of a data structure consisting of a list of field names and types,
     as well as an optional type name string (id="").
@@ -97,6 +100,9 @@ _Type._magic(Type)
 
 class Value(_Value):
     """Value(type[, initial])
+
+    :param Type type: The `Type` describing the structure to be instanciated
+    :param dict initial: A dictionary (or any mapping) which gives initial values for fields.
 
     Representation of a data structure of a particular :py:class:`Type`.
 

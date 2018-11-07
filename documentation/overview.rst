@@ -8,6 +8,8 @@ What is EPICS?
 
 See https://epics.anl.gov/
 
+.. _overviewpva:
+
 What is PVAccess?
 ~~~~~~~~~~~~~~~~~
 
@@ -31,7 +33,7 @@ What is a PV?
 
 In the EPICS world a Process Variable (PV) refers to the idea of
 a globally addressed data structure.  An EPICS control system is
-composed of many PVs (in the millions).  The present value of
+composed of many PVs (in the millions for large facilities).  The present value of
 a PV is modified by a combination of remote operations via CA
 and/or PVA, and via local processing (eg. values read from local
 hardware).

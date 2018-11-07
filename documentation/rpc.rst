@@ -77,6 +77,29 @@ This proxy must be associated with a Context. ::
 
 A decorated proxy class has two additional contructor arguments.
 
+Using Low Level Client API
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It may be helpful to illustrate what a proxy method call is actually doing. ::
+
+    from p4p import Type, Value
+    V = Value(Type([
+        ('schema', 's'),
+        ('path', 's'),
+        ('query', ('s', None, [
+            ('lhs', 'd'),
+            ('rhs', 'd'),
+        ])),
+    ]), {
+        'schema': 'pva',
+        'path': 'pv:call:add',
+        'query': {
+            'lhs': 1,
+            'rhs': 1,
+        },
+    })
+    print ctxt.rpc('pv:call:add', V)
+
 API Reference
 -------------
 

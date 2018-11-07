@@ -79,13 +79,11 @@ The change mask can be cleared if necessary.  eg. when passing the same Value to
 Type definitions
 ----------------
 
-The :py:mod:`p4p.nt` module can be used to build common :py:class:`Type` definitions.
+The :py:mod:`p4p.nt` module contains helpers to build common :py:class:`Type` definitions.
 
 Structures are strongly typed.
 The type is specified with a code.
-Supported codes are given in the table below,
-and may be prefixed with 'a' to make an array.
-For example, 'ai' is an array of signed 32-bit integers.
+Supported codes are given in the table below.
 
 Type specifier codes:
 
@@ -109,12 +107,14 @@ U    union
 S    struct
 ==== =======
 
+.. note:: Prefix with 'a' for "array of".  For example, 'ai' is an array of signed 32-bit integers.
+
 A :py:class:`Type` is build with a list of tuples,
 where each tuple defines a field.
 
-For all type codes except struct 'S' and discriminating union 'U' only the type code is needed.
+For all type codes except struct 'S' and discriminating union 'U' only the type code is needed. ::
 
-   >>> T = Type([
+   T = Type([
       ('value', 's'), # string
       ('other', 'ad'), # array of double floating
    ])
@@ -167,24 +167,32 @@ to variant and union fields can be surprising.
 
 The rules for assigning a variant are as follows:
 
-* None - clears current value
-* Value - Stores a structure
-* int - signed 32-bit
-* long - signed 64-bit
-* float - 64-bit floating
-* bytes|unicode - string
-* ndarray of integer or floating - array of integer or floating
+============= ============================
+value type    Action
+============= ============================
+None          clears current value
+Value         Stores a structure
+int           signed 32-bit
+long          signed 64-bit
+float         64-bit floating
+bytes|unicode string
+ndarray       array of integer or floating
+============= ============================
 
-For a variant, other values throw an Exception.
+Other types throw an Exception.
 
 The rules for assigning a discriminating union are as follows:
 
-* None - clears current value
-* ('field', val) - explicitly specify the union field name
-* val - If a union field has previously been selected, coerce assigned value
-* val - If no union field previously select, attempt magic selection and coerce.
+============== ========================================================================
+value type     Action
+============== ========================================================================
+None           clears current value
+('field', val) explicitly specify the union field name
+val            If a union field has previously been selected, coerce assigned value
+val            If no union field previously select, attempt magic selection and coerce.
+============== ========================================================================
 
-An Exception is thrown otherwise.
+Other types throw an Exception.
 
 API Reference
 -------------

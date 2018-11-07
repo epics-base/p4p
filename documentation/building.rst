@@ -27,7 +27,8 @@ As an EPICS module.
 Build as Python package
 -----------------------
 
-The process for building as a python package using sources from pypi.org. ::
+The process for building as a python package using sources from pypi.org by adding the argument "--no-binary :all:"
+to prevent the use of pre-built binarys. ::
 
     python -m virtualenv p4ptest
     . p4ptest/bin/activate
@@ -36,10 +37,43 @@ The process for building as a python package using sources from pypi.org. ::
     python -m pip install --no-binary :all: p4p
     python -m nose p4p   # Optional: runs automatic tests
 
+Bootstrap a virtualenv offline
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It may be necessary to create a virtualenv including P4P on a machine with no internet access,
+or to ensure the use of certain verified binary/source.
+The following recipe was tested with virtualenv 16.1 and pip 18.1.
+
+First, from a machine with internet access, and having the same archetecture as the target machine,
+collect the necessary files. ::
+
+    mkdir /tmp/venv
+    cd /tmp/venv
+    python -m pip download virtualenv
+    unzip virtualenv-*.whl
+    python virtualenv.py --never-download prepenv
+    . prepenv/bin/activate
+    pip download -d virtualenv_support p4p
+    tar -caf p4p-env-`date -u +%Y%m%d`.tar.gz virtualenv.py virtualenv_support
+    deactivate
+
+Now move the created file p4p-env-*.tar.gz to the target machine.
+Then prepare the virtualenv env with. ::
+
+    tar -xaf p4p-env-*.tar.gz
+    python virtualenv.py --never-download env
+    . env/bin/activate
+    pip install --no-index -f virtualenv_support p4p
+    python -m nose p4p   # Optional: runs automatic tests
+
+Utilities to automate this process include https://pypi.org/project/pyutilib.virtualenv/
+
 Build as EPICS Module
 ---------------------
 
-Install python dependencies on a Debian Linux host::
+P4P can also be built as an EPICS Module, though with additional python dependencies.
+
+Install python dependencies on eg. a Debian Linux host::
 
    sudo apt-get install python2.7-dev python-numpy python-nose
 

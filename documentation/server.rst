@@ -8,13 +8,13 @@ Server API
 Running a PVA Server
 --------------------
 
-The :py:class:`Server` starts/stops a PVAccess server.
+A :py:class:`Server` instance starts/stops a PVAccess server.
 In order to be useful, a Server must be associated with one or more Providers.
 
 Two Provider containers are available: :py:class:`StaticProvider` or :py:class:`DynamicProvider`.
 Both are used with one of the SharedPV classes:,
 :py:class:`thread.SharedPV`, :py:class:`asyncio.SharedPV`, and/or :py:class:`cothread.SharedPV`.
-These different threading models may be mixed into a single Provider.
+Instances of these different concurrency models may be mixed into a single Provider.
 
 Example
 ^^^^^^^
@@ -66,19 +66,8 @@ Server API
 
     .. automethod:: remove
 
-Global Provider registry
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-If it becomes necessary for a Provider to be included in a server which is started
-outside of Python code, then it must be placed in the global provider registry
-with installProvider().
-
-.. autofunction:: installProvider
-
-.. autofunction:: removeProvider
-
 For situations where PV names are not known ahead of time,
-or when PVs are created only as requested, DynamicProvider can be used.
+or when PVs are "created" only as requested, DynamicProvider should be used.
 
 .. autoclass:: DynamicProvider
 
@@ -115,7 +104,7 @@ A :py:class:`DynamicProvider` Handler class will define the following:
 ServerOperation
 ^^^^^^^^^^^^^^^
 
-This class is passed to SharedPV handler put() and rpc() methods.
+This class is passed to SharedPV handler `Handler.put()` and `Handler.rpc()` methods.
 
 .. autoclass:: ServerOperation
 
@@ -190,3 +179,16 @@ asyncio or cothread
 .. currentmodule:: p4p.server.cothread
 
 .. class:: SharedPV
+
+.. currentmodule:: p4p.server
+
+Global Provider registry
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+If it becomes necessary for a Provider to be included in a server which is started
+outside of Python code, then it must be placed in the global provider registry
+with installProvider().
+
+.. autofunction:: installProvider
+
+.. autofunction:: removeProvider

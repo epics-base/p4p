@@ -31,7 +31,7 @@ class Server(object):
     :param dict conf: Configuration keys for the server.  Uses same names as environment variables (aka. EPICS_PVAS_*)
     :param bool useenv: Whether to use process environment in addition to provided config.
     :param bool isolate: If True, override conf= and useenv= to select a configuration suitable for isolated testing.
-                         eg. listening only on localhost with a randomly chosen port number.  Use conf() to determine
+                         eg. listening only on localhost with a randomly chosen port number.  Use `conf()` to determine
                          which port is being used.
 
     Run a PVAccess server serving Channels from the listed providers.
@@ -44,7 +44,7 @@ class Server(object):
     As a convenience, a Server may be used as a context manager to automatically stop. ::
 
         with Server(providers=["example"]) as S:
-        # do something else
+            # do something else
 
     When configuring a Server, conf keys provided to the constructor have the same name as the environment variables.
     If both are given, then the provided conf dict is used.
