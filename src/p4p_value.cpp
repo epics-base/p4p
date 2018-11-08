@@ -130,37 +130,16 @@ void Value::store_struct(pvd::PVStructure* fld,
         // Attempted enumeration assignment
 
         pvd::PVScalar::shared_pointer index(fld->getSubField<pvd::PVScalar>("index"));
-        // TODO: wierdness alert... For some reason casting to PVStringArray isn't working here when built against pypi epicscorelibs
-        // There is probably an ABI mis-match, which will bit at some other points, but before that can happen, I need to figure
-        // out what is going one.
-        //pvd::PVStringArray::const_shared_pointer choices(fld->getSubField<pvd::PVStringArray>("choices"));
-        pvd::PVScalarArray::const_shared_pointer choices(fld->getSubField<pvd::PVScalarArray>("choices"));
+        pvd::PVStringArray::const_shared_pointer choices(fld->getSubField<pvd::PVStringArray>("choices"));
 
-        if(!index || !choices) {
-            std::ostringstream strm;
-            strm<<"enum_t assignment finds non-complient enum_t: "<<(!index)<<" "<<(!choices)<<" "<<*fld<<"\n\n";
-            pvd::PVField::shared_pointer choices2(fld->getSubField("choices"));
-            if(choices2) {
-                strm<<"XXX "
-                    <<typeid(*choices2).name()
-                    <<" "<<typeid(pvd::PVStringArray).name()
-                    <<" "<<(typeid(*choices2)==typeid(pvd::PVStringArray))
-                    <<" "<<dynamic_cast<pvd::Serializable*>(choices2.get())
-                    <<" "<<dynamic_cast<pvd::PVField*>(choices2.get())
-                    <<" "<<dynamic_cast<pvd::PVArray*>(choices2.get())
-                    <<" "<<dynamic_cast<pvd::PVScalarArray*>(choices2.get())
-                    <<" "<<dynamic_cast<pvd::PVStringArray*>(choices2.get())
-                    ;
-            }
-            throw std::runtime_error(strm.str());
-        }
+        if(!index || !choices)
+            throw std::runtime_error("enum_t assignment finds non-complient enum_t");
 
         if(PyUnicode_Check(obj) || PyBytes_Check(obj)) {
             PyString pystr(obj);
             std::string str(pystr.str());
 
-            pvd::PVStringArray::const_svector C; //(choices->view());
-            choices->getAs(C);
+            pvd::PVStringArray::const_svector C(choices->view());
 
             if(C.empty())
                 PyErr_WarnEx(PyExc_UserWarning, "enum_t assignment with empty choices", 2);
