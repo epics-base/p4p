@@ -3,23 +3,41 @@ set -e -x
 
 CURDIR="$PWD"
 
-cat << EOF > configure/RELEASE.local
-EPICS_BASE=$HOME/.source/epics-base
-PVDATA=$HOME/.source/pvDataCPP
-PVACCESS=$HOME/.source/pvAccessCPP
-EOF
-cat configure/RELEASE.local
-
 install -d "$HOME/.source"
 cd "$HOME/.source"
 
-git clone --quiet --depth 5 --branch "$BRBASE" https://github.com/epics-base/epics-base.git epics-base
-git clone --quiet --depth 5 --branch "$BRPVD" https://github.com/epics-base/pvDataCPP.git pvDataCPP
-git clone --quiet --depth 5 --branch "$BRPVA" https://github.com/epics-base/pvAccessCPP.git pvAccessCPP
+if [ "$BRPVA" ]
+then
+    git clone --quiet --depth 5 --branch "$BRPVA" https://github.com/epics-base/pvAccessCPP.git pvAccessCPP
+    (cd pvAccessCPP && git log -n1 )
+    cat << EOF >> $CURDIR/configure/RELEASE.local
+PVACCESS=$HOME/.source/pvAccessCPP
+EOF
+    cat << EOF > pvAccessCPP/configure/RELEASE.local
+PVDATA=$HOME/.source/pvDataCPP
+EPICS_BASE=$HOME/.source/epics-base
+EOF
+fi
 
+if [ "$BRPVD" ]
+then
+    git clone --quiet --depth 5 --branch "$BRPVD" https://github.com/epics-base/pvDataCPP.git pvDataCPP
+    (cd pvDataCPP && git log -n1 )
+    cat << EOF >> $CURDIR/configure/RELEASE.local
+PVDATA=$HOME/.source/pvDataCPP
+EOF
+    cat << EOF > pvDataCPP/configure/RELEASE.local
+EPICS_BASE=$HOME/.source/epics-base
+EOF
+fi
+
+git clone --quiet --depth 5 --branch "$BRBASE" https://github.com/epics-base/epics-base.git epics-base
 (cd epics-base && git log -n1 )
-(cd pvDataCPP && git log -n1 )
-(cd pvAccessCPP && git log -n1 )
+
+cat << EOF >> $CURDIR/configure/RELEASE.local
+EPICS_BASE=$HOME/.source/epics-base
+EOF
+cat $CURDIR/configure/RELEASE.local
 
 EPICS_HOST_ARCH=`sh epics-base/startup/EpicsHostArch`
 
@@ -44,15 +62,6 @@ EOF
   ;;
 esac
 
-cat << EOF > pvDataCPP/configure/RELEASE.local
-EPICS_BASE=$HOME/.source/epics-base
-EOF
-
-cat << EOF > pvAccessCPP/configure/RELEASE.local
-PVDATA=$HOME/.source/pvDataCPP
-EPICS_BASE=$HOME/.source/epics-base
-EOF
-
 make -j2 -C epics-base "$@"
-make -j2 -C pvDataCPP "$@"
-make -j2 -C pvAccessCPP "$@"
+[ "$BRPVD" ] && make -j2 -C pvDataCPP "$@"
+[ "$BRPVA" ] && make -j2 -C pvAccessCPP "$@"

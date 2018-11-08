@@ -29,6 +29,8 @@ requirments = {
     'Darwin':'requirements-deb8.txt',
 }[platform.system()]
 
+os.environ['REFTEST_IGNORE_TRANSIENT'] = 'YES'
+
 def call_py(args, **kws):
     print('EXEC', sys.executable, args, kws, 'in', os.getcwd())
     sys.stdout.flush()
@@ -76,8 +78,6 @@ def build(args):
     # prevent overzealous nose from inspecting src/
     os.chdir('dist')
     nose = ['-m', 'nose', 'p4p']
-    if PY2:
-        nose.append('--ignore-files=asyncio')
     call_py(nose)
     os.chdir('..')
     call_py(['-m', 'change_tag', '--rm', '--tag', tag, results[0]])

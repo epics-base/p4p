@@ -1,5 +1,46 @@
+env:
+  global:
+  - REFTEST_IGNORE_TRANSIENT=YES
+addons:
+  apt:
+    packages:
+    - libreadline6-dev
+    - libncurses5-dev
+    - perl
 matrix:
   include:
+    - sudo: false
+      dist: trusty
+      language: python
+      python: "2.7"
+      env: BRBASE=7.0 BRPVD=master BRPVA=master PROF=deb9
+      install: ./.ci/travis-linux-prepare.sh
+      script: ./.ci/travis-linux-build.sh
+
+    - sudo: false
+      dist: trusty
+      language: python
+      python: "2.7"
+      env: BRBASE=3.16 BRPVD=master BRPVA=master PROF=deb8
+      install: ./.ci/travis-linux-prepare.sh
+      script: ./.ci/travis-linux-build.sh
+
+    - sudo: false
+      dist: trusty
+      language: python
+      python: "2.7"
+      env: BRBASE=3.15 BRPVD=master BRPVA=master PROF=deb8
+      install: ./.ci/travis-linux-prepare.sh
+      script: ./.ci/travis-linux-build.sh
+
+    - sudo: false
+      dist: trusty
+      language: python
+      python: "2.7"
+      env: BRBASE=3.14 BRPVD=master BRPVA=master PROF=deb8
+      install: ./.ci/travis-linux-prepare.sh
+      script: ./.ci/travis-linux-build.sh
+
     - sudo: required
       language: python
       services:
