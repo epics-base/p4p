@@ -12,21 +12,25 @@ For testing and evaluation, it is recommended to install from pypi.org into a (d
     python -m nose p4p   # Optional: runs automatic tests
 
 With this complete, open three terminal instances.
+One to run a PVA client, and two more to run PVA clients.
 In the first run a PVA server.  Feel free to replace 'my:pv:name'
 with an arbitrary name string everywhere it occurs. ::
 
+    $ . p4ptest/bin/activate
     $ python -m p4p.server.cli my:pv:name=int
     ...
     INFO:p4p.server:Running server
 
 In a second terminal run the following. If successful, the last line will end with a zero value. ::
 
+    $ . p4ptest/bin/activate
     $ python -m p4p.client.cli monitor my:pv:name
     ...
     my:pv:name Mon Jul  9 19:24:01 2018 0L
 
 And finally, in a third terminal run the following.  If successful, the second terminal should show the new value. ::
 
+    $ . p4ptest/bin/activate
     $ python -m p4p.client.cli put my:pv:name=5
     my:pv:name=5
 
