@@ -46,11 +46,13 @@ class ntndarray(ntwrappercommon, numpy.ndarray):
         for elem in value.get('attribute', []):
             self.attrib[elem.name] = elem.value
 
+        # we will fail if dimension[] contains None s, or if
+        # the advertised shape isn't consistent with the pixel array length.
         shape = [D.size for D in value.dimension]
         shape.reverse()
 
         # in-place reshape!  Isn't numpy fun
-        self.shape = shape
+        self.shape = shape or [0] # can't reshape if 0-d, so treat as 1-d if no dimensions provided
 
         return self
 
@@ -108,4 +110,8 @@ class NTNDArray(object):
     def unwrap(klass, value):
         """Unwrap Value as NTNDArray
         """
-        return value.value.view(klass.ntndarray)._store(value)
+        V = value.value
+        if V is None:
+            # Union empty.  treat as zero-length char array
+            V = numpy.zeros((0,), dtype=numpy.uint8)
+        return V.view(klass.ntndarray)._store(value)

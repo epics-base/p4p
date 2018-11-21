@@ -240,6 +240,31 @@ class TestEnum(RefTestCase):
 
 class TestArray(RefTestCase):
 
+    def test_unwrap_None(self):
+        V = Value(nt.NTNDArray.buildType(), {})
+
+        img = nt.NTNDArray.unwrap(V)
+
+        self.assertIsInstance(img, numpy.ndarray)
+        assert_aequal(img.shape, (0,))
+
+    def test_zero_length(self):
+        V = Value(nt.NTNDArray.buildType(), {
+            'value': numpy.arange(0),
+            'dimension': [
+                {'size': 3}, # X, columns
+                {'size': 0}, # Y, rows
+            ],
+            'attribute': [
+                {'name': 'ColorMode', 'value': 0},
+            ],
+        })
+
+        img = nt.NTNDArray.unwrap(V)
+
+        self.assertIsInstance(img, numpy.ndarray)
+        assert_aequal(img.shape, (0,3))
+
     def test_unwrap_mono(self):
         pixels = numpy.asarray([  # 2x3
             [0, 1, 2],
