@@ -12,6 +12,11 @@ from ..wrapper import Type, Value
 from .. import pvdVersion
 from .utils import RefTestCase
 
+class TestWrapper(RefTestCase):
+    def testCall(self):
+        T = Type([('ival', 'I')])
+        V = T({'ival':4})
+        self.assertEqual(V.ival, 4)
 
 class TestRawValue(RefTestCase):
 

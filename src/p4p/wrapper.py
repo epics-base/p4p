@@ -80,6 +80,9 @@ class Type(_Type):
     __slots__ = []  # we don't allow custom attributes for now
     __contains__ = _Type.has
 
+    def __call__(self, initial=None):
+        return Value(self, initial)
+
     def __iter__(self):
         for k in self.keys():
             yield k
