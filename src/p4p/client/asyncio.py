@@ -9,7 +9,7 @@ import asyncio
 from functools import partial, wraps
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled, Finished
+from .raw import Disconnected, RemoteError, Cancelled, Finished, LazyRepr
 from ..wrapper import Value, Type
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                     logLevelInfo, logLevelWarn, logLevelError,
@@ -214,7 +214,7 @@ class Context(raw.Context):
         F = asyncio.Future(loop=self.loop)
 
         def cb(value):
-            _log.debug("put done %s %s", name, value)
+            _log.debug("put done %s %s", name, LazyRepr(value))
             if F.cancelled() or F.done():
                 return  # ignore
             elif isinstance(value, (RemoteError, Disconnected, Cancelled)):
@@ -225,7 +225,7 @@ class Context(raw.Context):
 
         op = super(Context, self).put(name, cb, builder=value, request=request)
 
-        _log.debug('put %s <- %s request=%s', name, value, request)
+        _log.debug('put %s <- %s request=%s', name, LazyRepr(value), request)
         try:
             value = yield from F
         finally:
@@ -353,7 +353,7 @@ class Subscription(object):
             while True:
                 E = yield from self._Q.get()
                 self._Q.task_done()
-                _log.debug("Subscription %s handle %s", self.name, E)
+                _log.debug("Subscription %s handle %s", self.name, LazyRepr(E))
 
                 S = self._S
 
@@ -398,7 +398,7 @@ class Subscription(object):
                         yield from self._cb(E)
                     break
         except:
-            _log.exception("Error processing Subscription event: %s", E)
+            _log.exception("Error processing Subscription event: %s", LazyRepr(E))
             if self._S is not None:
                 self._S.close()
             self._S = None

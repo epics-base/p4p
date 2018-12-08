@@ -8,6 +8,7 @@ from functools import partial
 from threading import Thread
 
 from .._p4p import SharedPV as _SharedPV
+from ..client.raw import LazyRepr
 
 __all__ = (
     'SharedPV',
@@ -243,7 +244,7 @@ class SharedPV(_SharedPV):
 
     def __repr__(self):
         if self.isOpen():
-            return '%s(value=%s)' % (self.__class__.__name__, self.current())
+            return '%s(value=%s)' % (self.__class__.__name__, repr(self.current()))
         else:
             return "%s(<closed>)" % (self.__class__.__name__,)
     __str__ = __repr__

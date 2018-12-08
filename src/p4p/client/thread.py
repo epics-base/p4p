@@ -20,7 +20,7 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled, Finished
+from .raw import Disconnected, RemoteError, Cancelled, Finished, LazyRepr
 from ..util import _defaultWorkQueue
 from ..wrapper import Value, Type
 from ..rpc import WorkQueue
@@ -92,11 +92,11 @@ class Subscription(object):
         try:
             assert self._S is not None, self._S
             # TODO: ensure ordering of error and data events
-            _log.debug('Subscription wakeup for %s with %s', self.name, E)
+            _log.debug('Subscription wakeup for %s with %s', self.name, LazyRepr(E))
             self._inprog = True
             self._Q.push(partial(self._handle, E))
         except:
-            _log.exception("Lost Subscription update: %s", E)
+            _log.exception("Lost Subscription update: %s", LazyRepr(E))
 
     def _handle(self, E):
         try:
@@ -134,7 +134,7 @@ class Subscription(object):
                 if self._notify_disconnect:
                     self._cb(Finished())
         except:
-            _log.exception("Error processing Subscription event: %s", E)
+            _log.exception("Error processing Subscription event: %s", LazyRepr(E))
             if self._S is not None:
                 self._S.close()
             self._S = None
@@ -257,7 +257,7 @@ class Context(raw.Context):
                     try:
                         if not isinstance(value, Cancelled):
                             done.put_nowait((value, i))
-                        _log.debug('get %s Q %s', N, value)
+                        _log.debug('get %s Q %s', N, LazyRepr(value))
                     except:
                         _log.exception("Error queuing get result %s", value)
 
@@ -272,7 +272,7 @@ class Context(raw.Context):
                         _log.debug('timeout %s after %s', name[i], timeout)
                         raise TimeoutError()
                     break
-                _log.debug('got %s %s', name[i], value)
+                _log.debug('got %s %s', name[i], LazyRepr(value))
                 if throw and isinstance(value, Exception):
                     raise value
                 result[i] = value
@@ -354,7 +354,7 @@ class Context(raw.Context):
                     try:
                         done.put_nowait((value, i))
                     except:
-                        _log.exception("Error queuing put result %s", value)
+                        _log.exception("Error queuing put result %s", LazyRepr(value))
 
                 ops[i] = raw_put(n, cb, builder=value, request=req)
 

@@ -9,6 +9,7 @@ from weakref import WeakSet
 import asyncio
 
 from .raw import SharedPV as _SharedPV, Handler
+from ..client.raw import LazyRepr
 from ..client.thread import RemoteError
 
 __all__ = (
@@ -60,7 +61,7 @@ def _log_err(V):
 
 def _handle(loop, op, M, args):
     try:
-        _log.debug('SERVER HANDLE %s %s %s', op, M, args)
+        _log.debug('SERVER HANDLE %s %s %s', op, M, LazyRepr(args))
         maybeco = M(*args)
         if asyncio.iscoroutine(maybeco):
             _log.debug('SERVER SCHEDULE %s', maybeco)

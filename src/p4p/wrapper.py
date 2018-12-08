@@ -202,8 +202,23 @@ class Value(_Value):
     def clear(self):
         self.mark(None, False)
 
-    def __str__(self):
-        return self.tostr(limit=100)
-    __repr__ = __str__
+    __str__ = _Value.tostr
+
+    def __repr__(self):
+        parts = []
+
+        ID = self.getID()
+        if ID!='structure':
+            parts.append('id:'+ID)
+
+        try:
+            parts.append(repr(self.value))
+        except AttributeError: # no .value
+            try:
+                parts.append(repr(self.get(self.type().keys()[0])))
+            except IndexError: # empty Structure
+                pass
+
+        return 'Value(%s)'%', '.join(parts)
 
 _Value._magic(Value)

@@ -27,6 +27,15 @@ __all__ = (
     'RemoteError',
 )
 
+class LazyRepr(object):
+    """Log using repr()
+    """
+    __slots__ = ('value',)
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+    __repr__ = __str__
 
 class Cancelled(RuntimeError):
     "Cancelled from client end."
@@ -53,7 +62,7 @@ def unwrapHandler(handler, unwrap):
     """Wrap get/rpc handler to unwrap Value
     """
     def dounwrap(code, msg, val):
-        _log.debug("Handler (%s, %s, %s) -> %s", code, msg, val, handler)
+        _log.debug("Handler (%s, %s, %s) -> %s", code, msg, LazyRepr(val), handler)
         try:
             if code == 0:
                 handler(RemoteError(msg))
@@ -144,7 +153,7 @@ class Subscription(_p4p.ClientMonitor):
             fn = self._unwrap.get(val.getID())
             if fn:
                 val = fn(val)
-        _log.debug("poll() -> %s", val)
+        _log.debug("poll() -> %s", LazyRepr(val))
         return val
 
     @property
