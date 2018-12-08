@@ -30,7 +30,7 @@ def op_get(ctxt, args):
             ret = 1
             print(name, 'Error:', val)
         else:
-            print(name, val.tostr())
+            print(name, val)
     sys.exit(ret)
 
 
@@ -76,7 +76,7 @@ def op_monitor(ctxt, args):
                 ret = 1
                 print(name, 'Error:', val)
             else:
-                print(name, val.tostr())
+                print(name, val)
         subs.append(ctxt.monitor(name, show, args.request, notify_disconnect=True))
 
     try:
