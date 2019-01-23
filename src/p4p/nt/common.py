@@ -12,3 +12,10 @@ alarm = Type(id='alarm_t', spec=[
     ('status', 'i'),
     ('message', 's'),
 ])
+display = Type(id='display_t', spec=[
+    ('limitLow', 'd'),
+    ('limitHigh', 'd'),
+    ('description', 's'),
+    ('format', 's'),
+    ('units', 's'),
+])

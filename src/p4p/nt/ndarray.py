@@ -20,7 +20,7 @@ import time
 import numpy
 
 from ..wrapper import Type, Value
-from .common import alarm, timeStamp
+from .common import alarm, timeStamp, display
 
 from .scalar import ntwrappercommon
 
@@ -69,14 +69,34 @@ class NTNDArray(object):
         """
         return Type([
             ('value', 'v'),
+            ('codec', ('aS', None, [
+                ('name', 's'),
+                ('parameters', 'v'),
+            ])),
+            ('compressedSize', 'l'),
+            ('uncompressedSize', 'l'),
+            ('uniqueId', 'i'),
+            ('time', timeStamp),
+            ('descriptor', 's'),
+            ('display', display),
             ('alarm', alarm),
             ('timeStamp', timeStamp),
             ('dimension', ('aS', None, [
                 ('size', 'i'),
+                ('offset', 'i'),
+                ('fullSize', 'i'),
+                ('binning', 'i'),
+                ('reverse', '?'),
             ])),
             ('attribute', ('aS', None, [
                 ('name', 's'),
                 ('value', 'v'),
+                ('tags', 'as'),
+                ('descriptor', 's'),
+                ('alarm', alarm),
+                ('timestamp', timeStamp),
+                ('sourceType', 'i'),
+                ('source', 's'),
             ])),
         ], id='epics:nt/NTNDArray:1.0')
 
