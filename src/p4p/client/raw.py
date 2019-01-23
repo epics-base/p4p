@@ -110,7 +110,9 @@ def defaultBuilder(value):
 
     def builder(V):
         try:
-            if isinstance(value, dict):
+            if isinstance(value, Value):
+                V[None] = value
+            elif isinstance(value, dict):
                 for k, v in value.items():
                     V[k] = v
             else:
