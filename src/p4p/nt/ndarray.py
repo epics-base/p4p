@@ -20,7 +20,7 @@ import time
 import numpy
 
 from ..wrapper import Type, Value
-from .common import alarm, timeStamp, display
+from .common import alarm, timeStamp
 
 from .scalar import ntwrappercommon
 
@@ -76,9 +76,6 @@ class NTNDArray(object):
             ('compressedSize', 'l'),
             ('uncompressedSize', 'l'),
             ('uniqueId', 'i'),
-            ('time', timeStamp),
-            ('descriptor', 's'),
-            ('display', display),
             ('alarm', alarm),
             ('timeStamp', timeStamp),
             ('dimension', ('aS', None, [
@@ -106,6 +103,7 @@ class NTNDArray(object):
     def wrap(self, value):
         """Wrap numpy.ndarray as Value
         """
+
         S, NS = divmod(time.time(), 1.0)
         value = numpy.asarray(value)
         dims = list(value.shape)
@@ -116,14 +114,23 @@ class NTNDArray(object):
             attrib['ColorMode'] = 0 if value.ndim==2 else 4 # NDArray::getInfo() treats unknown as RGB3
         # else: assume caller knows what ColorMode means
 
+        dataSize = value.nbytes
+
         return Value(self.type, {
             'value': value.flatten(),
+            'compressedSize': dataSize,
+            'uncompressedSize': dataSize,
+            'uniqueId': 0,
             'timeStamp': {
                 'secondsPastEpoch': S,
                 'nanoseconds': NS * 1e9,
             },
             'attribute': [{'name': K, 'value': V} for K, V in attrib.items()],
-            'dimension': [{'size': N} for N in dims],
+            'dimension': [{'size': N,
+                           'offset': 0,
+                           'fullSize': N,
+                           'binning': 1,
+                           'reverse': False} for N in dims],
         })
 
     @classmethod
