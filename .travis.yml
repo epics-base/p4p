@@ -141,7 +141,7 @@ matrix:
 
 after_success:
   - |
-    if true; then
+    if [ "$TRAVIS_PULL_REQUEST" == "false" -a -n "$TWINE_USERNAME" ] ; then
       echo "Deploying"
       ${PYTHON:-python} -m pip install twine
       ${PYTHON:-python} -m twine upload --skip-existing dist/*.tar.* dist/*.whl || true
