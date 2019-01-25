@@ -551,6 +551,7 @@ class TestRawValue(RefTestCase):
         B = Value(Type([
             ('a', 'i'),
             ('b', 'i'),
+            ('other', 'i'), # never marked, so not access during copy
         ]), {
             'a':42,
             'b':43,

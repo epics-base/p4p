@@ -42,9 +42,9 @@ struct Value {
     // assignment of PVStructure from (possibly unrelated) PVStructure
 
     void store_struct(pvd::PVStructure* fld,
-                      const pvd::Structure* ftype,
+                      pvd::BitSet &changed,
                       const pvd::PVStructure& obj,
-                      const pvd::BitSet::shared_pointer& bset);
+                      const pvd::BitSet::shared_pointer &bset);
 
     void store_union(pvd::PVUnion* fld,
                       const pvd::Union* ftype,
@@ -124,7 +124,13 @@ void Value::store_struct(pvd::PVStructure* fld,
         }
 
     } else if(PyObject_IsInstance(obj, (PyObject*)P4PValue_type)) {
-        store_struct(fld, ftype, *P4PValue::unwrap(obj).V, bset);
+        Value& W = P4PValue::unwrap(obj);
+        pvd::BitSet changed;
+        if(W.I)
+            changed = *W.I;
+        else
+            changed.set(0);
+        store_struct(fld, changed, *W.V, bset);
 
     } else if(ftype->getID()=="enum_t") {
         // Attempted enumeration assignment
@@ -214,10 +220,17 @@ void Value::store_struct(pvd::PVStructure* fld,
     }
 }
 
+/* depth-first iteration of 'obj'.
+ * copy each marked field of 'obj' into a field in 'fld'
+ * with the same name, and similar type (or error).
+ * un-marked fields in 'obj' are ignored.
+ *
+ * Neither side is required to be a root (so can't use full name lookup).
+ */
 void Value::store_struct(pvd::PVStructure* fld,
-                         const pvd::Structure* ftype,
+                         pvd::BitSet& changed, // in obj
                          const pvd::PVStructure& obj,
-                         const pvd::BitSet::shared_pointer& bset)
+                         const pvd::BitSet::shared_pointer &bset) // fld
 {
     const pvd::StructureConstPtr& stype = obj.getStructure();
 
@@ -226,7 +239,28 @@ void Value::store_struct(pvd::PVStructure* fld,
     // TODO: getPVFields() breaks const-ness
     const pvd::PVFieldPtrArray& fields = obj.getPVFields();
 
+    const size_t first=obj.getFieldOffset(),
+                 next=obj.getNextFieldOffset();
+
+    if(changed.get(first)) {
+        // expand compressed
+        for(size_t i=first+1, N=next; i<N; i++) {
+            changed.set(i);
+        }
+        changed.clear(first);
+    }
+
+    {
+        pvd::uint32 firstChanged = changed.nextSetBit(first+1);
+        if(firstChanged<0 || firstChanged>=next)
+            return; // nothing to copy in this (sub)struct
+    }
+
     for(size_t i=0, N=names.size(); i<N; i++) {
+        size_t subfirst = changed.nextSetBit(fields[i]->getFieldOffset());
+        if(subfirst<0 || subfirst>=fields[i]->getNextFieldOffset())
+            continue;
+
         pvd::PVFieldPtr dest(fld->getSubField(names[i]));
         if(!dest) {
             PyErr_Format(PyExc_KeyError, "Can't assign non-existant \"%s.%s\"",
@@ -268,7 +302,7 @@ void Value::store_struct(pvd::PVStructure* fld,
         case pvd::structure: {
             pvd::PVStructure* F = static_cast<pvd::PVStructure*>(dest.get());
             pvd::PVStructure* S = static_cast<pvd::PVStructure*>(fields[i].get());
-            store_struct(F, F->getStructure().get(), *S, bset);
+            store_struct(F, changed, *S, bset);
         }
             break;
         case pvd::structureArray: {
@@ -278,13 +312,15 @@ void Value::store_struct(pvd::PVStructure* fld,
             pvd::PVStructureArray::const_svector src(S->view());
             pvd::PVStructureArray::svector dest(src.size());
             const pvd::PVDataCreatePtr& create(pvd::getPVDataCreate());
-            pvd::BitSetPtr nil;
+            pvd::BitSet dummy;
 
             for(size_t i=0, N=src.size(); i<N; i++) {
                 if(!src[i])
                     continue;
                 dest[i] = create->createPVStructure(Ftype);
-                store_struct(dest[i].get(), Ftype.get(), *src[i], nil);
+                dummy.clear();
+                dummy.set(0);
+                store_struct(dest[i].get(), dummy, *src[i], pvd::BitSetPtr());
             }
 
             F->replace(pvd::freeze(dest));
@@ -296,8 +332,6 @@ void Value::store_struct(pvd::PVStructure* fld,
             pvd::PVUnion* F = static_cast<pvd::PVUnion*>(dest.get());
             pvd::PVUnion* S = static_cast<pvd::PVUnion*>(fields[i].get());
             store_union(F, F->getUnion().get(), *S);
-            if(bset)
-                bset->set(F->getFieldOffset());
         }
             break;
         case pvd::unionArray: {
@@ -321,7 +355,7 @@ void Value::store_struct(pvd::PVStructure* fld,
         }
             break;
         default:
-            throw std::runtime_error(SB()<<__FILE__<<":"<<__LINE__<<" Not implemented "<<pvd::TypeFunc::name(ftype->getType()));
+            throw std::runtime_error(SB()<<__FILE__<<":"<<__LINE__<<" Not implemented "<<pvd::TypeFunc::name(dtype->getType()));
         }
     }
 }
