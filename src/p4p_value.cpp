@@ -332,6 +332,8 @@ void Value::store_struct(pvd::PVStructure* fld,
             pvd::PVUnion* F = static_cast<pvd::PVUnion*>(dest.get());
             pvd::PVUnion* S = static_cast<pvd::PVUnion*>(fields[i].get());
             store_union(F, F->getUnion().get(), *S);
+            if(bset)
+                bset->set(F->getFieldOffset());
         }
             break;
         case pvd::unionArray: {
@@ -483,7 +485,11 @@ void Value::store_union(pvd::PVUnion* fld,
         } else {
             pvd::PVFieldPtr temp(pvd::getPVDataCreate()->createPVField(val->getField()));
             temp->copyUnchecked(*val);
-            fld->set(temp);
+            try {
+                fld->set(src.getSelectedFieldName(), temp);
+            }catch(std::invalid_argument& e){
+                throw std::runtime_error(SB()<<"Error assigning union \""<<fld->getFullName()<<"\" : "<<e.what());
+            }
         }
 
     } else {

@@ -287,6 +287,52 @@ class TestRawValue(RefTestCase):
             V.x = None
             self.assertIsNone(V.x)
 
+    def testVariantUnionRoundTrip(self):
+        "Ensure type is preserved"
+        T = Type([
+            ('x', 'v'),
+        ])
+        V = T()
+
+        for X in (None,
+                  True,
+                  42,
+                  4.2,
+                  u"hello",
+                  [u"hello", u"world"],
+                  ):
+            V.x = X
+            self.assertEqual(X, V.x)
+            self.assertIs(type(X), type(V.x))
+            V2 = T()
+            V2[None] = V
+            self.assertEqual(X, V2.x)
+            self.assertIs(type(X), type(V2.x))
+
+        for X in (np.asarray([True, False]),
+                  np.asarray([-0x80, 0x7f], dtype='i1'),
+                  np.asarray([-0x8000, 0x7fff], dtype='i2'),
+                  np.asarray([-0x80000000, 0x7fffffff], dtype='i4'),
+                  np.asarray([-0x8000000000000000, 0x7fffffffffffffff], dtype='i8'),
+                  np.asarray([0xff], dtype='u1'),
+                  np.asarray([0xffff], dtype='u2'),
+                  np.asarray([0xffffffff], dtype='u4'),
+                  np.asarray([0xffffffffffffffff], dtype='u8'),
+                  # float test should not be sensitive to roundoff
+                  np.asarray([1.23456789], dtype='f4'),
+                  np.asarray([1.23456789e100], dtype='f8'),
+                  ):
+            try:
+                V.x = X
+                assert_aequal(V.x, X)
+                self.assertEqual(V.x.dtype, X.dtype)
+                V2 = T()
+                V2[None] = V
+                assert_aequal(V2.x, X)
+                self.assertEqual(V2.x.dtype, X.dtype)
+            except RuntimeError as e:
+                raise RuntimeError("With %s : %s"%(X, e))
+
     def testDisUnion(self):
         V = Value(Type([
             ('x', ('U', 'x', [

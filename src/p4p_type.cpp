@@ -468,6 +468,8 @@ epics::pvData::Field::const_shared_pointer P4PType_guess(PyObject *obj)
     pvd::FieldCreatePtr create(pvd::getFieldCreate());
 
     if(0) {
+    } else if(PyBool_Check(obj)) {
+        return create->createScalar(pvd::pvBoolean);
 #if PY_MAJOR_VERSION < 3
     } else if(PyInt_Check(obj)) {
         return create->createScalar(pvd::pvInt);
@@ -478,6 +480,8 @@ epics::pvData::Field::const_shared_pointer P4PType_guess(PyObject *obj)
         return create->createScalar(pvd::pvDouble);
     } else if(PyBytes_Check(obj) || PyUnicode_Check(obj)) {
         return create->createScalar(pvd::pvString);
+    } else if(PyList_Check(obj)) {
+        return create->createScalarArray(pvd::pvString);
     } else if(PyArray_Check(obj)) {
         switch(PyArray_TYPE(obj)) {
 #define CASE(NTYPE, PTYPE) case NTYPE: return create->createScalarArray(PTYPE);
@@ -492,6 +496,7 @@ epics::pvData::Field::const_shared_pointer P4PType_guess(PyObject *obj)
         CASE(NPY_ULONG, pvd::pvULong)
         CASE(NPY_FLOAT, pvd::pvFloat)
         CASE(NPY_DOUBLE, pvd::pvDouble)
+        CASE(NPY_STRING, pvd::pvString)
 #undef CASE
         }
     }
