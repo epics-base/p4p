@@ -70,13 +70,14 @@ def _handle(op, M, args):
         M(*args)
         return
     except RemoteError as e:
-        pass
+        err = e
     except Exception as e:
         _log.exception("Unexpected")
+        err = e
     finally:
         M = args = None # prevent lingering references after _sync() returns
     if op is not None:
-        op.done(error=str(e))
+        op.done(error=str(err))
 
 
 class SharedPV(_SharedPV):

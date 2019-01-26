@@ -20,11 +20,12 @@ def _on_queue(op, M, *args):
         M(*args)
         return
     except RemoteError as e:
-        pass
+        err = e
     except Exception as e:
         _log.exception("Unexpected")
+        err = e
     if op is not None:
-        op.done(error=str(e))
+        op.done(error=str(err))
 
 
 class SharedPV(_SharedPV):

@@ -72,11 +72,12 @@ def _handle(loop, op, M, args):
             loop._SharedPV_handlers.add(task) # track in-progress
         return
     except RemoteError as e:
-        pass
+        err = e
     except Exception as e:
         _log.exception("Unexpected")
+        err = e
     if op is not None:
-        op.done(error=str(e))
+        op.done(error=str(err))
 
 
 class SharedPV(_SharedPV):
