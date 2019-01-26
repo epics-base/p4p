@@ -63,12 +63,39 @@ class NTNDArray(object):
     Value = Value
     ntndarray = ntndarray
 
+    # map numpy.dtype.char to .value union member name
+    _code2u = {
+        '?':'booleanValue',
+        'b':'byteValue',
+        'h':'shortValue',
+        'i':'intValue',
+        'l':'longValue',
+        'B':'ubyteValue',
+        'H':'ushortValue',
+        'I':'uintValue',
+        'L':'ulongValue',
+        'f':'floatValue',
+        'd':'doubleValue',
+    }
+
     @staticmethod
     def buildType(extra=[]):
         """Build type
         """
         return Type([
-            ('value', 'v'),
+            ('value', ('U', None, [
+                ('booleanValue', 'a?'),
+                ('byteValue', 'ab'),
+                ('shortValue', 'ah'),
+                ('intValue', 'ai'),
+                ('longValue', 'al'),
+                ('ubyteValue', 'aB'),
+                ('ushortValue', 'aH'),
+                ('uintValue', 'aI'),
+                ('ulongValue', 'aL'),
+                ('floatValue', 'af'),
+                ('doubleValue', 'ad'),
+            ])),
             ('alarm', alarm),
             ('timeStamp', timeStamp),
             ('dimension', ('aS', None, [
@@ -97,7 +124,7 @@ class NTNDArray(object):
         # else: assume caller knows what ColorMode means
 
         return Value(self.type, {
-            'value': value.flatten(),
+            'value': (self._code2u[value.dtype.char], value.flatten()),
             'timeStamp': {
                 'secondsPastEpoch': S,
                 'nanoseconds': NS * 1e9,

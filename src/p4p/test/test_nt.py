@@ -303,10 +303,10 @@ class TestArray(RefTestCase):
 
            [[12, 13, 14, 15],
             [16, 17, 18, 19],
-            [20, 21, 22, 23]]])
+            [20, 21, 22, 23]]], dtype='u1')
 
         V = Value(nt.NTNDArray.buildType(), {
-            'value': numpy.arange(24),
+            'value': ('ubyteValue', numpy.arange(24, dtype='u1')),
             'dimension': [
                 {'size': 4}, # X, columns
                 {'size': 3}, # Y, rows
@@ -316,11 +316,13 @@ class TestArray(RefTestCase):
                 {'name': 'ColorMode', 'value': 4},
             ],
         })
+        self.assertEqual(V.value.dtype, pixels.dtype)
 
         img = nt.NTNDArray.unwrap(V)
 
         self.assertEqual(img.shape, (2, 3, 4))
         assert_aequal(img, pixels)
+        self.assertEqual(img.dtype, pixels.dtype)
 
         V2 = nt.NTNDArray().wrap(img)
 
@@ -328,3 +330,4 @@ class TestArray(RefTestCase):
         self.assertEqual(V.dimension[0].size, V2.dimension[0].size)
         self.assertEqual(V.dimension[1].size, V2.dimension[1].size)
         self.assertEqual(V.dimension[2].size, V2.dimension[2].size)
+        self.assertEqual(V2.value.dtype, pixels.dtype)
