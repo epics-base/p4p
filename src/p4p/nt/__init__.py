@@ -25,16 +25,62 @@ __all__ = [
     'NTNDArray',
 ]
 
-_default_unwrap = {
-    "epics:nt/NTScalar:1.0": NTScalar.unwrap,
-    "epics:nt/NTScalarArray:1.0": NTScalar.unwrap,
-    "epics:nt/NTNDArray:1.0": NTNDArray.unwrap,
-}
-_default_wrap = {
-    "epics:nt/NTScalar:1.0": NTScalar.wrap,
-    "epics:nt/NTScalarArray:1.0": NTScalar.wrap,
+_default_nt = {
+    "epics:nt/NTScalar:1.0": NTScalar,
+    "epics:nt/NTScalarArray:1.0": NTScalar,
+    "epics:nt/NTNDArray:1.0": NTNDArray,
 }
 
+class UnwrapOnly(object):
+    def __init__(self, unwrap):
+        self.unwrap = unwrap
+    def __call__(self):
+        return self # we are state-less
+    def wrap(self, V):
+        return V
+
+def buildNT(nt=None, unwrap=None):
+    if unwrap is False or nt is False:
+        return ClientUnwrapper({}) # disable use of wrappers
+
+    if unwrap is not None:
+        # legacy
+        ret = {} # ignore new style
+        for ID,fn in (unwrap or {}).items():
+            ret[ID] = UnwrapOnly(fn)
+
+    else:
+        ret = dict(_default_nt)
+        ret.update(nt or {})
+
+    return ClientUnwrapper(ret)
+
+class ClientUnwrapper(object):
+    def __init__(self, nt=None):
+        self.nt = nt
+        self.id = None
+        self._wrap = self._unwrap = lambda x:x
+    def wrap(self, val):
+        """Pack a arbitrary python object into a Value
+        """
+        if self.fn is not None:
+            pass
+        return self._wrap(val)
+    def unwrap(self, val):
+        """Unpack a Value as some other python type
+        """
+        if val.getID()!=self.id:
+            # type change
+            nt = self.nt.get(val.getID())
+            if nt is not None:
+                nt = nt() # instancate
+                self._wrap, self._unwrap = nt.wrap, nt.unwrap
+                self.id = val.getID()
+        return self._unwrap(val)
+
+    def __repr__(self):
+        return '%s(%s)'%(self.__class__.__name__, repr(self.nt))
+    __str__ = __repr__
 
 class NTMultiChannel(object):
 

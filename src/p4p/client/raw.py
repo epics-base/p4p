@@ -16,7 +16,7 @@ except ImportError:
 from .. import _p4p
 
 from ..wrapper import Value, Type
-from ..nt import _default_wrap, _default_unwrap
+from ..nt import buildNT
 
 if sys.version_info >= (3, 0):
     unicode = str
@@ -58,7 +58,7 @@ class Finished(Disconnected):
 class RemoteError(RuntimeError):
     "Thrown with an error message which has been sent by a server to its remote client"
 
-def unwrapHandler(handler, unwrap):
+def unwrapHandler(handler, nt):
     """Wrap get/rpc handler to unwrap Value
     """
     def dounwrap(code, msg, val):
@@ -70,9 +70,7 @@ def unwrapHandler(handler, unwrap):
                 handler(Cancelled())
             else:
                 if val is not None:
-                    fn = unwrap.get(val.getID())
-                    if fn:
-                        val = fn(val)
+                    val = nt.unwrap(val)
                 handler(val)
         except:
             _log.exception("Exception in Operation handler")
@@ -143,18 +141,16 @@ class Subscription(_p4p.ClientMonitor):
     cancel() aborts the subscription.
     """
 
-    def __init__(self, context=None, unwrap=None, **kws):
+    def __init__(self, context, nt, **kws):
         _log.debug("Subscription(%s)", kws)
         super(Subscription, self).__init__(**kws)
         self.context = context
-        self._unwrap = unwrap or {}
+        self._nt = nt
 
     def pop(self):
         val = super(Subscription, self).pop()
         if val is not None:
-            fn = self._unwrap.get(val.getID())
-            if fn:
-                val = fn(val)
+            val = self._nt.unwrap(val)
         _log.debug("poll() -> %s", LazyRepr(val))
         return val
 
@@ -175,22 +171,17 @@ class Context(object):
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
     :param conf dict: Configuration to pass to provider.  Depends on provider selected.
     :param bool useenv: Allow the provider to use configuration from the process environment.
+    :param dict nt: TODO
     :param dict unwrap: Controls :ref:`unwrap`.  None uses defaults.  Set False to disable
     """
 
-    def __init__(self, provider=None, conf=None, useenv=None, unwrap=None, **kws):
+    def __init__(self, provider=None, conf=None, useenv=None,
+                 unwrap=None, nt=None,
+                 **kws):
         self.name = provider
         super(Context, self).__init__(**kws)
 
-        if unwrap is None:
-            self._unwrap = _default_unwrap
-        elif not unwrap:
-            self._unwrap = {}
-        elif isinstance(unwrap, dict):
-            self._unwrap = _default_unwrap.copy()
-            self._unwrap.update(unwrap)
-        else:
-            raise ValueError("unwrap must be None, False, or dict, not %s" % unwrap)
+        self._nt = buildNT(nt, unwrap)
 
         self._ctxt = None
 
@@ -269,7 +260,7 @@ class Context(object):
         :returns: A object with a method cancel() which may be used to abort the operation.
         """
         chan = self._channel(name)
-        return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._unwrap),
+        return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._nt),
                                     pvRequest=wrapRequest(request), get=True, put=False)
 
     def put(self, name, handler, builder=None, request=None, get=True):
@@ -286,7 +277,7 @@ class Context(object):
         :returns: A object with a method cancel() which may be used to abort the operation.
         """
         chan = self._channel(name)
-        return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._unwrap),
+        return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._nt),
                                     builder=defaultBuilder(builder), pvRequest=wrapRequest(request), get=get, put=True)
 
     def rpc(self, name, handler, value, request=None):
@@ -301,7 +292,7 @@ class Context(object):
         chan = self._channel(name)
         if value is None:
             value = Value(Type([]))
-        return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._unwrap),
+        return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._nt),
                                     value=value, pvRequest=wrapRequest(request), rpc=True)
 
     def monitor(self, name, handler, request=None, **kws):
@@ -316,8 +307,8 @@ class Context(object):
         """
         chan = self._channel(name)
         return Subscription(context=self,
+                            nt=self._nt,
                             channel=chan, handler=monHandler(handler), pvRequest=wrapRequest(request),
-                            unwrap=self._unwrap,
                             **kws)
 
 # static methods
