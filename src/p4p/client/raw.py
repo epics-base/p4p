@@ -50,7 +50,7 @@ class Disconnected(RuntimeError):
 
 
 class Finished(Disconnected):
-    "Special case of Disconnected when a Subscription has received the updates it will ever receive."
+    "Special case of Disconnected when a Subscription has received all updates it will ever receive."
     def __init__(self, msg=None):
         Disconnected.__init__(self, msg or "Subscription Finished")
 
@@ -222,8 +222,7 @@ class Context(object):
         self.close()
 
     def _channel(self, name):
-        # sub-class may wrap with some kind of lock to prevent the possibility of
-        # extra channels.
+        # sub-class may wrap with some kind of lock to prevent the possibility of duplicate/extra channels.
         # extra channels should be avoided by ChannelProvider impls, but this isn't always the case.
         try:
             chan = self._channels[name]

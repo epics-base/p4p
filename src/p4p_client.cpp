@@ -613,7 +613,7 @@ void p4p_client_register(PyObject *mod)
 
     PyClientProvider::buildType();
 
-    PyClientProvider::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_BASETYPE;
+    PyClientProvider::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
     PyClientProvider::type.tp_init = &clientprovider_init;
 
     PyClientProvider::type.tp_methods = clientprovider_methods;
@@ -623,7 +623,7 @@ void p4p_client_register(PyObject *mod)
 
     PyClientChannel::buildType();
 
-    PyClientChannel::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE|Py_TPFLAGS_BASETYPE;
+    PyClientChannel::type.tp_flags = Py_TPFLAGS_DEFAULT|Py_TPFLAGS_BASETYPE;
     PyClientChannel::type.tp_init = &clientchannel_init;
 
     PyClientChannel::type.tp_methods = clientchannel_methods;
