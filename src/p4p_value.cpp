@@ -77,14 +77,14 @@ struct npmap {
 };
 const npmap np2pvd[] = {
     {NPY_BOOL, pvd::pvBoolean}, // bool stored as one byte
-    {NPY_BYTE, pvd::pvByte},
-    {NPY_SHORT, pvd::pvShort},
-    {NPY_INT, pvd::pvInt},
-    {NPY_LONG, pvd::pvLong},
-    {NPY_UBYTE, pvd::pvUByte},
-    {NPY_USHORT, pvd::pvUShort},
-    {NPY_UINT, pvd::pvUInt},
-    {NPY_ULONG, pvd::pvULong},
+    {NPY_INT8, pvd::pvByte},
+    {NPY_INT16, pvd::pvShort},
+    {NPY_INT32, pvd::pvInt},
+    {NPY_INT64, pvd::pvLong},
+    {NPY_UINT8, pvd::pvUByte},
+    {NPY_UINT16, pvd::pvUShort},
+    {NPY_UINT32, pvd::pvUInt},
+    {NPY_UINT64, pvd::pvULong},
     {NPY_FLOAT, pvd::pvFloat},
     {NPY_DOUBLE, pvd::pvDouble},
     {NPY_NOTYPE}
