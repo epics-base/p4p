@@ -94,7 +94,7 @@ def monHandler(handler):
     return cb
 
 
-def defaultBuilder(value):
+def defaultBuilder(value, nt):
     """Reasonably sensible default handling of put builder
     """
     if callable(value):
@@ -114,7 +114,7 @@ def defaultBuilder(value):
                 for k, v in value.items():
                     V[k] = v
             else:
-                V.value = value
+                nt.assign(V, value)
         except:
             _log.exception("Exception in Put builder")
             raise  # will be printed to stdout from extension code.
@@ -278,7 +278,8 @@ class Context(object):
         """
         chan = self._channel(name)
         return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._nt),
-                                    builder=defaultBuilder(builder), pvRequest=wrapRequest(request), get=get, put=True)
+                                    builder=defaultBuilder(builder, self._nt),
+                                    pvRequest=wrapRequest(request), get=get, put=True)
 
     def rpc(self, name, handler, value, request=None):
         """Perform RPC operation on PV

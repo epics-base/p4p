@@ -215,6 +215,11 @@ class NTScalar(object):
         except Exception as e:
             raise ValueError("Can't construct %s around %s (%s): %s" % (T, value, type(value), e))
 
+    def assign(self, V, py):
+        """Store python value in Value
+        """
+        V.value = py
+
 if sys.version_info < (3, 0):
     class ntlong(ntwrappercommon, long):
         pass

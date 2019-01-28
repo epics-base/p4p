@@ -60,6 +60,7 @@ class ClientUnwrapper(object):
         self.nt = nt
         self.id = None
         self._wrap = self._unwrap = lambda x:x
+        self._assign = self._default_assign
     def wrap(self, val):
         """Pack a arbitrary python object into a Value
         """
@@ -70,13 +71,29 @@ class ClientUnwrapper(object):
         """Unpack a Value as some other python type
         """
         if val.getID()!=self.id:
-            # type change
-            nt = self.nt.get(val.getID())
-            if nt is not None:
-                nt = nt() # instancate
-                self._wrap, self._unwrap = nt.wrap, nt.unwrap
-                self.id = val.getID()
+            self._update(val)
         return self._unwrap(val)
+
+    def assign(self, V, value):
+        if V.getID()!=self.id:
+            self._update(V)
+        self._assign(V, value)
+
+    def _update(self, val):
+        # type change
+        nt = self.nt.get(val.getID())
+        if nt is not None:
+            nt = nt() # instancate
+            self._wrap, self._unwrap = nt.wrap, nt.unwrap
+            self._assign = nt.assign
+            self.id = val.getID()
+        else:
+            # reset
+            self._wrap = self._unwrap = lambda x:x
+            self._assign = self._default_assign
+
+    def _default_assign(self, V, value):
+        V.value = value # assume NTScalar-like
 
     def __repr__(self):
         return '%s(%s)'%(self.__class__.__name__, repr(self.nt))
