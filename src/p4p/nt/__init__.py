@@ -28,6 +28,7 @@ __all__ = [
 _default_nt = {
     "epics:nt/NTScalar:1.0": NTScalar,
     "epics:nt/NTScalarArray:1.0": NTScalar,
+    "epics:nt/NTEnum:1.0": NTEnum,
     "epics:nt/NTNDArray:1.0": NTNDArray,
 }
 
