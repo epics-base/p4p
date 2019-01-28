@@ -142,3 +142,8 @@ class NTNDArray(object):
             # Union empty.  treat as zero-length char array
             V = numpy.zeros((0,), dtype=numpy.uint8)
         return V.view(klass.ntndarray)._store(value)
+
+    def assign(self, V, py):
+        """Store python value in Value
+        """
+        V.value = py
