@@ -165,7 +165,7 @@ class Context(raw.Context):
             op.close()
 
     @asyncio.coroutine
-    def put(self, name, values, request=None, process=None, wait=None):
+    def put(self, name, values, request=None, process=None, wait=None, get=True):
         """Write a new value of some number of PVs.
 
         :param name: A single name string or list of name strings
@@ -173,6 +173,8 @@ class Context(raw.Context):
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :param str process: Control remote processing.  May be 'true', 'false', 'passive', or None.
         :param bool wait: Wait for all server processing to complete.
+        :param bool get: Whether to do a Get before the Put.  If True then the value passed to the builder callable
+                         will be initialized with recent PV values.  eg. use this with NTEnum to find the enumeration list.
 
         When invoked with a single name then returns is a single value.
         When invoked with a list of name, then returns a list of values
@@ -197,7 +199,7 @@ class Context(raw.Context):
 
         singlepv = isinstance(name, (bytes, str))
         if singlepv:
-            return (yield from self._put_one(name, values, request=request))
+            return (yield from self._put_one(name, values, request=request, get=get))
 
         elif request is None:
             request = [None] * len(name)
@@ -205,12 +207,12 @@ class Context(raw.Context):
         assert len(name) == len(request), (name, request)
         assert len(name) == len(values), (name, values)
 
-        futs = [self._put_one(N, V, request=R) for N, V, R in zip(name, values, request)]
+        futs = [self._put_one(N, V, request=R, get=get) for N, V, R in zip(name, values, request)]
 
         yield from asyncio.gather(futs, loop=self.loop)
 
     @asyncio.coroutine
-    def _put_one(self, name, value, request=None):
+    def _put_one(self, name, value, request=None, get=True):
         F = asyncio.Future(loop=self.loop)
 
         def cb(value):
@@ -223,7 +225,7 @@ class Context(raw.Context):
                 F.set_result(value)
         cb = partial(self.loop.call_soon_threadsafe, cb)
 
-        op = super(Context, self).put(name, cb, builder=value, request=request)
+        op = super(Context, self).put(name, cb, builder=value, request=request, get=get)
 
         _log.debug('put %s <- %s request=%s', name, LazyRepr(value), request)
         try:

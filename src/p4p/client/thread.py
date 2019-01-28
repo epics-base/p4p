@@ -286,7 +286,7 @@ class Context(raw.Context):
             return result
 
     def put(self, name, values, request=None, timeout=5.0, throw=True,
-            process=None, wait=None):
+            process=None, wait=None, get=True):
         """Write a new value of some number of PVs.
 
         :param name: A single name string or list of name strings
@@ -297,6 +297,8 @@ class Context(raw.Context):
                      If False then the Exception is returned instead of the Value
         :param str process: Control remote processing.  May be 'true', 'false', 'passive', or None.
         :param bool wait: Wait for all server processing to complete.
+        :param bool get: Whether to do a Get before the Put.  If True then the value passed to the builder callable
+                         will be initialized with recent PV values.  eg. use this with NTEnum to find the enumeration list.
 
         :returns: A None or Exception, or list of same
 
@@ -356,7 +358,7 @@ class Context(raw.Context):
                     except:
                         _log.exception("Error queuing put result %s", LazyRepr(value))
 
-                ops[i] = raw_put(n, cb, builder=value, request=req)
+                ops[i] = raw_put(n, cb, builder=value, request=req, get=get)
 
             for _n in range(len(name)):
                 try:

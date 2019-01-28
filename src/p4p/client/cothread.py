@@ -91,7 +91,7 @@ class Context(raw.Context):
 
         return ret
 
-    def put(self, name, values, request=None, process=None, wait=None, timeout=5.0, throw=True):
+    def put(self, name, values, request=None, process=None, wait=None, timeout=5.0, get=True, throw=True):
         """Write a new value of some number of PVs.
 
         :param name: A single name string or list of name strings
@@ -102,6 +102,8 @@ class Context(raw.Context):
                      If False then the Exception is returned instead of the Value
         :param str process: Control remote processing.  May be 'true', 'false', 'passive', or None.
         :param bool wait: Wait for all server processing to complete.
+        :param bool get: Whether to do a Get before the Put.  If True then the value passed to the builder callable
+                         will be initialized with recent PV values.  eg. use this with NTEnum to find the enumeration list.
 
         :returns: A None or Exception, or list of same
 
@@ -129,7 +131,7 @@ class Context(raw.Context):
 
         singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
-            return self._put_one(name, values, request=request, timeout=timeout, throw=throw)
+            return self._put_one(name, values, request=request, timeout=timeout, throw=throw, get=get)
 
         elif request is None:
             request = [None] * len(name)
@@ -138,12 +140,12 @@ class Context(raw.Context):
         assert len(name) == len(values), (name, values)
 
         return cothread.WaitForAll(
-            [cothread.Spawn(self._put_one, N, V, request=R, timeout=timeout, throw=throw,
+            [cothread.Spawn(self._put_one, N, V, request=R, timeout=timeout, throw=throw, get=get,
                             raise_on_wait=True)
              for N, V, R in zip(name, values, request)]
         )
 
-    def _put_one(self, name, value, request=None, timeout=5.0, throw=True):
+    def _put_one(self, name, value, request=None, timeout=5.0, get=True, throw=True):
         done = cothread.Event(auto_reset=False)
 
         def cb(value):
@@ -155,7 +157,7 @@ class Context(raw.Context):
 
         cb = partial(cothread.Callback, cb)
 
-        op = super(Context, self).put(name, cb, builder=value, request=request)
+        op = super(Context, self).put(name, cb, builder=value, request=request, get=get)
 
         _log.debug('put %s %s request=%s', name, LazyRepr(value), request)
 
