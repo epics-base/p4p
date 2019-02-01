@@ -71,7 +71,8 @@ class Context(raw.Context):
     :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
     :param conf dict: Configuration to pass to provider.  Depends on provider selected.
     :param bool useenv: Allow the provider to use configuration from the process environment.
-    :param callable unwrap: Controls :ref:`unwrap`.  Set False to disable
+    :param dict nt: Controls :ref:`unwrap`.  None uses defaults.  Set False to disable
+    :param dict unwrap: Legacy :ref:`unwrap`.
 
     The methods of this Context will block the calling thread until completion or timeout
 
@@ -107,9 +108,9 @@ class Context(raw.Context):
                 yield from dostuff(ctxt, timeout=5)
     """
 
-    def __init__(self, provider, conf=None, useenv=True, unwrap=None,
+    def __init__(self, provider, conf=None, useenv=True, nt=None, unwrap=None,
                  loop=None):
-        super(Context, self).__init__(provider, conf=conf, useenv=useenv, unwrap=unwrap)
+        super(Context, self).__init__(provider, conf=conf, useenv=useenv, nt=nt, unwrap=unwrap)
         self.loop = loop or asyncio.get_event_loop()
 
     @asyncio.coroutine

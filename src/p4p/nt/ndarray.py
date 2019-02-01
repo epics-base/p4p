@@ -59,6 +59,8 @@ class ntndarray(ntwrappercommon, numpy.ndarray):
 
 class NTNDArray(object):
     """Representation of an N-dimensional array with meta-data
+
+    Translates into `ntndarray`
     """
     Value = Value
     ntndarray = ntndarray

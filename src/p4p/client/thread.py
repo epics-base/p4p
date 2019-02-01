@@ -149,7 +149,8 @@ class Context(raw.Context):
     :param bool useenv: Allow the provider to use configuration from the process environment.
     :param int workers: Size of thread pool in which monitor callbacks are run.  Default is 4
     :param int maxsize: Size of internal work queue used for monitor callbacks.  Default is unlimited
-    :param callable unwrap: Controls :ref:`unwrap`.  Set False to disable
+    :param dict nt: Controls :ref:`unwrap`.  None uses defaults.  Set False to disable
+    :param dict unwrap: Legacy :ref:`unwrap`.
     :param WorkQueue queue: A work queue through which monitor callbacks are dispatched.
 
     The methods of this Context will block the calling thread until completion or timeout
@@ -170,11 +171,11 @@ class Context(raw.Context):
     name = ''
     "Provider name string"
 
-    def __init__(self, provider, conf=None, useenv=True, unwrap=None,
+    def __init__(self, provider, conf=None, useenv=True, nt=None, unwrap=None,
                  maxsize=0, queue=None):
         self._channel_lock = threading.Lock()
 
-        super(Context, self).__init__(provider, conf=conf, useenv=useenv, unwrap=unwrap)
+        super(Context, self).__init__(provider, conf=conf, useenv=useenv, nt=nt, unwrap=unwrap)
 
         # lazy start threaded WorkQueue
         self._Q = self._T = None

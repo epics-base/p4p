@@ -151,6 +151,8 @@ SharedPV API
 
     .. automethod:: post
 
+    .. automethod:: current
+
 
 SharedPV Handler Interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

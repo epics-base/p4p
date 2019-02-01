@@ -23,6 +23,7 @@ __all__ = [
     'NTMultiChannel',
     'NTTable',
     'NTNDArray',
+    'defaultNT',
 ]
 
 _default_nt = {
@@ -31,6 +32,13 @@ _default_nt = {
     "epics:nt/NTEnum:1.0": NTEnum,
     "epics:nt/NTNDArray:1.0": NTNDArray,
 }
+
+def defaultNT():
+    """Returns a copy of the default NT helper mappings.
+
+    :since: 3.1.0
+    """
+    return _default_nt.copy()
 
 class UnwrapOnly(object):
     def __init__(self, unwrap):

@@ -9,68 +9,87 @@ Helpers for creating standardized :py:class:`Type` instances.
 as defined by http://epics-pvdata.sourceforge.net/alpha/normativeTypes/normativeTypes.html
 .
 
-These helpers have one or more of the following.
-
-A static method *buildType()* which returns a :class:`~p4p.Type` based on some helper specific conditions.
-
-An instance of a helper takes the same, or similar, arguments as the *buildType()*.
-In fact, the result of *buildType()* is stored in an attribute named *type*.
-The instance may have a method *wrap()* which takes some python types and stores them in the returned :class:`~p4p.Value`.
-This may be used with the :class:`p4p.rpc.rpc` decorator to specify the return type. ::
-
-    from p4p.rpc import rpc
-    class MyRPCServer(object):
-        @rpc(NTScalar("d"))
-        def magicnumber(self):
-            return 4
-
-In this example, the returned *4* is passed to :meth:`NTScalar.wrap` which stores it as a double precision float.
-
-In addition, NT helpers may have one, or more, method unwrap*() which accept a :class:`~p4p.Value` and return
-some python value.
-
 .. _unwrap:
 
 Automatic Value unwrapping
 --------------------------
 
-For convenience, various operations including :py:meth:`p4p.client.thread.Context.get`
-can automatically transform the returned :py:class:`~p4p.Value`.
+Automatic transformation can be performed. between `Value` and more convenient types.
 
-For example, by default a NTScalar with a floating point value becomes :py:class:`scalar.ntfloat`
-which behaves list the :class:`float` type with some additional attributes
+Transformation may be performed at the following points:
 
-* .timestamp - The update timestamp is a float representing seconds since 1 jan 1970 UTC.
-* .raw_stamp - A tuple of (seconds, nanoseconds)
-* .severity - An integer in the range [0, 3]
-* .raw - The complete underlying :class:`~p4p.Value`
+* The result of `p4p.client.thread.Context.get()`,
+* The argument the callable passed to `p4p.client.thread.Context.monitor()`
+* The argument of `p4p.client.thread.Context.put()`
+* The argument of `p4p.client.thread.Context.rpc()`
+* The argument of `p4p.server.thread.SharedPV.open()`
+* The argument of `p4p.server.thread.SharedPV.post()`
+* The result of `p4p.server.thread.SharedPV.current()`
 
-Controlling Unwrapping
+Controlling (Un)wrapping
 ^^^^^^^^^^^^^^^^^^^^^^
 
-The *unwrap* argument of client Context controls whether unwrapping is done.
-Possible values are None (the default), False (no unwrapping), or a dict with
-additional/custom unwrappers.
+Client `p4p.client.thread.Context` accepts an argument nt= which may be
+`None` to sure some reasonable defaults.  `False` disables wrapping,
+and always works with `Value`.  *nt=* may also be passed a dictionary
+keyed by top level structure IDs mapped to callables returning objects
+conforming to `WrapperInterface`.
 
-This dictionary is keyed using the structure ID.
-The value must be a callable which takes one argument,
-which is a :class:`~p4p.Value`.
+The *unwrap* argument is legacy which functions like *nt=* but
+mapping to plain functions instead of wrapper objects. ::
 
-For example.
-A simplified version of the default NTScalar unwrapping which discards meta-data
-would be. ::
+    from p4p.client.thread import Context
+    ctxt=Context('pva', nt=False) # disable (un)wrap.  All methods use Value
 
-   >>> C=Context('pva', unwrap={"epics:nt/NTScalar:1.0":lambda V:V.value})
-   >>> C.get('pv:counter')
-   5
+Server `p4p.server.thread.SharedPV` accepts an argument *nt=* which
+is an instance of an object conforming to `WrapperInterface`. ::
 
-Which extracts the 'value' field and discards all others.
+    from p4p.server.thread import SharedPV
+    from p4p.nt import NTScalar
+    pv1 = SharedPV() # pv1.open() expects a Value
+    pv2 = SharedPV(nt=NTScalar('d'))
+    pv2.open(4.2) # NTScalar automatically wraps this float into a Value
 
-To unwrap NTTable as an iterator yielding :class:`OrderedDict`. ::
+Conforming objects include `NTScalar`, `NTNDArray`, and others listed below.
 
-   >>> C=Context('pva', unwrap={"epics:nt/NTTable:1.0":p4p.nt.NTTable.unwrap})
-   >>> for row in C.rpc('pv:name', ....):
-        print(row)
+.. autofunction:: defaultNT
+
+NT wrap/unwrap interface
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: WrapperInterface
+
+    :since: 3.1.0
+
+    .. classmethod:: buildtype()
+
+        Returns a `Type` based on some helper specific conditions.
+
+        :rtype: `Type`
+
+    .. method:: __init__
+
+        Each time the type ID of a Channel changes, a new wrapper will be instantiated if available.
+
+    .. method:: unwrap(Value) -> object
+
+        Called with a `Value` and may return an arbitrary object.
+
+        Called by both clients and servers.  eg. during `p4p.client.thread.Context.get()`
+        and `p4p.server.thread.SharedPV.current()`.
+
+    .. method:: wrap(object) -> Value
+
+        Called with an arbitrary object which it should try to translate into a `Value`.
+
+        Called by servers.  eg. during `p4p.server.thread.SharedPV.post()`.
+
+    .. method:: assign(Value, object)
+
+        Called to update a `Value` based on an arbitrary object.
+
+        Called by clients.  eg. during `p4p.client.thread.Context.put()`, where
+        the get= argument effects the state of the `Value` passed in.
 
 API Reference
 -------------
@@ -81,11 +100,19 @@ API Reference
 
     .. automethod:: wrap
 
+    .. automethod:: assign
+
     .. automethod:: unwrap
 
-.. autoclass:: NTMultiChannel
+.. autoclass:: NTNDArray
 
     .. automethod:: buildType
+
+    .. automethod:: wrap
+
+    .. automethod:: assign
+
+    .. automethod:: unwrap
 
 .. autoclass:: NTTable
 
@@ -101,6 +128,10 @@ API Reference
 
     .. automethod:: wrap
 
+.. autoclass:: NTMultiChannel
+
+    .. automethod:: buildType
+
 .. currentmodule:: p4p.nt.scalar
 
 .. autoclass:: ntfloat
@@ -112,3 +143,7 @@ API Reference
 .. autoclass:: ntnumericarray
 
 .. autoclass:: ntstringarray
+
+.. currentmodule:: p4p.nt.ndarray
+
+.. autoclass:: ntndarray
