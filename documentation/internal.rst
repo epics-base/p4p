@@ -45,6 +45,25 @@ Type and Value
 API Reference
 -------------
 
+Raw client API
+~~~~~~~~~~~~~~
+
+.. currentmodule:: p4p.client.raw
+
+.. automodule:: p4p.client.raw
+    :members:
+
+Raw server API
+~~~~~~~~~~~~~~
+
+.. currentmodule:: p4p.server.raw
+
+.. automodule:: p4p.server.raw
+    :members:
+
+C Extension
+~~~~~~~~~~~
+
 .. currentmodule:: p4p._p4p
 
 .. automodule:: p4p._p4p
@@ -54,3 +73,4 @@ API Reference
     .. autoclass:: Array
 
     .. autofunction:: clearProviders
+
