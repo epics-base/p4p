@@ -107,14 +107,14 @@ class NTNDArray(object):
             ('uniqueId', 'i'),
             ('alarm', alarm),
             ('timeStamp', timeStamp),
-            ('dimension', ('aS', None, [
+            ('dimension', ('aS', 'dimension_t', [
                 ('size', 'i'),
                 ('offset', 'i'),
                 ('fullSize', 'i'),
                 ('binning', 'i'),
                 ('reverse', '?'),
             ])),
-            ('attribute', ('aS', None, [
+            ('attribute', ('aS', 'epics:nt/NTAttribute:1.0', [
                 ('name', 's'),
                 ('value', 'v'),
                 ('tags', 'as'),
@@ -132,16 +132,23 @@ class NTNDArray(object):
     def wrap(self, value):
         """Wrap numpy.ndarray as Value
         """
+        attrib = getattr(value, 'attrib', {})
 
         S, NS = divmod(time.time(), 1.0)
-        value = numpy.asarray(value)
+        value = numpy.asarray(value) # loses any special/augmented attributes
         dims = list(value.shape)
         dims.reverse() # inner-most sent as left
 
-        attrib = getattr(value, 'attrib', {})
         if 'ColorMode' not in attrib:
-            attrib['ColorMode'] = 0 if value.ndim==2 else 4 # NDArray::getInfo() treats unknown as RGB3
-        # else: assume caller knows what ColorMode means
+            # attempt to infer color mode from shape
+            if value.ndim==2:
+                attrib['ColorMode'] = 0 # gray
+
+            elif value.ndim==3:
+                for idx,dim in enumerate(dims):
+                    if dim==3: # assume it's a color
+                        attrib['ColorMode'] = 2 + idx  # 2 - RGB1, 3 - RGB2, 4 - RGB3
+                        break # assume that the first is color, and any subsequent dim=3 is a thin ROI
 
         dataSize = value.nbytes
 

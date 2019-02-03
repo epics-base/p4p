@@ -19,12 +19,24 @@ from p4p.nt import NTNDArray
 from p4p.server import Server, StaticProvider
 from p4p.server.thread import SharedPV
 
-logging.basicConfig(level=logging.INFO)
+def getargs():
+    from argparse import ArgumentParser
+    P = ArgumentParser()
+    P.add_argument('pvname')
+    P.add_argument('-g', '--gray', action='store_const', const=True, default=True)
+    P.add_argument('-C', '--color', action='store_const', const=False, dest='gray')
+    P.add_argument('-d', '--debug', action='store_const', const=logging.DEBUG, default=logging.INFO)
+    return P.parse_args()
 
-pv = SharedPV(nt=NTNDArray(), initial=face(gray=True))
+args = getargs()
+
+logging.basicConfig(level=args.debug)
+
+pv = SharedPV(nt=NTNDArray(),
+              initial=face(gray=args.gray))
 
 provider = StaticProvider('face')
-provider.add(sys.argv[1], pv)
-print('serving pv:', sys.argv[1])
+provider.add(args.pvname, pv)
+print('serving pv:', args.pvname)
 
 Server.forever(providers=[provider])

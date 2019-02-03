@@ -297,33 +297,38 @@ class TestArray(RefTestCase):
         self.assertEqual(V.dimension[1].size, V2.dimension[1].size)
 
     def test_unwrap_3d(self):
-        pixels = numpy.array([[[ 0,  1,  2,  3],
-            [ 4,  5,  6,  7],
-            [ 8,  9, 10, 11]],
+        # scipy.misc.face().shape==(768, 1024, 3)
+        # in AD world this is [3, 1024, 768) w/ RGB1
 
-           [[12, 13, 14, 15],
-            [16, 17, 18, 19],
-            [20, 21, 22, 23]]], dtype='u1')
+        # we test with 4x2 RGB1
+        pixels = numpy.array([
+            [(1,0,0), (2,0,0), (3,0,0), (4,0,0)],
+            [(5,0,0), (6,0,0), (7,0,0), (8,0,0)],
+        ], dtype='u1')
+        self.assertEqual(pixels.shape, (2, 4, 3))
 
+        # manually construct matching NTNDArray
         V = Value(nt.NTNDArray.buildType(), {
-            'value': ('ubyteValue', numpy.arange(24, dtype='u1')),
+            'value': ('ubyteValue', pixels.flatten()),
             'dimension': [
+                {'size': 3}, # "color"
                 {'size': 4}, # X, columns
-                {'size': 3}, # Y, rows
-                {'size': 2}, # "color"
+                {'size': 2}, # Y, rows
             ],
             'attribute': [
-                {'name': 'ColorMode', 'value': 4},
+                {'name': 'ColorMode', 'value': 2},
             ],
         })
         self.assertEqual(V.value.dtype, pixels.dtype)
 
         img = nt.NTNDArray.unwrap(V)
 
-        self.assertEqual(img.shape, (2, 3, 4))
+        self.assertEqual(img.shape, (2, 4, 3))
         assert_aequal(img, pixels)
         self.assertEqual(img.dtype, pixels.dtype)
+        self.assertDictEqual(img.attrib, {u'ColorMode':2}) # RGB1
 
+        # round trip
         V2 = nt.NTNDArray().wrap(img)
 
         assert_aequal(V.value, V2.value)
@@ -331,3 +336,16 @@ class TestArray(RefTestCase):
         self.assertEqual(V.dimension[1].size, V2.dimension[1].size)
         self.assertEqual(V.dimension[2].size, V2.dimension[2].size)
         self.assertEqual(V2.value.dtype, pixels.dtype)
+        self.assertEqual(V2.attribute[0].name, u'ColorMode')
+        self.assertEqual(V2.attribute[0].value, 2)
+
+        # wrap up raw array  (no pixels.attrib)
+        V2 = nt.NTNDArray().wrap(pixels)
+
+        assert_aequal(V.value, V2.value)
+        self.assertEqual(V.dimension[0].size, V2.dimension[0].size)
+        self.assertEqual(V.dimension[1].size, V2.dimension[1].size)
+        self.assertEqual(V.dimension[2].size, V2.dimension[2].size)
+        self.assertEqual(V2.value.dtype, pixels.dtype)
+        self.assertEqual(V2.attribute[0].name, u'ColorMode')
+        self.assertEqual(V2.attribute[0].value, 2)
