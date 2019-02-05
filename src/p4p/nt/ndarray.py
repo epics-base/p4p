@@ -98,13 +98,14 @@ class NTNDArray(object):
                 ('floatValue', 'af'),
                 ('doubleValue', 'ad'),
             ])),
-            ('codec', ('aS', None, [
+            ('codec', ('S', 'codec_t', [
                 ('name', 's'),
                 ('parameters', 'v'),
             ])),
             ('compressedSize', 'l'),
             ('uncompressedSize', 'l'),
             ('uniqueId', 'i'),
+            ('dataTimeStamp', timeStamp),
             ('alarm', alarm),
             ('timeStamp', timeStamp),
             ('dimension', ('aS', 'dimension_t', [
