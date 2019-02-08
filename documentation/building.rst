@@ -150,9 +150,9 @@ To run the unittests: ::
 
 or (change path as appropriate)::
 
-   PYTHONPATH=$PWD/python2.7/linux-x86_86 nosetests
+   PYTHONPATH=$PWD/python2.7/linux-x86_64 nosetests
 
 For testing purposes several simple command line client tools are provided.
 For further information run: ::
 
-   PYTHONPATH=$PWD/python2.7/linux-x86_86 python -m p4p.client.cli -h
+   PYTHONPATH=$PWD/python2.7/linux-x86_64 python -m p4p.client.cli -h
