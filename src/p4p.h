@@ -202,8 +202,10 @@ std::ostream& show_time(std::ostream&);
 #if PY_MAJOR_VERSION < 3
 // quiet some warnings about implict const char* -> char* cast
 // for API functions.  These are corrected in py >= 3.x
-#define PyObject_CallFunction(O, FMT, ...) PyObject_CallFunction(O, (char*)(FMT), ##__VA_ARGS__)
-#define PyObject_CallMethod(O, METH, FMT, ...) PyObject_CallMethod(O, (char*)(METH), (char*)(FMT), ##__VA_ARGS__)
+#ifndef PyObject_CallFunction
+#  define PyObject_CallFunction(O, FMT, ...) PyObject_CallFunction(O, (char*)(FMT), ##__VA_ARGS__)
+#  define PyObject_CallMethod(O, METH, FMT, ...) PyObject_CallMethod(O, (char*)(METH), (char*)(FMT), ##__VA_ARGS__)
+#endif
 #endif
 
 void p4p_type_register(PyObject *mod);
