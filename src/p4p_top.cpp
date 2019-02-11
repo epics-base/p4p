@@ -4,6 +4,8 @@
 #include <pv/logger.h>
 
 #include <pv/pvIntrospect.h> /* for pv/pvdVersion.h */
+#include <pv/pvData.h>
+#include <pv/pvAccess.h>
 #include <pv/pvaVersion.h>
 
 #include "p4p.h"
@@ -71,6 +73,18 @@ PyObject* p4p_getrefs(PyObject *junk, PyObject *args, PyObject *kws)
     return 0;
 }
 
+PyObject* p4p_force_lazy(PyObject *junk)
+{
+    try {
+        (void)epics::pvData::getFieldCreate();
+        (void)epics::pvData::getPVDataCreate();
+        (void)epics::pvAccess::ChannelProviderRegistry::clients();
+
+        Py_RETURN_NONE;
+    }CATCH()
+    return 0;
+}
+
 static struct PyMethodDef P4P_methods[] = {
     {"installProvider", (PyCFunction)p4p_add_provider, METH_VARARGS|METH_KEYWORDS,
      "installProvider(\"name\", provider)\n"
@@ -89,6 +103,9 @@ static struct PyMethodDef P4P_methods[] = {
      "Snapshot c++ reference counter values.\n"
      "If zeros is False, then counts with zero value are omitted.\n"
      ":returns: {\"name\",0}"},
+    {"_forceLazy", (PyCFunction)p4p_force_lazy, METH_NOARGS,
+     "Force lazy initialization which might cause false positives"
+     " leaks in differential ref counter testing."},
     {NULL}
 };
 

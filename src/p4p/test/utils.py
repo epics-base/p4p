@@ -15,10 +15,13 @@ import fnmatch
 import weakref
 
 from .. import listRefs
+from .._p4p import _forceLazy
 
 _log = logging.getLogger(__name__)
 
 _ignore_transient = os.environ.get('REFTEST_IGNORE_TRANSIENT', '') == 'YES'
+
+_forceLazy()
 
 try:
     import asyncio
