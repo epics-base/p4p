@@ -1,8 +1,7 @@
-
+import sys
 import logging
 import warnings
-_log = logging.getLogger(__name__)
-
+import re
 import time
 
 from .._p4p import (Server as _Server,
@@ -13,6 +12,11 @@ from .._p4p import (Server as _Server,
                     DynamicProvider as _DynamicProvider,
                     ServerOperation,
                     )
+
+if sys.version_info >= (3, 0):
+    unicode = str
+
+_log = logging.getLogger(__name__)
 
 __all__ = (
     'Server',
@@ -57,7 +61,15 @@ class Server(object):
     or a list of Provider instances.  A mixture is not yet supported.
     """
 
-    def __init__(self, isolate=False, **kws):
+    def __init__(self, providers, isolate=False, **kws):
+        if isinstance(providers, (bytes, unicode)):
+            providers = providers.split() # split on space
+            warnings.warn("Server providers list should be a list", DeprecationWarning)
+
+        for provider in providers:
+            if isinstance(provider, (bytes, unicode)) and not re.match(r'^[^ \t\n\r]+$', provider):
+                raise ValueError("Invalid provider name: '%s'"%provider)
+
         if isolate:
             kws['useenv'] = False
             kws['conf'] = {
@@ -68,7 +80,7 @@ class Server(object):
                 'EPICS_PVA_BROADCAST_PORT': '0',
             }
         _log.debug("Starting Server isolated=%s, %s", isolate, kws)
-        self._S = _Server(**kws)
+        self._S = _Server(providers=providers, **kws)
 
     def __enter__(self):
         return self
