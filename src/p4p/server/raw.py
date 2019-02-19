@@ -97,9 +97,9 @@ class SharedPV(_SharedPV):
     The full form of a handler object is: ::
 
         class MyHandler:
-            def put(self, op):
+            def put(self, pv, op):
                 pass
-            def rpc(self, op):
+            def rpc(self, pv, op):
                 pass
             def onFirstConnect(self): # may be omitted
                 pass
