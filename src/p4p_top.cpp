@@ -7,6 +7,7 @@
 #include <pv/pvData.h>
 #include <pv/pvAccess.h>
 #include <pv/pvaVersion.h>
+#include <pv/security.h>
 
 #include "p4p.h"
 
@@ -79,6 +80,7 @@ PyObject* p4p_force_lazy(PyObject *junk)
         (void)epics::pvData::getFieldCreate();
         (void)epics::pvData::getPVDataCreate();
         (void)epics::pvAccess::ChannelProviderRegistry::clients();
+        (void)epics::pvAccess::AuthenticationRegistry::clients();
 
         Py_RETURN_NONE;
     }CATCH()
