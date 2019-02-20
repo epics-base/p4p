@@ -283,6 +283,23 @@ static PyObject* staticprovider_remove(PyObject *self, PyObject *args, PyObject 
     return NULL;
 }
 
+static PyObject* staticprovider_keys(PyObject *self)
+{
+    TRY {
+        PyRef ret(PyList_New(0));
+
+        for(pvas::StaticProvider::const_iterator it(SELF->begin()), end(SELF->end()); it!=end; ++it)
+        {
+            PyRef name(PyUnicode_FromString(it->first.c_str()));
+            if(PyList_Append(ret.get(), name.get()))
+                return NULL;
+        }
+
+        return ret.release();
+    }CATCH()
+    return NULL;
+}
+
 static PyMethodDef StaticProvider_methods[] = {
     {"close", (PyCFunction)&staticprovider_close, METH_NOARGS,
      "close()\n"
@@ -295,6 +312,9 @@ static PyMethodDef StaticProvider_methods[] = {
      "Remove a SharedPV from this provider.  Raises KeyError if named PV doesn't exist.\n"
      "Returns the PV which has been removed.\n"
      "Implicitly `close()` s the PV before returning, disconnecting any clients."},
+    {"keys", (PyCFunction)&staticprovider_keys, METH_NOARGS,
+     "keys() -> [name]\n"
+     "Returns a list of PV names\n"},
     {NULL}
 };
 
