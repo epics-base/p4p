@@ -380,7 +380,7 @@ void ProxyPut::Requester::channelPutConnect(
 {
     TRACE(status);
     pvd::Status err(status);
-    typename requester_type::shared_pointer ds(downstream.lock());
+    requester_type::shared_pointer ds(downstream.lock());
     gw_operation_type::shared_pointer op(operation.lock());
     if(!ds) return;
 
@@ -498,7 +498,7 @@ void ProxyRPC::Requester::channelRPCConnect(
 {
     TRACE(status);
     pvd::Status err(status);
-    typename requester_type::shared_pointer ds(downstream.lock());
+    requester_type::shared_pointer ds(downstream.lock());
     gw_operation_type::shared_pointer op(operation.lock());
     if(!ds) return;
 
