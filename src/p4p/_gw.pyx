@@ -24,7 +24,8 @@ cdef extern from "<pv/sharedPtr.h>" namespace "std::tr1" nogil:
         void swap(shared_ptr&)
         long use_count()
         bool unique()
-        bool operator bool()  # works even when c++98 because the generated code need not differ
+        # not c++98...
+        #bool operator bool()
         bool operator!()
     cdef cppclass weak_ptr[T]:
         weak_ptr()
@@ -115,7 +116,7 @@ cdef class CreateOp:
         cdef shared_ptr[ChannelRequester] requester = self.requester.lock()
         cdef shared_ptr[GWProvider] provider = self.provider.lock()
 
-        if requester and provider:
+        if <bool>requester and <bool>provider:
             with nogil:
                 gwchan = provider.get().connect(dsname, usname, requester)
 
@@ -129,21 +130,21 @@ cdef class CreateOp:
 
     @property
     def peer(self):
-        if self.info:
+        if <bool>self.info:
             return self.info.get().peer.decode('UTF-8')
         else:
             return u''
 
     @property
     def identified(self):
-        if self.info:
+        if <bool>self.info:
             return self.info.get().identified
         else:
             return False
 
     @property
     def account(self):
-        if self.info:
+        if <bool>self.info:
             return self.info.get().account.decode('UTF-8')
         else:
             return u''
@@ -171,7 +172,7 @@ cdef class Channel:
 
     def close(self):
         cdef shared_ptr[GWChan] ch = self.channel.lock()
-        if ch:
+        if <bool>ch:
             ch.get().disconnect()
 
 @cython.no_gc_clear
