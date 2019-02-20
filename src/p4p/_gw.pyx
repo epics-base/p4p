@@ -134,8 +134,8 @@ cdef class CreateOp(InfoBase):
     def create(self, bytes name=None):
         cdef shared_ptr[GWChan] gwchan
         cdef Channel chan = Channel()
-        cdef string dsname = self.name.encode('UTF-8')
-        cdef string usname = (name or self.name).encode('UTF-8')
+        cdef string dsname = self.name
+        cdef string usname = name or self.name
         cdef shared_ptr[ChannelRequester] requester = self.requester.lock()
         cdef shared_ptr[GWProvider] provider = self.provider.lock()
 
@@ -259,13 +259,13 @@ Provider_base_traverse = (<PyTypeObject*>Provider).tp_traverse
 (<PyTypeObject*>Provider).tp_traverse = <traverseproc>holder_traverse
 
 def installGW(str name, dict config, object handler):
-    cdef string cname = name
+    cdef string cname = name.encode('utf-8')
     cdef ConfigurationBuilder builder
     cdef shared_ptr[GWProvider] provider
     cdef Provider ret = Provider()
 
     for K, V in config.items():
-        builder.add(K, V)
+        builder.add(K.encode('utf-8'), V.encode('utf-8'))
 
     with nogil:
         provider = GWProvider.build(cname, builder.push_map().build())

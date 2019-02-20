@@ -2,6 +2,7 @@
 See https://github.com/epics-extensions/ca-gateway/blob/master/docs/GATEWAY.pvlist
 """
 
+import socket
 import re
 from collections import defaultdict, OrderedDict
 
@@ -50,6 +51,7 @@ class PVList(object):
 
                     if parts:
                         for host in parts:
+                            host = self._gethostbyname(host)
                             deny_from[host].append(pattern)
 
                     else:
@@ -89,7 +91,12 @@ class PVList(object):
 
         self._allow_groups = tuple(range(1, 1+len(allow)))
 
+    @staticmethod
+    def _gethostbyname(host):
+        return socket.gethostbyname(host)
+
     def compute(self, pv, addr):
+        pv = pv.decode('UTF-8')
         P = self._deny_from.get(addr, self._deny_all)
 
         if not P.match(pv):

@@ -74,7 +74,7 @@ class GWHandler(object):
         self.serverep = None
         self.channels_lock = threading.Lock()
         self.channels = {}
-        self.prefix = args.prefix
+        self.prefix = args.prefix.encode('UTF-8')
 
         self.statusprovider = StaticProvider('gwstatus')
 
@@ -112,7 +112,7 @@ class GWHandler(object):
             _log.debug("Not allowed: %s by %s", pvname, peer)
             return self.provider.BanHostPV
         else:
-            ret = self.provider.testChannel(usname)
+            ret = self.provider.testChannel(usname.encode('UTF-8'))
             _log.debug("allowed: %s by %s -> %s", pvname, peer, ret)
             return ret
 
@@ -122,7 +122,7 @@ class GWHandler(object):
         usname, asg, asl = self.pvlist.compute(op.name, peer)
         if not usname:
             return None
-        chan = op.create(usname)
+        chan = op.create(usname.encode('UTF-8'))
 
         with self.channels_lock:
             try:
@@ -160,7 +160,7 @@ class GWHandler(object):
             raise RemoteError("Missing required arguments pv= user= and peer=")
 
         peer = socket.gethostbyname(peer)
-        pvname, asg, asl = self.pvlist.compute(pv, peer)
+        pvname, asg, asl = self.pvlist.compute(pv.encode('UTF-8'), peer)
         if not pvname:
             raise RemoteError("Denied")
 

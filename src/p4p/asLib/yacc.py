@@ -1,4 +1,4 @@
-
+import warnings
 from .lex import tokens
 
 start = 'asconfig'
@@ -79,8 +79,10 @@ def p_trap(p):
     """trap : ',' STRING
     """
     if p[2] not in ('TRAPWRITE', 'NOTRAPWRITE'):
-        raise SyntaxError
-    p[0] = p[2]=='TRAPWRITE'
+        warnings.warn("trap spec. must be 'TRAPWRITE' or 'NOTRAPWRITE'")
+        p[0] = False
+    else:
+        p[0] = p[2]=='TRAPWRITE'
 
 def p_error(p):
     raise ValueError("Syntax error on line %d at or before '%s'"%(p.lineno, p.value))

@@ -8,7 +8,7 @@ from ..asLib.pvlist import PVList
 
 class TestPVList(unittest.TestCase):
     def test_slac(self):
-        pvlist = b"""
+        pvlist = """
 EVALUATION ORDER ALLOW, DENY
 # comment
 .* ALLOW 
@@ -24,13 +24,13 @@ BEAM.* ALLOW RWINSTRMCC 1
 
         pvl = PVList(pvlist)
 
-        self.assertEqual(pvl.compute(b'BEAM:stuff', '127.0.0.1'), (b'BEAM:stuff', 'RWINSTRMCC', 1))
+        self.assertEqual(pvl.compute(b'BEAM:stuff', '127.0.0.1'), ('BEAM:stuff', 'RWINSTRMCC', 1))
 
-        self.assertEqual(pvl.compute(b'OTHER:stuff', '127.0.0.1'), (b'OTHER:stuff', 'DEFAULT', 0))
+        self.assertEqual(pvl.compute(b'OTHER:stuff', '127.0.0.1'), ('OTHER:stuff', 'DEFAULT', 0))
 
         self.assertEqual(pvl.compute(b'OTRS:DMP1:695:Image:X', '127.0.0.1'), (None, None, None))
 
-        self.assertEqual(pvl.compute(b'PATT:SYS0:1:MPSBURSTCTRLX', '127.0.0.1'), (b'PATT:SYS0:1:MPSBURSTCTRLX', 'CANWRITE', 0))
+        self.assertEqual(pvl.compute(b'PATT:SYS0:1:MPSBURSTCTRLX', '127.0.0.1'), ('PATT:SYS0:1:MPSBURSTCTRLX', 'CANWRITE', 0))
         self.assertEqual(pvl.compute(b'PATT:SYS0:1:MPSBURSTCTRLX', '1.2.3.4'), (None, None, None))
 
 class DummyEngine(Engine):
@@ -61,7 +61,7 @@ class TestACL(unittest.TestCase):
         self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':True})
 
     def test_slac(self):
-        eng = DummyEngine(b"""
+        eng = DummyEngine("""
 UAG(PHOTON)
 {
         root
