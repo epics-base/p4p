@@ -101,32 +101,8 @@ cdef extern from "gwchannel.h" nogil:
 
 GWProvider.prepare()
 
-cdef class CreateOp:
-    cdef readonly bytes name
-    cdef weak_ptr[ChannelRequester] requester
-    cdef weak_ptr[GWProvider] provider
+cdef class InfoBase(object):
     cdef shared_ptr[const PeerInfo] info
-    cdef object __weakref__
-
-    def create(self, bytes name=None):
-        cdef shared_ptr[GWChan] gwchan
-        cdef Channel chan = Channel()
-        cdef string dsname = self.name.encode('UTF-8')
-        cdef string usname = (name or self.name).encode('UTF-8')
-        cdef shared_ptr[ChannelRequester] requester = self.requester.lock()
-        cdef shared_ptr[GWProvider] provider = self.provider.lock()
-
-        if <bool>requester and <bool>provider:
-            with nogil:
-                gwchan = provider.get().connect(dsname, usname, requester)
-
-            if not gwchan:
-                raise RuntimeError("GW Provider will not create %s -> %s"%(usname, dsname))
-
-            chan.channel = <weak_ptr[GWChan]>gwchan
-            return chan
-        else:
-            raise RuntimeError("Dead CreateOp")
 
     @property
     def peer(self):
@@ -149,8 +125,35 @@ cdef class CreateOp:
         else:
             return u''
 
+cdef class CreateOp(InfoBase):
+    cdef readonly bytes name
+    cdef weak_ptr[ChannelRequester] requester
+    cdef weak_ptr[GWProvider] provider
+    cdef object __weakref__
 
-cdef class Channel:
+    def create(self, bytes name=None):
+        cdef shared_ptr[GWChan] gwchan
+        cdef Channel chan = Channel()
+        cdef string dsname = self.name.encode('UTF-8')
+        cdef string usname = (name or self.name).encode('UTF-8')
+        cdef shared_ptr[ChannelRequester] requester = self.requester.lock()
+        cdef shared_ptr[GWProvider] provider = self.provider.lock()
+
+        if <bool>requester and <bool>provider:
+            with nogil:
+                gwchan = provider.get().connect(dsname, usname, requester)
+
+            if not gwchan:
+                raise RuntimeError("GW Provider will not create %s -> %s"%(usname, dsname))
+
+            chan.channel = <weak_ptr[GWChan]>gwchan
+            chan.info = self.info
+            return chan
+        else:
+            raise RuntimeError("Dead CreateOp")
+
+
+cdef class Channel(InfoBase):
     cdef readonly bytes name
     cdef weak_ptr[GWChan] channel
     cdef object __weakref__
