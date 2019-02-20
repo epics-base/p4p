@@ -78,7 +78,7 @@ class PVList(object):
         self._deny_from = {addr:_re_join(exprs+deny_all, '?:') for addr, exprs in deny_from.items()}
         self._deny_all = _re_join(deny_all, '?:')
 
-        allow_pat, self._allow_actions = allow.keys(), allow.values()
+        allow_pat, self._allow_actions = list(allow.keys()), list(allow.values())
         # ALLOW entries are given in order of increascing precedence.
         # The last match in the file is used.
         allow_pat.reverse()

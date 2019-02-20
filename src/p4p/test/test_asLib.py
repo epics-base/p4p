@@ -8,7 +8,7 @@ from ..asLib.pvlist import PVList
 
 class TestPVList(unittest.TestCase):
     def test_slac(self):
-        pvlist = """
+        pvlist = b"""
 EVALUATION ORDER ALLOW, DENY
 # comment
 .* ALLOW 
@@ -61,7 +61,7 @@ class TestACL(unittest.TestCase):
         self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':True})
 
     def test_slac(self):
-        eng = DummyEngine("""
+        eng = DummyEngine(b"""
 UAG(PHOTON)
 {
         root
