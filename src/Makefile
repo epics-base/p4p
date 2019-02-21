@@ -61,8 +61,8 @@ include $(TOP)/configure/RULES
 include $(TOP)/configure/RULES_PY
 
 ifneq (,$(T_A))
-nose:
-	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose -P p4p $(NOSEFLAGS)
+nose.%:
+	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose -P $* $(NOSEFLAGS)
 
 # bounce back down to the sphinx generated Makefile
 # aren't Makefiles fun...
