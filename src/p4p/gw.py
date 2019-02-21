@@ -16,24 +16,6 @@ from .asLib.pvlist import PVList
 
 _log = logging.getLogger(__name__)
 
-def getargs(*args):
-    from argparse import ArgumentParser, ArgumentError
-    P = ArgumentParser()
-    #P.add_argument('--signore')
-    P.add_argument('--sip')
-    P.add_argument('--cip')
-    P.add_argument('--sport', type=int, default=5076)
-    P.add_argument('--cport', type=int, default=5076)
-    P.add_argument('--pvlist')
-    P.add_argument('--access')
-    P.add_argument('--prefix')
-    P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
-    P.add_argument('--debug', action='store_true')
-    args = P.parse_args(*args)
-    if not args.sip or not args.cip:
-        raise ArgumentError('arguments --cip and --sip are not optional')
-    return args
-
 def uricall(fn):
     @wraps(fn)
     def rpc(self, pv, op):
@@ -53,7 +35,7 @@ statsType = Type([
     ('banHostSize', NTScalar.buildType('L')),
     ('banPVSize', NTScalar.buildType('L')),
     ('banHostPVSize', NTScalar.buildType('L')),
-])
+], id='epics:p2p/Stats:1.0')
 
 permissionsType = Type([
     ('pv', 's'),
@@ -101,6 +83,7 @@ class GWHandler(object):
 
     def testChannel(self, pvname, peer):
         if pvname.startswith(self.prefix):
+            _log.debug("GWS ignores own status")
             return self.provider.BanPV
         elif peer == self.serverep:
             _log.warn('GWS ignoring seaches from GWC: %s', peer)
@@ -176,70 +159,96 @@ class GWHandler(object):
             'permission':chan.perm,
         })
 
-def main(args):
+class App(object):
+    @staticmethod
+    def getargs(*args):
+        from argparse import ArgumentParser, ArgumentError
+        P = ArgumentParser()
+        #P.add_argument('--signore')
+        P.add_argument('--sip')
+        P.add_argument('--cip')
+        P.add_argument('--sport', type=int, default=5076)
+        P.add_argument('--cport', type=int, default=5076)
+        P.add_argument('--pvlist')
+        P.add_argument('--access')
+        P.add_argument('--prefix')
+        P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
+        P.add_argument('--debug', action='store_true')
+        args = P.parse_args(*args)
+        if not args.sip or not args.cip:
+            raise ArgumentError('arguments --cip and --sip are not optional')
+        return args
+
+    def __init__(self, args):
+        if args.access:
+            with open(args.access, 'r') as F:
+                args.access = F.read()
+
+        if args.pvlist:
+            with open(args.pvlist, 'r') as F:
+                args.pvlist = F.read()
+
+        args.access = Engine(args.access)
+        args.pvlist = PVList(args.pvlist)
+
+        self.handler = GWHandler(args)
+
+        client_conf = {
+            'EPICS_PVA_ADDR_LIST':args.cip,
+            'EPICS_PVA_AUTO_ADDR_LIST':'NO',
+            'EPICS_PVA_BROADCAST_PORT':str(args.cport),
+        }
+        _log.info("Client initial config: %s", client_conf)
+        server_conf = {
+            'EPICS_PVAS_INTF_ADDR_LIST':args.sip,
+            'EPICS_PVAS_BEACON_ADDR_LIST':args.sip,
+            'EPICS_PVA_AUTO_ADDR_LIST':'NO',
+            'EPICS_PVAS_BROADCAST_PORT':str(args.sport),
+            # ignore list not fully implemented.  (aka. never populated or used)
+        }
+
+        self.client = _gw.installGW('gwc', client_conf, self.handler)
+        try:
+            self.handler.provider = self.client
+            self.server= Server(providers=[self.handler.statusprovider, 'gwc'],
+                        conf=server_conf, useenv=False)
+            # we're live now...
+        finally:
+            removeProvider('gwc')
+
+        server_conf = self.server.conf()
+        _log.info("Server config: %s", server_conf)
+        # try to ignore myself
+        self.handler.serverep = server_conf['EPICS_PVAS_INTF_ADDR_LIST']
+        _log.debug('ignore GWS searches %s', self.handler.serverep)
+
+    def run(self):
+        try:
+            while True:
+                # needs to be longer than twice the longest search interval
+                self.sleep(60)
+                # periodic cleanup of channel cache
+                _log.debug("Channel Cache sweep")
+                try:
+                    self.client.sweep()
+                    self.handler.sweep()
+                except:
+                    _log.exception("Error during periodic sweep")
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.server.stop()
+
+    @staticmethod
+    def sleep(dly):
+        time.sleep(dly)
+
+def main(args=None):
+    args = App.getargs(args)
+    logging.basicConfig(level=args.verbose)
     if args.debug:
         set_debug(logging.DEBUG)
-
-    if args.access:
-        with open(args.access, 'r') as F:
-            args.access = F.read()
-
-    if args.pvlist:
-        with open(args.pvlist, 'r') as F:
-            args.pvlist = F.read()
-
-    args.access = Engine(args.access)
-    args.pvlist = PVList(args.pvlist)
-
-    handler = GWHandler(args)
-
-    client_conf = {
-        'EPICS_PVA_ADDR_LIST':args.cip,
-        'EPICS_PVA_AUTO_ADDR_LIST':'NO',
-        'EPICS_PVA_BROADCAST_PORT':str(args.cport),
-    }
-    _log.info("Client initial config: %s", client_conf)
-    server_conf = {
-        'EPICS_PVAS_INTF_ADDR_LIST':args.sip,
-        # 'EPICS_PVAS_BEACON_ADDR_LIST': ????
-        'EPICS_PVA_AUTO_ADDR_LIST':'NO',
-        'EPICS_PVAS_BROADCAST_PORT':str(args.sport),
-        # ignore list not fully implemented.  (aka. never populated or used)
-    }
-
-    client = _gw.installGW('gwc', client_conf, handler)
-    try:
-        handler.provider = client
-        server= Server(providers=[handler.statusprovider, 'gwc'],
-                       conf=server_conf, useenv=False)
-        # we're live now...
-    finally:
-        removeProvider('provider')
-
-    try:
-        server_conf = server.conf()
-        _log.info("Server config: %s", server_conf)
-
-        # try to ignore myself
-        handler.serverep = server_conf['EPICS_PVAS_INTF_ADDR_LIST']
-        _log.debug('ignore GWS searches %s', handler.serverep)
-
-        while True:
-            # needs to be longer than twice the longest search interval
-            time.sleep(60)
-            # periodic cleanup of channel cache
-            _log.debug("Channel Cache sweep")
-            try:
-                client.sweep()
-                handler.sweep()
-            except:
-                _log.exception("Error during periodic sweep")
-    except KeyboardInterrupt:
-        pass
-    finally:
-        server.stop()
+    App(args).run()
 
 if __name__=='__main__':
-    args = getargs()
-    logging.basicConfig(level=args.verbose)
-    main(args)
+    main()

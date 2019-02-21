@@ -9,12 +9,14 @@ except ImportError:
 import unittest
 import gc
 import weakref
+import threading
 
 from .utils import RefTestCase
 from ..server import Server, StaticProvider, removeProvider
 from ..server.thread import SharedPV, _defaultWorkQueue
 from ..client.thread import Context, Disconnected, TimeoutError, RemoteError
 from ..nt import NTScalar
+from ..gw import App
 
 from .. import _gw
 
@@ -68,7 +70,7 @@ class TestGC(RefTestCase):
         self.assertIsNone(h())
         self.assertIsNone(gw())
 
-class TestGW(RefTestCase):
+class TestLowLevel(RefTestCase):
     timeout = 1
 
     class Handler(object):
@@ -96,7 +98,7 @@ class TestGW(RefTestCase):
                 _log.exception("Unable to create channel for %s", op.name)
 
     def setUp(self):
-        super(TestGW, self).setUp()
+        super(TestLowLevel, self).setUp()
 
         # upstream server
         self.pv = SharedPV(nt=NTScalar('i'), initial=42)
@@ -148,7 +150,7 @@ class TestGW(RefTestCase):
 
         self.assertIsNone(gw())
 
-        super(TestGW, self).tearDown()
+        super(TestLowLevel, self).tearDown()
 
     def test_get(self):
         val = self._ds_client.get('pv:ro', timeout=self.timeout)
@@ -186,3 +188,84 @@ class TestGW(RefTestCase):
                 # no activity on first subscription
                 with self.assertRaises(Empty):
                     Q2.get(timeout=0.01)
+
+class TestApp(App):
+    def __init__(self, args):
+        super(TestApp, self).__init__(args)
+        self.__evt = threading.Event()
+
+    def abort(self):
+        self.__evt.set()
+
+    def sleep(self, dly):
+        if self.__evt.wait(dly):
+            raise KeyboardInterrupt
+
+class TestHighLevel(RefTestCase):
+    timeout = 1
+
+    def setUp(self):
+        super(TestHighLevel, self).setUp()
+
+        # upstream server
+        self.pv = SharedPV(nt=NTScalar('i'), initial=42)
+        self._us_provider = StaticProvider('upstream')
+        self._us_provider.add('pv:name', self.pv)
+
+        @self.pv.put
+        def put(pv, op):
+            _log.debug("PUT %s", op.value())
+            pv.post(op.value())
+            op.done()
+
+        self._us_server = Server(providers=[self._us_provider], isolate=True)
+        us_conf = self._us_server.conf()
+        _log.debug("US server conf: %s", us_conf)
+
+        # gateway
+        args = TestApp.getargs([
+            '--sip','127.0.0.1',
+            '--sport','0',
+            '--cip','127.0.0.1',
+            '--cport', us_conf['EPICS_PVA_BROADCAST_PORT'],
+            '--prefix','gw:'
+        ])
+
+        self._app = TestApp(args)
+        self._main = threading.Thread(target=self._app.run, name='GW Main')
+        _log.debug("DS server conf: %s", self._app.server.conf())
+
+        # downstream client
+        self._ds_client = Context('pva', conf=self._app.server.conf(), useenv=False)
+
+        self._main.start()
+
+    def tearDown(self):
+        # downstream client
+        self._ds_client.close()
+        del self._ds_client
+
+        # gateway
+        self._app.abort()
+        self._main.join(self.timeout)
+        del self._app
+        del self._main
+
+        # upstream server
+        self._us_server.stop()
+        del self._us_provider
+        del self._us_server
+        del self.pv
+        _defaultWorkQueue.sync()
+
+        super(TestHighLevel, self).tearDown()
+
+    def test_get(self):
+        val = self._ds_client.get('pv:name', timeout=self.timeout)
+        self.assertEqual(val, 42)
+
+    def test_put(self):
+        self._ds_client.put('pv:name', 41, timeout=self.timeout)
+
+        val = self._ds_client.get('pv:name', timeout=self.timeout)
+        self.assertEqual(val, 41)
