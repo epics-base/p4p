@@ -112,11 +112,13 @@ class Engine(object):
 
         self._recompute()
 
-    def create(self, channel, group, user, host, level):
+    def create(self, channel, group, user, host, level, roles=[]):
         # Default to restrictive.  Used in case of error
         perm = 0
 
         uags = self._uag.get(user, set())
+        for role in roles:
+            uags |= self._uag.get('role:'+role, set())
         hags = self._hag_addr.get(host, set())
         rules = self._asg.get(group, self._asg_DEFAULT)
 

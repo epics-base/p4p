@@ -60,6 +60,32 @@ class TestACL(unittest.TestCase):
         eng.create(ch, 'othergrp', 'someone', 'somewhere', 0)
         self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':True})
 
+    def test_roles(self):
+        eng = DummyEngine("""
+UAG(SPECIAL) {
+    root,
+    group:admin
+}
+ASG(DEFAULT)
+{
+        RULE(1,READ)
+        RULE(1,WRITE) {
+            UAG(SPECIAL)
+        }
+}
+""")
+
+        for args, perm in [(('DEFAULT', 'someone', 'somewhere', 0),          {'put':False,'rpc':False, 'uncached':False}),
+                           (('DEFAULT', 'root', '1.2.3.4', 0),               {'put':True, 'rpc':False, 'uncached':False}),
+                           (('DEFAULT', 'someone', '1.2.3.4', 0, ['admin']), {'put':True, 'rpc':False, 'uncached':False}),
+                           ]:
+            try:
+                ch = self.DummyChannel()
+                eng.create(ch, *args)
+                self.assertDictEqual(ch.perm, perm)
+            except AssertionError as e:
+                raise AssertionError('%s -> %s : %s'%(args, perm ,e))
+
     def test_slac(self):
         eng = DummyEngine("""
 UAG(PHOTON)

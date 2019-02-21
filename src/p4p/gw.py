@@ -41,6 +41,7 @@ permissionsType = Type([
     ('pv', 's'),
     ('account', 's'),
     ('peer', 's'),
+    ('roles', 'as'),
     ('asg', 's'),
     ('asl', 'i'),
     ('permission', ('S', None, [
@@ -115,7 +116,7 @@ class GWHandler(object):
             channels.append(chan)
 
         try:
-            self.acf.create(chan, asg, op.account, peer, asl)
+            self.acf.create(chan, asg, op.account, peer, asl, op.roles)
         except:
             # create() should fail secure.  So allow this client to
             # connect R/O.  We already acknowledged the search, so
@@ -137,8 +138,12 @@ class GWHandler(object):
         self.statsPV.post(statsType(self.provider.stats()))
 
     @uricall
-    def asTest(self, op, pv=None, user=None, peer=None):
-        # TODO: take default user and peer from op
+    def asTest(self, op, pv=None, user=None, peer=None, roles=[]):
+        user = user or op.account()
+        roles = roles or op.roles()
+        peer = peer or op.peer().split(':')[0]
+        _log.debug("asTest %s %s %s", user, roles, peer)
+
         if not user or not peer or not pv:
             raise RemoteError("Missing required arguments pv= user= and peer=")
 
@@ -148,12 +153,13 @@ class GWHandler(object):
             raise RemoteError("Denied")
 
         chan=TestChannel()
-        self.acf.create(chan, asg, user, peer, asl)
+        self.acf.create(chan, asg, user, peer, asl, roles)
 
         return permissionsType({
             'pv':pv,
             'account':user,
             'peer':peer,
+            'roles':roles,
             'asg':asg,
             'asl':asl,
             'permission':chan.perm,

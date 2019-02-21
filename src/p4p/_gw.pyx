@@ -125,6 +125,13 @@ cdef class InfoBase(object):
         else:
             return u''
 
+    @property
+    def roles(self):
+        if <bool>self.info:
+            return [role.encode('UTF-8') for role in self.info.get().roles]
+        else:
+            return []
+
 cdef class CreateOp(InfoBase):
     cdef readonly bytes name
     cdef weak_ptr[ChannelRequester] requester
