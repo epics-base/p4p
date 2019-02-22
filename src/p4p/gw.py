@@ -142,8 +142,10 @@ class GWHandler(object):
 
     @uricall
     def asTest(self, op, pv=None, user=None, peer=None, roles=[]):
-        user = user or op.account()
-        roles = roles or op.roles()
+        if not user:
+            user = op.account()
+            if not roles:
+                roles = op.roles()
         peer = peer or op.peer().split(':')[0]
         _log.debug("asTest %s %s %s", user, roles, peer)
 
