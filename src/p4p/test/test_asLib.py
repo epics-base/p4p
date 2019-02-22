@@ -1,10 +1,13 @@
 import logging
 import warnings
+import logging
 
 import unittest
 
 from ..asLib import Engine
 from ..asLib.pvlist import PVList
+
+_log = logging.getLogger(__name__)
 
 class TestPVList(unittest.TestCase):
     def test_slac(self):
@@ -64,7 +67,7 @@ class TestACL(unittest.TestCase):
         eng = DummyEngine("""
 UAG(SPECIAL) {
     root,
-    group:admin
+    role:admin
 }
 ASG(DEFAULT)
 {
@@ -80,6 +83,7 @@ ASG(DEFAULT)
                            (('DEFAULT', 'someone', '1.2.3.4', 0, ['admin']), {'put':True, 'rpc':False, 'uncached':False}),
                            ]:
             try:
+                _log.debug('With: %s expect: %s', args, perm)
                 ch = self.DummyChannel()
                 eng.create(ch, *args)
                 self.assertDictEqual(ch.perm, perm)

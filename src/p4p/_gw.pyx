@@ -4,12 +4,97 @@
 cimport cython
 
 from libc.stddef cimport size_t
+from libc.string cimport strchr
 from libcpp cimport bool
 from libcpp.string cimport string
 from libcpp.set cimport set
+from libcpp.vector cimport vector
 
 from cpython.object cimport PyObject, PyTypeObject, traverseproc, visitproc
 from cpython.ref cimport Py_INCREF, Py_XDECREF
+
+cdef extern from "<osiSock.h>" nogil:
+    ctypedef int SOCKET
+    enum:INVALID_SOCKET
+    struct in_addr:
+        unsigned long s_addr
+    struct sockaddr:
+        pass
+    struct sockaddr_in:
+        int sin_family
+        unsigned short sin_port
+        in_addr sin_addr
+    union osiSockAddr:
+        sockaddr sa
+        sockaddr_in ia
+    SOCKET epicsSocketCreate ( int domain, int type, int protocol )
+    void epicsSocketDestroy(SOCKET sock)
+
+    unsigned sockAddrToDottedIP(const sockaddr* paddr, char* pBuf, unsigned bufSize )
+    int aToIPAddr(const char* pAddrString, unsigned short defaultPort, sockaddr_in* pIP)
+
+    enum: AF_INET
+
+cdef extern from "<pv/discoverInterfaces.h>" namespace "epics::pvAccess" nogil:
+    cdef struct ifaceNode:
+        osiSockAddr addr
+        osiSockAddr peer
+        osiSockAddr bcast
+        osiSockAddr mask
+        bool loopback
+        bool validP2P
+        bool validBcast
+
+    int discoverInterfaces(vector[ifaceNode]& list, SOCKET socket, const osiSockAddr *pMatchAddr) except+
+
+cdef showINet(const osiSockAddr& addr):
+    cdef char buf[30]
+    cdef char *sep
+    sockAddrToDottedIP(&addr.sa, buf, sizeof(buf))
+    sep = strchr(buf, ':')
+    if sep:
+        sep[0] = '\0'
+    return (<bytes>buf).decode('UTF-8')
+
+cdef class IFInfo(object):
+    @staticmethod
+    def current(int domain, int type, unicode match=None):
+        cdef SOCKET sock
+        cdef vector[ifaceNode] info
+        cdef osiSockAddr maddr
+        cdef osiSockAddr *pmatch = NULL
+
+        if match is not None:
+            if aToIPAddr(match.encode('UTF-8'), 0, &maddr.ia):
+                raise ValueError("%s not an IP address"%match)
+            pmatch = &maddr
+
+        sock = epicsSocketCreate(domain, type, 0)
+        if sock==INVALID_SOCKET:
+            raise RuntimeError("Unable to allocate socket")
+        try:
+            if discoverInterfaces(info, sock, pmatch):
+                raise RuntimeError("Unable to inspect network interfaces")
+        finally:
+            epicsSocketDestroy(sock)
+
+        ret = []
+        for node in info:
+            if node.addr.ia.sin_family!=AF_INET:
+                continue
+            ent = {
+                'loopback':node.loopback,
+                'addr':showINet(node.addr),
+            }
+            if node.mask.ia.sin_family==AF_INET:
+                ent['mask'] = showINet(node.mask)
+            if node.validP2P:
+                ent['peer'] = showINet(node.peer)
+            if node.validBcast:
+                ent['bcast'] = showINet(node.bcast)
+            ret.append(ent)
+
+        return ret
 
 ## PVD explicitly uses std::tr1::shared_ptr<> which is _sometimes_ a
 ## distinct type, and sometimes an alias for std::shared_ptr<>.
@@ -128,7 +213,7 @@ cdef class InfoBase(object):
     @property
     def roles(self):
         if <bool>self.info:
-            return [role.encode('UTF-8') for role in self.info.get().roles]
+            return [role.decode('UTF-8') for role in self.info.get().roles]
         else:
             return []
 
@@ -265,7 +350,7 @@ cdef int holder_traverse(PyObject* raw, visitproc visit, void* arg) except -1:
 Provider_base_traverse = (<PyTypeObject*>Provider).tp_traverse
 (<PyTypeObject*>Provider).tp_traverse = <traverseproc>holder_traverse
 
-def installGW(str name, dict config, object handler):
+def installGW(unicode name, dict config, object handler):
     cdef string cname = name.encode('utf-8')
     cdef ConfigurationBuilder builder
     cdef shared_ptr[GWProvider] provider

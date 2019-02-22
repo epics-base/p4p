@@ -27,12 +27,12 @@ class TestGC(RefTestCase):
         class Dummy(object):
             pass
         H = Dummy()
-        GW = _gw.installGW('nulltest', {'EPICS_PVA_BROADCAST_PORT': '0',
+        GW = _gw.installGW(u'nulltest', {'EPICS_PVA_BROADCAST_PORT': '0',
                                         'EPICS_PVA_SERVER_PORT': '0',
                                         'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
                                         'EPICS_PVA_ADDR_LIST': '127.0.0.1',
                                         'EPICS_PVA_AUTO_ADDR_LIST': '0'}, H)
-        removeProvider('nulltest')
+        removeProvider(u'nulltest')
 
         self.assertEqual(GW.use_count(), 1)
 
@@ -49,7 +49,7 @@ class TestGC(RefTestCase):
         class Dummy(object):
             pass
         H = Dummy()
-        GW = _gw.installGW('nulltest', {'EPICS_PVA_BROADCAST_PORT': '0',
+        GW = _gw.installGW(u'nulltest', {'EPICS_PVA_BROADCAST_PORT': '0',
                                         'EPICS_PVA_SERVER_PORT': '0',
                                         'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
                                         'EPICS_PVA_ADDR_LIST': '127.0.0.1',
@@ -59,7 +59,7 @@ class TestGC(RefTestCase):
             with Server(providers=['nulltest'], isolate=True):
                 self.assertFalse(GW.testChannel(b'invalid:pv:name'))
         finally:
-            removeProvider('nulltest')
+            removeProvider(u'nulltest')
 
         h = weakref.ref(H)
         gw = weakref.ref(GW)
@@ -116,7 +116,7 @@ class TestLowLevel(RefTestCase):
         # GW client side
         # placed weakref in global registry
         H = self.Handler()
-        H.provider = self.gw = _gw.installGW('gateway', self._us_server.conf(), H)
+        H.provider = self.gw = _gw.installGW(u'gateway', self._us_server.conf(), H)
 
         try:
             # GW server side
@@ -124,7 +124,7 @@ class TestLowLevel(RefTestCase):
         finally:
             # don't need this in the global registry anymore.
             # Server holds strong ref.
-            removeProvider('gateway')
+            removeProvider(u'gateway')
 
         # downstream client
         self._ds_client = Context('pva', conf=self._ds_server.conf(), useenv=False)
@@ -224,10 +224,8 @@ class TestHighLevel(RefTestCase):
 
         # gateway
         args = TestApp.getargs([
-            '--sip','127.0.0.1',
-            '--sport','0',
-            '--cip','127.0.0.1',
-            '--cport', us_conf['EPICS_PVA_BROADCAST_PORT'],
+            '--server','127.0.0.1',
+            '--client','127.0.0.1:%s'%us_conf['EPICS_PVA_BROADCAST_PORT'],
             '--prefix','gw:'
         ])
 

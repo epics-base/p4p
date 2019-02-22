@@ -1,4 +1,4 @@
-
+import sys
 import logging
 import time
 import socket
@@ -13,6 +13,9 @@ from . import set_debug
 from . import _gw
 from .asLib import Engine
 from .asLib.pvlist import PVList
+
+if sys.version_info >= (3, 0):
+    unicode = str
 
 _log = logging.getLogger(__name__)
 
@@ -165,24 +168,41 @@ class GWHandler(object):
             'permission':chan.perm,
         })
 
+class IFInfo(object):
+    def __init__(self, ep):
+        addr, _sep, port = ep.partition(':')
+        self.port = int(port or '5076')
+
+        info = _gw.IFInfo.current(socket.AF_INET, socket.SOCK_DGRAM, unicode(addr))
+        for iface in info:
+            if iface['addr']==addr:
+                self.__dict__.update(iface)
+                return
+        raise ValueError("No interface %s in %s"%(addr, info))
+
+    @property
+    def addr_list(self):
+        ret = [self.addr]
+        if hasattr(self, 'bcast'):
+            ret.append(self.bcast)
+        return ' '.join(ret)
+
 class App(object):
     @staticmethod
     def getargs(*args):
         from argparse import ArgumentParser, ArgumentError
         P = ArgumentParser()
         #P.add_argument('--signore')
-        P.add_argument('--sip')
-        P.add_argument('--cip')
-        P.add_argument('--sport', type=int, default=5076)
-        P.add_argument('--cport', type=int, default=5076)
-        P.add_argument('--pvlist')
-        P.add_argument('--access')
-        P.add_argument('--prefix')
+        P.add_argument('--server', help='Server interface address, with optional port')
+        P.add_argument('--client', help='Client interface address, with optional port')
+        P.add_argument('--pvlist', help='Optional PV list file.  Default allows all')
+        P.add_argument('--access', help='Optional ACF file.  Default allows all')
+        P.add_argument('--prefix', help='Prefix for status PVs')
         P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
         P.add_argument('--debug', action='store_true')
         args = P.parse_args(*args)
-        if not args.sip or not args.cip:
-            raise ArgumentError('arguments --cip and --sip are not optional')
+        if not args.server or not args.client:
+            raise ArgumentError('arguments --client and --server are not optional')
         return args
 
     def __init__(self, args):
@@ -197,30 +217,33 @@ class App(object):
         args.access = Engine(args.access)
         args.pvlist = PVList(args.pvlist)
 
+        srv_iface = IFInfo(args.server)
+        cli_iface = IFInfo(args.client)
+
         self.handler = GWHandler(args)
 
         client_conf = {
-            'EPICS_PVA_ADDR_LIST':args.cip,
+            'EPICS_PVA_ADDR_LIST':cli_iface.addr,
             'EPICS_PVA_AUTO_ADDR_LIST':'NO',
-            'EPICS_PVA_BROADCAST_PORT':str(args.cport),
+            'EPICS_PVA_BROADCAST_PORT':str(cli_iface.port),
         }
         _log.info("Client initial config: %s", client_conf)
         server_conf = {
-            'EPICS_PVAS_INTF_ADDR_LIST':args.sip,
-            'EPICS_PVAS_BEACON_ADDR_LIST':args.sip,
+            'EPICS_PVAS_INTF_ADDR_LIST':srv_iface.addr,
+            'EPICS_PVAS_BEACON_ADDR_LIST':srv_iface.addr_list,
             'EPICS_PVA_AUTO_ADDR_LIST':'NO',
-            'EPICS_PVAS_BROADCAST_PORT':str(args.sport),
+            'EPICS_PVAS_BROADCAST_PORT':str(srv_iface.port),
             # ignore list not fully implemented.  (aka. never populated or used)
         }
 
-        self.client = _gw.installGW('gwc', client_conf, self.handler)
+        self.client = _gw.installGW(u'gwc', client_conf, self.handler)
         try:
             self.handler.provider = self.client
             self.server= Server(providers=[self.handler.statusprovider, 'gwc'],
                         conf=server_conf, useenv=False)
             # we're live now...
         finally:
-            removeProvider('gwc')
+            removeProvider(u'gwc')
 
         server_conf = self.server.conf()
         _log.info("Server config: %s", server_conf)
