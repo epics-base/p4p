@@ -788,7 +788,7 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
             }
 
             if (asdict) {
-                PyRef dict(PyObject_CallFunction((PyObject*) &PyDict_Type, "O", list.release()));
+                PyRef dict(PyObject_CallFunction((PyObject*) &PyDict_Type, "O", list.get()));
                 return dict.release();
             }
 
