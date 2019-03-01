@@ -66,6 +66,8 @@ Server API
 
     .. automethod:: remove
 
+    .. automethod:: keys
+
 For situations where PV names are not known ahead of time,
 or when PVs are "created" only as requested, DynamicProvider should be used.
 

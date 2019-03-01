@@ -31,7 +31,7 @@ class Server(object):
 
     """Server(conf=None, useenv=True, providers=[""])
 
-    :param providers: A list of provider names or instances.
+    :param providers: A list of registered provider names or provider instances (`StaticProvider` or `DynamicProvider`).
     :param dict conf: Configuration keys for the server.  Uses same names as environment variables (aka. EPICS_PVAS_*)
     :param bool useenv: Whether to use process environment in addition to provided config.
     :param bool isolate: If True, override conf= and useenv= to select a configuration suitable for isolated testing.
@@ -45,7 +45,7 @@ class Server(object):
         # do something else
         S.stop()
 
-    As a convenience, a Server may be used as a context manager to automatically stop. ::
+    As a convenience, a Server may be used as a context manager to automatically `stop()`. ::
 
         with Server(providers=["example"]) as S:
             # do something else
@@ -55,10 +55,8 @@ class Server(object):
 
     Call Server.conf() to see a list of valid server (EPICS_PVAS_*) key names and the actual values.
 
-    A Server may be used as a Context Manager.  The Server is stop() 'd when the context exits.
-
     The providers list must be a list of name strings (cf. installProvider()),
-    or a list of Provider instances.  A mixture is not yet supported.
+    and/or Provider instances (`StaticProvider` or `DynamicProvider`).
     """
 
     def __init__(self, providers, isolate=False, **kws):
