@@ -27,7 +27,7 @@ Transformation may be performed at the following points:
 * The result of `p4p.server.thread.SharedPV.current()`
 
 Controlling (Un)wrapping
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Client `p4p.client.thread.Context` accepts an argument nt= which may be
 `None` to sure some reasonable defaults.  `False` disables wrapping,
