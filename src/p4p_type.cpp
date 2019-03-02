@@ -432,14 +432,14 @@ void p4p_type_register(PyObject *mod)
 
     P4PType::type.tp_methods = P4PType_members;
 
-    P4PType::finishType(mod, "Type");
+    P4PType::finishType(mod, "TypeBase");
 }
 
 PyObject* P4PType_wrap(PyTypeObject *type, const epics::pvData::Structure::const_shared_pointer& S)
 {
     assert(S.get());
     if(!PyType_IsSubtype(type, &P4PType::type))
-        throw std::runtime_error("Not a sub-class of _p4p.Type");
+        throw std::runtime_error("Not a sub-class of _p4p.TypeBase");
 
     // magic construction of potentially derived type...
 

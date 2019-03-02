@@ -1473,14 +1473,14 @@ void p4p_value_register(PyObject *mod)
 
     P4PValue::type.tp_methods = P4PValue_methods;
 
-    P4PValue::finishType(mod, "Value");
+    P4PValue::finishType(mod, "ValueBase");
 }
 
 epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *obj,
                                                            epics::pvData::BitSet *set)
 {
     if(!PyObject_TypeCheck(obj, &P4PValue::type))
-        throw std::runtime_error("Not a _p4p.Value");
+        throw std::runtime_error("Not a _p4p.ValueBase");
     Value& val = P4PValue::unwrap(obj);
     if(set && val.I)
         *set = *val.I;
@@ -1490,7 +1490,7 @@ epics::pvData::PVStructure::shared_pointer P4PValue_unwrap(PyObject *obj,
 std::tr1::shared_ptr<epics::pvData::BitSet> P4PValue_unwrap_bitset(PyObject *obj)
 {
     if(!PyObject_TypeCheck(obj, &P4PValue::type))
-        throw std::runtime_error("Not a _p4p.Value");
+        throw std::runtime_error("Not a _p4p.ValueBase");
     return P4PValue::unwrap(obj).I;
 }
 
@@ -1500,7 +1500,7 @@ PyObject *P4PValue_wrap(PyTypeObject *type,
 {
     assert(V);
     if(!PyType_IsSubtype(type, &P4PValue::type))
-        throw std::runtime_error("Not a sub-class of _p4p.Value");
+        throw std::runtime_error("Not a sub-class of _p4p.ValueBase");
 
     // magic construction of potentially derived type...
 
