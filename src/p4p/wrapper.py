@@ -2,7 +2,7 @@
 # which add functionality that is better expressed in python.
 # These types are then pushed (by _magic) down into extension
 # code where they will be used as the types passed to callbacks.
-from ._p4p import (Type as _Type, Value as _Value)
+from ._p4p import TypeBase, ValueBase
 
 __all__ = (
     'Type',
@@ -30,7 +30,7 @@ def UnionArray(spec=None, id=None):
     return ('aU', id, spec)
 
 
-class Type(_Type):
+class Type(TypeBase):
     """Type(fields, id=None)
 
     :param list fields: A list of tuples describing members of this data structure.
@@ -78,7 +78,7 @@ class Type(_Type):
     ==== =======
     """
     __slots__ = []  # we don't allow custom attributes for now
-    __contains__ = _Type.has
+    __contains__ = TypeBase.has
 
     def __call__(self, initial=None):
         return Value(self, initial)
@@ -98,10 +98,10 @@ class Type(_Type):
         return 'Type(%s, id="%s")' % (fields, id)
     __str__ = __repr__
 
-_Type._magic(Type)
+TypeBase._magic(Type)
 
 
-class Value(_Value):
+class Value(ValueBase):
     """Value(type[, initial])
 
     :param Type type: The `Type` describing the structure to be instanciated
@@ -135,7 +135,7 @@ class Value(_Value):
     """
     __slots__ = []  # prevent attribute access to invalid fields
 
-    __contains__ = _Value.has
+    __contains__ = ValueBase.has
 
     def keys(self):
         return self.type().keys()
@@ -194,7 +194,7 @@ class Value(_Value):
         * expand=False, parents=True gives a way of testing if anything changed within a set of interesting fields
           (cf. set.intersect).
         """
-        return _Value.changedSet(self, expand, parents)
+        return ValueBase.changedSet(self, expand, parents)
 
     # TODO: deprecate
     asSet = changedSet
@@ -202,7 +202,7 @@ class Value(_Value):
     def clear(self):
         self.mark(None, False)
 
-    __str__ = _Value.tostr
+    __str__ = ValueBase.tostr
 
     def __repr__(self):
         parts = []
@@ -221,4 +221,4 @@ class Value(_Value):
 
         return 'Value(%s)'%', '.join(parts)
 
-_Value._magic(Value)
+ValueBase._magic(Value)
