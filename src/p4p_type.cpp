@@ -94,7 +94,7 @@ void py2struct(pvd::FieldBuilderPtr& builder, PyObject *o)
             throw std::runtime_error("XXX");
 
         if(0) {
-        } else if(PyObject_IsInstance(val, (PyObject*)P4PType_type)) {
+        } else if(PyObject_IsInstance(val, (PyObject*)&P4PType::type)) {
             pvd::StructureConstPtr sub(P4PType_unwrap(val));
 
             builder->add(key, sub);
@@ -145,15 +145,20 @@ int P4PType_init(PyObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *spec;
     const char *id = NULL;
-    static const char *names[] = {"spec", "id", NULL};
+    PyObject *base = Py_None;
+    static const char *names[] = {"spec", "id", "base", NULL};
     TRY {
         if(SELF.get())
             return 0; // magic case when called from P4PType_wrap()
 
-        if(!PyArg_ParseTupleAndKeywords(args, kwds, "O|z", (char**)names, &spec, &id))
+        if(!PyArg_ParseTupleAndKeywords(args, kwds, "O|zO!", (char**)names, &spec, &id, (PyObject*)&P4PType::type, &base))
             return -1;
 
-        pvd::FieldBuilderPtr builder(pvd::getFieldCreate()->createFieldBuilder());
+        pvd::FieldBuilderPtr builder;
+        if(base==Py_None)
+            builder = pvd::getFieldCreate()->createFieldBuilder();
+        else
+            builder = pvd::getFieldCreate()->createFieldBuilder(P4PType::unwrap(base));
         if(id)
             builder->setId(id);
         py2struct(builder, spec);
