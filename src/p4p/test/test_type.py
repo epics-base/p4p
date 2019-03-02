@@ -187,3 +187,12 @@ class TestRawType(RefTestCase):
 
         T = _Type([('a', 'I')], id="foo")
         self.assertEqual(T.getID(), "foo")
+
+    def testExtend(self):
+        B = _Type([('a', 'I')])
+        S = _Type([('b', 'I')], base=B)
+
+        self.assertTupleEqual(S.aspy(), ('S', 'structure', [
+            ('a', 'I'),
+            ('b', 'I'),
+        ]))

@@ -31,10 +31,11 @@ def UnionArray(spec=None, id=None):
 
 
 class Type(TypeBase):
-    """Type(fields, id=None)
+    """Type(fields, id=None, base=None)
 
     :param list fields: A list of tuples describing members of this data structure.
     :param str id: Type label string.
+    :param Type base: Copy the fields of `Type`, then amend with the provided fields.
 
     A definition of a data structure consisting of a list of field names and types,
     as well as an optional type name string (id="").
