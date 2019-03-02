@@ -57,7 +57,7 @@ struct Value {
                        const pvd::BitSet::shared_pointer& bset,
                        bool unpackstruct,
                        bool unpackrecurse=true,
-                       bool asdict=false);
+                       PyObject* wrapper=0);
 };
 
 }//namespace
@@ -699,7 +699,7 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
                           const pvd::BitSet::shared_pointer& bset,
                           bool unpackstruct,
                           bool unpackrecurse,
-                          bool asdict)
+                          PyObject *wrapper)
 {
     switch(ftype->getType()) {
     case pvd::scalar: {
@@ -780,15 +780,15 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
             PyRef list(PyList_New(vals.size()));
 
             for(size_t i=0; i<vals.size(); i++) {
-                PyRef val(fetchfld(vals[i].get(), flds[i].get(), bset, unpackrecurse, true, asdict));
+                PyRef val(fetchfld(vals[i].get(), flds[i].get(), bset, unpackrecurse, true, wrapper));
 
                 PyRef item(Py_BuildValue("sO", names[i].c_str(), val.get()));
 
                 PyList_SET_ITEM(list.get(), i, item.release());
             }
 
-            if (asdict) {
-                PyRef dict(PyObject_CallFunction((PyObject*) &PyDict_Type, "O", list.get()));
+            if (wrapper) {
+                PyRef dict(PyObject_CallFunction(wrapper, "O", list.get()));
                 return dict.release();
             }
 
@@ -816,7 +816,7 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
                 PyList_SET_ITEM(list.get(), i, Py_None);
 
             } else {
-                PyObject *elem = fetchfld(arr[i].get(), ST, empty, unpackstruct, unpackrecurse, asdict);
+                PyObject *elem = fetchfld(arr[i].get(), ST, empty, unpackstruct, unpackrecurse, wrapper);
 
                 PyList_SET_ITEM(list.get(), i, elem);
             }
@@ -834,7 +834,7 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
         if(!val)
             Py_RETURN_NONE;
         else
-            return fetchfld(val.get(), val->getField().get(), bset, unpackstruct, true, asdict);
+            return fetchfld(val.get(), val->getField().get(), bset, unpackstruct, true, wrapper);
     }
         break;
     case pvd::unionArray: {
@@ -852,7 +852,7 @@ PyObject *Value::fetchfld(pvd::PVField *fld,
             if(!arr[i] || !(val=arr[i]->get())) {
                 ent.reset(Py_None, borrow());
             } else {
-                ent.reset(fetchfld(val.get(), val->getField().get(), empty, unpackstruct, true, asdict));
+                ent.reset(fetchfld(val.get(), val->getField().get(), empty, unpackstruct, true, wrapper));
             }
 
             PyList_SET_ITEM(list.get(), i, ent.release());
@@ -983,7 +983,8 @@ PyObject* P4PValue_toDict(PyObject *self, PyObject *args)
 {
     TRY {
         const char *name = NULL;
-        if(!PyArg_ParseTuple(args, "|z", &name))
+        PyObject *wrapper = (PyObject*)&PyDict_Type;
+        if(!PyArg_ParseTuple(args, "|zO!", &name, &PyType_Type, &wrapper))
             return NULL;
 
         pvd::PVFieldPtr fld;
@@ -1003,7 +1004,7 @@ PyObject* P4PValue_toDict(PyObject *self, PyObject *args)
                              SELF.I,
                              true,
                              true,
-                             true);
+                             wrapper);
 
     }CATCH()
     return NULL;
@@ -1404,8 +1405,8 @@ static PyMethodDef P4PValue_methods[] = {
      "tolist( [\"fld\"] )\n\n"
      "Recursively transform into a list of tuples."},
      {"todict", (PyCFunction)&P4PValue_toDict, METH_VARARGS,
-      "todict( [\"fld\"] )\n\n"
-      "Recursively transform into a dictionary."},
+      "todict( [\"fld\", type=dict] )\n\n"
+      "Recursively transform into a dictionary (or other type constructable from a list of tuples)."},
     {"items", (PyCFunction)&P4PValue_items, METH_VARARGS,
      "items( [\"fld\"] )\n\n"
      "Transform into a list of tuples.  Not recursive"},

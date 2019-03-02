@@ -4,6 +4,7 @@ from __future__ import print_function
 import weakref
 import gc
 import unittest
+from collections import OrderedDict
 
 import numpy as np
 from numpy.testing import assert_array_almost_equal as assert_aequal
@@ -215,6 +216,16 @@ class TestRawValue(RefTestCase):
         ])
 
         self.assertDictEqual(V.todict(), {
+            'ival': 42,
+            'str': {
+                'a': 1,
+                'b': 2,
+            },
+        })
+
+        D = V.todict(None, OrderedDict)
+        self.assertIsInstance(D, OrderedDict)
+        self.assertDictEqual(D, {
             'ival': 42,
             'str': {
                 'a': 1,
