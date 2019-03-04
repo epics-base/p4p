@@ -60,7 +60,7 @@ class GWHandler(object):
         self.serverep = None
         self.channels_lock = threading.Lock()
         self.channels = {}
-        self.prefix = args.prefix.encode('UTF-8')
+        self.prefix = args.prefix and args.prefix.encode('UTF-8')
 
         self.statusprovider = StaticProvider('gwstatus')
 
