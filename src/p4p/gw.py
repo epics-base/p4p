@@ -64,7 +64,7 @@ class GWHandler(object):
 
         self.statusprovider = StaticProvider('gwstatus')
 
-        self.asTestPV = SharedPV()
+        self.asTestPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
         self.asTestPV.rpc(self.asTest) # TODO this is a deceptive way to assign
         if args.prefix:
             self.statusprovider.add(args.prefix+'asTest', self.asTestPV)
