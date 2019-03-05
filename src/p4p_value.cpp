@@ -951,11 +951,12 @@ PyObject* P4PValue_getattr(PyObject *self, PyObject *name)
     return NULL;
 }
 
-PyObject* P4PValue_toList(PyObject *self, PyObject *args)
+PyObject* P4PValue_toList(PyObject *self, PyObject *args, PyObject *kws)
 {
     TRY {
+        const char *names[] = {"name", NULL};
         const char *name = NULL;
-        if(!PyArg_ParseTuple(args, "|z", &name))
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "|z", (char**)names, &name))
             return NULL;
 
         pvd::PVFieldPtr fld;
@@ -979,12 +980,13 @@ PyObject* P4PValue_toList(PyObject *self, PyObject *args)
     return NULL;
 }
 
-PyObject* P4PValue_toDict(PyObject *self, PyObject *args)
+PyObject* P4PValue_toDict(PyObject *self, PyObject *args, PyObject *kws)
 {
     TRY {
+        const char *names[] = {"name", "type", NULL};
         const char *name = NULL;
         PyObject *wrapper = (PyObject*)&PyDict_Type;
-        if(!PyArg_ParseTuple(args, "|zO!", &name, &PyType_Type, &wrapper))
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "|zO!", (char**)names, &name, &PyType_Type, &wrapper))
             return NULL;
 
         pvd::PVFieldPtr fld;
@@ -1401,10 +1403,10 @@ PyMappingMethods P4PValue_mapping = {
 };
 
 static PyMethodDef P4PValue_methods[] = {
-    {"tolist", (PyCFunction)&P4PValue_toList, METH_VARARGS,
+    {"tolist", (PyCFunction)&P4PValue_toList, METH_VARARGS|METH_KEYWORDS,
      "tolist( [\"fld\"] )\n\n"
      "Recursively transform into a list of tuples."},
-     {"todict", (PyCFunction)&P4PValue_toDict, METH_VARARGS,
+     {"todict", (PyCFunction)&P4PValue_toDict, METH_VARARGS|METH_KEYWORDS,
       "todict( [\"fld\", type=dict] )\n\n"
       "Recursively transform into a dictionary (or other type constructable from a list of tuples)."},
     {"items", (PyCFunction)&P4PValue_items, METH_VARARGS,
