@@ -1,9 +1,14 @@
 
 from __future__ import absolute_import
 
+import sys
+
 from ..wrapper import Type, Value
 from .common import alarm, timeStamp
 from .scalar import _metaHelper, ntwrappercommon
+
+if sys.version_info >= (3, 0):
+    unicode = str
 
 class ntenum(ntwrappercommon, int):
     """
