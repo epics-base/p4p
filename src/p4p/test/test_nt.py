@@ -237,6 +237,47 @@ class TestEnum(RefTestCase):
         self.assertEqual(V.a.value.index, 1)
         self.assertEqual(V.b.value.index, 0)
 
+    def testWrap(self):
+        W = nt.NTEnum()
+        V = W.wrap({'index':1, 'choices':['X','Y']})
+
+        self.assertEqual(V.value.index, 1)
+        self.assertEqual(V.value.choices, ['X','Y'])
+
+        W = nt.NTEnum()
+        V = W.wrap(0)
+
+        self.assertEqual(V.value.index, 0)
+        self.assertEqual(V.value.choices, [])
+
+    def testAssign(self):
+        W = nt.NTEnum()
+        V = nt.NTEnum.buildType()()
+        W.assign(V, 1)
+
+        self.assertEqual(V.value.index, 1)
+        self.assertEqual(V.value.choices, [])
+
+        V.value.choices = ['A', 'B']
+        W.assign(V, 'A')
+
+        self.assertEqual(V.value.index, 0)
+        self.assertEqual(V.value.choices, ['A', 'B'])
+
+    def testUnwrap(self):
+        W = nt.NTEnum()
+        V = nt.NTEnum.buildType()()
+
+        U = W.unwrap(V)
+        self.assertEqual(U, 0)
+        self.assertIsNone(U.choice)
+
+        V.value.index = 1
+        V.value.choices = ['A', 'B']
+        U = W.unwrap(V)
+        self.assertEqual(U, 1)
+        self.assertEqual(U.choice, 'B')
+        self.assertEqual(W._choices, ['A', 'B'])
 
 class TestArray(RefTestCase):
 
