@@ -30,7 +30,7 @@ A server with a single "mailbox" PV. ::
                   initial=0.0)      # setting initial value also open()'s
     @pv.put
     def handle(pv, op):
-        pv.post(op) # just store and update subscribers
+        pv.post(op.value()) # just store and update subscribers
         op.done()
 
     provider = StaticProvider('arbitrary')
