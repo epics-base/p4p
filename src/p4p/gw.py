@@ -3,6 +3,7 @@ import logging
 import time
 import socket
 import threading
+import platform
 
 from functools import wraps
 
@@ -86,7 +87,7 @@ class GWHandler(object):
                 _log.info("status PV: %s", name)
 
     def testChannel(self, pvname, peer):
-        if pvname.startswith(self.prefix):
+        if self.prefix and pvname.startswith(self.prefix):
             _log.debug("GWS ignores own status")
             return self.provider.BanPV
         elif peer == self.serverep:
@@ -187,7 +188,17 @@ class IFInfo(object):
         ret = [self.addr]
         if hasattr(self, 'bcast'):
             ret.append(self.bcast)
+        elif self.loopback and self.addr=='127.0.0.1' and platform.system()=='Linux':
+            # On Linux, the loopback interface is not advertised as supporting broadcast (IFF_BROADCAST)
+            # but actually does.  We are assuming here the conventional 127.0.0.1/8 configuration.
+            ret.append('127.255.255.255')
         return ' '.join(ret)
+
+    @staticmethod
+    def show():
+        _log.info("Local network interfaces")
+        for iface in _gw.IFInfo.current(socket.AF_INET, socket.SOCK_DGRAM):
+            _log.info("%s", iface)
 
 class App(object):
     @staticmethod
@@ -219,13 +230,15 @@ class App(object):
         args.access = Engine(args.access)
         args.pvlist = PVList(args.pvlist)
 
+        IFInfo.show()
+
         srv_iface = IFInfo(args.server)
         cli_iface = IFInfo(args.client)
 
         self.handler = GWHandler(args)
 
         client_conf = {
-            'EPICS_PVA_ADDR_LIST':cli_iface.addr,
+            'EPICS_PVA_ADDR_LIST':cli_iface.addr_list,
             'EPICS_PVA_AUTO_ADDR_LIST':'NO',
             'EPICS_PVA_BROADCAST_PORT':str(cli_iface.port),
         }
