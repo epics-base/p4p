@@ -225,7 +225,8 @@ class TestHighLevel(RefTestCase):
         # gateway
         args = TestApp.getargs([
             '--server','127.0.0.1',
-            '--client','127.0.0.1:%s'%us_conf['EPICS_PVA_BROADCAST_PORT'],
+            '--cip','127.0.0.1',
+            '--cport', str(us_conf['EPICS_PVA_BROADCAST_PORT']),
             '--prefix','gw:'
         ])
 

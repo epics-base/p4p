@@ -181,7 +181,7 @@ class IFInfo(object):
             if iface['addr']==addr:
                 self.__dict__.update(iface)
                 return
-        raise ValueError("No interface %s in %s"%(addr, info))
+        raise ValueError("Not local interface %s"%addr)
 
     @property
     def addr_list(self):
@@ -206,16 +206,18 @@ class App(object):
         from argparse import ArgumentParser, ArgumentError
         P = ArgumentParser()
         #P.add_argument('--signore')
-        P.add_argument('--server', help='Server interface address, with optional port')
-        P.add_argument('--client', help='Client interface address, with optional port')
+        P.add_argument('--server', help='Server interface address, with optional port (default 5076)')
+        P.add_argument('--cip', type=lambda v:set(v.split()), default=set(),
+                       help='Client address list, with optional ports (defaults set by --cport)')
+        P.add_argument('--cport', help='Client default port', type=int, default=5076)
         P.add_argument('--pvlist', help='Optional PV list file.  Default allows all')
         P.add_argument('--access', help='Optional ACF file.  Default allows all')
         P.add_argument('--prefix', help='Prefix for status PVs')
         P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
         P.add_argument('--debug', action='store_true')
         args = P.parse_args(*args)
-        if not args.server or not args.client:
-            raise ArgumentError('arguments --client and --server are not optional')
+        if not args.server or len(args.cip)==0:
+            raise ArgumentError('arguments --cip and --server are not optional')
         return args
 
     def __init__(self, args):
@@ -233,14 +235,19 @@ class App(object):
         IFInfo.show()
 
         srv_iface = IFInfo(args.server)
-        cli_iface = IFInfo(args.client)
+
+        local_bcast = set([iface['bcast'] for iface in _gw.IFInfo.current(socket.AF_INET, socket.SOCK_DGRAM) if 'bcast' in iface])
+
+        if not args.cip.intersection(local_bcast):
+            _log.warn('Client address list includes no local interface broadcast addresses.')
+            _log.warn('These are: %s', ', '.join(local_bcast))
 
         self.handler = GWHandler(args)
 
         client_conf = {
-            'EPICS_PVA_ADDR_LIST':cli_iface.addr_list,
+            'EPICS_PVA_ADDR_LIST':' '.join(args.cip),
             'EPICS_PVA_AUTO_ADDR_LIST':'NO',
-            'EPICS_PVA_BROADCAST_PORT':str(cli_iface.port),
+            'EPICS_PVA_BROADCAST_PORT':str(args.cport),
         }
         _log.info("Client initial config: %s", client_conf)
         server_conf = {
