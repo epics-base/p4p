@@ -203,6 +203,8 @@ API Reference
 
     .. automethod:: tolist
 
+    .. automethod:: todict
+
     .. automethod:: tostr
 
     .. automethod:: items

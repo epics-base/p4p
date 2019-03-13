@@ -1404,10 +1404,10 @@ PyMappingMethods P4PValue_mapping = {
 
 static PyMethodDef P4PValue_methods[] = {
     {"tolist", (PyCFunction)&P4PValue_toList, METH_VARARGS|METH_KEYWORDS,
-     "tolist( [\"fld\"] )\n\n"
+     "tolist(name=None)\n\n"
      "Recursively transform into a list of tuples."},
      {"todict", (PyCFunction)&P4PValue_toDict, METH_VARARGS|METH_KEYWORDS,
-      "todict( [\"fld\", type=dict] )\n\n"
+      "todict(name=None, type=dict)\n\n"
       "Recursively transform into a dictionary (or other type constructable from a list of tuples)."},
     {"items", (PyCFunction)&P4PValue_items, METH_VARARGS,
      "items( [\"fld\"] )\n\n"
