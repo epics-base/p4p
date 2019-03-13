@@ -124,6 +124,8 @@ struct GWMon : public pva::MonitorFIFO
         POINTER_DEFINITIONS(Requester);
         static size_t num_instances;
 
+        const std::string name;
+
         mutable epicsMutex mutex;
 
         pva::Monitor::shared_pointer us_op;
@@ -136,7 +138,7 @@ struct GWMon : public pva::MonitorFIFO
         pvd::PVStructure::shared_pointer complete;
         pvd::BitSet valid;
 
-        Requester();
+        explicit Requester(const std::string& usname);
         virtual ~Requester();
 
         void latch(strong_t& mons);
@@ -151,10 +153,13 @@ struct GWMon : public pva::MonitorFIFO
         EPICS_NOT_COPYABLE(Requester)
     };
 
+    const std::string name; // copy of corresponding GWChan::name
+
     // const after GWChan::createMonitor()
     GWMon::Requester::shared_pointer us_requester;
 
-    GWMon(const pva::MonitorRequester::shared_pointer& requester,
+    GWMon(const std::string& name,
+          const pva::MonitorRequester::shared_pointer& requester,
           const pvd::PVStructure::const_shared_pointer &pvRequest,
           const Source::shared_pointer& source = Source::shared_pointer(),
           Config *conf=0);
@@ -361,6 +366,15 @@ public:
     void cachePeek(std::set<std::string> &names) const;
 
     void stats(GWStats& stats) const;
+
+    struct ReportItem {
+        std::string usname,
+                    dsname;
+        pva::NetStats::Stats stats;
+    };
+    typedef std::vector<ReportItem> report_t;
+
+    void report(report_t& us, report_t& ds) const;
 
     static void prepare();
 

@@ -135,6 +135,16 @@ cdef extern from "<pv/pvAccess.h>" namespace "epics::pvAccess" nogil:
     cdef cppclass ChannelRequester:
         shared_ptr[const PeerInfo] getPeerInfo() except+
 
+cdef extern from "<pv/pvAccess.h>" namespace "epics::pvAccess::NetStats" nogil:
+    cdef struct Counter:
+        size_t tx
+        size_t rx
+    cdef struct Stats:
+        string transportPeer
+        Counter transportBytes
+        Counter operationBytes
+        bool populated
+
 cdef extern from "<pv/configuration.h>" namespace "epics::pvAccess" nogil:
     cdef cppclass Configuration:
         pass
@@ -142,6 +152,12 @@ cdef extern from "<pv/configuration.h>" namespace "epics::pvAccess" nogil:
         ConfigurationBuilder& add(const string& key, const string& value) except+
         ConfigurationBuilder& push_map() except+
         shared_ptr[Configuration] build() except+
+
+cdef extern from "gwchannel.h" namespace "GWProvider" nogil:
+    cdef struct ReportItem:
+        string usname
+        string dsname
+        Stats stats
 
 cdef extern from "gwchannel.h" nogil:
     cdef cppclass GWChan:
@@ -180,6 +196,7 @@ cdef extern from "gwchannel.h" nogil:
         void clearBan() except+
         void cachePeek(set[string]& names) except+
         void stats(GWStats& stats)
+        void report(vector[ReportItem]& us, vector[ReportItem]& ds) except+
 
         @staticmethod
         void prepare() except+
@@ -327,6 +344,40 @@ cdef class Provider:
             'banPVSize.value':stats.banPVSize,
             'banHostPVSize.value':stats.banHostPVSize,
         }
+
+    def report(self):
+        cdef vector[ReportItem] us
+        cdef vector[ReportItem] ds
+
+        with nogil:
+            self.provider.get().report(us, ds)
+
+        usname, dsname, optx, oprx, peer, trtx, trrx = [], [], [], [], [], [], []
+
+        for item in us:
+            usname.append(item.usname)
+            dsname.append(item.dsname)
+            optx.append(item.stats.operationBytes.tx)
+            oprx.append(item.stats.operationBytes.rx)
+            peer.append(item.stats.transportPeer)
+            trtx.append(item.stats.transportBytes.tx)
+            trrx.append(item.stats.transportBytes.rx)
+
+        rus = usname, dsname, optx, oprx, peer, trtx, trrx
+        usname, dsname, optx, oprx, peer, trtx, trrx = [], [], [], [], [], [], []
+
+        for item in ds:
+            usname.append(item.usname)
+            dsname.append(item.dsname)
+            optx.append(item.stats.operationBytes.tx)
+            oprx.append(item.stats.operationBytes.rx)
+            peer.append(item.stats.transportPeer)
+            trtx.append(item.stats.transportBytes.tx)
+            trrx.append(item.stats.transportBytes.rx)
+
+        rds = usname, dsname, optx, oprx, peer, trtx, trrx
+
+        return rus, rds
 
     def use_count(self):
         return self.provider.use_count()

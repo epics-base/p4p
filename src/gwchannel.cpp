@@ -124,7 +124,9 @@ pva::ChannelGet::shared_pointer GWChan::createChannelGet(
     return us_channel->createChannelGet(requester, pvRequest);
 }
 
-GWMon::Requester::Requester() {
+GWMon::Requester::Requester(const std::string &usname)
+    :name(usname)
+{
     REFTRACE_INCREMENT(num_instances);
 }
 GWMon::Requester::~Requester() {
@@ -237,11 +239,13 @@ void GWMon::Requester::unlisten(pva::MonitorPtr const & monitor)
     }
 }
 
-GWMon::GWMon(const pva::MonitorRequester::shared_pointer& requester,
+GWMon::GWMon(const std::string &name,
+             const pva::MonitorRequester::shared_pointer& requester,
              const pvd::PVStructure::const_shared_pointer &pvRequest,
              const pva::MonitorFIFO::Source::shared_pointer& source,
              pva::MonitorFIFO::Config *conf)
     :pva::MonitorFIFO(requester, pvRequest, source, conf)
+    ,name(name)
 {
     REFTRACE_INCREMENT(num_instances);
 }
@@ -296,14 +300,14 @@ pva::Monitor::shared_pointer GWChan::createMonitor(pva::MonitorRequester::shared
 
     // create cache key.
     // use non-aliased upstream channel name
-    std::string key;
+    std::string key, usname(us_channel->getChannelName());
     {
         std::ostringstream strm;
-        strm<<us_channel->getChannelName()<<"\n"<<(*up);
+        strm<<usname<<"\n"<<(*up);
         key = strm.str();
     }
 
-    GWMon::shared_pointer ret(new GWMon(requester, pvRequest));
+    GWMon::shared_pointer ret(new GWMon(name, requester, pvRequest));
 
     GWMon::Requester::shared_pointer entry;
     bool create;
@@ -318,7 +322,7 @@ pva::Monitor::shared_pointer GWChan::createMonitor(pva::MonitorRequester::shared
 
         create = !entry;
         if(create) {
-            entry.reset(new GWMon::Requester);
+            entry.reset(new GWMon::Requester(usname));
             provider->monitors[key] = entry;
         }
     }
@@ -826,6 +830,58 @@ void GWProvider::stats(GWStats& stats) const
     stats.banHostSize = banHost.size();
     stats.banPVSize = banPV.size();
     stats.banHostPVSize = banHostPV.size();
+}
+
+void GWProvider::report(report_t& us, report_t& ds) const
+{
+    us.clear();
+    ds.clear();
+
+    std::vector<GWMon::Requester::shared_pointer> mons;
+    // latch a copy of the presently active subscriptions
+    {
+        Guard G(mutex);
+        mons.reserve(monitors.size());
+        for(monitors_t::const_iterator it(monitors.begin()), end(monitors.end()); it!=end; ++it)
+        {
+            GWMon::Requester::shared_pointer M(it->second.lock());
+            if(M)
+                mons.push_back(M);
+        }
+    }
+
+    us.reserve(mons.size());
+    ds.reserve(mons.size()*2u); // assume ~# downstream per upstream on average
+
+    for(size_t i=0; i<mons.size(); i++)
+    {
+        ReportItem ent;
+        ent.usname = mons[i]->name; // same for this US, and all its DS
+
+        const pva::NetStats* stats = dynamic_cast<const pva::NetStats*>(mons[i]->us_op.get());
+        if(stats) {
+            stats->stats(ent.stats);
+
+            if(ent.stats.populated)
+                us.push_back(ent);
+        }
+
+        GWMon::Requester::strong_t dsmons;
+        mons[i]->latch(dsmons);
+
+        for(size_t s=0; s<dsmons.size(); s++)
+        {
+            const pva::NetStats* stats = dynamic_cast<const pva::NetStats*>(dsmons[s]->getRequester().get());
+            if(!stats) continue;
+
+            ent.dsname = dsmons[s]->name;
+
+            stats->stats(ent.stats);
+
+            if(ent.stats.populated)
+                ds.push_back(ent);
+        }
+    }
 }
 
 void GWProvider::prepare()
