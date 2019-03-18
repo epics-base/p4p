@@ -138,6 +138,8 @@ struct GWMon : public pva::MonitorFIFO
         pvd::PVStructure::shared_pointer complete;
         pvd::BitSet valid;
 
+        pva::NetStats::Stats prevStats;
+
         explicit Requester(const std::string& usname);
         virtual ~Requester();
 
@@ -157,6 +159,8 @@ struct GWMon : public pva::MonitorFIFO
 
     // const after GWChan::createMonitor()
     GWMon::Requester::shared_pointer us_requester;
+
+    pva::NetStats::Stats prevStats;
 
     GWMon(const std::string& name,
           const pva::MonitorRequester::shared_pointer& requester,

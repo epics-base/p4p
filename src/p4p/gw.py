@@ -4,10 +4,11 @@ import time
 import socket
 import threading
 import platform
+import sqlite3
 
 from functools import wraps
 
-from .nt import NTScalar, Type
+from .nt import NTScalar, Type, NTTable
 from .server import Server, StaticProvider, removeProvider
 from .server.thread import SharedPV, RemoteError
 from . import set_debug
@@ -41,6 +42,16 @@ statsType = Type([
     ('banHostPVSize', NTScalar.buildType('L')),
 ], id='epics:p2p/Stats:1.0')
 
+reportType = NTTable.buildType([
+    ('usname', 'as'),
+    ('dsname', 'as'),
+    ('opTX', 'aL'),
+    ('opRX', 'aL'),
+    ('peer', 'as'),
+    ('trTX', 'aL'),
+    ('trRX', 'aL'),
+])
+
 permissionsType = Type([
     ('pv', 's'),
     ('account', 's'),
@@ -55,13 +66,49 @@ permissionsType = Type([
     ])),
 ], id='epics:p2p/Permission:1.0')
 
+
+def tobool(val):
+    val = val.lower()
+    if val=='true':
+        return True
+    elif val=='false':
+        return False
+    else:
+        raise ValueError('"%s" is not "true" or "false"'%val)
+
 class GWHandler(object):
     def __init__(self, args):
+        self.args = args
         self.acf, self.pvlist = args.access, args.pvlist
         self.serverep = None
         self.channels_lock = threading.Lock()
         self.channels = {}
         self.prefix = args.prefix and args.prefix.encode('UTF-8')
+
+        self.prevtime = time.time()
+        self.statperiod = 1.0 # arbitrary non-zero
+        with sqlite3.connect(self.args.statsdb) as C:
+            C.executescript("""
+                DROP TABLE IF EXISTS us;
+                DROP TABLE IF EXISTS ds;
+                CREATE TABLE us(
+                    usname STRING NOT NULL,
+                    optx INTEGER NOT NULL,
+                    oprx INTEGER NOT NULL,
+                    peer STRING NOT NULL,
+                    trtx INTEGER NOT NULL,
+                    trrx INTEGER NOT NULL
+                );
+                CREATE TABLE ds(
+                    usname STRING NOT NULL,
+                    dsname STRING NOT NULL,
+                    optx INTEGER NOT NULL,
+                    oprx INTEGER NOT NULL,
+                    peer STRING NOT NULL,
+                    trtx INTEGER NOT NULL,
+                    trrx INTEGER NOT NULL
+                );
+            """)
 
         self.statusprovider = StaticProvider('gwstatus')
 
@@ -81,6 +128,11 @@ class GWHandler(object):
         self.statsPV = SharedPV(initial=statsType())
         if args.prefix:
             self.statusprovider.add(args.prefix+'stats', self.statsPV)
+
+        self.bwreportPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
+        self.bwreportPV.rpc(self.bwreport) # TODO this is a deceptive way to assign
+        if args.prefix:
+            self.statusprovider.add(args.prefix+'report', self.bwreportPV)
 
         if args.prefix:
             for name in self.statusprovider.keys():
@@ -140,6 +192,67 @@ class GWHandler(object):
         self.clientsPV.post(self.channels.keys())
         self.cachePV.post(self.provider.cachePeek())
         self.statsPV.post(statsType(self.provider.stats()))
+
+    def update_stats(self):
+        T = time.time()
+        usr, dsr = self.provider.report()
+
+        with sqlite3.connect(self.args.statsdb) as C:
+            C.execute('delete from us')
+            C.execute('delete from ds')
+
+            C.executemany('insert into us values (?,?,?,?,?,?)', usr)
+            C.executemany('insert into ds values (?,?,?,?,?,?,?)', dsr)
+
+            self.prevtime, self.statperiod = T, T-self.prevtime
+
+    @uricall
+    def bwreport(self, op, byhost='false', bypv='false', tbl='us', force='false'):
+
+        if tbl not in ('us', 'ds'):
+            raise RemoteError('Valid tables are "us" and "ds"')
+        byhost, bypv, force = tobool(byhost), tobool(bypv), tobool(force)
+
+        if force:
+            self.update_stats()
+
+        with sqlite3.connect(self.args.statsdb) as C:
+            T, TS = self.statperiod, self.prevtime
+            if       byhost and     bypv:
+                Q = 'SELECT usname, sum(optx), sum(oprx), peer, 0, 0 FROM %s GROUP BY peer, usname ORDER BY peer, usname'%tbl
+            elif     byhost and not bypv:
+                Q = 'SELECT "", 0, 0, peer, max(trtx), max(trrx) FROM %s GROUP BY peer ORDER BY peer'%tbl
+            elif not byhost and     bypv:
+                Q = 'SELECT usname, sum(optx), sum(oprx), "", 0, 0 FROM %s GROUP BY usname ORDER BY usname'%tbl
+            else:
+                Q = 'SELECT usname, optx, oprx, peer, trtx, trrx FROM %s'%tbl
+            C.execute(Q)
+
+            usnames, optxs, oprxs, peers, trtxs, trrxs = [], [], [], [], [], []
+
+            for usname,  optx, oprx, peer, trtx, trrx in C.execute(Q):
+                usnames.append(usname)
+                optxs.append(optx/T)
+                oprxs.append(oprx/T)
+                peers.append(peer)
+                trtxs.append(trtx/T)
+                trrxs.append(trrx/T)
+            dsnames = [""]*len(usnames)
+
+        sec, ns = divmod(TS, 1.0)
+        ns *= 1e9
+        return reportType({
+            'labels':['US name', 'DS name', 'op. TX B/s', 'op. RX B/s', 'Peer', 'TR TX B/s', 'TR RX B/s'],
+            'value.usname': usnames,
+            'value.dsname': dsnames,
+            'value.opTX': optxs,
+            'value.opRX': oprxs,
+            'value.peer': peers,
+            'value.trTX': trtxs,
+            'value.trRX': trrxs,
+            'timeStamp.secondsPastEpoch':sec,
+            'timeStamp.nanoseconds':ns,
+        })
 
     @uricall
     def asTest(self, op, pv=None, user=None, peer=None, roles=[]):
@@ -213,6 +326,7 @@ class App(object):
         P.add_argument('--pvlist', help='Optional PV list file.  Default allows all')
         P.add_argument('--access', help='Optional ACF file.  Default allows all')
         P.add_argument('--prefix', help='Prefix for status PVs')
+        P.add_argument('--statsdb', help='SQLite3 database file for stats', default=':memory:')
         P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
         P.add_argument('--debug', action='store_true')
         args = P.parse_args(*args)
@@ -276,15 +390,17 @@ class App(object):
     def run(self):
         try:
             while True:
-                # needs to be longer than twice the longest search interval
-                self.sleep(60)
                 # periodic cleanup of channel cache
                 _log.debug("Channel Cache sweep")
                 try:
                     self.client.sweep()
                     self.handler.sweep()
+                    self.handler.update_stats()
                 except:
                     _log.exception("Error during periodic sweep")
+
+                # needs to be longer than twice the longest search interval
+                self.sleep(60)
         except KeyboardInterrupt:
             pass
         finally:

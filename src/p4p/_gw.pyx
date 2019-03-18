@@ -352,30 +352,28 @@ cdef class Provider:
         with nogil:
             self.provider.get().report(us, ds)
 
-        usname, dsname, optx, oprx, peer, trtx, trrx = [], [], [], [], [], [], []
-
+        rus = []
         for item in us:
-            usname.append(item.usname)
-            dsname.append(item.dsname)
-            optx.append(item.stats.operationBytes.tx)
-            oprx.append(item.stats.operationBytes.rx)
-            peer.append(item.stats.transportPeer)
-            trtx.append(item.stats.transportBytes.tx)
-            trrx.append(item.stats.transportBytes.rx)
+            rus.append((
+                item.usname.decode('UTF-8'),
+                item.stats.operationBytes.tx,
+                item.stats.operationBytes.rx,
+                item.stats.transportPeer.decode('UTF-8'),
+                item.stats.transportBytes.tx,
+                item.stats.transportBytes.rx,
+            ))
 
-        rus = usname, dsname, optx, oprx, peer, trtx, trrx
-        usname, dsname, optx, oprx, peer, trtx, trrx = [], [], [], [], [], [], []
-
+        rds = []
         for item in ds:
-            usname.append(item.usname)
-            dsname.append(item.dsname)
-            optx.append(item.stats.operationBytes.tx)
-            oprx.append(item.stats.operationBytes.rx)
-            peer.append(item.stats.transportPeer)
-            trtx.append(item.stats.transportBytes.tx)
-            trrx.append(item.stats.transportBytes.rx)
-
-        rds = usname, dsname, optx, oprx, peer, trtx, trrx
+            rds.append((
+                item.usname.decode('UTF-8'),
+                item.dsname.decode('UTF-8'),
+                item.stats.operationBytes.tx,
+                item.stats.operationBytes.rx,
+                item.stats.transportPeer.decode('UTF-8'),
+                item.stats.transportBytes.tx,
+                item.stats.transportBytes.rx,
+            ))
 
         return rus, rds
 

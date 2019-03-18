@@ -832,6 +832,16 @@ void GWProvider::stats(GWStats& stats) const
     stats.banHostPVSize = banHostPV.size();
 }
 
+namespace {
+void stats_add(pva::NetStats::Stats& ret, const pva::NetStats::Stats& lhs, const pva::NetStats::Stats& rhs) {
+    ret.operationBytes.tx = lhs.operationBytes.tx - rhs.operationBytes.tx;
+    ret.operationBytes.rx = lhs.operationBytes.rx - rhs.operationBytes.rx;
+    ret.transportBytes.tx = lhs.transportBytes.tx - rhs.transportBytes.tx;
+    ret.transportBytes.rx = lhs.transportBytes.rx - rhs.transportBytes.rx;
+    ret.populated = lhs.populated;
+}
+}
+
 void GWProvider::report(report_t& us, report_t& ds) const
 {
     us.clear();
@@ -860,10 +870,15 @@ void GWProvider::report(report_t& us, report_t& ds) const
 
         const pva::NetStats* stats = dynamic_cast<const pva::NetStats*>(mons[i]->us_op.get());
         if(stats) {
-            stats->stats(ent.stats);
+            pva::NetStats::Stats cur;
+            stats->stats(cur);
+            ent.stats.transportPeer = cur.transportPeer;
 
-            if(ent.stats.populated)
+            if(cur.populated) {
+                stats_add(ent.stats, cur, mons[i]->prevStats);
+                mons[i]->prevStats = cur;
                 us.push_back(ent);
+            }
         }
 
         GWMon::Requester::strong_t dsmons;
@@ -876,10 +891,15 @@ void GWProvider::report(report_t& us, report_t& ds) const
 
             ent.dsname = dsmons[s]->name;
 
-            stats->stats(ent.stats);
+            pva::NetStats::Stats cur;
+            stats->stats(cur);
+            ent.stats.transportPeer = cur.transportPeer;
 
-            if(ent.stats.populated)
+            if(ent.stats.populated) {
+                stats_add(ent.stats, cur, dsmons[s]->prevStats);
+                dsmons[s]->prevStats = cur;
                 ds.push_back(ent);
+            }
         }
     }
 }
