@@ -140,7 +140,7 @@ class Context(raw.Context):
 
         futs = [self._get_one(N, request=R) for N, R in zip(name, request)]
 
-        ret = yield from asyncio.gather(futs, loop=self.loop)
+        ret = yield from asyncio.gather(*futs, loop=self.loop)
 
         return ret
 
@@ -210,7 +210,7 @@ class Context(raw.Context):
 
         futs = [self._put_one(N, V, request=R, get=get) for N, V, R in zip(name, values, request)]
 
-        yield from asyncio.gather(futs, loop=self.loop)
+        yield from asyncio.gather(*futs, loop=self.loop)
 
     @asyncio.coroutine
     def _put_one(self, name, value, request=None, get=True):
