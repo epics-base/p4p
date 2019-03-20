@@ -135,16 +135,6 @@ cdef extern from "<pv/pvAccess.h>" namespace "epics::pvAccess" nogil:
     cdef cppclass ChannelRequester:
         shared_ptr[const PeerInfo] getPeerInfo() except+
 
-cdef extern from "<pv/pvAccess.h>" namespace "epics::pvAccess::NetStats" nogil:
-    cdef struct Counter:
-        size_t tx
-        size_t rx
-    cdef struct Stats:
-        string transportPeer
-        Counter transportBytes
-        Counter operationBytes
-        bool populated
-
 cdef extern from "<pv/configuration.h>" namespace "epics::pvAccess" nogil:
     cdef cppclass Configuration:
         pass
@@ -157,7 +147,12 @@ cdef extern from "gwchannel.h" namespace "GWProvider" nogil:
     cdef struct ReportItem:
         string usname
         string dsname
-        Stats stats
+        string transportPeer
+        string transportAccount
+        double transportTX
+        double transportRX
+        double operationTX
+        double operationRX
 
 cdef extern from "gwchannel.h" nogil:
     cdef cppclass GWChan:
@@ -196,7 +191,7 @@ cdef extern from "gwchannel.h" nogil:
         void clearBan() except+
         void cachePeek(set[string]& names) except+
         void stats(GWStats& stats)
-        void report(vector[ReportItem]& us, vector[ReportItem]& ds) except+
+        void report(vector[ReportItem]& us, vector[ReportItem]& ds, double& period) except+
 
         @staticmethod
         void prepare() except+
@@ -348,34 +343,39 @@ cdef class Provider:
     def report(self):
         cdef vector[ReportItem] us
         cdef vector[ReportItem] ds
+        cdef double period = 0.0 # initial value not used, but quiets warning
+        cdef ReportItem item
 
         with nogil:
-            self.provider.get().report(us, ds)
+            self.provider.get().report(us, ds, period)
 
         rus = []
         for item in us:
+            # order in tuple must match column order
             rus.append((
                 item.usname.decode('UTF-8'),
-                item.stats.operationBytes.tx,
-                item.stats.operationBytes.rx,
-                item.stats.transportPeer.decode('UTF-8'),
-                item.stats.transportBytes.tx,
-                item.stats.transportBytes.rx,
+                item.operationTX,
+                item.operationRX,
+                item.transportPeer.decode('UTF-8'),
+                item.transportTX,
+                item.transportRX,
             ))
 
         rds = []
         for item in ds:
+            # order in tuple must match column order
             rds.append((
                 item.usname.decode('UTF-8'),
                 item.dsname.decode('UTF-8'),
-                item.stats.operationBytes.tx,
-                item.stats.operationBytes.rx,
-                item.stats.transportPeer.decode('UTF-8'),
-                item.stats.transportBytes.tx,
-                item.stats.transportBytes.rx,
+                item.operationTX,
+                item.operationRX,
+                item.transportAccount.decode('UTF-8'),
+                item.transportPeer.decode('UTF-8'),
+                item.transportTX,
+                item.transportRX,
             ))
 
-        return rus, rds
+        return rus, rds, period
 
     def use_count(self):
         return self.provider.use_count()

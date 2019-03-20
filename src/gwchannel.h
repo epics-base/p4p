@@ -9,6 +9,7 @@
 
 #include <epicsMutex.h>
 #include <epicsGuard.h>
+#include <epicsTime.h>
 
 #include <pv/valueBuilder.h>
 #include <pv/pvAccess.h>
@@ -160,7 +161,9 @@ struct GWMon : public pva::MonitorFIFO
 
     // const after GWChan::createMonitor()
     GWMon::Requester::shared_pointer us_requester;
+    GWChan::shared_pointer channel;
 
+    // not guarded (not reentrant)
     pva::NetStats::Stats prevStats;
 
     GWMon(const std::string& name,
@@ -340,6 +343,8 @@ struct GWProvider : public pva::ChannelProvider,
     typedef std::map<std::string, std::tr1::weak_ptr<GWMon::Requester> > monitors_t;
     monitors_t monitors;
 
+    epicsTime prevtime;
+
     // guarded by GIL
     PyObject* handle;
 
@@ -375,11 +380,14 @@ public:
     struct ReportItem {
         std::string usname,
                     dsname;
-        pva::NetStats::Stats stats;
+        std::string transportPeer,
+                    transportAccount;
+        double transportTX, transportRX,
+               operationTX, operationRX;
     };
     typedef std::vector<ReportItem> report_t;
 
-    void report(report_t& us, report_t& ds) const;
+    void report(report_t& us, report_t& ds, double& period);
 
     static void prepare();
 

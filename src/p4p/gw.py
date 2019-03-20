@@ -34,6 +34,32 @@ class TestChannel(object):
     def access(self, **kws):
         self.perm = kws
 
+class TableBuilder(object):
+    def __init__(self, colinfo):
+        self.labels, cols = [], []
+        for type, name, label in colinfo:
+            self.labels.append(label)
+            cols.append((name, 'a'+type))
+
+        self.type = NTTable.buildType(cols)
+
+    def wrap(self, values):
+        ret = self.type({'labels':self.labels})
+        # unzip list of tuple into tuple of lists
+        cols = list([] for k in ret.value)
+
+        for row in values:
+            for I, C in zip(row, cols):
+                C.append(I)
+
+        for k, C in zip(ret.value, cols):
+            ret.value[k] = C
+
+        return ret
+
+    def unwrap(self, value):
+        return value
+
 statsType = Type([
     ('ccacheSize', NTScalar.buildType('L')),
     ('mcacheSize', NTScalar.buildType('L')),
@@ -41,16 +67,6 @@ statsType = Type([
     ('banPVSize', NTScalar.buildType('L')),
     ('banHostPVSize', NTScalar.buildType('L')),
 ], id='epics:p2p/Stats:1.0')
-
-reportType = NTTable.buildType([
-    ('usname', 'as'),
-    ('dsname', 'as'),
-    ('opTX', 'aL'),
-    ('opRX', 'aL'),
-    ('peer', 'as'),
-    ('trTX', 'aL'),
-    ('trRX', 'aL'),
-])
 
 permissionsType = Type([
     ('pv', 's'),
@@ -85,28 +101,55 @@ class GWHandler(object):
         self.channels = {}
         self.prefix = args.prefix and args.prefix.encode('UTF-8')
 
-        self.prevtime = time.time()
-        self.statperiod = 1.0 # arbitrary non-zero
         with sqlite3.connect(self.args.statsdb) as C:
             C.executescript("""
                 DROP TABLE IF EXISTS us;
+                DROP TABLE IF EXISTS usbyname;
+                DROP TABLE IF EXISTS usbypeer;
                 DROP TABLE IF EXISTS ds;
+                DROP TABLE IF EXISTS dsbyname;
+                DROP TABLE IF EXISTS dsbypeer;
+
                 CREATE TABLE us(
-                    usname STRING NOT NULL,
+                    usname REAL NOT NULL,
                     optx INTEGER NOT NULL,
-                    oprx INTEGER NOT NULL,
+                    oprx REAL NOT NULL,
                     peer STRING NOT NULL,
-                    trtx INTEGER NOT NULL,
-                    trrx INTEGER NOT NULL
+                    trtx REAL NOT NULL,
+                    trrx REAL NOT NULL
                 );
                 CREATE TABLE ds(
                     usname STRING NOT NULL,
                     dsname STRING NOT NULL,
-                    optx INTEGER NOT NULL,
-                    oprx INTEGER NOT NULL,
+                    optx REAL NOT NULL,
+                    oprx REAL NOT NULL,
+                    account STRING NOT NULL,
                     peer STRING NOT NULL,
-                    trtx INTEGER NOT NULL,
-                    trrx INTEGER NOT NULL
+                    trtx REAL NOT NULL,
+                    trrx REAL NOT NULL
+                );
+
+                CREATE TABLE usbyname(
+                    usname STRING NOT NULL,
+                    tx REAL NOT NULL,
+                    rx REAL NOT NULL
+                );
+                CREATE TABLE dsbyname(
+                    usname STRING NOT NULL,
+                    tx REAL NOT NULL,
+                    rx REAL NOT NULL
+                );
+
+                CREATE TABLE usbypeer(
+                    peer STRING NOT NULL,
+                    tx REAL NOT NULL,
+                    rx REAL NOT NULL
+                );
+                CREATE TABLE dsbypeer(
+                    account STRING NOT NULL,
+                    peer STRING NOT NULL,
+                    tx REAL NOT NULL,
+                    rx REAL NOT NULL
                 );
             """)
 
@@ -129,10 +172,58 @@ class GWHandler(object):
         if args.prefix:
             self.statusprovider.add(args.prefix+'stats', self.statsPV)
 
-        self.bwreportPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
-        self.bwreportPV.rpc(self.bwreport) # TODO this is a deceptive way to assign
+        self.pokeStats = SharedPV(nt=NTScalar('i'), initial=0)
+        @self.pokeStats.put
+        def pokeStats(pv, op):
+            self.update_stats()
+            op.done()
         if args.prefix:
-            self.statusprovider.add(args.prefix+'report', self.bwreportPV)
+            self.statusprovider.add(args.prefix+'poke', self.pokeStats)
+
+        # PVs for bandwidth usage statistics.
+        # 2x tables: us, ds
+        # 2x groupings: by PV and by peer
+        # 2x directions: Tx and Rx
+
+        def addpv(dir='TX', suffix=''):
+            pv = SharedPV(nt=TableBuilder([
+                ('s', 'name', 'PV'),
+                ('d', 'rate', dir+' (B/s)'),
+            ]), initial=[])
+            if args.prefix:
+                self.statusprovider.add(args.prefix+suffix, pv)
+            return pv
+
+        self.tbl_usbypvtx = addpv(dir='TX', suffix='us:bypv:tx')
+        self.tbl_usbypvrx = addpv(dir='RX', suffix='us:bypv:rx')
+
+        self.tbl_dsbypvtx = addpv(dir='TX', suffix='ds:bypv:tx')
+        self.tbl_dsbypvrx = addpv(dir='RX', suffix='ds:bypv:rx')
+
+        def addpv(dir='TX', suffix=''):
+            pv = SharedPV(nt=TableBuilder([
+                ('s', 'name', 'Server'),
+                ('d', 'rate', dir+' (B/s)'),
+            ]), initial=[])
+            if args.prefix:
+                self.statusprovider.add(args.prefix+suffix, pv)
+            return pv
+
+        self.tbl_usbyhosttx = addpv(dir='TX', suffix='us:byhost:tx')
+        self.tbl_usbyhostrx = addpv(dir='RX', suffix='us:byhost:rx')
+
+        def addpv(dir='TX', suffix=''):
+            pv = SharedPV(nt=TableBuilder([
+                ('s', 'account', 'Account'),
+                ('s', 'name', 'Client'),
+                ('d', 'rate', dir+' (B/s)'),
+            ]), initial=[])
+            if args.prefix:
+                self.statusprovider.add(args.prefix+suffix, pv)
+            return pv
+
+        self.tbl_dsbyhosttx = addpv(dir='TX', suffix='ds:byhost:tx')
+        self.tbl_dsbyhostrx = addpv(dir='RX', suffix='ds:byhost:rx')
 
         if args.prefix:
             for name in self.statusprovider.keys():
@@ -194,65 +285,39 @@ class GWHandler(object):
         self.statsPV.post(statsType(self.provider.stats()))
 
     def update_stats(self):
-        T = time.time()
-        usr, dsr = self.provider.report()
+        usr, dsr, period = self.provider.report()
 
         with sqlite3.connect(self.args.statsdb) as C:
-            C.execute('delete from us')
-            C.execute('delete from ds')
+            C.executescript('''
+                DELETE FROM us;
+                DELETE FROM ds;
+                DELETE FROM usbyname;
+                DELETE FROM dsbyname;
+                DELETE FROM usbypeer;
+                DELETE FROM dsbypeer;
+            ''')
 
-            C.executemany('insert into us values (?,?,?,?,?,?)', usr)
-            C.executemany('insert into ds values (?,?,?,?,?,?,?)', dsr)
+            C.executemany('INSERT INTO us VALUES (?,?,?,?,?,?)', usr)
+            C.executemany('INSERT INTO ds VALUES (?,?,?,?,?,?,?,?)', dsr)
 
-            self.prevtime, self.statperiod = T, T-self.prevtime
+            C.executescript('''
+                INSERT INTO usbyname SELECT usname, sum(optx), sum(oprx) FROM us GROUP BY usname;
+                INSERT INTO dsbyname SELECT usname, sum(optx), sum(oprx) FROM ds GROUP BY usname;
+                INSERT INTO usbypeer SELECT peer, max(trtx), max(trrx) FROM us GROUP BY peer;
+                INSERT INTO dsbypeer SELECT account, peer, max(trtx), max(trrx) FROM ds GROUP BY peer;
+            ''')
 
-    @uricall
-    def bwreport(self, op, byhost='false', bypv='false', tbl='us', force='false'):
+            self.tbl_usbypvtx.post(C.execute('SELECT usname, tx as rate FROM usbyname ORDER BY rate DESC LIMIT 10'))
+            self.tbl_usbypvrx.post(C.execute('SELECT usname, rx as rate FROM usbyname ORDER BY rate DESC LIMIT 10'))
 
-        if tbl not in ('us', 'ds'):
-            raise RemoteError('Valid tables are "us" and "ds"')
-        byhost, bypv, force = tobool(byhost), tobool(bypv), tobool(force)
+            self.tbl_usbyhosttx.post(C.execute('SELECT peer, tx as rate FROM usbypeer ORDER BY rate DESC LIMIT 10'))
+            self.tbl_usbyhostrx.post(C.execute('SELECT peer, rx as rate FROM usbypeer ORDER BY rate DESC LIMIT 10'))
 
-        if force:
-            self.update_stats()
+            self.tbl_dsbypvtx.post(C.execute('SELECT usname, tx as rate FROM dsbyname ORDER BY rate DESC LIMIT 10'))
+            self.tbl_dsbypvrx.post(C.execute('SELECT usname, rx as rate FROM dsbyname ORDER BY rate DESC LIMIT 10'))
 
-        with sqlite3.connect(self.args.statsdb) as C:
-            T, TS = self.statperiod, self.prevtime
-            if       byhost and     bypv:
-                Q = 'SELECT usname, sum(optx), sum(oprx), peer, 0, 0 FROM %s GROUP BY peer, usname ORDER BY peer, usname'%tbl
-            elif     byhost and not bypv:
-                Q = 'SELECT "", 0, 0, peer, max(trtx), max(trrx) FROM %s GROUP BY peer ORDER BY peer'%tbl
-            elif not byhost and     bypv:
-                Q = 'SELECT usname, sum(optx), sum(oprx), "", 0, 0 FROM %s GROUP BY usname ORDER BY usname'%tbl
-            else:
-                Q = 'SELECT usname, optx, oprx, peer, trtx, trrx FROM %s'%tbl
-            C.execute(Q)
-
-            usnames, optxs, oprxs, peers, trtxs, trrxs = [], [], [], [], [], []
-
-            for usname,  optx, oprx, peer, trtx, trrx in C.execute(Q):
-                usnames.append(usname)
-                optxs.append(optx/T)
-                oprxs.append(oprx/T)
-                peers.append(peer)
-                trtxs.append(trtx/T)
-                trrxs.append(trrx/T)
-            dsnames = [""]*len(usnames)
-
-        sec, ns = divmod(TS, 1.0)
-        ns *= 1e9
-        return reportType({
-            'labels':['US name', 'DS name', 'op. TX B/s', 'op. RX B/s', 'Peer', 'TR TX B/s', 'TR RX B/s'],
-            'value.usname': usnames,
-            'value.dsname': dsnames,
-            'value.opTX': optxs,
-            'value.opRX': oprxs,
-            'value.peer': peers,
-            'value.trTX': trtxs,
-            'value.trRX': trrxs,
-            'timeStamp.secondsPastEpoch':sec,
-            'timeStamp.nanoseconds':ns,
-        })
+            self.tbl_dsbyhosttx.post(C.execute('SELECT account, peer, tx as rate FROM dsbypeer ORDER BY rate DESC LIMIT 10'))
+            self.tbl_dsbyhostrx.post(C.execute('SELECT account, peer, rx as rate FROM dsbypeer ORDER BY rate DESC LIMIT 10'))
 
     @uricall
     def asTest(self, op, pv=None, user=None, peer=None, roles=[]):

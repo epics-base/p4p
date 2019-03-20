@@ -312,6 +312,7 @@ pva::Monitor::shared_pointer GWChan::createMonitor(pva::MonitorRequester::shared
     }
 
     GWMon::shared_pointer ret(new GWMon(name, requester, pvRequest));
+    ret->channel = shared_from_this();
 
     GWMon::Requester::shared_pointer entry;
     bool create;
@@ -590,6 +591,7 @@ GWProvider::GWProvider(const std::string& name,
                        const pva::Configuration::shared_pointer& conf)
     :name(name)
     ,client(pva::ChannelProviderRegistry::clients()->createProvider("pva", conf))
+    ,prevtime(epicsTime::getCurrent())
     ,handle(0)
 {
     REFTRACE_INCREMENT(num_instances);
@@ -837,19 +839,19 @@ void GWProvider::stats(GWStats& stats) const
 }
 
 namespace {
-void stats_add(pva::NetStats::Stats& ret, const pva::NetStats::Stats& lhs, const pva::NetStats::Stats& rhs) {
-    ret.operationBytes.tx = lhs.operationBytes.tx - rhs.operationBytes.tx;
-    ret.operationBytes.rx = lhs.operationBytes.rx - rhs.operationBytes.rx;
-    ret.transportBytes.tx = lhs.transportBytes.tx - rhs.transportBytes.tx;
-    ret.transportBytes.rx = lhs.transportBytes.rx - rhs.transportBytes.rx;
-    ret.populated = lhs.populated;
+void stats_add(GWProvider::ReportItem& ret, const pva::NetStats::Stats& lhs, const pva::NetStats::Stats& rhs, double period) {
+    ret.operationTX = (lhs.operationBytes.tx - rhs.operationBytes.tx)/period;
+    ret.operationRX = (lhs.operationBytes.rx - rhs.operationBytes.rx)/period;
+    ret.transportTX = (lhs.transportBytes.tx - rhs.transportBytes.tx)/period;
+    ret.transportRX = (lhs.transportBytes.rx - rhs.transportBytes.rx)/period;
 }
 }
 
-void GWProvider::report(report_t& us, report_t& ds) const
+void GWProvider::report(report_t& us, report_t& ds, double& period)
 {
     us.clear();
     ds.clear();
+    epicsTime now(epicsTime::getCurrent());
 
     std::vector<GWMon::Requester::shared_pointer> mons;
     // latch a copy of the presently active subscriptions
@@ -862,6 +864,8 @@ void GWProvider::report(report_t& us, report_t& ds) const
             if(M)
                 mons.push_back(M);
         }
+        period = now - prevtime;
+        prevtime = now;
     }
 
     us.reserve(mons.size());
@@ -876,10 +880,11 @@ void GWProvider::report(report_t& us, report_t& ds) const
         if(stats) {
             pva::NetStats::Stats cur;
             stats->stats(cur);
-            ent.stats.transportPeer = cur.transportPeer;
 
             if(cur.populated) {
-                stats_add(ent.stats, cur, mons[i]->prevStats);
+                ent.transportPeer = cur.transportPeer;
+
+                stats_add(ent, cur, mons[i]->prevStats, period);
                 mons[i]->prevStats = cur;
                 us.push_back(ent);
             }
@@ -893,17 +898,24 @@ void GWProvider::report(report_t& us, report_t& ds) const
             const pva::NetStats* stats = dynamic_cast<const pva::NetStats*>(dsmons[s]->getRequester().get());
             if(!stats) continue;
 
-            ent.dsname = dsmons[s]->name;
-
             pva::NetStats::Stats cur;
             stats->stats(cur);
-            ent.stats.transportPeer = cur.transportPeer;
+            if(!cur.populated) continue;
 
-            if(ent.stats.populated) {
-                stats_add(ent.stats, cur, dsmons[s]->prevStats);
-                dsmons[s]->prevStats = cur;
-                ds.push_back(ent);
-            }
+            ent.dsname = dsmons[s]->name;
+
+            pva::PeerInfo::const_shared_pointer info;
+            pva::ChannelRequester::shared_pointer chreq(dsmons[s]->channel->ds_requester.lock());
+
+            if(chreq)
+                info = chreq->getPeerInfo();
+            if(info)
+                ent.transportAccount = info->account;
+
+            ent.transportPeer = cur.transportPeer;
+            stats_add(ent, cur, dsmons[s]->prevStats, period);
+            dsmons[s]->prevStats = cur;
+            ds.push_back(ent);
         }
     }
 }
