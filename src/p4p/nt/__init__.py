@@ -222,8 +222,7 @@ class NTTable(object):
 
         :returns: An iterator yielding an OrderedDict for each column
         """
-        if len(value.labels) == 0:
-            return
+        ret = []
 
         # build lists of column names, and value
         lbl, cols = [], []
@@ -234,8 +233,9 @@ class NTTable(object):
         # zip together column arrays to iterate over rows
         for rval in izip(*cols):
             # zip together column names and row values
-            yield OrderedDict(zip(lbl, rval))
+            ret.append(OrderedDict(zip(lbl, rval)))
 
+        return ret
 
 class NTURI(object):
 
