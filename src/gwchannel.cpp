@@ -61,7 +61,9 @@ void GWChan::Requester::channelCreated(const pvd::Status& status, pva::Channel::
     }
     TRACE(chans.size());
     for(size_t i=0, N=chans.size(); i<N; i++) {
-        chans[i]->us_requester->channelCreated(status, chans[i]);
+        pva::ChannelRequester::shared_pointer req(chans[i]->ds_requester.lock());
+        if(req)
+            req->channelCreated(status, chans[i]);
     }
 }
 
@@ -74,7 +76,9 @@ void GWChan::Requester::channelStateChange(pva::Channel::shared_pointer const & 
     }
     TRACE(chans.size());
     for(size_t i=0, N=chans.size(); i<N; i++) {
-        chans[i]->us_requester->channelStateChange(chans[i], connectionState);
+        pva::ChannelRequester::shared_pointer req(chans[i]->ds_requester.lock());
+        if(req)
+            req->channelStateChange(chans[i], connectionState);
     }
 }
 

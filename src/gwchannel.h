@@ -99,6 +99,7 @@ struct GWChan : public pva::Channel,
     virtual std::string getChannelName() OVERRIDE FINAL;
     virtual std::tr1::shared_ptr<pva::ChannelRequester> getChannelRequester() OVERRIDE FINAL;
 
+    // force upstream disconnect.
     void disconnect();
 
     virtual void getField(pva::GetFieldRequester::shared_pointer const & requester,std::string const & subField) OVERRIDE FINAL;
