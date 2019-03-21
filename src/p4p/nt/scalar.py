@@ -203,6 +203,7 @@ class NTScalar(object):
             })
 
     typeMap = {
+        # TODO: bool
         int: ntint,
         float: ntfloat,
         unicode: ntstr,
