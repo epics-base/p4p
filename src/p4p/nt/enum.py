@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 import sys
+import time
 
 from ..wrapper import Type, Value
 from .common import alarm, timeStamp
@@ -58,10 +59,15 @@ class NTEnum(object):
         # picked up during unwrap
         self._choices = []
 
-    def wrap(self, value):
+    def wrap(self, value, timestamp=None):
         """Pack python value into Value
         """
         V = self.type()
+        S, NS = divmod(float(timestamp or time.time()), 1.0)
+        V.timeStamp = {
+            'secondsPastEpoch': S,
+            'nanoseconds': NS * 1e9,
+        }
         if isinstance(value, dict):
             # assume dict of index and choices list
             V.value = value
