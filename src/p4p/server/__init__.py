@@ -4,6 +4,8 @@ import warnings
 import re
 import time
 
+from weakref import WeakSet
+
 from .._p4p import (Server as _Server,
                     installProvider,
                     removeProvider,
@@ -81,6 +83,8 @@ class Server(object):
             }
         _log.debug("Starting Server isolated=%s, %s", isolate, kws)
         self._S = _Server(providers=providers, **kws)
+
+        _all_servers.add(self._S)
 
     def __enter__(self):
         return self
@@ -179,3 +183,11 @@ class DynamicProvider(_DynamicProvider):
                 return self._real.makeChannel(name, peer)
             except:
                 _log.exception("Unexpected")
+
+_all_servers = WeakSet()
+
+def _cleanup_servers():
+    _log.debug("Stopping all Server instances")
+    servers = list(_all_servers)
+    for srv in servers:
+        srv.stop()

@@ -58,12 +58,15 @@ def cleanup():
     """
     _log.debug("P4P atexit begins")
     # clean provider registry
-    from .server import clearProviders
+    from .server import clearProviders, _cleanup_servers
     clearProviders()
 
     # close client contexts
     from .client.raw import _cleanup_contexts
     _cleanup_contexts()
+
+    # stop servers
+    _cleanup_servers()
 
     # shutdown default work queue
     from .util import _defaultWorkQueue
