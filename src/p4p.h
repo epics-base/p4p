@@ -36,8 +36,6 @@ struct SB {
     }
 };
 
-struct PyExternalRef;
-
 struct borrow {};
 struct allownull {};
 struct nextiter {};
@@ -67,7 +65,6 @@ struct PyRef {
         if(!o)
             throw std::runtime_error("Alloc failed");
     }
-    explicit PyRef(const PyExternalRef& o);
     ~PyRef() {
         Py_CLEAR(obj);
     }
@@ -155,25 +152,6 @@ struct PyLock
     PyGILState_STATE state;
     PyLock() :state(PyGILState_Ensure()) {}
     ~PyLock() { PyGILState_Release(state); }
-};
-
-// helper when a PyRef may be free'd outside python code
-// beware of lock ordering wrt. the GIL
-struct PyExternalRef {
-    PyRef ref;
-    PyExternalRef() {}
-    ~PyExternalRef() {
-        if(ref) {
-            PyLock G;
-            ref.reset();
-        }
-    }
-    void swap(PyRef& o) {
-        ref.swap(o);
-    }
-    void swap(PyExternalRef& o) {
-        ref.swap(o.ref);
-    }
 };
 
 #define CATCH() catch(std::exception& e) { if(!PyErr_Occurred()) { PyErr_SetString(PyExc_RuntimeError, e.what()); } }

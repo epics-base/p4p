@@ -166,10 +166,6 @@ PyMOD(_p4p)
     }
 }
 
-PyRef::PyRef(const PyExternalRef& o) :obj(o.ref.obj) {
-    Py_XINCREF(obj);
-}
-
 #ifdef TRACING
 std::ostream& show_time(std::ostream& strm)
 {
