@@ -23,7 +23,7 @@ A server with a single "mailbox" PV. ::
 
     import time
     from p4p.nt import NTScalar
-    from p4p.server import Server, StaticProvider
+    from p4p.server import Server
     from p4p.server.thread import SharedPV
     
     pv = SharedPV(nt=NTScalar('d'), # scalar double
@@ -33,10 +33,9 @@ A server with a single "mailbox" PV. ::
         pv.post(op.value()) # just store and update subscribers
         op.done()
 
-    provider = StaticProvider('arbitrary')
-    provider.add('demo:pv:name', pv) # PV name only appears here
-
-    Server.forever(providers=[provider]) # help which runs until KeyboardInterrupt
+    Server.forever(providers=[{
+        'demo:pv:name':pv, # PV name only appears here
+    }]) # runs until KeyboardInterrupt
 
 This server can be tested using the included command line tools. eg. ::
 
@@ -48,6 +47,13 @@ And in another shell. ::
 
     $ python -m p4p.client.cli monitor demo:pv:name
 
+Note that this example allows clients to change any field, not just '.value'.
+This may be restricted by inspecting the `Value` returned by 'op.value()'
+to see which fields are marked as changed with eg. `Value.changed()`.
+
+A client put operation can be failed with eg. 'op.done(err="oops")'.
+
+In the put handler function 'pv' is the `SharedPV` and 'op' is a `ServerOperation`.
 
 Server API
 ----------

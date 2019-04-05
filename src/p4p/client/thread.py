@@ -291,7 +291,7 @@ class Context(raw.Context):
         """Write a new value of some number of PVs.
 
         :param name: A single name string or list of name strings
-        :param values: A single value or a list of values
+        :param values: A single value, a list of values, a dict, a `Value`.  May be modified by the constructor nt= argument.
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
         :param float timeout: Operation timeout in seconds
         :param bool throw: When true, operation error throws an exception.
