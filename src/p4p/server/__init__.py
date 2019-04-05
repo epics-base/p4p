@@ -3,6 +3,7 @@ import logging
 import warnings
 import re
 import time
+import uuid
 
 from weakref import WeakSet
 
@@ -33,7 +34,7 @@ class Server(object):
 
     """Server(conf=None, useenv=True, providers=[""])
 
-    :param providers: A list of provider names or instances.
+    :param providers: A list of provider names or instances.  See below.
     :param dict conf: Configuration keys for the server.  Uses same names as environment variables (aka. EPICS_PVAS_*)
     :param bool useenv: Whether to use process environment in addition to provided config.
     :param bool isolate: If True, override conf= and useenv= to select a configuration suitable for isolated testing.
@@ -60,17 +61,37 @@ class Server(object):
     A Server may be used as a Context Manager.  The Server is stop() 'd when the context exits.
 
     The providers list must be a list of name strings (cf. installProvider()),
-    or a list of Provider instances.  A mixture is not yet supported.
+    a list of Provider instances, or dict "{'pv:name':`SharedPV`}" to implicitly creat a `StaticProvider`.
     """
 
     def __init__(self, providers, isolate=False, **kws):
+        self.__keep_alive = [] # ick...
+
         if isinstance(providers, (bytes, unicode)):
             providers = providers.split() # split on space
             warnings.warn("Server providers list should be a list", DeprecationWarning)
 
+        Ps = []
         for provider in providers:
-            if isinstance(provider, (bytes, unicode)) and not re.match(r'^[^ \t\n\r]+$', provider):
-                raise ValueError("Invalid provider name: '%s'"%provider)
+            if isinstance(provider, (bytes, unicode)):
+                if not re.match(r'^[^ \t\n\r]+$', provider):
+                    raise ValueError("Invalid provider name: '%s'"%provider)
+                Ps.append(provider)
+
+            elif isinstance(provider, (_StaticProvider, _DynamicProvider)):
+                Ps.append(provider)
+
+            elif hasattr(provider, 'items'):
+                P = StaticProvider()
+                for name, pv in provider.items():
+                    P.add(name, pv)
+                Ps.append(P)
+                # Normally user code is responsible for keeping the StaticProvider alive.
+                # Not possible in this case though.
+                self.__keep_alive.append(P)
+
+            else:
+                raise ValueError("providers=[] must be a list of string, SharedPV, or dict.  Not %s"%provider)
 
         if isolate:
             kws['useenv'] = False
@@ -82,7 +103,7 @@ class Server(object):
                 'EPICS_PVA_BROADCAST_PORT': '0',
             }
         _log.debug("Starting Server isolated=%s, %s", isolate, kws)
-        self._S = _Server(providers=providers, **kws)
+        self._S = _Server(providers=Ps, **kws)
 
         _all_servers.add(self._S)
 
@@ -109,6 +130,7 @@ class Server(object):
         """
         _log.debug("Stopping Server")
         self._S.stop()
+        self.__keep_alive = []
 
     @classmethod
     def forever(klass, *args, **kws):
@@ -136,8 +158,15 @@ class StaticProvider(_StaticProvider):
 
     """A channel provider which servers from a clearly defined list of names.
     This list may change at any time.
-    """
 
+    :param str name: Provider name.  Must be unique within the local context in which it is used.
+                     None, the default, will choose an appropriate value.
+    """
+    def __init__(self, name=None):
+        if name is None:
+            # Caller doesn't care.  Pick something unique w/o spaces
+            name = str(uuid.uuid4())
+        super(StaticProvider, self).__init__(name)
 
 class DynamicProvider(_DynamicProvider):
 
