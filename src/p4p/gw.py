@@ -4,6 +4,7 @@ import time
 import socket
 import threading
 import platform
+import pprint
 import sqlite3
 
 from functools import wraps
@@ -434,7 +435,7 @@ class App(object):
             'EPICS_PVA_AUTO_ADDR_LIST':'NO',
             'EPICS_PVA_BROADCAST_PORT':str(args.cport),
         }
-        _log.info("Client initial config: %s", client_conf)
+        _log.info("Client initial config:\n%s", pprint.pformat(client_conf))
         server_conf = {
             'EPICS_PVAS_INTF_ADDR_LIST':srv_iface.addr,
             'EPICS_PVAS_BEACON_ADDR_LIST':srv_iface.addr_list,
@@ -453,7 +454,7 @@ class App(object):
             removeProvider(u'gwc')
 
         server_conf = self.server.conf()
-        _log.info("Server config: %s", server_conf)
+        _log.info("Server config:\n%s", pprint.pformat(server_conf))
         # try to ignore myself
         self.handler.serverep = server_conf['EPICS_PVAS_INTF_ADDR_LIST']
         _log.debug('ignore GWS searches %s', self.handler.serverep)
