@@ -7,6 +7,7 @@ import platform
 import sqlite3
 
 from functools import wraps
+from tempfile import NamedTemporaryFile
 
 from .nt import NTScalar, Type, NTTable
 from .server import Server, StaticProvider, removeProvider
@@ -100,6 +101,11 @@ class GWHandler(object):
         self.channels_lock = threading.Lock()
         self.channels = {}
         self.prefix = args.prefix and args.prefix.encode('UTF-8')
+
+        if not args.statsdb:
+            self.__tempdb = NamedTemporaryFile()
+            args.statsdb = self.__tempdb.name
+            _log.debug("Using temporary stats db: %s", args.statsdb)
 
         with sqlite3.connect(self.args.statsdb) as C:
             C.executescript("""
@@ -386,12 +392,12 @@ class App(object):
         #P.add_argument('--signore')
         P.add_argument('--server', help='Server interface address, with optional port (default 5076)')
         P.add_argument('--cip', type=lambda v:set(v.split()), default=set(),
-                       help='Client address list, with optional ports (defaults set by --cport)')
+                       help='Space seperated client address list, with optional ports (default set by --cport)')
         P.add_argument('--cport', help='Client default port', type=int, default=5076)
         P.add_argument('--pvlist', help='Optional PV list file.  Default allows all')
         P.add_argument('--access', help='Optional ACF file.  Default allows all')
         P.add_argument('--prefix', help='Prefix for status PVs')
-        P.add_argument('--statsdb', help='SQLite3 database file for stats', default=':memory:')
+        P.add_argument('--statsdb', help='SQLite3 database file for stats')
         P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
         P.add_argument('--debug', action='store_true')
         args = P.parse_args(*args)
