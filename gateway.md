@@ -1,5 +1,7 @@
 # 2nd PVA gateway prototype
 
+The following is not final.
+
 ## Building
 
 ```sh
@@ -50,57 +52,52 @@ make nose
 PYTHONPATH=... python -m p4p.gw -h
 ```
 
-> usage: gw.py [-h] [--server SERVER] [--cip CIP] [--cport CPORT]
->              [--pvlist PVLIST] [--access ACCESS] [--prefix PREFIX]
->              [--statsdb STATSDB] [-v] [--debug]
-> 
-> optional arguments:
->   -h, --help         show this help message and exit
->   --server SERVER    Server interface address, with optional port (default
->                      5076)
->   --cip CIP          Space seperated client address list, with optional ports
->                      (default set by --cport)
->   --cport CPORT      Client default port
->   --pvlist PVLIST    Optional PV list file. Default allows all
->   --access ACCESS    Optional ACF file. Default allows all
->   --prefix PREFIX    Prefix for status PVs
->   --statsdb STATSDB  SQLite3 database file for stats
->   -v, --verbose
->   --debug
+```
+usage: gw.py [-h] [--server SERVER] [--cip CIP] [--cport CPORT]
+             [--pvlist PVLIST] [--access ACCESS] [--prefix PREFIX]
+             [--statsdb STATSDB] [-v] [--debug]
 
-The argument '--cip' sets EPICS_PVA_ADDR_LIST for the client side of the
+optional arguments:
+  -h, --help         show this help message and exit
+  --server SERVER    Server interface address, with optional port (default
+                     5076)
+  --cip CIP          Space seperated client address list, with optional ports
+                     (default set by --cport)
+  --cport CPORT      Client default port
+  --pvlist PVLIST    Optional PV list file. Default allows all
+  --access ACCESS    Optional ACF file. Default allows all
+  --prefix PREFIX    Prefix for status PVs
+  --statsdb STATSDB  SQLite3 database file for stats
+  -v, --verbose
+  --debug
+```
+
+The argument `--cip` sets EPICS_PVA_ADDR_LIST for the client side of the
 gateway.  It can be any combination of broadcast and unicast addresses.
 
-'--server' must be a single local interface address, and optionally ':port'.
+`--server` must be a single local interface address, and optionally `:port`.
 
-'--pvlist' and '--access' should work as with cagateway.
+`--pvlist` and `--access` should work as with cagateway.
 pvlist ALIAS lines aren't yet supported.
 
-When '--prefix <name>' is given, which is recommended, the server side of
+When `--prefix <name>` is given, which is recommended, the server side of
 the gateway will present some additionaly PVs with internal status information.
-Running with '-v' will print a full list of these names.  They include:
+Running with `-v` will print a full list of these names.  They include:
 
-<name>asTest
+### `<name>asTest`
 
   An RPC only PV which allows testing of ACF pvlist and ACF rules.
-  $ pvcall <name>asTest pv=some:name
+  `$ pvcall <name>asTest pv=some:name`
 
-<name>clients
+### `<name>clients`
 
   A list of clients connected to the server side
 
-<name>cache
+### `<name>cache`
 
   A list of channels to which the client side is connected
 
-<name>us:bypv:tx
-<name>us:bypv:rx
-<name>ds:bypv:tx
-<name>ds:bypv:rx
-<name>us:byhost:tx
-<name>us:byhost:rx
-<name>ds:byhost:tx
-<name>ds:byhost:rx
+### `<name>us:bypv:tx` `<name>us:bypv:rx` `<name>ds:bypv:tx` `<name>ds:bypv:rx` `<name>us:byhost:tx` `<name>us:byhost:rx` `<name>ds:byhost:tx` `<name>ds:byhost:rx`
 
   Each is a table showing bandwidth usage aggregated in various ways.
 
