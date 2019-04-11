@@ -6,6 +6,16 @@ import socket
 import re
 from collections import defaultdict, OrderedDict
 
+def _sub_add(expr, ngroups, adjust=0):
+    '''Adjust RE substitution offsets
+    '''
+    def check(M):
+        grp = int(M.group(1))
+        if grp<1 or grp>ngroups:
+            raise ValueError('Out of range substitution %d.  Must be in [1, %d]'%(grp,ngroups))
+        return r'\%d'%(grp+adjust)
+    return re.sub(r'(?<!\\)\\([0-9]+)', check, expr)
+
 def _re_join(exprs, capture=''):
     A = '|'.join(['(%s%s)'%(capture, E) for E in exprs])
     return re.compile('^(?:%s)$'%A)
@@ -17,10 +27,19 @@ class PVList(object):
         # {'host':[RE, ...]}
         deny_from = defaultdict(list)
         deny_all = set()
-        allow = OrderedDict()
+        allow = OrderedDict() # {RE:(sub|None, asg, asl)}
+        # number of match groups encountered so far.
+        # must match between allow key (pattern) and substitution
+        ngroups = 1 # one indexed
+        self._allow_groups = []
+
+        lines = (pvl or '.* ALLOW').splitlines()
+        # ALLOW entries are given in order of increasing precedence.
+        # The last match in the file is used.
+        lines.reverse()
 
         lineno = 0
-        for line in (pvl or '.* ALLOW').splitlines():
+        for line in lines:
             lineno += 1
             try:
                 line = line.strip()
@@ -42,8 +61,9 @@ class PVList(object):
 
                 # test compile
                 C = re.compile(pattern)
-                if C.groups>0:
-                    raise RuntimeError("Capture groups and ALIAS not yet supported")
+
+                if pattern in allow:
+                    continue # ignore duplicate pattern
 
                 if cmd=='DENY':
                     if len(parts) and parts[0]=='FROM':
@@ -58,9 +78,20 @@ class PVList(object):
                         deny_all.add(pattern)
 
                 elif cmd=='ALIAS':
-                    raise RuntimeError("ALIAS not yet supported")
+                    self._allow_groups.append(ngroups)
+                    ngroups += 1 # _re_join adds one capture group
+
+                    alias = _sub_add(parts[0], ngroups=C.groups, adjust=ngroups-1)
+                    asg = parts[1] if len(parts)>1 else 'DEFAULT'
+                    asl = int(parts[2] if len(parts)>2 else '0')
+
+                    allow[pattern] = (alias, asg, asl)
+                    ngroups += C.groups
 
                 elif cmd=='ALLOW':
+                    self._allow_groups.append(ngroups)
+                    ngroups += 1 # _re_join adds one capture group
+
                     asg = parts[0] if len(parts)>0 else 'DEFAULT'
                     asl = int(parts[1] if len(parts)>1 else '0')
 
@@ -81,15 +112,10 @@ class PVList(object):
         self._deny_all = _re_join(deny_all, '?:')
 
         allow_pat, self._allow_actions = list(allow.keys()), list(allow.values())
-        # ALLOW entries are given in order of increascing precedence.
-        # The last match in the file is used.
-        allow_pat.reverse()
-        self._allow_actions.reverse()
 
         self._allow_pat = _re_join(allow_pat)
-        assert self._allow_pat.groups==len(allow)
 
-        self._allow_groups = tuple(range(1, 1+len(allow)))
+        assert self._allow_pat.groups+1==ngroups, (self._allow_pat.groups, ngroups)
 
     @staticmethod
     def _gethostbyname(host):
@@ -104,7 +130,9 @@ class PVList(object):
             if M:
                 for idx, val in enumerate(M.group(*self._allow_groups)):
                     if val is not None:
-                        _alias, asg, asl = self._allow_actions[idx]
+                        alias, asg, asl = self._allow_actions[idx]
+                        if alias is not None:
+                            pv = M.expand(alias)
 
                         return pv, asg, asl
 

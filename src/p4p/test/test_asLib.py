@@ -5,23 +5,27 @@ import logging
 import unittest
 
 from ..asLib import Engine
-from ..asLib.pvlist import PVList
+from ..asLib.pvlist import PVList, _sub_add
 
 _log = logging.getLogger(__name__)
 
 class TestPVList(unittest.TestCase):
     def test_slac(self):
-        pvlist = """
+        pvlist = r"""
 EVALUATION ORDER ALLOW, DENY
 # comment
 .* ALLOW 
 OTRS:DMP1:695:Image:.*     DENY
 PATT:SYS0:1:MPSBURSTCTRL.* ALLOW CANWRITE
 PATT:SYS0:1:MPSBURSTCTRL.* DENY FROM 1.2.3.4 
+X(.*) ALIAS Y\1 CANWRITE
 BEAM.* DENY FROM 1.2.3.4   
 BEAM.* ALLOW
 BEAM.* ALLOW RWINSTRMCC 1
 
+THIS ALIAS THAT
+
+a:([^:]*):b:([^:]*) ALIAS A:\2:B:\1
 
 """
 
@@ -35,6 +39,9 @@ BEAM.* ALLOW RWINSTRMCC 1
 
         self.assertEqual(pvl.compute(b'PATT:SYS0:1:MPSBURSTCTRLX', '127.0.0.1'), ('PATT:SYS0:1:MPSBURSTCTRLX', 'CANWRITE', 0))
         self.assertEqual(pvl.compute(b'PATT:SYS0:1:MPSBURSTCTRLX', '1.2.3.4'), (None, None, None))
+
+        self.assertEqual(pvl.compute(b'Xsomething', '127.0.0.1'), ('Ysomething', 'CANWRITE', 0))
+        self.assertEqual(pvl.compute(b'a:one:b:two', '127.0.0.1'), ('A:two:B:one', 'DEFAULT', 0))
 
 class DummyEngine(Engine):
     @staticmethod
@@ -139,3 +146,10 @@ ASG(AMOWRITE)
                 self.assertDictEqual(ch.perm, perm)
             except AssertionError as e:
                 raise AssertionError('%s -> %s : %s'%(args, perm ,e))
+
+class TestRE(unittest.TestCase):
+    def test_offset(self):
+        self.assertEqual(_sub_add(r'test', 1, 5), r'test')
+        self.assertEqual(_sub_add(r'tes\\t', 1, 5), r'tes\\t')
+        self.assertEqual(_sub_add(r'tes\1t', 1, 5), r'tes\6t')
+        self.assertEqual(_sub_add(r'tes\1t\2', 2, 5), r'tes\6t\7')
