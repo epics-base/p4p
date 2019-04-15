@@ -20,7 +20,7 @@ def t_eol(t):
     t.lexer.lineno += len(t.value)
 
 def t_comment(t):
-    r'\#.*$'
+    r'\#[^\n]*\n'
     t.lexer.lineno += 1
 
 def t_KW(t):
@@ -47,7 +47,7 @@ def t_bare_STRING(t):
 def t_quoted_STRING(t):
     r'"([^"\n\\]|\\.)*"'
     t.type = 'STRING'
-    # TODO: unquote...
+    t.value = t.value[1:-1] # asLib_lex.l doesn't un-escape  .encode('utf-8').decode('unicode_escape')
     return t
 
 def t_error(t):
