@@ -270,7 +270,7 @@ class Context(raw.Context):
         op = super(Context, self).rpc(name, cb, value, request=request)
 
         try:
-            value = yield from F
+            return (yield from F)
         finally:
             op.close()
 
