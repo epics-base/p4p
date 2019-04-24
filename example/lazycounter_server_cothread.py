@@ -80,10 +80,7 @@ class LazyCounter(object):
 
 pv = SharedPV(handler=LazyCounter())
 
-provider = StaticProvider('lazy') # 'lazy' is an arbitrary name
-provider.add("foo", pv)
-
-with Server(providers=[provider]):
+with Server(providers=[{'foo': pv}]):
     print('Running')
     try:
         cothread.WaitForQuit()

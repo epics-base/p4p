@@ -47,10 +47,7 @@ pv = SharedPV(nt=NTScalar('d'),
               initial=0.0,
               handler=MoveHandler())
 
-provider = StaticProvider('move') # 'move' is an arbitrary name
-provider.add("foo", pv)
-
-with Server(providers=[provider]):
+with Server(providers=[{'foo': pv}]):
     print('Running')
     try:
         cothread.WaitForQuit()

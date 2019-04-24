@@ -35,8 +35,8 @@ logging.basicConfig(level=args.debug)
 pv = SharedPV(nt=NTNDArray(),
               initial=face(gray=args.gray))
 
-provider = StaticProvider('face')
-provider.add(args.pvname, pv)
 print('serving pv:', args.pvname)
 
-Server.forever(providers=[provider])
+Server.forever(providers=[{
+    args.pvname: pv,
+}])

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # cf.
-# ~/build-epics/p4p/example/monitor_client.py
+# example/monitor_client.py
 
 from __future__ import print_function
 

@@ -48,6 +48,7 @@ provider = StaticProvider('dynamicbox')
 
 class MailboxHandler(object):
     def put(self, pv, op):
+        # allow client to modify all fields.  eg. including .timeStamp
         pv.post(op.value())
         op.done()
 
