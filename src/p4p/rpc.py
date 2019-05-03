@@ -1,4 +1,5 @@
 
+import sys
 import logging
 import inspect
 from functools import wraps, partial
@@ -255,9 +256,14 @@ class RPCProxyBase(object):
 
 def _wrapMethod(K, V):
     pv, req = V._call_PV, V._call_Request
-    S = inspect.getargspec(V)
+    if sys.version_info >= (3, 0):
+        S = inspect.getfullargspec(V)
+        keywords = S.varkw
+    else:
+        S = inspect.getargspec(V)
+        keywords = S.keywords
 
-    if S.varargs is not None or S.keywords is not None:
+    if S.varargs is not None or keywords is not None:
         raise TypeError("vararg not supported for proxy method %s" % K)
 
     if len(S.args) != len(S.defaults):
