@@ -25,8 +25,7 @@ class ntwrappercommon(object):
         return self
 
     def __str__(self):
-        V = super(ntwrappercommon, self).__repr__()
-        return '%s %s' % (time.ctime(self.timestamp), V)
+        return '%s %s' % (time.ctime(self.timestamp), self.__repr__())
 
     tostr = __str__
 
@@ -52,6 +51,23 @@ class ntint(ntwrappercommon, int):
     * .raw_stamp - A tuple (seconds, nanoseconds)
     * .raw - The underlying :py:class:`p4p.Value`.
     """
+
+
+class ntbool(ntwrappercommon, int):
+    """
+    Augmented boolean with additional attributes
+
+    * .severity
+    * .status
+    * .timestamp - Seconds since 1 Jan 1970 UTC as a float
+    * .raw_stamp - A tuple (seconds, nanoseconds)
+    * .raw - The underlying :py:class:`p4p.Value`.
+    """
+    def __new__(cls, value):
+        return int.__new__(cls, bool(value))
+
+    def __repr__(self):
+        return bool(self).__repr__()
 
 
 class ntstr(ntwrappercommon, unicode):
@@ -203,6 +219,7 @@ class NTScalar(object):
             })
 
     typeMap = {
+        bool: ntbool,
         int: ntint,
         float: ntfloat,
         unicode: ntstr,
