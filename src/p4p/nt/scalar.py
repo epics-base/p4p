@@ -67,7 +67,7 @@ class ntbool(ntwrappercommon, int):
         return int.__new__(cls, bool(value))
 
     def __repr__(self):
-        return bool(self).__repr__()
+        return bool(self).__repr__().lower()
 
 
 class ntstr(ntwrappercommon, unicode):
