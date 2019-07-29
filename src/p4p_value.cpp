@@ -189,7 +189,7 @@ void Value::store_struct(pvd::PVStructure* fld,
             PyRef temp(PyObject_GetIter(obj));
             iter.swap(temp);
         }catch(std::runtime_error&){
-            PyErr_Format(PyExc_KeyError, "Can't assign \"%s\" from %s : not iterable",
+            PyErr_Format(PyExc_KeyError, "Can't assign sub-structure \"%s\" from %s : expect iterable/list of tuples",
                          fld->getFullName().c_str(), Py_TYPE(obj)->tp_name);
             throw std::runtime_error("not seen");
         }
@@ -633,7 +633,7 @@ void Value::storefld(pvd::PVField* fld,
         const pvd::StructureArray* T = static_cast<const pvd::StructureArray*>(ftype);
         const pvd::Structure* ST = T->getStructure().get();
 
-        pvd::PVDataCreatePtr create(pvd::getPVDataCreate());
+        const pvd::PVDataCreatePtr& create = pvd::getPVDataCreate();
         pvd::BitSet::shared_pointer junk;
         pvd::PVStructureArray::svector arr;
 
@@ -672,7 +672,7 @@ void Value::storefld(pvd::PVField* fld,
         pvd::PVUnionArray::svector arr;
         PyRef iter(PyObject_GetIter(obj));
 
-        pvd::PVDataCreatePtr create(pvd::getPVDataCreate());
+        const pvd::PVDataCreatePtr& create = pvd::getPVDataCreate();
 
         while(true) {
             PyRef item(PyIter_Next(iter.get()), nextiter());
