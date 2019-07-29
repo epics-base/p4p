@@ -209,6 +209,7 @@ class Engine(object):
             hags = self._hag_addr.get(host, set())
             rules = self._asg.get(group, self._asg_DEFAULT)
 
+            trapit = False
             try:
                 for mask, asl, trap, conds in rules:
                     accept = True
@@ -233,6 +234,7 @@ class Engine(object):
                             break
 
                     if accept:
+                        trapit |= trap
                         perm |= mask
 
             except:
@@ -243,7 +245,7 @@ class Engine(object):
             rpc = perm & RPC
             uncached = perm & UNCACHED
 
-            channel.access(put=bool(put), rpc=bool(rpc), uncached=bool(uncached))
+            channel.access(put=bool(put), rpc=bool(rpc), uncached=bool(uncached), audit=trapit)
 
             self._anodes[channel] = (group, user, host, level)
 

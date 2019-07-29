@@ -10,7 +10,9 @@
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 #include <epicsTime.h>
+#include <epicsEvent.h>
 
+#include <pv/thread.h>
 #include <pv/valueBuilder.h>
 #include <pv/pvAccess.h>
 #include <pv/security.h>
@@ -84,9 +86,10 @@ struct GWChan : public pva::Channel,
     std::tr1::shared_ptr<Requester> us_requester;
 
     // intentionally not guarded.  Short periods of race should not cause problems
-    unsigned allow_put,
-             allow_rpc,
-             allow_uncached;
+    volatile unsigned allow_put,
+                      allow_rpc,
+                      allow_uncached,
+                      audit;
 
     GWChan(const std::tr1::shared_ptr<GWProvider>& provider,
            const std::string& name,
@@ -345,6 +348,13 @@ struct GWProvider : public pva::ChannelProvider,
 
     epicsTime prevtime;
 
+    typedef std::list<std::string> audit_log_t;
+    audit_log_t audit_log;
+    epicsEvent audit_wakeup, audit_holdoff;
+    bool audit_run;
+
+    pvd::Thread audit_runner;
+
     // guarded by GIL
     PyObject* handle;
 
@@ -393,6 +403,9 @@ public:
     void report(report_t& us, report_t& ds, double& period);
 
     static void prepare();
+
+private:
+    void runAudit();
 
     EPICS_NOT_COPYABLE(GWProvider)
 };

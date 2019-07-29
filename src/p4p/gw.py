@@ -24,6 +24,7 @@ if sys.version_info >= (3, 0):
     unicode = str
 
 _log = logging.getLogger(__name__)
+_log_audit = logging.getLogger(__name__+'.audit')
 
 def uricall(fn):
     @wraps(fn)
@@ -83,6 +84,7 @@ permissionsType = Type([
         ('put', '?'),
         ('rpc', '?'),
         ('uncached', '?'),
+        ('audit', '?'),
     ])),
 ], id='epics:p2p/Permission:1.0')
 
@@ -160,10 +162,6 @@ class GWStats(object):
                     rx REAL NOT NULL
                 );
             """)
-
-        self.asTestPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
-        ###self.asTestPV.rpc(self.asTest) # TODO this is a deceptive way to assign
-        self._pvs['asTest'] = self.asTestPV
 
         self.clientsPV = SharedPV(nt=NTScalar('as'), initial=[])
         self._pvs['clients'] = self.clientsPV
@@ -319,6 +317,9 @@ class GWHandler(object):
             # if we fail here the client will go into a reset loop.
             _log.exception("Default restrictive for %s from %s", op.name, op.peer)
         return chan
+
+    def audit(self, msg):
+        _log_audit.info('%s', msg)
 
     def sweep(self):
         self.provider.sweep()
@@ -501,6 +502,11 @@ class App(object):
 
                 if 'statusprefix' in jsrv:
                     self.stats.bindto(statusp, jsrv['statusprefix'])
+
+                    handler.asTestPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
+                    handler.asTestPV.rpc(handler.asTest) # TODO this is a deceptive way to assign
+                    statusp.add(jsrv['statusprefix']+'asTest', handler.asTestPV)
+
                     # prevent client from searching for our status PVs
                     for spv in statusp.keys():
                         handler.provider.forceBan(usname=spv.encode('utf-8'))

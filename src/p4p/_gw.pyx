@@ -9,6 +9,7 @@ from libcpp cimport bool
 from libcpp.string cimport string
 from libcpp.set cimport set
 from libcpp.vector cimport vector
+from libcpp.list cimport list as listxx
 
 from cpython.object cimport PyObject, PyTypeObject, traverseproc, visitproc
 from cpython.ref cimport Py_INCREF, Py_XDECREF
@@ -77,6 +78,7 @@ cdef extern from "gwchannel.h" nogil:
         unsigned allow_put
         unsigned allow_rpc
         unsigned allow_uncached
+        unsigned audit;
 
         void disconnect()
 
@@ -200,7 +202,7 @@ cdef class Channel(InfoBase):
     def expired(self):
         return self.channel.expired()
 
-    def access(self, put=None, rpc=None, uncached=None):
+    def access(self, put=None, rpc=None, uncached=None, audit=None):
         cdef shared_ptr[GWChan] ch = self.channel.lock()
         if not ch:
             return
@@ -210,6 +212,8 @@ cdef class Channel(InfoBase):
             ch.get().allow_rpc = rpc==True
         if uncached is not None:
             ch.get().allow_uncached = uncached==True
+        if audit:
+            ch.get().audit = audit==True
 
     def close(self):
         cdef shared_ptr[GWChan] ch = self.channel.lock()
@@ -396,3 +400,14 @@ cdef public:
                 ret = (<Channel?>chan).channel.lock()
 
         return ret
+
+    void GWProvider_audit(GWProvider* provider, listxx[string]& audits) with gil:
+        if provider.handle:
+            for audit in audits:
+                handle = <object>provider.handle
+
+                try:
+                    handle.audit(audit)
+                except:
+                    import traceback
+                    traceback.print_exc()

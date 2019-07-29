@@ -100,11 +100,11 @@ class TestACL(unittest.TestCase):
 
         ch = self.DummyChannel()
         eng.create(ch, 'DEFAULT', 'someone', 'somewhere', 0)
-        self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':True})
+        self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':True, 'audit': False})
 
         ch = self.DummyChannel()
         eng.create(ch, 'othergrp', 'someone', 'somewhere', 0)
-        self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':True})
+        self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':True, 'audit': False})
 
     def test_roles(self):
         eng = DummyEngine("""
@@ -121,9 +121,9 @@ ASG(DEFAULT)
 }
 """)
 
-        for args, perm in [(('DEFAULT', 'someone', 'somewhere', 0),          {'put':False,'rpc':False, 'uncached':False}),
-                           (('DEFAULT', 'root', '1.2.3.4', 0),               {'put':True, 'rpc':False, 'uncached':False}),
-                           (('DEFAULT', 'someone', '1.2.3.4', 0, ['admin']), {'put':True, 'rpc':False, 'uncached':False}),
+        for args, perm in [(('DEFAULT', 'someone', 'somewhere', 0),          {'put':False,'rpc':False, 'uncached':False, 'audit': False}),
+                           (('DEFAULT', 'root', '1.2.3.4', 0),               {'put':True, 'rpc':False, 'uncached':False, 'audit': False}),
+                           (('DEFAULT', 'someone', '1.2.3.4', 0, ['admin']), {'put':True, 'rpc':False, 'uncached':False, 'audit': False}),
                            ]:
             try:
                 _log.debug('With: %s expect: %s', args, perm)
@@ -180,14 +180,14 @@ ASG(TSTWRITE)
 }
 """)
 
-        for args, perm in [(('DEFAULT', 'someone', 'somewhere', 0),  {'put':False, 'rpc':False, 'uncached':False}),
-                           (('DEFAULT', 'root', '1.2.3.4', 0),       {'put':False, 'rpc':False, 'uncached':False}),
-                           (('CANWRITE', 'someone', 'somewhere', 0), {'put':True , 'rpc':False, 'uncached':False}),
-                           (('CANWRITE', 'root', '1.2.3.44', 0),     {'put':True , 'rpc':False, 'uncached':False}),
-                           (('AMOWRITE', 'someone', 'somewhere', 0), {'put':False, 'rpc':False, 'uncached':False}),
-                           (('AMOWRITE', 'someone', '1.2.3.44', 0),  {'put':False, 'rpc':False, 'uncached':False}),
-                           (('AMOWRITE', 'root', 'somewhere', 0),    {'put':False, 'rpc':False, 'uncached':False}),
-                           (('AMOWRITE', 'root', '1.2.3.44', 0),     {'put':True , 'rpc':False, 'uncached':False}),
+        for args, perm in [(('DEFAULT', 'someone', 'somewhere', 0),  {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
+                           (('DEFAULT', 'root', '1.2.3.4', 0),       {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
+                           (('CANWRITE', 'someone', 'somewhere', 0), {'put':True , 'rpc':False, 'uncached':False, 'audit': True}),
+                           (('CANWRITE', 'root', '1.2.3.44', 0),     {'put':True , 'rpc':False, 'uncached':False, 'audit': True}),
+                           (('AMOWRITE', 'someone', 'somewhere', 0), {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
+                           (('AMOWRITE', 'someone', '1.2.3.44', 0),  {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
+                           (('AMOWRITE', 'root', 'somewhere', 0),    {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
+                           (('AMOWRITE', 'root', '1.2.3.44', 0),     {'put':True , 'rpc':False, 'uncached':False, 'audit': True}),
                            ]:
             try:
                 ch = self.DummyChannel()
@@ -234,10 +234,10 @@ ASG(OPERATOR) {
             eng.create(ch, *args)
             db.append(ch)
 
-        for ch, perm in zip(db, [{'put':True , 'rpc':False, 'uncached':False},
-                                 {'put':True , 'rpc':False, 'uncached':False},
-                                 {'put':False , 'rpc':False, 'uncached':False},
-                                 {'put':False , 'rpc':False, 'uncached':False},
+        for ch, perm in zip(db, [{'put':True , 'rpc':False, 'uncached':False, 'audit': True},
+                                 {'put':True , 'rpc':False, 'uncached':False, 'audit': True},
+                                 {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
+                                 {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
                                  ]):
             try:
                 self.assertDictEqual(ch.perm, perm)
@@ -246,10 +246,10 @@ ASG(OPERATOR) {
 
         eng._ctxt.post('ACC-CT{}Prmt:Remote-Sel', 1.0)
 
-        for ch, perm in zip(db, [{'put':True , 'rpc':False, 'uncached':False},
-                                 {'put':True , 'rpc':False, 'uncached':False},
-                                 {'put':False , 'rpc':False, 'uncached':False},
-                                 {'put':False , 'rpc':False, 'uncached':False},
+        for ch, perm in zip(db, [{'put':True , 'rpc':False, 'uncached':False, 'audit': True},
+                                 {'put':True , 'rpc':False, 'uncached':False, 'audit': True},
+                                 {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
+                                 {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
                                  ]):
             try:
                 self.assertDictEqual(ch.perm, perm)
@@ -258,10 +258,10 @@ ASG(OPERATOR) {
 
         eng._ctxt.post('ACC-CT{}Prmt:Remote-Sel', 0.0)
 
-        for ch, perm in zip(db, [{'put':True , 'rpc':False, 'uncached':False},
-                                 {'put':True , 'rpc':False, 'uncached':False},
-                                 {'put':False , 'rpc':False, 'uncached':False},
-                                 {'put':False , 'rpc':False, 'uncached':False},
+        for ch, perm in zip(db, [{'put':True , 'rpc':False, 'uncached':False, 'audit': True},
+                                 {'put':True , 'rpc':False, 'uncached':False, 'audit': True},
+                                 {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
+                                 {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
                                  ]):
             try:
                 self.assertDictEqual(ch.perm, perm)

@@ -454,6 +454,57 @@ void ProxyPut::put(
             Guard G(mutex);
             op = us_op;
         }
+        if(channel->audit) {
+            std::ostringstream strm;
+            {
+                char buf[64];
+                epicsTime::getCurrent().strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S.%09f");
+                strm<<buf<<' ';
+            }
+            pva::ChannelRequester::shared_pointer req(channel->ds_requester);
+            if(req) {
+                pva::PeerInfo::const_shared_pointer info(req->getPeerInfo());
+                if(info) {
+                    if(info->identified)
+                        strm<<info->authority<<'/'<<info->account;
+                    strm<<'@'<<info->peer<<' ';
+                } else {
+                    strm<<req->getRequesterName()<<' ';
+                }
+            } else {
+                strm<<"??? ";
+            }
+            strm<<channel->name<<" as "<<channel->us_channel->getChannelName();
+            pvd::PVScalar::const_shared_pointer value(pvPutStructure->getSubField<pvd::PVScalar>("value"));
+            if(value) {
+                strm<<" -> "<<value->getAs<std::string>();
+            }
+
+            GWProvider::audit_log_t entry(1);
+            entry.back() = strm.str();
+
+            GWProvider::shared_pointer provider(channel->provider);
+            bool poke_audit = false;
+            if(provider) {
+                {
+                    Guard G(provider->mutex);
+
+                    poke_audit = provider->audit_log.empty();
+
+                    if(provider->audit_log.size()<100u) {
+                        provider->audit_log.splice(provider->audit_log.end(), entry);
+
+                    } else if(provider->audit_log.size()==100u) {
+                        provider->audit_log.push_back("... put audit log overflow");
+
+                    } else {
+                        // in overflow
+                    }
+                }
+                if(poke_audit)
+                    provider->audit_wakeup.signal();
+            }
+        }
         if(op) // possible race with createChannelPut() if we get called recursively (PVA client doesn't do this)
             op->put(pvPutStructure, putBitSet);
     } else if(requester_type::shared_pointer req = us_requester->downstream.lock()) {
@@ -597,6 +648,10 @@ GWProvider::GWProvider(const std::string& name,
     :name(name)
     ,client(provider)
     ,prevtime(epicsTime::getCurrent())
+    ,audit_run(true)
+    ,audit_runner(pvd::Thread::Config(this, &GWProvider::runAudit)
+                  .name("GW Auditor")
+                  .autostart(true))
     ,handle(0)
 {
     REFTRACE_INCREMENT(num_instances);
@@ -605,6 +660,14 @@ GWProvider::GWProvider(const std::string& name,
 
 GWProvider::~GWProvider() {
     TRACE("");
+    {
+        Guard G(mutex);
+        audit_run = false;
+    }
+    audit_wakeup.signal();
+    audit_holdoff.signal();
+    audit_runner.exitWait();
+
     GWProvider_cleanup(this);
     REFTRACE_DECREMENT(num_instances);
 }
@@ -953,6 +1016,28 @@ void GWProvider::prepare()
     epics::registerRefCounter("ProxyRPC::Requester", &ProxyRPC::Requester::num_instances);
 }
 
+void GWProvider::runAudit()
+{
+    audit_log_t audit;
+    Guard G(mutex);
+    while(audit_run) {
+        audit_log.swap(audit); // move any log entries
+
+        {
+            UnGuard U(G);
+
+            // deliver to python
+            GWProvider_audit(this, audit);
+            audit.clear(); // free while unlocked
+
+            // rate limit audit messages by only delivering a batch every 100ms.
+            audit_holdoff.wait(0.1);
+            // now wait for the audit queue to be non-empty
+            audit_wakeup.wait();
+        }
+        // locked again
+    }
+}
 
 #ifdef TRACING
 std::ostream& show_time(std::ostream& strm)
