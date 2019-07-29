@@ -6,6 +6,7 @@ import collections
 import unittest
 
 from ..asLib import Engine
+from ..asLib.yacc import parse as parse_acf
 from ..asLib.pvlist import PVList, _sub_add
 
 from .. import nt
@@ -86,6 +87,54 @@ class DummyEngine(Engine):
             'mcrhost':'1.2.3.10',
             'remotehost':'1.2.3.20',
         }[host]
+
+class TestACF(unittest.TestCase):
+    def test_parse(self):
+        inp='''
+UAG(SPECIAL) {
+    "root",
+    role:admin
+}
+HAG(GWSTATS)
+{
+        lcls-daemon3,
+        other.host,
+        "strange"
+}
+ASG(SIMPLE)
+{
+        RULE(1,READ)
+}
+ASG(NOTSIMPLE) {
+  INPA("ACC-CT{}Prmt:Remote-Sel")
+        RULE(1,READ)
+        RULE(1,WRITE,TRAPWRITE) {
+                UAG(PHOTON)
+                HAG(PHOTON)
+    CALC("A!=0")
+                
+        }
+}
+'''
+
+        ast = parse_acf(inp)
+
+        self.assertEqual(ast, [
+            ('UAG', 'SPECIAL', ['root', 'role:admin']),
+            ('HAG', 'GWSTATS', ['lcls-daemon3', 'other.host', 'strange']),
+            ('ASG', 'SIMPLE', [
+                ('RULE', 1, 'READ', False, None)
+            ]),
+            ('ASG', 'NOTSIMPLE', [
+                ('INP', 'A', 'ACC-CT{}Prmt:Remote-Sel'),
+                ('RULE', 1, 'READ', False, None),
+                ('RULE', 1, 'WRITE', True, [
+                    ('UAG', 'PHOTON'),
+                    ('HAG', 'PHOTON'),
+                    ('CALC', 'A!=0'),
+                ]),
+            ]),
+        ])
 
 class TestACL(unittest.TestCase):
     class DummyChannel(object):
