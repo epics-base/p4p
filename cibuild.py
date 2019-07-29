@@ -7,6 +7,7 @@ from __future__ import print_function
 
 import sys, os, platform
 import shutil
+import re
 import subprocess as SP
 from glob import glob
 
@@ -22,6 +23,12 @@ PY2 = sys.version_info<(3,0)
 #  cp35-none-win32
 #  cp34-none-win_amd64
 #  cp35-cp35m-macosx_10_6_intel.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64
+
+def is_pre():
+    with open('setup.py', 'r') as F:
+        ver = re.match(r".*package_version\s*=\s*'([^']*)'.*", F.read(), flags=re.DOTALL).group(1)
+
+    return ver.find('a')!=-1
 
 requirments = {
     'Linux':'requirements-deb8.txt',
@@ -51,8 +58,12 @@ def prepare(args):
     call_py(['-m', 'pip', 'install', '-U', 'pip'])
     call_py(['-m', 'pip', 'install', '-r', requirments])
     call_py(['-m', 'pip', 'install', '-U', 'wheel', 'setuptools', 'twine'])
-    call_py(['-m', 'pip', 'install', '-U', '--pre', 'setuptools_dso'])
-    call_py(['-m', 'pip', 'install', '-U', '--pre', '--only-binary', ':all:', 'epicscorelibs'])
+    if is_pre():
+        call_py(['-m', 'pip', 'install', '-U', '--pre', 'setuptools_dso'])
+        call_py(['-m', 'pip', 'install', '-U', '--pre', '--only-binary', ':all:', 'epicscorelibs'])
+    else:
+        call_py(['-m', 'pip', 'install', '-U', 'setuptools_dso'])
+        call_py(['-m', 'pip', 'install', '-U', '--only-binary', ':all:', 'epicscorelibs'])
 
 def build(args):
     tag = args.pop(0)

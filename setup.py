@@ -11,6 +11,9 @@ import epicscorelibs.path
 import epicscorelibs.version
 from epicscorelibs.config import get_config_var
 
+# the following line is matched from cibuild.py
+package_version = '3.3.1a1'
+
 extra = []
 import sys
 import platform
@@ -51,7 +54,7 @@ ext = Extension(
 
 setup(
     name='p4p',
-    version='3.3.0',
+    version=package_version,
     description="Python interface to PVAccess protocol client",
     url='https://mdavidsaver.github.io/p4p',
     author='Michael Davidsaver',
