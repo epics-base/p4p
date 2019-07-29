@@ -60,6 +60,16 @@ environment:
       PYTHON_ARCH: "64"
       PYTAG: "cp36-none-win_amd64"
 
+    - PYTHON: "C:\\Python37"
+      PYTHON_VERSION: "3.7.x"
+      PYTHON_ARCH: "32"
+      PYTAG: "cp37-none-win32"
+
+    - PYTHON: "C:\\Python37-x64"
+      PYTHON_VERSION: "3.7.x"
+      PYTHON_ARCH: "64"
+      PYTAG: "cp37-none-win_amd64"
+
 install:
   - cmd: git submodule update --init --recursive
   - ps: "ls \"C:/\""
