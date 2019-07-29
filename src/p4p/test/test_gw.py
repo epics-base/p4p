@@ -8,8 +8,10 @@ except ImportError:
 
 import unittest
 import gc
+import json
 import weakref
 import threading
+from tempfile import NamedTemporaryFile
 
 from .utils import RefTestCase
 from ..server import Server, StaticProvider, removeProvider
@@ -27,11 +29,12 @@ class TestGC(RefTestCase):
         class Dummy(object):
             pass
         H = Dummy()
-        GW = _gw.installGW(u'nulltest', {'EPICS_PVA_BROADCAST_PORT': '0',
-                                        'EPICS_PVA_SERVER_PORT': '0',
-                                        'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
-                                        'EPICS_PVA_ADDR_LIST': '127.0.0.1',
-                                        'EPICS_PVA_AUTO_ADDR_LIST': '0'}, H)
+        CLI = _gw.Client(u'pva', {'EPICS_PVA_BROADCAST_PORT': '0',
+                                  'EPICS_PVA_SERVER_PORT': '0',
+                                  'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
+                                  'EPICS_PVA_ADDR_LIST': '127.0.0.1',
+                                  'EPICS_PVA_AUTO_ADDR_LIST': '0'})
+        GW = _gw.Provider(u'nulltest', CLI, H)
         removeProvider(u'nulltest')
 
         self.assertEqual(GW.use_count(), 1)
@@ -40,6 +43,7 @@ class TestGC(RefTestCase):
         gw = weakref.ref(GW)
         del H
         del GW
+        del CLI
         gc.collect()
 
         self.assertIsNone(h())
@@ -49,11 +53,12 @@ class TestGC(RefTestCase):
         class Dummy(object):
             pass
         H = Dummy()
-        GW = _gw.installGW(u'nulltest', {'EPICS_PVA_BROADCAST_PORT': '0',
-                                        'EPICS_PVA_SERVER_PORT': '0',
-                                        'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
-                                        'EPICS_PVA_ADDR_LIST': '127.0.0.1',
-                                        'EPICS_PVA_AUTO_ADDR_LIST': '0'}, H)
+        CLI = _gw.Client(u'pva', {'EPICS_PVA_BROADCAST_PORT': '0',
+                                  'EPICS_PVA_SERVER_PORT': '0',
+                                  'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
+                                  'EPICS_PVA_ADDR_LIST': '127.0.0.1',
+                                  'EPICS_PVA_AUTO_ADDR_LIST': '0'})
+        GW = _gw.Provider(u'nulltest', CLI, H)
 
         try:
             with Server(providers=['nulltest'], isolate=True):
@@ -65,6 +70,7 @@ class TestGC(RefTestCase):
         gw = weakref.ref(GW)
         del H
         del GW
+        del CLI
         gc.collect()
 
         self.assertIsNone(h())
@@ -116,7 +122,8 @@ class TestLowLevel(RefTestCase):
         # GW client side
         # placed weakref in global registry
         H = self.Handler()
-        H.provider = self.gw = _gw.installGW(u'gateway', self._us_server.conf(), H)
+        CLI = _gw.Client(u'pva', self._us_server.conf())
+        H.provider = self.gw = _gw.Provider(u'gateway', CLI, H)
 
         try:
             # GW server side
@@ -222,20 +229,38 @@ class TestHighLevel(RefTestCase):
         us_conf = self._us_server.conf()
         _log.debug("US server conf: %s", us_conf)
 
+        cfile = NamedTemporaryFile('w+')
+        json.dump({
+            'version':1,
+            'clients':[{
+                'name':'client1',
+                'provider':'pva',
+                'addrlist':'127.0.0.1 127.255.255.255',
+                'autoaddrlist':False,
+                'bcastport':us_conf['EPICS_PVA_BROADCAST_PORT'],
+                'serverport':0,
+            }],
+            'servers':[{
+                'name':'server1',
+                'clients':['client1'],
+                'interface':'127.0.0.1',
+                'addrlist':'127.255.255.255',
+                'autoaddrlist':False,
+                'bcastport':0,
+                'serverport':0,
+            }],
+        }, cfile)
+        cfile.flush()
+
         # gateway
-        args = TestApp.getargs([
-            '--server','127.0.0.1',
-            '--cip','127.0.0.1',
-            '--cport', str(us_conf['EPICS_PVA_BROADCAST_PORT']),
-            '--prefix','gw:'
-        ])
+        args = TestApp.getargs([cfile.name])
 
         self._app = TestApp(args)
         self._main = threading.Thread(target=self._app.run, name='GW Main')
-        _log.debug("DS server conf: %s", self._app.server.conf())
+        _log.debug("DS server conf: %s", self._app.servers[u'server1'].conf())
 
         # downstream client
-        self._ds_client = Context('pva', conf=self._app.server.conf(), useenv=False)
+        self._ds_client = Context('pva', conf=self._app.servers[u'server1'].conf(), useenv=False)
 
         self._main.start()
 

@@ -13,89 +13,6 @@ from libcpp.vector cimport vector
 from cpython.object cimport PyObject, PyTypeObject, traverseproc, visitproc
 from cpython.ref cimport Py_INCREF, Py_XDECREF
 
-cdef extern from "<osiSock.h>" nogil:
-    ctypedef int SOCKET
-    enum:INVALID_SOCKET
-    struct in_addr:
-        unsigned long s_addr
-    struct sockaddr:
-        pass
-    struct sockaddr_in:
-        int sin_family
-        unsigned short sin_port
-        in_addr sin_addr
-    union osiSockAddr:
-        sockaddr sa
-        sockaddr_in ia
-    SOCKET epicsSocketCreate ( int domain, int type, int protocol )
-    void epicsSocketDestroy(SOCKET sock)
-
-    unsigned sockAddrToDottedIP(const sockaddr* paddr, char* pBuf, unsigned bufSize )
-    int aToIPAddr(const char* pAddrString, unsigned short defaultPort, sockaddr_in* pIP)
-
-    enum: AF_INET
-
-cdef extern from "<pv/discoverInterfaces.h>" namespace "epics::pvAccess" nogil:
-    cdef struct ifaceNode:
-        osiSockAddr addr
-        osiSockAddr peer
-        osiSockAddr bcast
-        osiSockAddr mask
-        bool loopback
-        bool validP2P
-        bool validBcast
-
-    int discoverInterfaces(vector[ifaceNode]& list, SOCKET socket, const osiSockAddr *pMatchAddr) except+
-
-cdef showINet(const osiSockAddr& addr):
-    cdef char buf[30]
-    cdef char *sep
-    sockAddrToDottedIP(&addr.sa, buf, sizeof(buf))
-    sep = strchr(buf, ':')
-    if sep:
-        sep[0] = '\0'
-    return (<bytes>buf).decode('UTF-8')
-
-cdef class IFInfo(object):
-    @staticmethod
-    def current(int domain, int type, unicode match=None):
-        cdef SOCKET sock
-        cdef vector[ifaceNode] info
-        cdef osiSockAddr maddr
-        cdef osiSockAddr *pmatch = NULL
-
-        if match is not None:
-            if aToIPAddr(match.encode('UTF-8'), 0, &maddr.ia):
-                raise ValueError("%s not an IP address"%match)
-            pmatch = &maddr
-
-        sock = epicsSocketCreate(domain, type, 0)
-        if sock==INVALID_SOCKET:
-            raise RuntimeError("Unable to allocate socket")
-        try:
-            if discoverInterfaces(info, sock, pmatch):
-                raise RuntimeError("Unable to inspect network interfaces")
-        finally:
-            epicsSocketDestroy(sock)
-
-        ret = []
-        for node in info:
-            if node.addr.ia.sin_family!=AF_INET:
-                continue
-            ent = {
-                'loopback':node.loopback,
-                'addr':showINet(node.addr),
-            }
-            if node.mask.ia.sin_family==AF_INET:
-                ent['mask'] = showINet(node.mask)
-            if node.validP2P:
-                ent['peer'] = showINet(node.peer)
-            if node.validBcast:
-                ent['bcast'] = showINet(node.bcast)
-            ret.append(ent)
-
-        return ret
-
 ## PVD explicitly uses std::tr1::shared_ptr<> which is _sometimes_ a
 ## distinct type, and sometimes an alias for std::shared_ptr<>.
 ## So instead of:
@@ -178,8 +95,11 @@ cdef extern from "gwchannel.h" nogil:
 
     cdef cppclass GWProvider(ChannelProvider):
         PyObject* handle
+
         @staticmethod
-        shared_ptr[GWProvider] build(const string& name, const shared_ptr[Configuration]& conf) except+
+        shared_ptr[ChannelProvider] buildClient(const string& name, const shared_ptr[Configuration]& conf) except+
+        @staticmethod
+        shared_ptr[GWProvider] build(const string& name, const shared_ptr[ChannelProvider]& provider) except+
 
         shared_ptr[GWProvider] shared_from_this() except+
 
@@ -188,6 +108,7 @@ cdef extern from "gwchannel.h" nogil:
 
         void sweep() except+
         void disconnect(const string& usname) except+
+        void forceBan(const string& host, const string& usname) except+
         void clearBan() except+
         void cachePeek(set[string]& names) except+
         void stats(GWStats& stats)
@@ -197,6 +118,19 @@ cdef extern from "gwchannel.h" nogil:
         void prepare() except+
 
 GWProvider.prepare()
+
+cdef class Client(object):
+    cdef shared_ptr[ChannelProvider] provider
+
+    def __init__(self, unicode provider, dict config):
+        cdef ConfigurationBuilder builder
+        cdef string name = provider.encode('utf-8')
+
+        for K, V in config.items():
+            builder.add(K.encode('utf-8'), V.encode('utf-8'))
+
+        with nogil:
+            self.provider = GWProvider.buildClient(name, builder.push_map().build())
 
 cdef class InfoBase(object):
     cdef shared_ptr[const PeerInfo] info
@@ -301,6 +235,19 @@ cdef class Provider:
         self.BanPV = GWSearchBanPV
         self.BanHostPV = GWSearchBanHostPV
 
+    def __init__(self, unicode name, Client client, object handler):
+        cdef string cname = name.encode('utf-8')
+        cdef shared_ptr[ChannelProvider] cprov
+
+        cprov = client.provider
+        with nogil:
+            self.provider = GWProvider.build(cname, cprov)
+
+        Py_INCREF(handler)
+        Py_XDECREF(self.provider.get().handle)
+        self.provider.get().handle = <PyObject*>handler
+
+
     def testChannel(self, bytes usname):
         cdef string n = usname
         cdef int ret
@@ -316,6 +263,16 @@ cdef class Provider:
         cdef string n = usname
         with nogil:
             self.provider.get().disconnect(n)
+
+    def forceBan(self, bytes host = None, bytes usname = None):
+        cdef string h
+        cdef string us
+        if host:
+            h = host
+        if usname:
+            us = usname
+        with nogil:
+            self.provider.get().forceBan(h, us)
 
     def clearBan(self):
         with nogil:
@@ -398,25 +355,6 @@ cdef int holder_traverse(PyObject* raw, visitproc visit, void* arg) except -1:
 
 Provider_base_traverse = (<PyTypeObject*>Provider).tp_traverse
 (<PyTypeObject*>Provider).tp_traverse = <traverseproc>holder_traverse
-
-def installGW(unicode name, dict config, object handler):
-    cdef string cname = name.encode('utf-8')
-    cdef ConfigurationBuilder builder
-    cdef shared_ptr[GWProvider] provider
-    cdef Provider ret = Provider()
-
-    for K, V in config.items():
-        builder.add(K.encode('utf-8'), V.encode('utf-8'))
-
-    with nogil:
-        provider = GWProvider.build(cname, builder.push_map().build())
-
-    Py_INCREF(handler)
-    Py_XDECREF(provider.get().handle)
-    provider.get().handle = <PyObject*>handler
-
-    ret.provider = provider
-    return ret
 
 # called from gwchannel.cpp
 cdef public:

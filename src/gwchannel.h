@@ -349,10 +349,12 @@ struct GWProvider : public pva::ChannelProvider,
     PyObject* handle;
 
 private:
-    GWProvider(const std::string& name, const pva::Configuration::shared_pointer& conf);
+    GWProvider(const std::string& name, const pva::ChannelProvider::shared_pointer& provider);
 public:
     virtual ~GWProvider();
-    static std::tr1::shared_ptr<GWProvider> build(const std::string& name, const pva::Configuration::shared_pointer& conf);
+    static std::tr1::shared_ptr<GWProvider> build(const std::string& name, const pva::ChannelProvider::shared_pointer& provider);
+
+    static pva::ChannelProvider::shared_pointer buildClient(const std::string& name, const pva::Configuration::shared_pointer& conf);
 
     GWSearchResult test(const std::string& usname);
 
@@ -371,6 +373,7 @@ public:
 
     void sweep();
     void disconnect(const std::string& usname);
+    void forceBan(const std::string& host, const std::string& usname);
     void clearBan();
 
     void cachePeek(std::set<std::string> &names) const;

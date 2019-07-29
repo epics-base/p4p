@@ -5,6 +5,8 @@ import socket
 import threading
 import platform
 import pprint
+import json
+import re
 import sqlite3
 
 from functools import wraps
@@ -94,21 +96,20 @@ def tobool(val):
     else:
         raise ValueError('"%s" is not "true" or "false"'%val)
 
-class GWHandler(object):
-    def __init__(self, args):
-        self.args = args
-        self.acf, self.pvlist = args.access, args.pvlist
-        self.serverep = None
-        self.channels_lock = threading.Lock()
-        self.channels = {}
-        self.prefix = args.prefix and args.prefix.encode('UTF-8')
+class GWStats(object):
+    def __init__(self, statsdb=None):
+        self.statsdb = statsdb
 
-        if not args.statsdb:
+        self.handlers = [] # GWHandler instances we derive stats from
+
+        self._pvs = {} # name suffix -> SharedPV
+
+        if not statsdb:
             self.__tempdb = NamedTemporaryFile()
-            args.statsdb = self.__tempdb.name
-            _log.debug("Using temporary stats db: %s", args.statsdb)
+            self.statsdb = self.__tempdb.name
+            _log.debug("Using temporary stats db: %s", self.statsdb)
 
-        with sqlite3.connect(self.args.statsdb) as C:
+        with sqlite3.connect(self.statsdb) as C:
             C.executescript("""
                 DROP TABLE IF EXISTS us;
                 DROP TABLE IF EXISTS usbyname;
@@ -160,32 +161,25 @@ class GWHandler(object):
                 );
             """)
 
-        self.statusprovider = StaticProvider('gwstatus')
-
         self.asTestPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
-        self.asTestPV.rpc(self.asTest) # TODO this is a deceptive way to assign
-        if args.prefix:
-            self.statusprovider.add(args.prefix+'asTest', self.asTestPV)
+        ###self.asTestPV.rpc(self.asTest) # TODO this is a deceptive way to assign
+        self._pvs['asTest'] = self.asTestPV
 
         self.clientsPV = SharedPV(nt=NTScalar('as'), initial=[])
-        if args.prefix:
-            self.statusprovider.add(args.prefix+'clients', self.clientsPV)
+        self._pvs['clients'] = self.clientsPV
 
         self.cachePV = SharedPV(nt=NTScalar('as'), initial=[])
-        if args.prefix:
-            self.statusprovider.add(args.prefix+'cache', self.cachePV)
+        self._pvs['cache'] = self.cachePV
 
         self.statsPV = SharedPV(initial=statsType())
-        if args.prefix:
-            self.statusprovider.add(args.prefix+'stats', self.statsPV)
+        self._pvs['stats'] = self.statsPV
 
         self.pokeStats = SharedPV(nt=NTScalar('i'), initial=0)
         @self.pokeStats.put
         def pokeStats(pv, op):
             self.update_stats()
             op.done()
-        if args.prefix:
-            self.statusprovider.add(args.prefix+'poke', self.pokeStats)
+        self._pvs['poke'] = self.pokeStats
 
         # PVs for bandwidth usage statistics.
         # 2x tables: us, ds
@@ -197,8 +191,7 @@ class GWHandler(object):
                 ('s', 'name', 'PV'),
                 ('d', 'rate', dir+' (B/s)'),
             ]), initial=[])
-            if args.prefix:
-                self.statusprovider.add(args.prefix+suffix, pv)
+            self._pvs[suffix] = pv
             return pv
 
         self.tbl_usbypvtx = addpv(dir='TX', suffix='us:bypv:tx')
@@ -212,8 +205,7 @@ class GWHandler(object):
                 ('s', 'name', 'Server'),
                 ('d', 'rate', dir+' (B/s)'),
             ]), initial=[])
-            if args.prefix:
-                self.statusprovider.add(args.prefix+suffix, pv)
+            self._pvs[suffix] = pv
             return pv
 
         self.tbl_usbyhosttx = addpv(dir='TX', suffix='us:byhost:tx')
@@ -225,25 +217,74 @@ class GWHandler(object):
                 ('s', 'name', 'Client'),
                 ('d', 'rate', dir+' (B/s)'),
             ]), initial=[])
-            if args.prefix:
-                self.statusprovider.add(args.prefix+suffix, pv)
+            self._pvs[suffix] = pv
             return pv
 
         self.tbl_dsbyhosttx = addpv(dir='TX', suffix='ds:byhost:tx')
         self.tbl_dsbyhostrx = addpv(dir='RX', suffix='ds:byhost:rx')
 
-        if args.prefix:
-            for name in self.statusprovider.keys():
-                _log.info("status PV: %s", name)
+    def bindto(self, provider, prefix):
+        'Add myself to a StaticProvider'
+
+        for suffix, pv in self._pvs.items():
+            provider.add(prefix+suffix, pv)
+
+    def sweep(self):
+        for handler in self.handlers:
+            handler.sweep()
+
+    def update_stats(self):
+        with sqlite3.connect(self.statsdb) as C:
+            C.executescript('''
+                DELETE FROM us;
+                DELETE FROM ds;
+                DELETE FROM usbyname;
+                DELETE FROM dsbyname;
+                DELETE FROM usbypeer;
+                DELETE FROM dsbypeer;
+            ''')
+
+            for handler in self.handlers:
+                usr, dsr, period = handler.provider.report()
+
+                C.executemany('INSERT INTO us VALUES (?,?,?,?,?,?)', usr)
+                C.executemany('INSERT INTO ds VALUES (?,?,?,?,?,?,?,?)', dsr)
+
+                C.executescript('''
+                    INSERT INTO usbyname SELECT usname, sum(optx), sum(oprx) FROM us GROUP BY usname;
+                    INSERT INTO dsbyname SELECT usname, sum(optx), sum(oprx) FROM ds GROUP BY usname;
+                    INSERT INTO usbypeer SELECT peer, max(trtx), max(trrx) FROM us GROUP BY peer;
+                    INSERT INTO dsbypeer SELECT account, peer, max(trtx), max(trrx) FROM ds GROUP BY peer;
+                ''')
+
+            #TODO: create some indicies to speed up these queries?
+
+            self.tbl_usbypvtx.post(C.execute('SELECT usname, tx as rate FROM usbyname ORDER BY rate DESC LIMIT 10'))
+            self.tbl_usbypvrx.post(C.execute('SELECT usname, rx as rate FROM usbyname ORDER BY rate DESC LIMIT 10'))
+
+            self.tbl_usbyhosttx.post(C.execute('SELECT peer, tx as rate FROM usbypeer ORDER BY rate DESC LIMIT 10'))
+            self.tbl_usbyhostrx.post(C.execute('SELECT peer, rx as rate FROM usbypeer ORDER BY rate DESC LIMIT 10'))
+
+            self.tbl_dsbypvtx.post(C.execute('SELECT usname, tx as rate FROM dsbyname ORDER BY rate DESC LIMIT 10'))
+            self.tbl_dsbypvrx.post(C.execute('SELECT usname, rx as rate FROM dsbyname ORDER BY rate DESC LIMIT 10'))
+
+            self.tbl_dsbyhosttx.post(C.execute('SELECT account, peer, tx as rate FROM dsbypeer ORDER BY rate DESC LIMIT 10'))
+            self.tbl_dsbyhostrx.post(C.execute('SELECT account, peer, rx as rate FROM dsbypeer ORDER BY rate DESC LIMIT 10'))
+
+            self.clientsPV.post([row[0] for row in C.execute('SELECT DISTINCT peer FROM us')])
+
+class GWHandler(object):
+    def __init__(self, acf, pvlist, readOnly=False):
+        self.acf, self.pvlist = acf, pvlist
+        self.readOnly = readOnly
+        self.channels_lock = threading.Lock()
+        self.channels = {}
+
+        self.provider = None
+
 
     def testChannel(self, pvname, peer):
-        if self.prefix and pvname.startswith(self.prefix):
-            _log.debug("GWS ignores own status")
-            return self.provider.BanPV
-        elif peer == self.serverep:
-            _log.warn('GWS ignoring seaches from GWC: %s', peer)
-            return self.provider.BanHost
-
+        _log.debug('%s Searching for %s', peer, pvname)
         usname, _asg, _asl = self.pvlist.compute(pvname, peer.split(':',1)[0])
 
         if not usname:
@@ -270,7 +311,8 @@ class GWHandler(object):
             channels.append(chan)
 
         try:
-            self.acf.create(chan, asg, op.account, peer, asl, op.roles)
+            if not self.readOnly: # default is RO
+                self.acf.create(chan, asg, op.account, peer, asl, op.roles)
         except:
             # create() should fail secure.  So allow this client to
             # connect R/O.  We already acknowledged the search, so
@@ -279,6 +321,7 @@ class GWHandler(object):
         return chan
 
     def sweep(self):
+        self.provider.sweep()
         replace = {}
         with self.channels_lock:
             for K, chans in self.channels.items():
@@ -287,44 +330,8 @@ class GWHandler(object):
                     replace[K] = chans
             self.channels = replace
 
-        self.clientsPV.post(self.channels.keys())
-        self.cachePV.post(self.provider.cachePeek())
-        self.statsPV.post(statsType(self.provider.stats()))
-
-    def update_stats(self):
-        usr, dsr, period = self.provider.report()
-
-        with sqlite3.connect(self.args.statsdb) as C:
-            C.executescript('''
-                DELETE FROM us;
-                DELETE FROM ds;
-                DELETE FROM usbyname;
-                DELETE FROM dsbyname;
-                DELETE FROM usbypeer;
-                DELETE FROM dsbypeer;
-            ''')
-
-            C.executemany('INSERT INTO us VALUES (?,?,?,?,?,?)', usr)
-            C.executemany('INSERT INTO ds VALUES (?,?,?,?,?,?,?,?)', dsr)
-
-            C.executescript('''
-                INSERT INTO usbyname SELECT usname, sum(optx), sum(oprx) FROM us GROUP BY usname;
-                INSERT INTO dsbyname SELECT usname, sum(optx), sum(oprx) FROM ds GROUP BY usname;
-                INSERT INTO usbypeer SELECT peer, max(trtx), max(trrx) FROM us GROUP BY peer;
-                INSERT INTO dsbypeer SELECT account, peer, max(trtx), max(trrx) FROM ds GROUP BY peer;
-            ''')
-
-            self.tbl_usbypvtx.post(C.execute('SELECT usname, tx as rate FROM usbyname ORDER BY rate DESC LIMIT 10'))
-            self.tbl_usbypvrx.post(C.execute('SELECT usname, rx as rate FROM usbyname ORDER BY rate DESC LIMIT 10'))
-
-            self.tbl_usbyhosttx.post(C.execute('SELECT peer, tx as rate FROM usbypeer ORDER BY rate DESC LIMIT 10'))
-            self.tbl_usbyhostrx.post(C.execute('SELECT peer, rx as rate FROM usbypeer ORDER BY rate DESC LIMIT 10'))
-
-            self.tbl_dsbypvtx.post(C.execute('SELECT usname, tx as rate FROM dsbyname ORDER BY rate DESC LIMIT 10'))
-            self.tbl_dsbypvrx.post(C.execute('SELECT usname, rx as rate FROM dsbyname ORDER BY rate DESC LIMIT 10'))
-
-            self.tbl_dsbyhosttx.post(C.execute('SELECT account, peer, tx as rate FROM dsbypeer ORDER BY rate DESC LIMIT 10'))
-            self.tbl_dsbyhostrx.post(C.execute('SELECT account, peer, rx as rate FROM dsbypeer ORDER BY rate DESC LIMIT 10'))
+        #self.cachePV.post(self.provider.cachePeek())
+        #self.statsPV.post(statsType(self.provider.stats()))
 
     @uricall
     def asTest(self, op, pv=None, user=None, peer=None, roles=[]):
@@ -385,79 +392,142 @@ class IFInfo(object):
         for iface in _gw.IFInfo.current(socket.AF_INET, socket.SOCK_DGRAM):
             _log.info("%s", iface)
 
+def comment_sub(M):
+    '''Replace C style comment with equivalent whitespace, includeing newlines,
+       to preserve line and columns numbers in parser errors (py3 anyway)
+    '''
+    return re.sub(r'[^\n]', ' ', M.group(0))
+
 class App(object):
     @staticmethod
     def getargs(*args):
         from argparse import ArgumentParser, ArgumentError
         P = ArgumentParser()
-        #P.add_argument('--signore')
-        P.add_argument('--server', help='Server interface address, with optional port (default 5076)')
-        P.add_argument('--cip', type=lambda v:set(v.split()), default=set(),
-                       help='Space seperated client address list, with optional ports (default set by --cport)')
-        P.add_argument('--cport', help='Client default port', type=int, default=5076)
-        P.add_argument('--pvlist', help='Optional PV list file.  Default allows all')
-        P.add_argument('--access', help='Optional ACF file.  Default allows all')
-        P.add_argument('--prefix', help='Prefix for status PVs')
-        P.add_argument('--statsdb', help='SQLite3 database file for stats')
+        P.add_argument('config', help='Config file')
         P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
         P.add_argument('--debug', action='store_true')
-        args = P.parse_args(*args)
-        if not args.server or len(args.cip)==0:
-            raise ArgumentError('arguments --cip and --server are not optional')
-        return args
+        return P.parse_args(*args)
 
     def __init__(self, args):
-        if args.access:
-            with open(args.access, 'r') as F:
-                args.access = F.read()
-
-        if args.pvlist:
-            with open(args.pvlist, 'r') as F:
-                args.pvlist = F.read()
-
-        args.access = Engine(args.access)
-        args.pvlist = PVList(args.pvlist)
-
-        IFInfo.show()
-
-        srv_iface = IFInfo(args.server)
-
-        local_bcast = set([iface['bcast'] for iface in _gw.IFInfo.current(socket.AF_INET, socket.SOCK_DGRAM) if 'bcast' in iface])
-
-        if not args.cip.intersection(local_bcast):
-            _log.warn('Client address list includes no local interface broadcast addresses.')
-            _log.warn('These are: %s', ', '.join(local_bcast))
-
-        self.handler = GWHandler(args)
-
-        client_conf = {
-            'EPICS_PVA_ADDR_LIST':' '.join(args.cip),
-            'EPICS_PVA_AUTO_ADDR_LIST':'NO',
-            'EPICS_PVA_BROADCAST_PORT':str(args.cport),
-        }
-        _log.info("Client initial config:\n%s", pprint.pformat(client_conf))
-        server_conf = {
-            'EPICS_PVAS_INTF_ADDR_LIST':srv_iface.addr,
-            'EPICS_PVAS_BEACON_ADDR_LIST':srv_iface.addr_list,
-            'EPICS_PVA_AUTO_ADDR_LIST':'NO',
-            'EPICS_PVAS_BROADCAST_PORT':str(srv_iface.port),
-            # ignore list not fully implemented.  (aka. never populated or used)
-        }
-
-        self.client = _gw.installGW(u'gwc', client_conf, self.handler)
+        with open(args.config, 'r') as F:
+            jconf = F.read()
         try:
-            self.handler.provider = self.client
-            self.server= Server(providers=[self.handler.statusprovider, 'gwc'],
-                        conf=server_conf, useenv=False)
-            # we're live now...
-        finally:
-            removeProvider(u'gwc')
+            # we substitute comments with whitespace to keep correct line and column numbers
+            # in error messages.
+            jconf = json.loads(re.sub(r'/\*.*?\*/', comment_sub, jconf, flags=re.DOTALL))
+            jver = jconf.get('version', 0)
+            if jver not in (1,2):
+                sys.stderr('Warning: config file version %d not in range [1, 2]\n'%jver)
+        except ValueError as e:
+            sys.stderr.write('Syntax Error: %s\n'%(e.args,))
+            sys.exit(1)
 
-        server_conf = self.server.conf()
-        _log.info("Server config:\n%s", pprint.pformat(server_conf))
-        # try to ignore myself
-        self.handler.serverep = server_conf['EPICS_PVAS_INTF_ADDR_LIST']
-        _log.debug('ignore GWS searches %s', self.handler.serverep)
+        self.stats = GWStats(jconf.get('statsdb'))
+
+        clients = {}
+        statusprefix = None
+
+        for jcli in jconf['clients']:
+            name = jcli['name']
+            client_conf = {
+                'EPICS_PVA_ADDR_LIST':jcli.get('addrlist',''),
+                'EPICS_PVA_AUTO_ADDR_LIST':{True:'YES', False:'NO'}[jcli.get('autoaddrlist',True)],
+            }
+            if 'bcastport' in jcli:
+                client_conf['EPICS_PVA_BROADCAST_PORT'] = str(jcli['bcastport'])
+            if 'serverport' in jcli:
+                client_conf['EPICS_PVA_SERVER_PORT'] = str(jcli['serverport'])
+
+            _log.info("Client %s config:\n%s", name, pprint.pformat(client_conf))
+            clients[name] = _gw.Client(jcli.get('provider', 'pva'), client_conf)
+
+        servers = self.servers = {}
+
+        # various objects which shouldn't be GC'd until server shutdown,
+        # but aren't otherwise accessed after startup.
+        self.__lifesupport = []
+
+        for jsrv in jconf['servers']:
+            name = jsrv['name']
+
+            providers = []
+
+            srvclients = jsrv['clients']
+            if len(srvclients)>1:
+                _log.warn('Only one client per server currently supported')
+
+            server_conf = {
+                'EPICS_PVAS_INTF_ADDR_LIST':jsrv.get('interface', '0.0.0.0'),
+                'EPICS_PVAS_BEACON_ADDR_LIST':jsrv.get('addrlist', ''),
+                'EPICS_PVA_AUTO_ADDR_LIST':{True:'YES', False:'NO'}[jsrv.get('autoaddrlist',True)],
+                # ignore list not fully implemented.  (aka. never populated or used)
+            }
+            if 'bcastport' in jsrv:
+                server_conf['EPICS_PVAS_BROADCAST_PORT'] = str(jsrv['bcastport'])
+            if 'serverport' in jsrv:
+                server_conf['EPICS_PVAS_SERVER_PORT'] = str(jsrv['serverport'])
+
+            access = jsrv.get('access', '')
+            pvlist = jsrv.get('pvlist', '')
+
+            if access:
+                with open(access, 'r') as F:
+                    access = F.read()
+
+            if pvlist:
+                with open(pvlist, 'r') as F:
+                    pvlist = F.read()
+
+            access = Engine(access)
+            pvlist = PVList(pvlist)
+
+            statusp = StaticProvider(u'gwsts.'+name)
+            providers = [statusp]
+            self.__lifesupport += [statusp]
+
+            try:
+                for client in jsrv['clients']:
+                    pname = u'gws.%s.%s'%(name, client)
+                    providers.append(pname)
+
+                    client = clients[client]
+
+                    handler = GWHandler(access, pvlist, readOnly=jconf.get('readOnly', False))
+
+                    handler.provider = _gw.Provider(pname, client, handler) # implied installProvider()
+
+                    self.__lifesupport += [client]
+                    self.stats.handlers.append(handler)
+
+                if 'statusprefix' in jsrv:
+                    self.stats.bindto(statusp, jsrv['statusprefix'])
+                    # prevent client from searching for our status PVs
+                    for spv in statusp.keys():
+                        handler.provider.forceBan(usname=spv.encode('utf-8'))
+
+                server = Server(providers=providers,
+                                conf=server_conf, useenv=False)
+                # we're live now...
+
+                _log.info("Server config %s :\n%s", name, pprint.pformat(server.conf()))
+
+                for spv in statusp.keys():
+                    _log.info('Status PV: %s', spv)
+
+            finally:
+                [removeProvider(pname) for pname in providers[1:]]
+
+            # keep it all from being GC'd
+            servers[name] = server
+
+        # try to prevent client -> server loops.
+        # servers and clients already running, so possible race...
+
+        for handler in self.stats.handlers:
+            for server in self.servers.values():
+                server_conf = server.conf()
+                handler.provider.forceBan(host=server_conf['EPICS_PVAS_INTF_ADDR_LIST'].split(':')[0].encode('utf-8'))
+
 
     def run(self):
         try:
@@ -465,9 +535,8 @@ class App(object):
                 # periodic cleanup of channel cache
                 _log.debug("Channel Cache sweep")
                 try:
-                    self.client.sweep()
-                    self.handler.sweep()
-                    self.handler.update_stats()
+                    self.stats.sweep()
+                    self.stats.update_stats()
                 except:
                     _log.exception("Error during periodic sweep")
 
@@ -476,7 +545,7 @@ class App(object):
         except KeyboardInterrupt:
             pass
         finally:
-            self.server.stop()
+            [server.stop() for server in self.servers.values()]
 
     @staticmethod
     def sleep(dly):

@@ -575,10 +575,15 @@ GWChan::createChannelRPC(
     return op;
 }
 
-std::tr1::shared_ptr<GWProvider> GWProvider::build(const std::string& name,
-                                                   const epics::pvAccess::Configuration::shared_pointer &conf)
+pva::ChannelProvider::shared_pointer GWProvider::buildClient(const std::string& name,const pva::Configuration::shared_pointer& conf)
 {
-    std::tr1::shared_ptr<GWProvider> ret(new GWProvider(name, conf));
+    return pva::ChannelProviderRegistry::clients()->createProvider(name, conf);
+}
+
+std::tr1::shared_ptr<GWProvider> GWProvider::build(const std::string& name,
+                                                   const pva::ChannelProvider::shared_pointer& provider)
+{
+    std::tr1::shared_ptr<GWProvider> ret(new GWProvider(name, provider));
     ret->dummyFind = pva::ChannelFind::buildDummy(ret);
     if(!pva::ChannelProviderRegistry::servers()->addSingleton(ret, false))
         throw std::runtime_error("Duplicate GW provider name");
@@ -588,9 +593,9 @@ std::tr1::shared_ptr<GWProvider> GWProvider::build(const std::string& name,
 }
 
 GWProvider::GWProvider(const std::string& name,
-                       const pva::Configuration::shared_pointer& conf)
+                       const pva::ChannelProvider::shared_pointer& provider)
     :name(name)
-    ,client(pva::ChannelProviderRegistry::clients()->createProvider("pva", conf))
+    ,client(provider)
     ,prevtime(epicsTime::getCurrent())
     ,handle(0)
 {
@@ -807,6 +812,21 @@ void GWProvider::disconnect(const std::string& usname)
     }
     if(req) {
         req->us_channel->destroy();
+    }
+}
+
+void GWProvider::forceBan(const std::string& host, const std::string& usname)
+{
+    Guard G(mutex);
+
+    if(!host.empty() && !usname.empty()) {
+        banHostPV.insert(std::make_pair(host, usname));
+
+    } else if(!host.empty()) {
+        banHost.insert(host);
+
+    } else if(!usname.empty()) {
+        banPV.insert(usname);
     }
 }
 
