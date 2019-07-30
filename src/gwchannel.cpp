@@ -461,7 +461,7 @@ void ProxyPut::put(
                 epicsTime::getCurrent().strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S.%09f");
                 strm<<buf<<' ';
             }
-            pva::ChannelRequester::shared_pointer req(channel->ds_requester);
+            pva::ChannelRequester::shared_pointer req(channel->ds_requester.lock());
             if(req) {
                 pva::PeerInfo::const_shared_pointer info(req->getPeerInfo());
                 if(info) {
@@ -483,7 +483,7 @@ void ProxyPut::put(
             GWProvider::audit_log_t entry(1);
             entry.back() = strm.str();
 
-            GWProvider::shared_pointer provider(channel->provider);
+            GWProvider::shared_pointer provider(channel->provider.lock());
             bool poke_audit = false;
             if(provider) {
                 {
