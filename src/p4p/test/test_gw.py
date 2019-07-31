@@ -162,6 +162,10 @@ class TestLowLevel(RefTestCase):
     def test_get(self):
         val = self._ds_client.get('pv:ro', timeout=self.timeout)
         self.assertEqual(val, 42)
+        self.pv.post(43)
+        # will be delayed by holdoff logic
+        val = self._ds_client.get('pv:ro', timeout=self.timeout)
+        self.assertEqual(val, 43)
 
     def test_ban(self):
         with self.assertRaises(TimeoutError):
@@ -286,6 +290,8 @@ class TestHighLevel(RefTestCase):
 
     def test_get(self):
         val = self._ds_client.get('pv:name', timeout=self.timeout)
+        self.assertEqual(val, 42)
+        # re-read right away to check throttling/holdoff logic
         self.assertEqual(val, 42)
 
     def test_put(self):

@@ -12,6 +12,7 @@
 #include <epicsTime.h>
 #include <epicsEvent.h>
 
+#include <pv/timer.h>
 #include <pv/thread.h>
 #include <pv/valueBuilder.h>
 #include <pv/pvAccess.h>
@@ -177,6 +178,93 @@ struct GWMon : public pva::MonitorFIFO
     virtual ~GWMon();
 
     EPICS_NOT_COPYABLE(GWMon)
+};
+
+struct ProxyGet : public pva::ChannelGet,
+                  public std::tr1::enable_shared_from_this<ProxyGet>
+{
+    POINTER_DEFINITIONS(ProxyGet);
+    typedef ProxyGet gw_operation_type;
+
+    static size_t num_instances;
+
+    struct Requester : public requester_type,
+                       public pvd::TimerCallback,
+                       public std::tr1::enable_shared_from_this<Requester>
+    {
+        static size_t num_instances;
+
+        POINTER_DEFINITIONS(Requester);
+
+        const std::tr1::shared_ptr<struct GWChan> channel;
+
+        mutable epicsMutex mutex;
+
+        pva::ChannelGet::shared_pointer us_op;
+
+        // requesters from downstream (PVA server)
+        // use map as one US get could be shared by many DS gets
+        typedef std::map<gw_operation_type*, gw_operation_type::weak_pointer> weak_t;
+        typedef std::vector<gw_operation_type::shared_pointer> strong_t;
+        weak_t ds_ops;
+
+        enum state_t {
+            // waiting for upstream channelGetConnect()
+            Disconnected,
+            // waiting for downstream get()
+            Idle,
+            // waiting for upstream getDone()
+            Executing,
+            // waiting for holdoff timer to expire
+            Holdoff,
+            // waiting for holdoff timer to expire, after a downstream get()
+            HoldoffQueued
+        } state;
+
+        // state==Disconnected implies !type
+        pvd::Structure::const_shared_pointer type;
+
+        explicit Requester(const std::tr1::shared_ptr<struct GWChan>& channel);
+        virtual ~Requester();
+
+        bool latch(strong_t& mons, bool reset=false, bool onlybusy=false);
+
+        virtual std::string getRequesterName() OVERRIDE FINAL;
+        virtual void message(std::string const & message,pva::MessageType messageType) OVERRIDE FINAL;
+        virtual void channelDisconnect(bool destroy) OVERRIDE FINAL;
+
+        virtual void channelGetConnect(const pvd::Status& status,
+                                       pva::ChannelGet::shared_pointer const & channelGet,
+                                       pvd::Structure::const_shared_pointer const & structure) OVERRIDE FINAL;
+
+        virtual void getDone(const pvd::Status& status,
+                             pva::ChannelGet::shared_pointer const & channelGet,
+                             pvd::PVStructure::shared_pointer const & pvStructure,
+                             pvd::BitSet::shared_pointer const & bitSet) OVERRIDE FINAL;
+
+        virtual void callback() OVERRIDE FINAL;
+        virtual void timerStopped() OVERRIDE FINAL;
+    };
+    // requester given to us_op
+    const Requester::shared_pointer us_requester;
+
+    const requester_type::weak_pointer ds_requester;
+
+    // protected by us_requester->mutex
+
+    // downstream requests get()
+    bool executing;
+
+    ProxyGet(const Requester::shared_pointer& us_requester,
+             const requester_type::shared_pointer& ds_requester);
+    virtual ~ProxyGet();
+
+    virtual void destroy() OVERRIDE FINAL;
+    virtual std::tr1::shared_ptr<pva::Channel> getChannel() OVERRIDE FINAL;
+    virtual void cancel() OVERRIDE FINAL;
+    virtual void lastRequest() OVERRIDE FINAL;
+
+    virtual void get() OVERRIDE FINAL;
 };
 
 // intercept execution to perform authorization check.
@@ -346,6 +434,9 @@ struct GWProvider : public pva::ChannelProvider,
     typedef std::map<std::string, std::tr1::weak_ptr<GWMon::Requester> > monitors_t;
     monitors_t monitors;
 
+    typedef std::map<std::string, std::tr1::weak_ptr<ProxyGet::Requester> > gets_t;
+    gets_t gets;
+
     epicsTime prevtime;
 
     typedef std::list<std::string> audit_log_t;
@@ -354,6 +445,8 @@ struct GWProvider : public pva::ChannelProvider,
     bool audit_run;
 
     pvd::Thread audit_runner;
+
+    pvd::Timer timerQueue;
 
     // guarded by GIL
     PyObject* handle;

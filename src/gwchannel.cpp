@@ -12,6 +12,8 @@ size_t GWMon::num_instances;
 size_t GWMon::Requester::num_instances;
 size_t ProxyPut::num_instances;
 size_t ProxyPut::Requester::num_instances;
+size_t ProxyGet::num_instances;
+size_t ProxyGet::Requester::num_instances;
 size_t ProxyRPC::num_instances;
 size_t ProxyRPC::Requester::num_instances;
 
@@ -118,14 +120,6 @@ void GWChan::disconnect()
 void GWChan::getField(pva::GetFieldRequester::shared_pointer const & requester,std::string const & subField)
 {
     return us_channel->getField(requester, subField);
-}
-
-pva::ChannelGet::shared_pointer GWChan::createChannelGet(
-        pva::ChannelGetRequester::shared_pointer const & requester,
-        pvd::PVStructure::shared_pointer const & pvRequest)
-{
-    TRACE("");
-    return us_channel->createChannelGet(requester, pvRequest);
 }
 
 GWMon::Requester::Requester(const std::string &usname)
@@ -356,6 +350,312 @@ pva::Monitor::shared_pointer GWChan::createMonitor(pva::MonitorRequester::shared
     }
 
     TRACE("CREATE cached "<<(create?'T':'F')<<" "<<(initial?'T':'F'));
+    return ret;
+}
+
+ProxyGet::Requester::Requester(const std::tr1::shared_ptr<struct GWChan>& channel)
+    :channel(channel)
+    ,state(Disconnected)
+{
+    REFTRACE_INCREMENT(num_instances);
+}
+
+ProxyGet::Requester::~Requester()
+{
+    REFTRACE_DECREMENT(num_instances);
+}
+
+bool ProxyGet::Requester::latch(strong_t& gets, bool reset, bool onlybusy)
+{
+    gets.clear();
+    gets.reserve(ds_ops.size());
+    bool executing = false;
+    for(weak_t::const_iterator it(ds_ops.begin()), end(ds_ops.end()); it!=end; ++it)
+    {
+        ProxyGet::shared_pointer R(it->second.lock());
+        if(!R) continue;
+        if(onlybusy && !R->executing) continue;
+
+        if(reset)
+            R->executing = false;
+        else
+            executing |= R->executing;
+
+        gets.push_back(ProxyGet::shared_pointer());
+        gets.back().swap(R);
+    }
+    return executing;
+}
+
+std::string ProxyGet::Requester::getRequesterName() {
+    return "ProxyGet::Requester"; // used?
+}
+
+void ProxyGet::Requester::message(std::string const & message,pva::MessageType messageType)
+{
+    strong_t gets;
+    {
+        Guard G(mutex);
+        latch(gets);
+    }
+    for(size_t i=0, N=gets.size(); i<N; i++) {
+        requester_type::shared_pointer req(gets[i]->ds_requester.lock());
+        if(req)
+            req->message(message, messageType);
+    }
+}
+
+void ProxyGet::Requester::channelDisconnect(bool destroy) {
+    strong_t gets;
+    {
+        Guard G(mutex);
+        TRACE(state);
+        latch(gets, true);
+        if(destroy)
+            ds_ops.clear();
+        type.reset();
+
+        if(state==Holdoff || state==HoldoffQueued) {
+            GWProvider::shared_pointer prov(channel->provider);
+            if(prov)
+                (void)prov->timerQueue.cancel(shared_from_this());
+        }
+
+        state = Disconnected;
+    }
+    TRACE("notify "<<gets.size());
+    for(size_t i=0, N=gets.size(); i<N; i++) {
+        requester_type::shared_pointer req(gets[i]->ds_requester.lock());
+        if(req)
+            req->channelDisconnect(destroy);
+    }
+}
+
+void ProxyGet::Requester::channelGetConnect(const pvd::Status& status,
+                                            pva::ChannelGet::shared_pointer const & channelGet,
+                                            pvd::Structure::const_shared_pointer const & structure)
+{
+    strong_t gets;
+    bool execute;
+    {
+        Guard G(mutex);
+        execute = latch(gets);
+        TRACE(state<<" "<<execute);
+        type = structure;
+
+        if(state==Holdoff || state==HoldoffQueued) {
+            // shouldn't happen, but handle missing channelDisconnect() (aka. caProvider :( )
+            GWProvider::shared_pointer prov(channel->provider);
+            if(prov)
+                (void)prov->timerQueue.cancel(shared_from_this());
+        }
+
+        state = execute ? Executing : Idle;
+    }
+    TRACE("notify "<<gets.size()<<" "<<execute);
+    for(size_t i=0, N=gets.size(); i<N; i++) {
+        requester_type::shared_pointer req(gets[i]->ds_requester.lock());
+        if(req)
+            req->channelGetConnect(status, gets[i], structure);
+    }
+    if(execute)
+        us_op->get();
+}
+
+void ProxyGet::Requester::getDone(const pvd::Status& status,
+                                  pva::ChannelGet::shared_pointer const & channelGet,
+                                  pvd::PVStructure::shared_pointer const & pvStructure,
+                                  pvd::BitSet::shared_pointer const & bitSet)
+{
+    strong_t gets;
+    {
+        Guard G(mutex);
+        TRACE(state);
+        if(state!=Executing)
+            return;
+        latch(gets, false, true);
+        state = Holdoff;
+        GWProvider::shared_pointer prov(channel->provider);
+        if(!prov)
+            return; // assume shutdown in progress
+        // schedule holdoff timer
+        prov->timerQueue.scheduleAfterDelay(shared_from_this(), 0.1);
+    }
+    TRACE("notify "<<gets.size());
+    for(size_t i=0, N=gets.size(); i<N; i++) {
+        requester_type::shared_pointer req(gets[i]->ds_requester.lock());
+        // hope that the various downstreams don't modify...
+        if(req)
+            req->getDone(status, channelGet, pvStructure, bitSet);
+    }
+}
+
+void ProxyGet::Requester::callback()
+{
+    {
+        Guard G(mutex);
+        TRACE(state);
+        if(state==Holdoff) {
+            state = Idle;
+            return;
+        } else if(state==HoldoffQueued) {
+            state = Executing;
+            // fall out
+        } else {
+            // invalid state (missed cancel?)
+            return;
+        }
+    }
+    TRACE("start throttled");
+    us_op->get();
+}
+
+void ProxyGet::Requester::timerStopped() {}
+
+ProxyGet::ProxyGet(const Requester::shared_pointer& us_requester,
+                   const requester_type::shared_pointer& ds_requester)
+    :us_requester(us_requester)
+    ,ds_requester(ds_requester)
+    ,executing(false)
+{
+    REFTRACE_INCREMENT(num_instances);
+}
+ProxyGet::~ProxyGet()
+{
+    destroy();
+    REFTRACE_DECREMENT(num_instances);
+}
+
+void ProxyGet::destroy()
+{
+    Guard G(us_requester->mutex);
+    us_requester->ds_ops.erase(this);
+}
+
+std::tr1::shared_ptr<pva::Channel> ProxyGet::getChannel() { return us_requester->channel; }
+
+void ProxyGet::cancel() {
+    {
+        Guard G(us_requester->mutex);
+        executing = false;
+    }
+}
+
+void ProxyGet::lastRequest() {}
+
+void ProxyGet::get()
+{
+    {
+        Guard G(us_requester->mutex);
+        TRACE("test "<<us_requester->state);
+
+        if(executing) return; // really a user state error, but we are forgivving
+        executing = true;
+
+        if(us_requester->state==Requester::Holdoff) {
+            // holdoff timer running, defer next get until it expires
+            us_requester->state = Requester::HoldoffQueued;
+            TRACE("defer start");
+            return;
+
+        } else if(us_requester->state==Requester::Idle) {
+            us_requester->state = Requester::Executing;
+
+        } else {
+            // caller state error
+            return;
+        }
+    }
+    TRACE("start");
+    us_requester->us_op->get();
+}
+
+pva::ChannelGet::shared_pointer GWChan::createChannelGet(
+        pva::ChannelGetRequester::shared_pointer const & requester,
+        pvd::PVStructure::shared_pointer const & pvRequest)
+{
+    GWProvider::shared_pointer provider(this->provider.lock());
+    if(!provider) {
+        requester->channelGetConnect(pvd::Status::error("Dead Provider"),
+                                     pva::ChannelGet::shared_pointer(),
+                                     pvd::StructureConstPtr());
+        return pva::ChannelGet::shared_pointer();
+    }
+
+    bool cache = true;
+    // client specifically requesting uncached
+    pvd::PVScalar::const_shared_pointer V = pvRequest->getSubField<pvd::PVScalar>("record._options.cache");
+    if(V) {
+        try {
+            cache &= V->getAs<pvd::boolean>();
+        }catch(std::runtime_error&){
+            // treat typo as non-cache
+            cache = false;
+        }
+    }
+
+    if(!cache) {
+        if(!allow_uncached) {
+            TRACE("ERROR uncached");
+            requester->channelGetConnect(pvd::Status::error("Gateway disallows uncachable get"), pva::ChannelGet::shared_pointer(), pvd::StructureConstPtr());
+            return pva::ChannelGet::shared_pointer();
+        } else {
+            TRACE("ALLOW uncached");
+            return us_channel->createChannelGet(requester, pvRequest);
+        }
+    }
+
+    // build upstream request
+    // TODO: allow some downstream requests?  (queueSize?)
+    pvd::PVStructurePtr up(pvd::ValueBuilder()
+                           .addNested("fields")
+                           .endNested()
+                           .buildPVStructure());
+
+    // create cache key.
+    // use non-aliased upstream channel name
+    std::string key, usname(us_channel->getChannelName());
+    {
+        std::ostringstream strm;
+        strm<<usname<<"\n"<<(*up);
+        key = strm.str();
+    }
+
+    ProxyGet::Requester::shared_pointer entry;
+    bool create;
+    {
+        Guard G(provider->mutex);
+
+        GWProvider::gets_t::iterator it(provider->gets.find(key));
+
+        if(it!=provider->gets.end()) {
+            entry = it->second.lock();
+        }
+
+        create = !entry;
+        if(create) {
+            entry.reset(new ProxyGet::Requester(shared_from_this()));
+            provider->gets[key] = entry;
+        }
+    }
+
+    ProxyGet::shared_pointer ret(new ProxyGet(entry, requester));
+
+    pvd::StructureConstPtr type;
+    {
+        Guard G(entry->mutex);
+        entry->ds_ops[ret.get()] = ret;
+
+        if(create) {
+            entry->us_op = us_channel->createChannelGet(entry, up);
+        }
+        if(entry->state!=ProxyGet::Requester::Disconnected) // implies type!=NULL
+            type = entry->type;
+    }
+    if(type)
+        requester->channelGetConnect(pvd::Status(), ret, type);
+
+    TRACE("CREATE cached "<<(create?'T':'F')<<" "<<(type?'T':'F'));
     return ret;
 }
 
@@ -652,6 +952,7 @@ GWProvider::GWProvider(const std::string& name,
     ,audit_runner(pvd::Thread::Config(this, &GWProvider::runAudit)
                   .name("GW Auditor")
                   .autostart(true))
+    ,timerQueue("GW timers", (pvd::ThreadPriority)epicsThreadPriorityMedium  )
     ,handle(0)
 {
     REFTRACE_INCREMENT(num_instances);
@@ -1014,6 +1315,8 @@ void GWProvider::prepare()
     epics::registerRefCounter("ProxyPut::Requester", &ProxyPut::Requester::num_instances);
     epics::registerRefCounter("ProxyRPC", &ProxyRPC::num_instances);
     epics::registerRefCounter("ProxyRPC::Requester", &ProxyRPC::Requester::num_instances);
+    epics::registerRefCounter("ProxyGet", &ProxyGet::num_instances);
+    epics::registerRefCounter("ProxyGet::Requester", &ProxyGet::Requester::num_instances);
 }
 
 void GWProvider::runAudit()
