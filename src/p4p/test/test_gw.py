@@ -103,6 +103,9 @@ class TestLowLevel(RefTestCase):
             except:
                 _log.exception("Unable to create channel for %s", op.name)
 
+        def audit(self, msg):
+            _log.info("AUDIT: %s", msg)
+
     def setUp(self):
         super(TestLowLevel, self).setUp()
 
