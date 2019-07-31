@@ -2,6 +2,7 @@ import logging
 import warnings
 import weakref
 import collections
+import gc
 
 import unittest
 
@@ -142,6 +143,12 @@ class TestACL(unittest.TestCase):
             self.perm = None
         def access(self, **kws):
             self.perm = kws
+
+    def tearDown(self):
+        # cleanup lingering refs. to Type arising through LocalSubscription
+        # which would cause false positive failures in subsequent cases
+        gc.collect()
+        super(TestACL, self).tearDown()
 
     def test_default(self):
         eng = DummyEngine()
