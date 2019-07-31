@@ -199,7 +199,7 @@ class NTScalar(object):
     def wrap(self, value, timestamp=None):
         """Pack python value into Value
 
-        Accepts dict to explicitly initialize fields be name.
+        Accepts dict to explicitly initialize fields by name.
         Any other type is assigned to the 'value' field.
         """
         if isinstance(value, Value):
