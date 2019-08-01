@@ -574,6 +574,7 @@ pva::ChannelGet::shared_pointer GWChan::createChannelGet(
         pva::ChannelGetRequester::shared_pointer const & requester,
         pvd::PVStructure::shared_pointer const & pvRequest)
 {
+    TRACE("");
     GWProvider::shared_pointer provider(this->provider.lock());
     if(!provider) {
         requester->channelGetConnect(pvd::Status::error("Dead Provider"),
@@ -629,7 +630,7 @@ pva::ChannelGet::shared_pointer GWChan::createChannelGet(
         GWProvider::gets_t::iterator it(provider->gets.find(key));
 
         if(it!=provider->gets.end()) {
-            entry = it->second.lock();
+            entry = it->second;
         }
 
         create = !entry;
@@ -1133,6 +1134,7 @@ pva::Channel::shared_pointer GWProvider::createChannel(std::string const & name,
 void GWProvider::sweep()
 {
     std::vector<GWChan::Requester::shared_pointer> garbage;
+    std::vector<ProxyGet::Requester::shared_pointer> getgarbage;
     {
         Guard G(mutex);
 
@@ -1157,6 +1159,17 @@ void GWProvider::sweep()
                 monitors_t::iterator cur(it++);
                 if(cur->second.expired())
                     monitors.erase(cur);
+            }
+        }
+
+        {
+            gets_t::iterator it(gets.begin()), end(gets.end());
+            while(it!=end) {
+                gets_t::iterator cur(it++);
+                if(cur->second.unique()) {
+                    getgarbage.push_back(cur->second);
+                    gets.erase(cur);
+                }
             }
         }
     }
@@ -1217,6 +1230,7 @@ void GWProvider::stats(GWStats& stats) const
 
     stats.ccacheSize = channels.size();
     stats.mcacheSize = monitors.size();
+    stats.gcacheSize = gets.size();
     stats.banHostSize = banHost.size();
     stats.banPVSize = banPV.size();
     stats.banHostPVSize = banHostPV.size();

@@ -401,6 +401,7 @@ enum GWSearchResult {
 struct GWStats {
     size_t ccacheSize,
            mcacheSize,
+           gcacheSize,
            banHostSize,
            banPVSize,
            banHostPVSize;
@@ -434,7 +435,7 @@ struct GWProvider : public pva::ChannelProvider,
     typedef std::map<std::string, std::tr1::weak_ptr<GWMon::Requester> > monitors_t;
     monitors_t monitors;
 
-    typedef std::map<std::string, std::tr1::weak_ptr<ProxyGet::Requester> > gets_t;
+    typedef std::map<std::string, std::tr1::shared_ptr<ProxyGet::Requester> > gets_t;
     gets_t gets;
 
     epicsTime prevtime;
