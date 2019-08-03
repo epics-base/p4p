@@ -11,6 +11,7 @@
 #include <epicsGuard.h>
 #include <epicsTime.h>
 #include <epicsEvent.h>
+#include <epicsAtomic.h>
 
 #include <pv/timer.h>
 #include <pv/thread.h>
@@ -86,11 +87,14 @@ struct GWChan : public pva::Channel,
     // requester given to base_channel
     std::tr1::shared_ptr<Requester> us_requester;
 
-    // intentionally not guarded.  Short periods of race should not cause problems
-    volatile unsigned allow_put,
-                      allow_rpc,
-                      allow_uncached,
-                      audit;
+    // Use atomic access.
+    // binary flags
+    int allow_put,
+        allow_rpc,
+        allow_uncached,
+        audit;
+    // time in msec
+    int get_holdoff;
 
     GWChan(const std::tr1::shared_ptr<GWProvider>& provider,
            const std::string& name,

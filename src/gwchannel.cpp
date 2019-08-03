@@ -93,6 +93,7 @@ GWChan::GWChan(const std::tr1::shared_ptr<GWProvider>& provider,
     ,allow_put(false)
     ,allow_rpc(false)
     ,allow_uncached(false)
+    ,get_holdoff(0)
 {
     REFTRACE_INCREMENT(num_instances);
 }
@@ -479,7 +480,13 @@ void ProxyGet::Requester::getDone(const pvd::Status& status,
         if(!prov)
             return; // assume shutdown in progress
         // schedule holdoff timer
-        prov->timerQueue.scheduleAfterDelay(shared_from_this(), 0.1);
+        double wait = epics::atomic::get(channel->get_holdoff)*1000;
+        if(wait>0) {
+            prov->timerQueue.scheduleAfterDelay(shared_from_this(), wait);
+        } else {
+            // no holdoff
+            state = Idle;
+        }
     }
     TRACE("notify "<<gets.size());
     for(size_t i=0, N=gets.size(); i<N; i++) {

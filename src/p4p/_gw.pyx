@@ -75,10 +75,11 @@ cdef extern from "gwchannel.h" namespace "GWProvider" nogil:
 cdef extern from "gwchannel.h" nogil:
     cdef cppclass GWChan:
 
-        unsigned allow_put
-        unsigned allow_rpc
-        unsigned allow_uncached
-        unsigned audit;
+        int allow_put
+        int allow_rpc
+        int allow_uncached
+        int audit
+        int get_holdoff
 
         void disconnect()
 
@@ -203,7 +204,9 @@ cdef class Channel(InfoBase):
     def expired(self):
         return self.channel.expired()
 
-    def access(self, put=None, rpc=None, uncached=None, audit=None):
+    def access(self, put=None, rpc=None, uncached=None, audit=None, holdoff=None):
+        """Configure access control permissions, and other restrictions, on this channel
+        """
         cdef shared_ptr[GWChan] ch = self.channel.lock()
         if not ch:
             return
@@ -215,6 +218,8 @@ cdef class Channel(InfoBase):
             ch.get().allow_uncached = uncached==True
         if audit:
             ch.get().audit = audit==True
+        if holdoff:
+            ch.get().get_holdoff = holdoff*1000
 
     def close(self):
         cdef shared_ptr[GWChan] ch = self.channel.lock()
