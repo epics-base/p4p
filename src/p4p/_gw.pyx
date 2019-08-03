@@ -136,6 +136,10 @@ cdef class Client(object):
         with nogil:
             self.provider = GWProvider.buildClient(name, builder.push_map().build())
 
+    def __dealloc__(self):
+        with nogil:
+            self.provider.reset()
+
 cdef class InfoBase(object):
     cdef shared_ptr[const PeerInfo] info
 
@@ -166,6 +170,10 @@ cdef class InfoBase(object):
             return [role.decode('UTF-8') for role in self.info.get().roles]
         else:
             return []
+
+    def __dealloc__(self):
+        with nogil:
+            self.info.reset()
 
 cdef class CreateOp(InfoBase):
     cdef readonly bytes name
@@ -256,6 +264,10 @@ cdef class Provider:
         Py_INCREF(handler)
         Py_XDECREF(self.provider.get().handle)
         self.provider.get().handle = <PyObject*>handler
+
+    def __dealloc__(self):
+        with nogil:
+            self.provider.reset()
 
 
     def testChannel(self, bytes usname):
