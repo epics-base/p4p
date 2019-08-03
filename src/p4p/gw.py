@@ -9,7 +9,7 @@ import json
 import re
 import sqlite3
 
-from functools import wraps
+from functools import wraps, reduce
 from tempfile import NamedTemporaryFile
 
 from .nt import NTScalar, Type, NTTable
@@ -68,6 +68,7 @@ class TableBuilder(object):
 statsType = Type([
     ('ccacheSize', NTScalar.buildType('L')),
     ('mcacheSize', NTScalar.buildType('L')),
+    ('gcacheSize', NTScalar.buildType('L')),
     ('banHostSize', NTScalar.buildType('L')),
     ('banPVSize', NTScalar.buildType('L')),
     ('banHostPVSize', NTScalar.buildType('L')),
@@ -271,6 +272,16 @@ class GWStats(object):
 
             self.clientsPV.post([row[0] for row in C.execute('SELECT DISTINCT peer FROM us')])
 
+        statsSum = {'ccacheSize.value':0, 'mcacheSize.value':0, 'gcacheSize.value':0,
+                    'banHostSize.value':0, 'banPVSize.value':0, 'banHostPVSize.value':0}
+        stats = [handler.provider.stats() for handler in self.handlers]
+        for key in statsSum:
+            for stat in stats:
+                statsSum[key] += stat[key]
+        self.statsPV.post(statsType(statsSum))
+
+        #self.cachePV.post(self.provider.cachePeek())
+
 class GWHandler(object):
     def __init__(self, acf, pvlist, readOnly=False):
         self.acf, self.pvlist = acf, pvlist
@@ -330,9 +341,6 @@ class GWHandler(object):
                 if chans:
                     replace[K] = chans
             self.channels = replace
-
-        #self.cachePV.post(self.provider.cachePeek())
-        #self.statsPV.post(statsType(self.provider.stats()))
 
     @uricall
     def asTest(self, op, pv=None, user=None, peer=None, roles=[]):

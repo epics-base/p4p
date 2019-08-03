@@ -85,6 +85,7 @@ cdef extern from "gwchannel.h" nogil:
     cdef struct GWStats:
         size_t ccacheSize
         size_t mcacheSize
+        size_t gcacheSize
         size_t banHostSize
         size_t banPVSize
         size_t banHostPVSize
@@ -296,6 +297,7 @@ cdef class Provider:
         return {
             'ccacheSize.value':stats.ccacheSize,
             'mcacheSize.value':stats.mcacheSize,
+            'gcacheSize.value':stats.gcacheSize,
             'banHostSize.value':stats.banHostSize,
             'banPVSize.value':stats.banPVSize,
             'banHostPVSize.value':stats.banHostPVSize,
