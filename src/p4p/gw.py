@@ -90,16 +90,9 @@ permissionsType = Type([
 ], id='epics:p2p/Permission:1.0')
 
 
-def tobool(val):
-    val = val.lower()
-    if val=='true':
-        return True
-    elif val=='false':
-        return False
-    else:
-        raise ValueError('"%s" is not "true" or "false"'%val)
-
 class GWStats(object):
+    """I manage statistics for all GWHandler instances
+    """
     def __init__(self, statsdb=None):
         self.statsdb = statsdb
 
@@ -371,35 +364,6 @@ class GWHandler(object):
             'asl':asl,
             'permission':chan.perm,
         })
-
-class IFInfo(object):
-    def __init__(self, ep):
-        addr, _sep, port = ep.partition(':')
-        self.port = int(port or '5076')
-
-        info = _gw.IFInfo.current(socket.AF_INET, socket.SOCK_DGRAM, unicode(addr))
-        for iface in info:
-            if iface['addr']==addr:
-                self.__dict__.update(iface)
-                return
-        raise ValueError("Not local interface %s"%addr)
-
-    @property
-    def addr_list(self):
-        ret = [self.addr]
-        if hasattr(self, 'bcast'):
-            ret.append(self.bcast)
-        elif self.loopback and self.addr=='127.0.0.1' and platform.system()=='Linux':
-            # On Linux, the loopback interface is not advertised as supporting broadcast (IFF_BROADCAST)
-            # but actually does.  We are assuming here the conventional 127.0.0.1/8 configuration.
-            ret.append('127.255.255.255')
-        return ' '.join(ret)
-
-    @staticmethod
-    def show():
-        _log.info("Local network interfaces")
-        for iface in _gw.IFInfo.current(socket.AF_INET, socket.SOCK_DGRAM):
-            _log.info("%s", iface)
 
 def comment_sub(M):
     '''Replace C style comment with equivalent whitespace, includeing newlines,
