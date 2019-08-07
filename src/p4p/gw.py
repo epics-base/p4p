@@ -273,7 +273,7 @@ class GWStats(object):
                 statsSum[key] += stat[key]
         self.statsPV.post(statsType(statsSum))
 
-        #self.cachePV.post(self.provider.cachePeek())
+        self.cachePV.post(reduce(set.__or__, [handler.provider.cachePeek() for handler in self.handlers], set()))
 
 class GWHandler(object):
     def __init__(self, acf, pvlist, readOnly=False):
