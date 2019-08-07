@@ -14,6 +14,9 @@ from libcpp.list cimport list as listxx
 from cpython.object cimport PyObject, PyTypeObject, traverseproc, visitproc
 from cpython.ref cimport Py_INCREF, Py_XDECREF
 
+cdef extern from "<epicsAtomic.h>":
+    cdef void atomic_set "::epics::atomic::set" (int& var, int val)
+
 ## PVD explicitly uses std::tr1::shared_ptr<> which is _sometimes_ a
 ## distinct type, and sometimes an alias for std::shared_ptr<>.
 ## So instead of:
@@ -219,15 +222,15 @@ cdef class Channel(InfoBase):
         if not ch:
             return
         if put is not None:
-            ch.get().allow_put = put==True
+            atomic_set(ch.get().allow_put, put==True)
         if rpc is not None:
-            ch.get().allow_rpc = rpc==True
+            atomic_set(ch.get().allow_rpc, rpc==True)
         if uncached is not None:
-            ch.get().allow_uncached = uncached==True
+            atomic_set(ch.get().allow_uncached, uncached==True)
         if audit:
-            ch.get().audit = audit==True
+            atomic_set(ch.get().audit, audit==True)
         if holdoff:
-            ch.get().get_holdoff = holdoff*1000
+            atomic_set(ch.get().get_holdoff, holdoff*1000)
 
     def close(self):
         cdef shared_ptr[GWChan] ch = self.channel.lock()
