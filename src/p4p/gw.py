@@ -411,7 +411,7 @@ class App(object):
             if 'serverport' in jcli:
                 client_conf['EPICS_PVA_SERVER_PORT'] = str(jcli['serverport'])
 
-            _log.info("Client %s config:\n%s", name, pprint.pformat(client_conf))
+            _log.info("Client %s input config:\n%s", name, pprint.pformat(client_conf))
             clients[name] = _gw.Client(jcli.get('provider', 'pva'), client_conf)
 
         servers = self.servers = {}
@@ -432,7 +432,7 @@ class App(object):
             server_conf = {
                 'EPICS_PVAS_INTF_ADDR_LIST':jsrv.get('interface', '0.0.0.0'),
                 'EPICS_PVAS_BEACON_ADDR_LIST':jsrv.get('addrlist', ''),
-                'EPICS_PVA_AUTO_ADDR_LIST':{True:'YES', False:'NO'}[jsrv.get('autoaddrlist',True)],
+                'EPICS_PVAS_AUTO_BEACON_ADDR_LIST':{True:'YES', False:'NO'}[jsrv.get('autoaddrlist',True)],
                 # ignore list not fully implemented.  (aka. never populated or used)
             }
             if 'bcastport' in jsrv:
@@ -487,7 +487,7 @@ class App(object):
                                 conf=server_conf, useenv=False)
                 # we're live now...
 
-                _log.info("Server config %s :\n%s", name, pprint.pformat(server.conf()))
+                _log.info("Server effective config %s :\n%s", name, pprint.pformat(server.conf()))
 
                 for spv in statusp.keys():
                     _log.info('Status PV: %s', spv)
