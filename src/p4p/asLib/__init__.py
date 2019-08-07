@@ -184,8 +184,13 @@ class Engine(object):
         hag_addr = defaultdict(set)
 
         for host, groups in _hag.items():
-            ip = self._gethostbyname(host)
-            hag_addr[ip] |= groups
+            try:
+                ip = self._gethostbyname(host)
+                hag_addr[ip] |= groups
+            except socket.gaierror as e:
+                print( "Invalid hostname %s" % host )
+                print( "%s: %s" % ( type(e).__name__, str(e) ) )
+                pass
 
         return dict(hag_addr)
 
