@@ -497,16 +497,25 @@ class App(object):
             access = jsrv.get('access', '')
             pvlist = jsrv.get('pvlist', '')
 
-            if access:
-                with open(access, 'r') as F:
-                    access = F.read()
+            try:
+                if access:
+                    with open(access, 'r') as F:
+                        access = F.read()
+                access = Engine(access)
+            except Exception as e:
+                print( "Error processing access file %s" % jsrv.get('access', '') )
+                print( "%s: %s" % ( type(e).__name__, str(e) ) )
+                sys.exit(1)
 
-            if pvlist:
-                with open(pvlist, 'r') as F:
-                    pvlist = F.read()
-
-            access = Engine(access)
-            pvlist = PVList(pvlist)
+            try:
+                if pvlist:
+                    with open(pvlist, 'r') as F:
+                        pvlist = F.read()
+                pvlist = PVList(pvlist)
+            except Exception as e:
+                print( "Error processing pvlist file %s" % jsrv.get('pvlist', '') )
+                print( "%s: %s" % ( type(e).__name__, str(e) ) )
+                sys.exit(1)
 
             statusp = StaticProvider(u'gwsts.'+name)
             providers = [statusp]
