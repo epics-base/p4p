@@ -363,10 +363,6 @@ cdef class Provider:
     def use_count(self):
         return self.provider.use_count()
 
-    def __dealloc__(self):
-        with nogil:
-            self.provider.reset()
-
 # Allow GC to find handler stored in GWProvider
 #   https://github.com/cython/cython/issues/2737
 cdef traverseproc Provider_base_traverse

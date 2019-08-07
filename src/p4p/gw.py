@@ -377,6 +377,8 @@ class App(object):
         from argparse import ArgumentParser, ArgumentError
         P = ArgumentParser()
         P.add_argument('config', help='Config file')
+        P.add_argument('--no-ban-local', action='store_true',
+                       help='Skip ban of local interfaces, which prevents local clients.  Allow GW to talk to itself.')
         P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
         P.add_argument('--debug', action='store_true')
         return P.parse_args(*args)
@@ -497,10 +499,12 @@ class App(object):
         # try to prevent client -> server loops.
         # servers and clients already running, so possible race...
 
-        for handler in self.stats.handlers:
-            for server in self.servers.values():
-                server_conf = server.conf()
-                handler.provider.forceBan(host=server_conf['EPICS_PVAS_INTF_ADDR_LIST'].split(':')[0].encode('utf-8'))
+        if not args.no_ban_local:
+            _log.info('Ban server interfaces to prevent GW client -> GW server loops')
+            for handler in self.stats.handlers:
+                for server in self.servers.values():
+                    server_conf = server.conf()
+                    handler.provider.forceBan(host=server_conf['EPICS_PVAS_INTF_ADDR_LIST'].split(':')[0].encode('utf-8'))
 
 
     def run(self):
