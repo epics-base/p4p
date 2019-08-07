@@ -336,6 +336,7 @@ class GWHandler(object):
         self.channels = {}
 
         self.provider = None
+        self.getholdoff = None
 
 
     def testChannel(self, pvname, peer):
@@ -368,6 +369,8 @@ class GWHandler(object):
         try:
             if not self.readOnly: # default is RO
                 self.acf.create(chan, asg, op.account, peer, asl, op.roles)
+            if self.getholdoff is not None:
+                chan.access(holdoff=self.getholdoff)
         except:
             # create() should fail secure.  So allow this client to
             # connect R/O.  We already acknowledged the search, so
@@ -517,6 +520,7 @@ class App(object):
                     client = clients[client]
 
                     handler = GWHandler(access, pvlist, readOnly=jconf.get('readOnly', False))
+                    handler.getholdoff = jsrv.get('getholdoff')
 
                     handler.provider = _gw.Provider(pname, client, handler) # implied installProvider()
 

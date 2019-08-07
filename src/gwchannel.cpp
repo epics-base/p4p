@@ -480,15 +480,17 @@ void ProxyGet::Requester::getDone(const pvd::Status& status,
         if(!prov)
             return; // assume shutdown in progress
         // schedule holdoff timer
-        double wait = epics::atomic::get(channel->get_holdoff)*1000;
+        double wait = epics::atomic::get(channel->get_holdoff)/1000.0;
         if(wait>0) {
             prov->timerQueue.scheduleAfterDelay(shared_from_this(), wait);
+            TRACE("notify Holdoff "<<wait<<" "<<gets.size());
+
         } else {
             // no holdoff
             state = Idle;
+            TRACE("notify Idle "<<gets.size());
         }
     }
-    TRACE("notify "<<gets.size());
     for(size_t i=0, N=gets.size(); i<N; i++) {
         requester_type::shared_pointer req(gets[i]->ds_requester.lock());
         // hope that the various downstreams don't modify...
