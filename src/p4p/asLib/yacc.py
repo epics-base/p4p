@@ -7,18 +7,18 @@ def p_item(p):
     """asconfig_item : uag
                      | hag
                      | asg
-       rule_item : uag_head
-                 | hag_head
+       rule_item : uag_ref
+                 | hag_ref
                  | calc_head
     """
     p[0] = p[1]
 
 def p_top_items(p):
-    """uag : uag_head string_body
-       hag : hag_head string_body
-       asg : asg_head asg_body
+    """uag : UAG  '(' STRING ')' string_body
+       hag : HAG  '(' STRING ')' string_body
+       asg : ASG  '(' STRING ')' asg_body
     """
-    p[0] = p[1] + (p[2],)
+    p[0] = (p[1], p[3], p[5])
 
 def p_list_append(p):
     """asconfig    : asconfig        asconfig_item
@@ -39,9 +39,8 @@ def p_list_one(p):
     p[0] = [p[1]]
 
 def p_head(p):
-    """uag_head  : UAG  '(' STRING ')'
-       hag_head  : HAG  '(' STRING ')'
-       asg_head  : ASG  '(' STRING ')'
+    """uag_ref  : UAG  '(' string_list ')'
+       hag_ref  : HAG  '(' string_list ')'
        calc_head : CALC '(' STRING ')'
     """
     p[0] = (p[1], p[3])

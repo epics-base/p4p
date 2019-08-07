@@ -84,7 +84,8 @@ class DummyEngine(Engine):
         return {
             'localhost':'127.0.0.1',
             'lcls-daemon3':'1.2.3.4',
-            'pscag1':'1.2.3.44',
+            'hxr-control':'1.2.3.44',
+            'hxr-console':'1.2.3.45',
             'mcrhost':'1.2.3.10',
             'remotehost':'1.2.3.20',
         }[host]
@@ -111,7 +112,7 @@ ASG(NOTSIMPLE) {
         RULE(1,READ)
         RULE(1,WRITE,TRAPWRITE) {
                 UAG(PHOTON)
-                HAG(PHOTON)
+                HAG(PHOTON, OTHER)
     CALC("A!=0")
                 
         }
@@ -130,8 +131,8 @@ ASG(NOTSIMPLE) {
                 ('INP', 'A', 'ACC-CT{}Prmt:Remote-Sel'),
                 ('RULE', 1, 'READ', False, None),
                 ('RULE', 1, 'WRITE', True, [
-                    ('UAG', 'PHOTON'),
-                    ('HAG', 'PHOTON'),
+                    ('UAG', ['PHOTON']),
+                    ('HAG', ['PHOTON', 'OTHER']),
                     ('CALC', 'A!=0'),
                 ]),
             ]),

@@ -84,9 +84,9 @@ class Engine(object):
                         rule = []
                         for rnode in anode[4] or []:
                             if rnode[0] in ('UAG', 'HAG'):
-                                # ('UAG', 'name')
-                                # ('HAG', 'name')
-                                rule.append(rnode)
+                                # ('UAG', ['name'])
+                                # ('HAG', ['name'])
+                                rule.append((rnode[0], set(rnode[1])))
 
                             elif rnode[0]=='CALC':
                                 # ('CALC', '<expr>')
@@ -215,9 +215,9 @@ class Engine(object):
                     accept = True
                     for cond in conds:
                         if cond[0]=='UAG':
-                            accept = cond[1] in uags
+                            accept = len(cond[1].intersection(uags))
                         elif cond[0]=='HAG':
-                            accept = cond[1] in hags
+                            accept = len(cond[1].intersection(hags))
                         elif cond[0]=='CALC':
                             try:
                                 accept = float(eval(cond[2], {}, self._inputs) or 0.0) >= 0.5 # horray for legacy... I mean compatibility
