@@ -139,13 +139,17 @@ UAG(PHOTON)
 {
         root
 }
+UAG(tst-opr)
+{
+        tstioc, tstopr
+}
 HAG(GWSTATS)
 {
         lcls-daemon3
 }
 HAG(PHOTON)
 {
-        pscag1
+        hxr-control, hxr-console
 }
 ASG(DEFAULT)
 {
@@ -163,6 +167,15 @@ ASG(AMOWRITE)
                 {
                 UAG(PHOTON)
                 HAG(PHOTON)
+                }
+}
+ASG(TSTWRITE)
+{
+        RULE(1,READ)
+        RULE(1,WRITE,TRAPWRITE)
+                {
+                UAG( PHOTON , tst-opr )
+                HAG(PHOTON,GWSTATS)
                 }
 }
 """)
