@@ -425,10 +425,6 @@ class App(object):
 
             providers = []
 
-            srvclients = jsrv['clients']
-            if len(srvclients)>1:
-                _log.warn('Only one client per server currently supported')
-
             server_conf = {
                 'EPICS_PVAS_INTF_ADDR_LIST':jsrv.get('interface', '0.0.0.0'),
                 'EPICS_PVAS_BEACON_ADDR_LIST':jsrv.get('addrlist', ''),
