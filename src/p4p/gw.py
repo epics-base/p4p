@@ -15,7 +15,7 @@ from tempfile import NamedTemporaryFile
 from .nt import NTScalar, Type, NTTable
 from .server import Server, StaticProvider, removeProvider
 from .server.thread import SharedPV, RemoteError
-from . import set_debug
+from . import set_debug, listRefs
 from . import _gw
 from .asLib import Engine
 from .asLib.pvlist import PVList
@@ -64,6 +64,54 @@ class TableBuilder(object):
 
     def unwrap(self, value):
         return value
+
+class RefAdapter(object):
+    def __init__(self):
+        self.type = NTTable.buildType([('type', 'as'), ('count', 'aI'), ('delta', 'ai')])
+        self.prev = {}
+        self._labels = ['Type', 'Count', 'Delta']
+
+    def wrap(self, cnts):
+        kcur = set(cnts)
+        kprev = set(self.prev)
+
+        update = []
+
+        added = kcur - kprev
+        for k in added:
+            update.append((k, cnts[k], cnts[k]))
+
+        removed = kprev - kcur
+        for k in removed:
+            update.append((k, 0, -self.prev[k]))
+
+        for k in kcur&kprev:
+            c, p = cnts[k], self.prev[k]
+            if c!=p:
+                update.append((k, c, c-p))
+
+        update.sort(key=lambda t:t[0])
+        self.prev = cnts
+
+        Ns, Cs, Ds = [], [], []
+        for N, C, D in update:
+            Ns.append(N)
+            Cs.append(C)
+            Ds.append(D)
+
+        V = self.type({
+            'value.type':Ns,
+            'value.count':Cs,
+            'value.delta':Ds,
+            'timeStamp.secondsPastEpoch':time.time(),
+        })
+        if self._labels is not None:
+            self._labels, V.labels = None, self._labels
+
+        return V
+
+    def unwrap(self, V):
+        return V
 
 statsType = Type([
     ('ccacheSize', NTScalar.buildType('L')),
@@ -173,6 +221,9 @@ class GWStats(object):
             op.done()
         self._pvs['poke'] = self.pokeStats
 
+        self.refsPV = SharedPV(nt=RefAdapter(), initial={})
+        self._pvs['refs'] = self.refsPV
+
         # PVs for bandwidth usage statistics.
         # 2x tables: us, ds
         # 2x groupings: by PV and by peer
@@ -226,6 +277,8 @@ class GWStats(object):
             handler.sweep()
 
     def update_stats(self):
+        self.refsPV.post(listRefs())
+
         with sqlite3.connect(self.statsdb) as C:
             C.executescript('''
                 DELETE FROM us;
