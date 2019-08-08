@@ -1,5 +1,5 @@
 import warnings
-from .lex import tokens
+from .lex import tokens, ACFError
 
 start = 'asconfig'
 
@@ -84,7 +84,7 @@ def p_trap(p):
         p[0] = p[2]=='TRAPWRITE'
 
 def p_error(p):
-    raise ValueError("Syntax error on line %d at or before '%s'"%(p.lineno, p.value))
+    raise ACFError("Syntax error on line %d at or before '%s'"%(p.lineno, p.value))
 
 def parse(acf, debug=False):
     from ply import yacc, lex

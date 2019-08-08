@@ -17,7 +17,7 @@ from .server import Server, StaticProvider, removeProvider
 from .server.thread import SharedPV, RemoteError
 from . import set_debug, listRefs
 from . import _gw
-from .asLib import Engine
+from .asLib import Engine, ACFError
 from .asLib.pvlist import PVList
 
 if sys.version_info >= (3, 0):
@@ -421,6 +421,21 @@ class GWHandler(object):
             'permission':chan.perm,
         })
 
+def readnproc(fname, fn):
+    try:
+        if fname:
+            with open(fname, 'r') as F:
+                data = F.read()
+        else:
+            data = ''
+        return fn(data)
+    except IOError as e:
+        _log.error('In "%s" : %s', fname, e)
+        sys.exit(1)
+    except ACFError as e:
+        _log.error('In "%s" %s', fname, e)
+        sys.exit(1)
+
 def comment_sub(M):
     '''Replace C style comment with equivalent whitespace, includeing newlines,
        to preserve line and columns numbers in parser errors (py3 anyway)
@@ -494,28 +509,8 @@ class App(object):
             if 'serverport' in jsrv:
                 server_conf['EPICS_PVAS_SERVER_PORT'] = str(jsrv['serverport'])
 
-            access = jsrv.get('access', '')
-            pvlist = jsrv.get('pvlist', '')
-
-            try:
-                if access:
-                    with open(access, 'r') as F:
-                        access = F.read()
-                access = Engine(access)
-            except Exception as e:
-                print( "Error processing access file %s" % jsrv.get('access', '') )
-                print( "%s: %s" % ( type(e).__name__, str(e) ) )
-                sys.exit(1)
-
-            try:
-                if pvlist:
-                    with open(pvlist, 'r') as F:
-                        pvlist = F.read()
-                pvlist = PVList(pvlist)
-            except Exception as e:
-                print( "Error processing pvlist file %s" % jsrv.get('pvlist', '') )
-                print( "%s: %s" % ( type(e).__name__, str(e) ) )
-                sys.exit(1)
+            access = readnproc(jsrv.get('access', ''), Engine)
+            pvlist = readnproc(jsrv.get('pvlist', ''), PVList)
 
             statusp = StaticProvider(u'gwsts.'+name)
             providers = [statusp]

@@ -8,7 +8,7 @@ from collections import defaultdict
 from functools import partial
 from weakref import WeakKeyDictionary
 
-from .yacc import parse
+from .yacc import parse, ACFError
 
 from ..client.thread import Context, LazyRepr
 

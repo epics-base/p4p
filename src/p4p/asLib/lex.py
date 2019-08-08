@@ -1,5 +1,8 @@
 from ply import lex
 
+class ACFError(RuntimeError):
+    pass
+
 tokens = (
     'UAG',
     'HAG',
@@ -51,7 +54,7 @@ def t_quoted_STRING(t):
     return t
 
 def t_error(t):
-    raise RuntimeError("Illegal char %s at %d"%(repr(t.value[:5]), t.lexer.lineno+1))
+    raise ACFError("Illegal char %s at %d"%(repr(t.value[:5]), t.lexer.lineno+1))
 
 if __name__=='__main__':
     import logging
