@@ -660,7 +660,7 @@ class App(object):
         # servers and clients already running, so possible race...
 
         if not args.no_ban_local:
-            _log.info('Ban server interfaces to prevent GW client -> GW server loops')
+            _log.info('Banning local server interfaces to prevent GW client -> GW server loops')
             for handler in self.stats.handlers:
                 for server in self.servers.values():
                     server_conf = server.conf()
