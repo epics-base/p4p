@@ -88,7 +88,7 @@ class DummyEngine(Engine):
             'hxr-console':'1.2.3.45',
             'mcrhost':'1.2.3.10',
             'remotehost':'1.2.3.20',
-        }[host]
+        }.get(host)
 
 class TestACF(unittest.TestCase):
     def test_parse(self):
@@ -101,7 +101,8 @@ HAG(GWSTATS)
 {
         lcls-daemon3,
         other.host,
-        "strange"
+        "strange",
+        "invalid.host.name."
 }
 ASG(SIMPLE)
 {
@@ -123,7 +124,7 @@ ASG(NOTSIMPLE) {
 
         self.assertEqual(ast, [
             ('UAG', 'SPECIAL', ['root', 'role:admin']),
-            ('HAG', 'GWSTATS', ['lcls-daemon3', 'other.host', 'strange']),
+            ('HAG', 'GWSTATS', ['lcls-daemon3', 'other.host', 'strange', 'invalid.host.name.']),
             ('ASG', 'SIMPLE', [
                 ('RULE', 1, 'READ', False, None)
             ]),
@@ -206,7 +207,8 @@ HAG(GWSTATS)
 }
 HAG(PHOTON)
 {
-        hxr-control, hxr-console
+        hxr-control, hxr-console,
+        "invalid.host.name."
 }
 ASG(DEFAULT)
 {

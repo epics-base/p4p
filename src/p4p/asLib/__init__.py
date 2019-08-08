@@ -178,19 +178,18 @@ class Engine(object):
 
     @staticmethod
     def _gethostbyname(host):
-        return socket.gethostbyname(host)
+        try:
+            return socket.gethostbyname(host)
+        except socket.gaierror as e:
+            _log.warn( "Ignore invalid hostname \"%s\" : %s", host, e )
 
     def _resolve_hag(self, _hag):
         hag_addr = defaultdict(set)
 
         for host, groups in _hag.items():
-            try:
-                ip = self._gethostbyname(host)
+            ip = self._gethostbyname(host)
+            if ip is not None:
                 hag_addr[ip] |= groups
-            except socket.gaierror as e:
-                print( "Invalid hostname %s" % host )
-                print( "%s: %s" % ( type(e).__name__, str(e) ) )
-                pass
 
         return dict(hag_addr)
 
