@@ -13,6 +13,11 @@ import weakref
 import threading
 from tempfile import NamedTemporaryFile
 
+try:
+    from Queue import Queue, Full, Empty
+except ImportError:
+    from queue import Queue, Full, Empty
+
 from .utils import RefTestCase
 from ..server import Server, StaticProvider, removeProvider
 from ..server.thread import SharedPV, _defaultWorkQueue
@@ -232,9 +237,9 @@ class TestHighLevel(RefTestCase):
             pv.post(op.value())
             op.done()
 
-        self._us_server = Server(providers=[self._us_provider], isolate=True)
-        us_conf = self._us_server.conf()
-        _log.debug("US server conf: %s", us_conf)
+        self._us_server = self._us_conf = None
+        self.startServer()
+        _log.debug("US server conf: %s", self._us_conf)
 
         cfile = NamedTemporaryFile('w+')
         json.dump({
@@ -244,7 +249,7 @@ class TestHighLevel(RefTestCase):
                 'provider':'pva',
                 'addrlist':'127.0.0.1 127.255.255.255',
                 'autoaddrlist':False,
-                'bcastport':us_conf['EPICS_PVA_BROADCAST_PORT'],
+                'bcastport':self._us_conf['EPICS_PVA_BROADCAST_PORT'],
                 'serverport':0,
             }],
             'servers':[{
@@ -271,6 +276,19 @@ class TestHighLevel(RefTestCase):
 
         self._main.start()
 
+    def startServer(self):
+        if self._us_server is None:
+            if self._us_conf is None:
+                self._us_server = Server(providers=[self._us_provider], isolate=True)
+                self._us_conf = self._us_server.conf()
+            else:
+                self._us_server = Server(providers=[self._us_provider], conf=self._us_conf, useenv=False)
+
+    def stopServer(self):
+        if self._us_server is not None:
+            self._us_server.stop()
+            self._us_server = None
+
     def tearDown(self):
         # downstream client
         self._ds_client.close()
@@ -283,7 +301,7 @@ class TestHighLevel(RefTestCase):
         del self._main
 
         # upstream server
-        self._us_server.stop()
+        self.stopServer()
         del self._us_provider
         del self._us_server
         del self.pv
@@ -308,3 +326,34 @@ class TestHighLevel(RefTestCase):
 
         val = self._ds_client.get('pv:name', timeout=self.timeout)
         self.assertEqual(val, 41)
+
+    def test_mon_discon(self):
+        self.stopServer()
+
+        Q = Queue(maxsize=4)
+        with self._ds_client.monitor('pv:name', Q.put, notify_disconnect=True):
+            V = Q.get(timeout=self.timeout)
+            self.assertIsInstance(V, Disconnected)
+
+            with self.assertRaises(Empty):
+                Q.get(timeout=0.1)
+
+            self.startServer()
+
+            V = Q.get(timeout=self.timeout)
+            self.assertEqual(V, 42)
+
+            self.stopServer()
+
+            V = Q.get(timeout=self.timeout)
+            self.assertIsInstance(V, Disconnected)
+
+            self.pv.post(5)
+
+            with self.assertRaises(Empty):
+                Q.get(timeout=0.1)
+
+            self.startServer()
+
+            V = Q.get(timeout=self.timeout)
+            self.assertEqual(V, 5)
