@@ -242,10 +242,13 @@ static PyObject* clientprovider_disconnect(PyObject *self, PyObject *args, PyObj
 
         TRACE(pchannel);
 
-        if(pchannel)
-            SELF.disconnect(pchannel);
-        else
-            SELF.disconnect();
+        {
+            PyUnlock U;
+            if(pchannel)
+                SELF.disconnect(pchannel);
+            else
+                SELF.disconnect();
+        }
 
         Py_RETURN_NONE;
     }CATCH()
@@ -349,7 +352,10 @@ static int clientchannel_init(PyObject *self, PyObject *args, PyObject *kws)
 
         pvac::ClientProvider prov(PyClientProvider::unwrap(pyprovider));
 
-        SELF = prov.connect(name, opts);
+        {
+            PyUnlock U;
+            SELF = prov.connect(name, opts);
+        }
 
         TRACE(name);
         return 0;
@@ -362,7 +368,10 @@ static PyObject* clientchannel_show(PyObject *self)
     TRY {
         std::ostringstream strm;
 
-        SELF.show(strm);
+        {
+            PyUnlock U;
+            SELF.show(strm);
+        }
 
         return PyUnicode_FromString(strm.str().c_str());
     }CATCH()
@@ -398,7 +407,10 @@ static int clientmonitor_init(PyObject *self, PyObject *args, PyObject *kws)
         pvac::ClientChannel& channel = PyClientChannel::unwrap(chan);
 
         SELF.cb.reset(cb, borrow());
-        SELF.monitor = channel.monitor(&SELF, pvRequest);
+        {
+            PyUnlock U;
+            SELF.monitor = channel.monitor(&SELF, pvRequest);
+        }
         TRACE(channel.name());
 
         return 0;
@@ -422,7 +434,12 @@ static PyObject *clientmonitor_close(PyObject *self)
 static PyObject *clientmonitor_pop(PyObject *self)
 {
     TRY {
-        if(SELF.monitor.poll()) {
+        bool havedata;
+        {
+            PyUnlock U;
+            havedata = SELF.monitor.poll();
+        }
+        if(havedata) {
             pvd::PVStructure::shared_pointer root(pvd::getPVDataCreate()->createPVStructure(SELF.monitor.root->getStructure()));
             root->copyUnchecked(*SELF.monitor.root);
             pvd::BitSet::shared_pointer changed(new pvd::BitSet(SELF.monitor.changed));
@@ -440,7 +457,12 @@ static PyObject *clientmonitor_pop(PyObject *self)
 static PyObject *clientmonitor_complete(PyObject *self)
 {
     TRY {
-        if(SELF.monitor.complete()) {
+        bool ret;
+        {
+            PyUnlock U;
+            ret = SELF.monitor.complete();
+        }
+        if(ret) {
             Py_RETURN_TRUE;
         } else {
             Py_RETURN_FALSE;
@@ -525,14 +547,17 @@ static int clientoperation_init(PyObject *self, PyObject *args, PyObject *kws)
                 return -1;
             }
             SELF.builder.reset(builder, borrow());
+            PyUnlock U;
             SELF.op = channel.put(&SELF, pvRequest, get);
         } else if(get && !put && !rpc) {
             // only get
             TRACE("only get");
+            PyUnlock U;
             SELF.op = channel.get(&SELF, pvRequest);
         } else if(!get && !put && rpc) {
             TRACE("rpc");
             pvd::PVStructure::const_shared_pointer value(P4PValue_unwrap(pyvalue));
+            PyUnlock U;
             SELF.op = channel.rpc(&SELF, value, pvRequest);
         } else {
             PyErr_Format(PyExc_ValueError, "Operation unsupported combination of get=, put=, and rpc=");
