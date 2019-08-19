@@ -294,8 +294,14 @@ class TestHighLevel(RefTestCase):
     def test_get(self):
         val = self._ds_client.get('pv:name', timeout=self.timeout)
         self.assertEqual(val, 42)
+        self.assertTrue(val.raw.changed('value'))
         # re-read right away to check throttling/holdoff logic
         self.assertEqual(val, 42)
+
+    def test_get_mask(self):
+        val = self._ds_client.get('pv:name', timeout=self.timeout, request='timeStamp')
+        self.assertEqual(val, 0) # not requested at default
+        self.assertFalse(val.raw.changed('value'))
 
     def test_put(self):
         self._ds_client.put('pv:name', 41, timeout=self.timeout)

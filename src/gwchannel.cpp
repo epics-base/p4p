@@ -454,10 +454,13 @@ void ProxyGet::Requester::channelGetConnect(const pvd::Status& status,
         state = execute ? Executing : Idle;
     }
     TRACE("notify "<<gets.size()<<" "<<execute);
+    pvd::PVStructurePtr prototype(structure->build());
     for(size_t i=0, N=gets.size(); i<N; i++) {
         requester_type::shared_pointer req(gets[i]->ds_requester.lock());
-        if(req)
-            req->channelGetConnect(status, gets[i], structure);
+        if(req) {
+            gets[i]->mapper.compute(*prototype, *gets[i]->ds_pvRequest);
+            req->channelGetConnect(status, gets[i], gets[i]->mapper.requested());
+        }
     }
     if(execute)
         us_op->get();
@@ -494,8 +497,14 @@ void ProxyGet::Requester::getDone(const pvd::Status& status,
     for(size_t i=0, N=gets.size(); i<N; i++) {
         requester_type::shared_pointer req(gets[i]->ds_requester.lock());
         // hope that the various downstreams don't modify...
-        if(req)
-            req->getDone(status, channelGet, pvStructure, bitSet);
+        if(!req) continue;
+
+        pvd::PVStructurePtr value(gets[i]->mapper.buildRequested());
+        pvd::BitSetPtr changed(new pvd::BitSet());
+
+        gets[i]->mapper.copyBaseToRequested(*pvStructure, *bitSet, *value, *changed);
+
+        req->getDone(status, channelGet, value, changed);
     }
 }
 
@@ -522,9 +531,10 @@ void ProxyGet::Requester::callback()
 void ProxyGet::Requester::timerStopped() {}
 
 ProxyGet::ProxyGet(const Requester::shared_pointer& us_requester,
-                   const requester_type::shared_pointer& ds_requester)
+                   const requester_type::shared_pointer& ds_requester, const epics::pvData::PVStructurePtr &ds_pvRequest)
     :us_requester(us_requester)
     ,ds_requester(ds_requester)
+    ,ds_pvRequest(ds_pvRequest)
     ,executing(false)
 {
     REFTRACE_INCREMENT(num_instances);
@@ -649,7 +659,7 @@ pva::ChannelGet::shared_pointer GWChan::createChannelGet(
         }
     }
 
-    ProxyGet::shared_pointer ret(new ProxyGet(entry, requester));
+    ProxyGet::shared_pointer ret(new ProxyGet(entry, requester, pvRequest));
 
     pvd::StructureConstPtr type;
     {
@@ -662,8 +672,10 @@ pva::ChannelGet::shared_pointer GWChan::createChannelGet(
         if(entry->state!=ProxyGet::Requester::Disconnected) // implies type!=NULL
             type = entry->type;
     }
-    if(type)
-        requester->channelGetConnect(pvd::Status(), ret, type);
+    if(type) {
+        ret->mapper.compute(*type->build(), *ret->ds_pvRequest);
+        requester->channelGetConnect(pvd::Status(), ret, ret->mapper.requested());
+    }
 
     TRACE("CREATE cached "<<(create?'T':'F')<<" "<<(type?'T':'F'));
     return ret;

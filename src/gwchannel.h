@@ -254,13 +254,18 @@ struct ProxyGet : public pva::ChannelGet,
 
     const requester_type::weak_pointer ds_requester;
 
+    const pvd::PVStructurePtr ds_pvRequest;
+
+    pvd::PVRequestMapper mapper;
+
     // protected by us_requester->mutex
 
     // downstream requests get()
     bool executing;
 
     ProxyGet(const Requester::shared_pointer& us_requester,
-             const requester_type::shared_pointer& ds_requester);
+             const requester_type::shared_pointer& ds_requester,
+             const pvd::PVStructurePtr& ds_pvRequest);
     virtual ~ProxyGet();
 
     virtual void destroy() OVERRIDE FINAL;
