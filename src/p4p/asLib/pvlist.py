@@ -21,11 +21,16 @@ def _re_join(exprs, capture=''):
     return re.compile('^(?:%s)$'%A)
 
 class PVList(object):
+    '''Parse and prepare pvlist text.
+
+    >>> with open(fname, 'r') as F:
+            pvl = PVList(F.read())
+    '''
     def __init__(self, pvl):
         allowfirst = False
 
         # {'host':[RE, ...]}
-        deny_from = defaultdict(list)
+        deny_from = defaultdict(set)
         deny_all = set()
         allow = OrderedDict() # {RE:(sub|None, asg, asl)}
         # number of match groups encountered so far.
@@ -72,7 +77,7 @@ class PVList(object):
                     if parts:
                         for host in parts:
                             host = self._gethostbyname(host)
-                            deny_from[host].append(pattern)
+                            deny_from[host].add(pattern)
 
                     else:
                         deny_all.add(pattern)
@@ -108,7 +113,7 @@ class PVList(object):
 
         # RE's for each host specific list also include the general list.
         # So only need to run one deny RE for request
-        self._deny_from = {addr:_re_join(exprs+deny_all, '?:') for addr, exprs in deny_from.items()}
+        self._deny_from = {addr:_re_join(list(exprs)+deny_all, '?:') for addr, exprs in deny_from.items()}
         self._deny_all = _re_join(deny_all, '?:')
 
         allow_pat, self._allow_actions = list(allow.keys()), list(allow.values())
@@ -122,6 +127,10 @@ class PVList(object):
         return socket.gethostbyname(host)
 
     def compute(self, pv, addr):
+        '''Lookup PV name and client IP address.
+
+        Returns a triple of None/rewritten PV name, security group name (ASG), and security level number (ASL).
+        '''
         pv = pv.decode('UTF-8')
         P = self._deny_from.get(addr, self._deny_all)
 

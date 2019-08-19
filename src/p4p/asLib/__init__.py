@@ -27,6 +27,11 @@ actionmask = {
 }
 
 class Engine(object):
+    '''Access Security File (ACF) parsing and evaluation engine
+
+    >>> with open(fname, 'r') as F:
+            acf = Engine(F.read())
+    '''
     Context = Context # allow tests to replace
 
     defaultACF = """
