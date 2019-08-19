@@ -265,7 +265,7 @@ class TestHighLevel(RefTestCase):
         cfile.flush()
 
         # gateway
-        args = TestApp.getargs([cfile.name])
+        args = TestApp.getargs(['-v', cfile.name])
 
         self._app = TestApp(args)
         self._main = threading.Thread(target=self._app.run, name='GW Main')

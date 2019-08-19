@@ -442,6 +442,11 @@ def comment_sub(M):
     '''
     return re.sub(r'[^\n]', ' ', M.group(0))
 
+def jload(raw):
+    '''Parse JSON including C style comments
+    '''
+    return json.loads(re.sub(r'/\*.*?\*/', comment_sub, raw, flags=re.DOTALL))
+
 class App(object):
     @staticmethod
     def getargs(*args):
@@ -451,6 +456,7 @@ class App(object):
         P.add_argument('--no-ban-local', action='store_true',
                        help='Skip ban of local interfaces, which prevents local clients.  Allow GW to talk to itself.')
         P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
+        P.add_argument('--logging', help='Use logging config from file (JSON in dictConfig format)')
         P.add_argument('--debug', action='store_true')
         return P.parse_args(*args)
 
@@ -460,7 +466,7 @@ class App(object):
         try:
             # we substitute comments with whitespace to keep correct line and column numbers
             # in error messages.
-            jconf = json.loads(re.sub(r'/\*.*?\*/', comment_sub, jconf, flags=re.DOTALL))
+            jconf = jload(jconf)
             jver = jconf.get('version', 0)
             if jver not in (1,2):
                 sys.stderr('Warning: config file version %d not in range [1, 2]\n'%jver)
@@ -592,7 +598,18 @@ class App(object):
 
 def main(args=None):
     args = App.getargs(args)
-    logging.basicConfig(level=args.verbose)
+    if args.logging is not None:
+        with open(args.logging, 'r') as F:
+            jconf = F.read()
+        try:
+            from logging.config import dictConfig
+            dictConfig(jload(jconf))
+        except ValueError as e:
+            sys.stderr.write('%s Logging config Error: %s\n'%(args.logging, e.args))
+            sys.exit(1)
+
+    else:
+        logging.basicConfig(level=args.verbose)
     if args.debug:
         set_debug(logging.DEBUG)
     App(args).run()
