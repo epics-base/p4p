@@ -55,6 +55,7 @@ class PVList(object):
                 if M:
                     if M.groups()==('DENY', 'ALLOW'):
                         allowfirst = True # allow rules take precedence
+                        _log.warn('Ignoring "EVALUATION ORDER DENY, ALLOW".  Only ALLOW, DENY is implemented.')
                     elif M.groups()==('ALLOW', 'DENY'):
                         allowfirst = False # deny rules take precedence (default)
                     else:
