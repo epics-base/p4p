@@ -180,8 +180,8 @@ ASG(DEFAULT)
 """)
 
         for args, perm in [(('DEFAULT', 'someone', 'somewhere', 0),          {'put':False,'rpc':False, 'uncached':False, 'audit': False}),
-                           (('DEFAULT', 'root', '1.2.3.4', 0),               {'put':True, 'rpc':False, 'uncached':False, 'audit': False}),
-                           (('DEFAULT', 'someone', '1.2.3.4', 0, ['admin']), {'put':True, 'rpc':False, 'uncached':False, 'audit': False}),
+                           (('DEFAULT', 'root', '1.2.3.4', 0),               {'put':True, 'rpc':True, 'uncached':False, 'audit': False}),
+                           (('DEFAULT', 'someone', '1.2.3.4', 0, ['admin']), {'put':True, 'rpc':True, 'uncached':False, 'audit': False}),
                            ]:
             try:
                 _log.debug('With: %s expect: %s', args, perm)
@@ -241,12 +241,12 @@ ASG(TSTWRITE)
 
         for args, perm in [(('DEFAULT', 'someone', 'somewhere', 0),  {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
                            (('DEFAULT', 'root', '1.2.3.4', 0),       {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
-                           (('CANWRITE', 'someone', 'somewhere', 0), {'put':True , 'rpc':False, 'uncached':False, 'audit': True}),
-                           (('CANWRITE', 'root', '1.2.3.44', 0),     {'put':True , 'rpc':False, 'uncached':False, 'audit': True}),
+                           (('CANWRITE', 'someone', 'somewhere', 0), {'put':True , 'rpc':True,  'uncached':False, 'audit': True}),
+                           (('CANWRITE', 'root', '1.2.3.44', 0),     {'put':True , 'rpc':True,  'uncached':False, 'audit': True}),
                            (('AMOWRITE', 'someone', 'somewhere', 0), {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
                            (('AMOWRITE', 'someone', '1.2.3.44', 0),  {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
                            (('AMOWRITE', 'root', 'somewhere', 0),    {'put':False, 'rpc':False, 'uncached':False, 'audit': False}),
-                           (('AMOWRITE', 'root', '1.2.3.44', 0),     {'put':True , 'rpc':False, 'uncached':False, 'audit': True}),
+                           (('AMOWRITE', 'root', '1.2.3.44', 0),     {'put':True , 'rpc':True,  'uncached':False, 'audit': True}),
                            ]:
             try:
                 ch = self.DummyChannel()
@@ -293,8 +293,8 @@ ASG(OPERATOR) {
             eng.create(ch, *args)
             db.append(ch)
 
-        for ch, perm in zip(db, [{'put':True , 'rpc':False, 'uncached':False, 'audit': True},
-                                 {'put':True , 'rpc':False, 'uncached':False, 'audit': True},
+        for ch, perm in zip(db, [{'put':True , 'rpc':True, 'uncached':False, 'audit': True},
+                                 {'put':True , 'rpc':True, 'uncached':False, 'audit': True},
                                  {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
                                  {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
                                  ]):
@@ -305,8 +305,8 @@ ASG(OPERATOR) {
 
         eng._ctxt.post('ACC-CT{}Prmt:Remote-Sel', 1.0)
 
-        for ch, perm in zip(db, [{'put':True , 'rpc':False, 'uncached':False, 'audit': True},
-                                 {'put':True , 'rpc':False, 'uncached':False, 'audit': True},
+        for ch, perm in zip(db, [{'put':True , 'rpc':True, 'uncached':False, 'audit': True},
+                                 {'put':True , 'rpc':True, 'uncached':False, 'audit': True},
                                  {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
                                  {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
                                  ]):
@@ -317,8 +317,8 @@ ASG(OPERATOR) {
 
         eng._ctxt.post('ACC-CT{}Prmt:Remote-Sel', 0.0)
 
-        for ch, perm in zip(db, [{'put':True , 'rpc':False, 'uncached':False, 'audit': True},
-                                 {'put':True , 'rpc':False, 'uncached':False, 'audit': True},
+        for ch, perm in zip(db, [{'put':True , 'rpc':True, 'uncached':False, 'audit': True},
+                                 {'put':True , 'rpc':True, 'uncached':False, 'audit': True},
                                  {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
                                  {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
                                  ]):

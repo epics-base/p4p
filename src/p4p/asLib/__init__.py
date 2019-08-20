@@ -15,13 +15,14 @@ from ..client.thread import Context, LazyRepr
 _log = logging.getLogger(__name__)
 
 READ = 1
-WRITEONLY = 2
-WRITE = 3 # implies READ
+PUT = 2
 RPC = 4
 UNCACHED = 8
+WRITE = READ | PUT | RPC
 actionmask = {
     'READ':READ,
     'WRITE':WRITE,
+    'PUT':PUT,
     'RPC':RPC,
     'UNCACHED':UNCACHED,
 }
@@ -37,7 +38,6 @@ class Engine(object):
     defaultACF = """
     ASG(DEFAULT) {
         RULE(1, WRITE)
-        RULE(1, RPC)
         RULE(1, UNCACHED)
     }
     """
@@ -112,7 +112,12 @@ class Engine(object):
                             else:
                                 warnings.warn("Invalid RULE condition AST: %s"%(rnode,))
 
-                        rules.append( (actionmask.get(anode[2],0), anode[1], anode[3], rule) )
+                        try:
+                            mask = actionmask[anode[2]]
+                        except KeyError:
+                            _log.warn('Ignoring unknown permission "%s"', anode[2])
+                            mask = 0 # grant no permissions
+                        rules.append( (mask, anode[1], anode[3], rule) )
 
                     elif anode[0]=='INP':
                         # ('INP', 'A', 'pv:name')
@@ -250,7 +255,7 @@ class Engine(object):
                 _log.exception("Error while calculating ASG for %s, %s, %s, %s, %s",
                             channel, group, user, host, level)
 
-            put = perm & WRITEONLY
+            put = perm & PUT
             rpc = perm & RPC
             uncached = perm & UNCACHED
 
