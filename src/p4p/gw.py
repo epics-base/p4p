@@ -495,6 +495,24 @@ class App(object):
 
         servers = self.servers = {}
 
+        # pre-process 'servers' to expand 'interface' list
+        new_servers = []
+        for jsrv in jconf['servers']:
+            iface = jsrv.get('interface')
+            if len(jsrv.get('addrlist',''))>0 and len(iface)>1:
+                _log.warning('Server entries for more than one interface must not specify addrlist.')
+                _log.warning('Each server interface will attempt to send beacons to all destinations')
+                jsrv.pop('addrlist')
+
+            for iface in iface:
+                jsrv = jsrv.copy()
+                jsrv['interface'] = iface
+
+            new_servers.append(jsrv)
+
+        jconf['servers'] = new_servers
+        del new_servers
+
         # various objects which shouldn't be GC'd until server shutdown,
         # but aren't otherwise accessed after startup.
         self.__lifesupport = []

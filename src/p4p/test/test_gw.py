@@ -255,7 +255,7 @@ class TestHighLevel(RefTestCase):
             'servers':[{
                 'name':'server1',
                 'clients':['client1'],
-                'interface':'127.0.0.1',
+                'interface':['127.0.0.1'],
                 'addrlist':'127.255.255.255',
                 'autoaddrlist':False,
                 'bcastport':0,
