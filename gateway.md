@@ -190,3 +190,9 @@ Granting the UNCACHED permission allows a client to request bypassing of
 the gateway sharing and de-duplication of Monitor and Get.  A client
 requests this with "record[cache=false]".  This is considered an expert
 activity, and not recommended as a default.
+
+### TRAPWRITE and logging
+
+A RULE with WRITE or PUT and TRAPWRITE will log Put requests from downstream clients.
+These are logged through the 'p4p.gw.audit' Python logger with INFO level.
+cf. the '--logging' argument.
