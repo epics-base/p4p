@@ -33,14 +33,6 @@ matrix:
       install: ./.ci/travis-linux-prepare.sh
       script: ./.ci/travis-linux-build.sh
 
-    - sudo: false
-      dist: trusty
-      language: python
-      python: "2.7"
-      env: BRBASE=3.14 BRPVD=master BRPVA=master PROF=deb8
-      install: ./.ci/travis-linux-prepare.sh
-      script: ./.ci/travis-linux-build.sh
-
     - sudo: required
       language: python
       services:
