@@ -139,7 +139,7 @@ matrix:
 
     - os: osx
       language: generic
-      env: PYTHON=python2 PYVER=2.7 URL=https://www.python.org/ftp/python/2.7.15/python-2.7.15-macosx10.6.pkg
+      env: PYTHON=python2 PYVER=2.7 URL=https://www.python.org/ftp/python/2.7.16/python-2.7.16-macosx10.6.pkg
       install:
         - ./travis-osx.sh
         - python2 cibuild.py prepare
@@ -148,12 +148,21 @@ matrix:
 
     - os: osx
       language: generic
-      env: PYTHON=python3 PYVER=3.6 URL=https://www.python.org/ftp/python/3.6.7/python-3.6.7-macosx10.6.pkg
+      env: PYTHON=python3 PYVER=3.6 URL=https://www.python.org/ftp/python/3.6.8/python-3.6.8-macosx10.6.pkg
       install:
         - ./travis-osx.sh
         - python3 cibuild.py prepare
       script:
         - python3 cibuild.py build cp36-cp36m-macosx_10_6_intel.macosx_10_6_x86_64
+
+    - os: osx
+      language: generic
+      env: PYTHON=python3 PYVER=3.7 URL=https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.6.pkg
+      install:
+        - ./travis-osx.sh
+        - python3 cibuild.py prepare
+      script:
+        - python3 cibuild.py build cp37-cp37m-macosx_10_6_intel.macosx_10_6_x86_64
 
 after_success:
   - |
