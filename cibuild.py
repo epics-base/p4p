@@ -11,8 +11,6 @@ import re
 import subprocess as SP
 from glob import glob
 
-PY2 = sys.version_info<(3,0)
-
 # https://www.python.org/dev/peps/pep-0513/
 # https://www.python.org/dev/peps/pep-0425/
 # eg.
@@ -30,11 +28,18 @@ def is_pre():
 
     return ver.find('a')!=-1
 
-requirments = {
-    'Linux':'requirements-deb8.txt',
-    'Windows':'requirements-windows.txt',
-    'Darwin':'requirements-deb8.txt',
-}[platform.system()]
+if sys.version_info>=(3,7):
+    # numpy only provides 3.7 wheels for recent releases,
+    # and source builds seem to fail on travis?
+    requirments = 'requirements-deb10.txt'
+
+elif platform.system()=='Windows':
+    # numpy wheels also not provided for windows until 1.11
+    requirments = 'requirements-windows.txt'
+
+else:
+    # for maximum compatibility, build against old numpy
+    requirments = 'requirements-deb8.txt'
 
 os.environ['REFTEST_IGNORE_TRANSIENT'] = 'YES'
 
