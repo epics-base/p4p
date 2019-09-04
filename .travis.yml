@@ -39,7 +39,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp27-cp27m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_x86_64
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_x86_64
 
     - sudo: required
       language: python
@@ -47,7 +47,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp27-cp27mu
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_x86_64
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_x86_64
 
     - sudo: required
       language: python
@@ -55,7 +55,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp34-cp34m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_x86_64
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_x86_64
 
     - sudo: required
       language: python
@@ -63,7 +63,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp35-cp35m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_x86_64
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_x86_64
 
     - sudo: required
       language: python
@@ -71,7 +71,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp36-cp36m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_x86_64
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_x86_64
 
     - sudo: required
       language: python
@@ -79,7 +79,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp37-cp37m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_x86_64
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_x86_64
 
     - sudo: required
       language: python
@@ -87,7 +87,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_i686 PRE_CMD=linux32 PYVER=cp27-cp27m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_i686
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_i686
 
     - sudo: required
       language: python
@@ -95,7 +95,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_i686 PRE_CMD=linux32 PYVER=cp27-cp27mu
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_i686
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_i686
 
     - sudo: required
       language: python
@@ -103,7 +103,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_i686 PRE_CMD=linux32 PYVER=cp34-cp34m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_i686
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_i686
 
     - sudo: required
       language: python
@@ -111,7 +111,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_i686 PRE_CMD=linux32 PYVER=cp35-cp35m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_i686
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_i686
 
     - sudo: required
       language: python
@@ -119,7 +119,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_i686 PRE_CMD=linux32 PYVER=cp36-cp36m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_i686
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_i686
 
     - sudo: required
       language: python
@@ -127,7 +127,7 @@ matrix:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_i686 PRE_CMD=linux32 PYVER=cp37-cp37m
       install: docker pull $DOCKER_IMAGE
-      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build ${PYVER}-manylinux1_i686
+      script: docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD "/opt/python/$PYVER/bin/python" /io/cibuild.py docker prepare build manylinux1_i686
 
     - os: osx
       language: generic
@@ -136,7 +136,7 @@ matrix:
         - ./travis-osx.sh
         - python2 cibuild.py prepare
       script:
-        - python2 cibuild.py build cp27-cp27m-macosx_10_6_intel.macosx_10_6_x86_64
+        - python2 cibuild.py build macosx_10_9_intel
 
     - os: osx
       language: generic
@@ -145,7 +145,7 @@ matrix:
         - ./travis-osx.sh
         - python3 cibuild.py prepare
       script:
-        - python3 cibuild.py build cp36-cp36m-macosx_10_6_intel.macosx_10_6_x86_64
+        - python3 cibuild.py build macosx_10_9_intel
 
     - os: osx
       language: generic

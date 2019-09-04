@@ -9,6 +9,7 @@ import sys, os, platform
 import shutil
 import re
 import subprocess as SP
+import distutils.util
 from glob import glob
 
 # https://www.python.org/dev/peps/pep-0513/
@@ -64,16 +65,17 @@ def prepare(args):
     call_py(['-m', 'pip', 'install', '-r', requirments])
     call_py(['-m', 'pip', 'install', '-U', 'wheel', 'setuptools', 'twine'])
     if is_pre():
+        print('Install pre-release dependencies')
         call_py(['-m', 'pip', 'install', '-U', '--pre', 'setuptools_dso'])
         call_py(['-m', 'pip', 'install', '-U', '--pre', '--only-binary', ':all:', 'epicscorelibs'])
     else:
+        print('Install release dependencies')
         call_py(['-m', 'pip', 'install', '-U', 'setuptools_dso'])
         call_py(['-m', 'pip', 'install', '-U', '--only-binary', ':all:', 'epicscorelibs'])
 
 def build(args):
     tag = args.pop(0)
     print('ABI tag', tag)
-    assert len(tag.split('-'))==3, tag
     
     call_py(['setup.py', 'clean', '-a']) # serves to verify that ./setup.py exists before we delete anything
 
@@ -81,7 +83,7 @@ def build(args):
     shutil.rmtree('build', ignore_errors=True)
 
     call_py(['setup.py', 'sdist'])
-    call_py(['setup.py', '-v', 'bdist_wheel'])
+    call_py(['setup.py', '-v', 'bdist_wheel', '-p', tag])
 
     results = glob('dist/*.whl')
     print('RESULT', results)
@@ -93,10 +95,9 @@ def build(args):
     call_py(['-m', 'pip', 'install', results[0]])
     # prevent overzealous nose from inspecting src/
     os.chdir('dist')
-    nose = ['-m', 'nose', 'p4p']
+    nose = ['-m', 'nose', 'p4p', '-v']
     call_py(nose)
     os.chdir('..')
-    call_py(['-m', 'change_tag', '--rm', '--tag', tag, results[0]])
 
 def upload(args):
     if 'APPVEYOR_PULL_REQUEST_NUMBER' in os.environ or 'TWINE_USERNAME' not in os.environ:
@@ -118,9 +119,31 @@ actions = {
 
 if __name__=='__main__':
     print(sys.version)
+
     print('PYTHONPATH')
     for dname in sys.path:
         print(' ', dname)
+
+    print('platform =', distutils.util.get_platform())
+
+    try:
+        from pip._internal import pep425tags
+    except ImportError:
+        print('No pip?')
+    else:
+        print('PIP compatible')
+        for parts in pep425tags.get_supported():
+            print('  ', "-".join(parts))
+
+    try:
+        from wheel import pep425tags
+    except ImportError:
+        print('No wheel?')
+    else:
+        print('Wheel compatible')
+        for parts in pep425tags.get_supported():
+            print('  ', "-".join(parts))
+
     args = sys.argv[1:]
     while len(args)>0:
         name = args.pop(0)
