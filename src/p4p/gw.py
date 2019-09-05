@@ -479,6 +479,11 @@ class App(object):
         clients = {}
         statusprefix = None
 
+        names = [jcli['name'] for jcli in jconf['clients']]
+        if len(names)!=len(set(names)):
+            _log.error('Duplicate client names: %s', names)
+        del names
+
         for jcli in jconf['clients']:
             name = jcli['name']
             client_conf = {
@@ -504,14 +509,21 @@ class App(object):
                 _log.warning('Each server interface will attempt to send beacons to all destinations')
                 jsrv.pop('addrlist')
 
-            for iface in iface:
+            for idx, iface in enumerate(iface):
                 jsrv = jsrv.copy()
+                if idx!=0:
+                    jsrv['name'] = '%s_%d'%(jsrv['name'], idx)
                 jsrv['interface'] = iface
 
-            new_servers.append(jsrv)
+                new_servers.append(jsrv)
 
         jconf['servers'] = new_servers
         del new_servers
+
+        names = [jsrv['name'] for jsrv in jconf['servers']]
+        if len(names)!=len(set(names)):
+            _log.error('Duplicate server names: %s', names)
+        del names
 
         # various objects which shouldn't be GC'd until server shutdown,
         # but aren't otherwise accessed after startup.
