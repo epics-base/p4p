@@ -590,8 +590,12 @@ class App(object):
                     for spv in statusp.keys():
                         handler.provider.forceBan(usname=spv.encode('utf-8'))
 
-                server = Server(providers=providers,
-                                conf=server_conf, useenv=False)
+                try:
+                    server = Server(providers=providers,
+                                    conf=server_conf, useenv=False)
+                except RuntimeError:
+                    _log.exception("Unable to create server %s", pprint.pformat(server_conf))
+                    sys.exit(1)
                 # we're live now...
 
                 _log.info("Server effective config %s :\n%s", name, pprint.pformat(server.conf()))
