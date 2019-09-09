@@ -504,6 +504,18 @@ class App(object):
         new_servers = []
         for jsrv in jconf['servers']:
             iface = jsrv.get('interface')
+
+            if jver==1:
+                # version 1 only allowed one interface.
+                #  'interface':'1.2.3.4'
+                # version 2 allows a list
+                #  'interface':['1.2.3.4']
+                if isinstance(iface, list):
+                    _log.warning('Server interface list should specify JSON scheme version 2')
+                else:
+                    # be forgiving
+                    iface = [iface]
+
             if len(jsrv.get('addrlist',''))>0 and len(iface)>1:
                 _log.warning('Server entries for more than one interface must not specify addrlist.')
                 _log.warning('Each server interface will attempt to send beacons to all destinations')
