@@ -147,6 +147,15 @@ matrix:
       script:
         - python3 cibuild.py build macosx_10_9_intel
 
+    - os: osx
+      language: generic
+      env: PYTHON=python3 PYVER=3.7 URL=https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.6.pkg
+      install:
+        - ./travis-osx.sh
+        - python3 cibuild.py prepare
+      script:
+        - python3 cibuild.py build cp37-cp37m-macosx_10_6_intel.macosx_10_6_x86_64
+
 after_success:
   - |
     if [ "$TRAVIS_PULL_REQUEST" == "false" -a -n "$TWINE_USERNAME" ] ; then
