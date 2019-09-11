@@ -440,6 +440,8 @@ static PyObject *clientmonitor_pop(PyObject *self)
             havedata = SELF.monitor.poll();
         }
         if(havedata) {
+            // TODO: race with SELF.monitor.clear()
+            assert(SELF.monitor.root.get());
             pvd::PVStructure::shared_pointer root(pvd::getPVDataCreate()->createPVStructure(SELF.monitor.root->getStructure()));
             root->copyUnchecked(*SELF.monitor.root);
             pvd::BitSet::shared_pointer changed(new pvd::BitSet(SELF.monitor.changed));
