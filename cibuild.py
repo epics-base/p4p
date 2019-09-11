@@ -106,7 +106,8 @@ def upload(args):
 
     files = []
     files.extend(glob('dist/*.whl'))
-    files.extend(glob('dist/*.tar.*'))
+    if platform.system()!='Windows': # avoid potential EoL problems
+        files.extend(glob('dist/*.tar.*'))
 
     call_py(['-m', 'twine', 'upload', '--skip-existing']+files)
 
