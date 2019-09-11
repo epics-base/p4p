@@ -149,12 +149,12 @@ matrix:
 
     - os: osx
       language: generic
-      env: PYTHON=python3 PYVER=3.7 URL=https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.6.pkg
+      env: PYTHON=python3 PYVER=3.7 URL=https://www.python.org/ftp/python/3.7.4/python-3.7.4-macosx10.9.pkg
       install:
         - ./travis-osx.sh
         - python3 cibuild.py prepare
       script:
-        - python3 cibuild.py build cp37-cp37m-macosx_10_6_intel.macosx_10_6_x86_64
+        - python3 cibuild.py build macosx_10_9_intel
 
 after_success:
   - |
