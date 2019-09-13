@@ -12,7 +12,7 @@ import epicscorelibs.version
 from epicscorelibs.config import get_config_var
 
 # the following line is matched from cibuild.py
-package_version = '3.3.2a1'
+package_version = '3.3.2'
 
 extra = []
 import sys
