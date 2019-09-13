@@ -16,6 +16,8 @@ typedef PyClassWrapper<pvac::ClientChannel, true> PyClientChannel;
 struct ClientMonitor : public pvac::ClientChannel::MonitorCallback {
     static size_t num_instances;
 
+    epicsMutex pollLock;
+
     pvac::Monitor monitor;
     PyRef cb;
 
@@ -424,6 +426,7 @@ static PyObject *clientmonitor_close(PyObject *self)
         TRACE("");
         {
             PyUnlock U;
+            Guard G(SELF.pollLock);
             SELF.monitor.cancel();
         }
         Py_RETURN_NONE;
@@ -434,18 +437,24 @@ static PyObject *clientmonitor_close(PyObject *self)
 static PyObject *clientmonitor_pop(PyObject *self)
 {
     TRY {
-        bool havedata;
+        pvd::PVStructure::shared_pointer root;
+        pvd::BitSet::shared_pointer changed;
         {
             PyUnlock U;
-            havedata = SELF.monitor.poll();
+            // until https://github.com/epics-base/pvAccessCPP/commit/24e83daaba1c7b3618b355b4f4dc37ab79414a74
+            // cancel() also cleared monitor.root et al.
+            // use pollLock to avoid race
+            Guard G(SELF.pollLock);
+
+            if(SELF.monitor.poll()) {
+                assert(SELF.monitor.root.get());
+                root = pvd::getPVDataCreate()->createPVStructure(SELF.monitor.root->getStructure());
+                root->copyUnchecked(*SELF.monitor.root);
+                changed.reset(new pvd::BitSet(SELF.monitor.changed));
+                // TODO: something with SELF.monitor.overrun
+            }
         }
-        if(havedata) {
-            // TODO: race with SELF.monitor.clear()
-            assert(SELF.monitor.root.get());
-            pvd::PVStructure::shared_pointer root(pvd::getPVDataCreate()->createPVStructure(SELF.monitor.root->getStructure()));
-            root->copyUnchecked(*SELF.monitor.root);
-            pvd::BitSet::shared_pointer changed(new pvd::BitSet(SELF.monitor.changed));
-            // TODO: something with SELF.monitor.overrun
+        if(root) {
             TRACE("Value");
             return P4PValue_wrap(P4PValue_type, root, changed);
         } else {
