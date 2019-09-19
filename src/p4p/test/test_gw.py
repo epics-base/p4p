@@ -23,7 +23,7 @@ from ..server import Server, StaticProvider, removeProvider
 from ..server.thread import SharedPV, _defaultWorkQueue
 from ..client.thread import Context, Disconnected, TimeoutError, RemoteError
 from ..nt import NTScalar
-from ..gw import App
+from ..gw import App, getargs
 
 from .. import _gw
 
@@ -265,7 +265,7 @@ class TestHighLevel(RefTestCase):
         cfile.flush()
 
         # gateway
-        args = TestApp.getargs(['-v', cfile.name])
+        args = getargs().parse_args(['-v', cfile.name])
 
         self._app = TestApp(args)
         self._main = threading.Thread(target=self._app.run, name='GW Main')

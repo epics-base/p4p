@@ -421,10 +421,10 @@ class GWHandler(object):
             'permission':chan.perm,
         })
 
-def readnproc(fname, fn):
+def readnproc(args, fname, fn):
     try:
         if fname:
-            with open(fname, 'r') as F:
+            with open(os.path.join(os.path.dirname(args.config), fname), 'r') as F:
                 data = F.read()
         else:
             data = ''
@@ -447,18 +447,18 @@ def jload(raw):
     '''
     return json.loads(re.sub(r'/\*.*?\*/', comment_sub, raw, flags=re.DOTALL))
 
+def getargs():
+    from argparse import ArgumentParser, ArgumentError
+    P = ArgumentParser()
+    P.add_argument('config', help='Config file')
+    P.add_argument('--no-ban-local', action='store_true',
+                    help='Skip ban of local interfaces, which prevents local clients.  Allow GW to talk to itself.')
+    P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
+    P.add_argument('--logging', help='Use logging config from file (JSON in dictConfig format)')
+    P.add_argument('--debug', action='store_true')
+    return P
+
 class App(object):
-    @staticmethod
-    def getargs(*args):
-        from argparse import ArgumentParser, ArgumentError
-        P = ArgumentParser()
-        P.add_argument('config', help='Config file')
-        P.add_argument('--no-ban-local', action='store_true',
-                       help='Skip ban of local interfaces, which prevents local clients.  Allow GW to talk to itself.')
-        P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
-        P.add_argument('--logging', help='Use logging config from file (JSON in dictConfig format)')
-        P.add_argument('--debug', action='store_true')
-        return P.parse_args(*args)
 
     def __init__(self, args):
         with open(args.config, 'r') as F:
@@ -557,8 +557,8 @@ class App(object):
             if 'serverport' in jsrv:
                 server_conf['EPICS_PVAS_SERVER_PORT'] = str(jsrv['serverport'])
 
-            access = readnproc(jsrv.get('access', ''), Engine)
-            pvlist = readnproc(jsrv.get('pvlist', ''), PVList)
+            access = readnproc(args, jsrv.get('access', ''), Engine)
+            pvlist = readnproc(args, jsrv.get('pvlist', ''), PVList)
 
             statusp = StaticProvider(u'gwsts.'+name)
             providers = [statusp]
@@ -643,7 +643,7 @@ class App(object):
         time.sleep(dly)
 
 def main(args=None):
-    args = App.getargs(args)
+    args = getargs().parse_args(args)
     if args.logging is not None:
         with open(args.logging, 'r') as F:
             jconf = F.read()
