@@ -452,10 +452,12 @@ def getargs():
     P = ArgumentParser()
     P.add_argument('config', help='Config file')
     P.add_argument('--no-ban-local', action='store_true',
-                    help='Skip ban of local interfaces, which prevents local clients.  Allow GW to talk to itself.')
-    P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
+                    help='Skip ban of local interfaces.  Risk of GW talking to itself.')
+    P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO,
+                   help='Enable basic logging with DEBUG level')
     P.add_argument('--logging', help='Use logging config from file (JSON in dictConfig format)')
-    P.add_argument('--debug', action='store_true')
+    P.add_argument('--debug', action='store_true',
+                   help='Enable extremely verbose low level PVA debugging')
     return P
 
 class App(object):
@@ -503,7 +505,7 @@ class App(object):
         # pre-process 'servers' to expand 'interface' list
         new_servers = []
         for jsrv in jconf['servers']:
-            iface = jsrv.get('interface')
+            iface = jsrv.get('interface') or ['0.0.0.0']
 
             if jver==1:
                 # version 1 only allowed one interface.

@@ -127,6 +127,14 @@ cdef extern from "gwchannel.h" nogil:
 GWProvider.prepare()
 
 cdef class Client(object):
+    """Client(provider, config)
+    GW Client.  Wraps a C++ class ChannelProvider.  Pass to `Provider` ctor.
+
+    ``config`` dict takes the same keys as `p4p.client.thread.Context` with the "pva" provider.
+
+    :param unicode provider: Client provider name from global register
+    :param dict config: Configuration for new client instance.
+    """
     cdef shared_ptr[ChannelProvider] provider
 
     def __init__(self, unicode provider, dict config):
@@ -179,12 +187,19 @@ cdef class InfoBase(object):
             self.info.reset()
 
 cdef class CreateOp(InfoBase):
+    """Handle for in-progress Channel creation request
+    """
     cdef readonly bytes name
     cdef weak_ptr[ChannelRequester] requester
     cdef weak_ptr[GWProvider] provider
     cdef object __weakref__
 
     def create(self, bytes name=None):
+        """Create a Channel with a given upstream (server-side) name
+
+        :param bytes name: Upstream name to use.  This is what the GW Client will search for.
+        :returns: A `Channel`
+        """
         cdef shared_ptr[GWChan] gwchan
         cdef Channel chan = Channel()
         cdef string dsname = self.name
@@ -207,16 +222,28 @@ cdef class CreateOp(InfoBase):
 
 
 cdef class Channel(InfoBase):
+    """Wraps C++ class GWChan
+
+    cf. `CreateOp.create()`
+    """
     cdef readonly bytes name
     cdef weak_ptr[GWChan] channel
     cdef object __weakref__
 
     @property
     def expired(self):
+        """Has this Channel become unused/disconnected?
+        """
         return self.channel.expired()
 
     def access(self, put=None, rpc=None, uncached=None, audit=None, holdoff=None):
-        """Configure access control permissions, and other restrictions, on this channel
+        """Configure access control permissions, and other restrictions, on this channel.
+
+        :param put: None to leave unchanged.  bool to permit/deny PUT operations
+        :param rpc: None to leave unchanged.  bool to permit/deny RPC operations
+        :param uncached: None to leave unchanged.  bool to permit/deny cache bypass for GET/MONITOR
+        :param audit: None to leave unchanged.  bool to enable/disable PUT logging
+        :param holdoff: None to leave unchanged.  float value to set GET holdoff period
         """
         cdef shared_ptr[GWChan] ch = self.channel.lock()
         if not ch:
@@ -233,12 +260,21 @@ cdef class Channel(InfoBase):
             atomic_set(ch.get().get_holdoff, holdoff*1000)
 
     def close(self):
+        """Force disconnect this Channel
+        """
         cdef shared_ptr[GWChan] ch = self.channel.lock()
         if <bool>ch:
             ch.get().disconnect()
 
 @cython.no_gc_clear
 cdef class Provider:
+    """Provider(name, client, handler)
+    GW Server endpoint.  wrapper for C++ class GWProvider
+
+    :param unicode name: Unique name of this provider
+    :param Client client: Associated client to which requests are forwarded
+    :param handler: Callbacks
+    """
     cdef shared_ptr[GWProvider] provider
     cdef object __weakref__
     cdef object dummy # ensure that this type participates in GC
@@ -272,8 +308,14 @@ cdef class Provider:
         with nogil:
             self.provider.reset()
 
-
     def testChannel(self, bytes usname):
+        """testChannel(usname)
+        Add the upstream name to the channel cache and begin trying to connect.
+        Returns Claim if the channel is connected, and Ignore if it is not.
+
+        :param bytes usname: Upstream (Server side) PV name
+        :returns: Claim or Ignore
+        """
         cdef string n = usname
         cdef int ret
         with nogil:
@@ -281,15 +323,27 @@ cdef class Provider:
         return ret
 
     def sweep(self):
+        """Call periodically to remove unused `Channel` from channel cache.
+        """
         with nogil:
             self.provider.get().sweep()
 
     def disconnect(self, bytes usname):
+        """Force disconnection of all channels connected to the named PV
+
+        :param bytes usname: Upstream (Server side) PV name
+        """
         cdef string n = usname
         with nogil:
             self.provider.get().disconnect(n)
 
     def forceBan(self, bytes host = None, bytes usname = None):
+        """Preemptively Add an entry to the negative result cache.
+        Either host or usname must be not None
+
+        :param bytes host: None or a host name
+        :param bytes usname: None or a upstream (Server side) PV name
+        """
         cdef string h
         cdef string us
         if host:
@@ -300,16 +354,26 @@ cdef class Provider:
             self.provider.get().forceBan(h, us)
 
     def clearBan(self):
+        """Clear the negative results cache
+        """
         with nogil:
             self.provider.get().clearBan()
 
     def cachePeek(self):
+        """Returns PV names in channel cache
+
+        :returns: a set of strings
+        """
         cdef set[string] ret
 
         self.provider.get().cachePeek(ret)
         return ret
 
     def stats(self):
+        """Return statistics of various internal caches
+
+        :rtype: dict
+        """
         cdef GWStats stats
         self.provider.get().stats(stats)
 
@@ -324,6 +388,11 @@ cdef class Provider:
         }
 
     def report(self):
+        """Run bandwidth usage report
+
+        :returns: A tuple of upstream (server side), downstream (client side), and time since last report() call.
+        :rtype: ([(usname, opTx, opRx, peer, trTx, trRx)], [(usname, dsname, opTx, opRx, account, peer, trTx, trRx)], float)
+        """
         cdef vector[ReportItem] us
         cdef vector[ReportItem] ds
         cdef double period = 0.0 # initial value not used, but quiets warning
@@ -421,11 +490,12 @@ cdef public:
 
     void GWProvider_audit(GWProvider* provider, listxx[string]& audits) with gil:
         if provider.handle:
-            for audit in audits:
-                handle = <object>provider.handle
+            handle = <object>provider.handle
 
+            for audit in audits:
                 try:
                     handle.audit(audit)
                 except:
                     import traceback
                     traceback.print_exc()
+                    break

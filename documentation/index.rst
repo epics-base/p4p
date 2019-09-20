@@ -36,6 +36,7 @@ Contents:
    server
    rpc
    internal
+   gw
 
 Indices and tables
 ==================
