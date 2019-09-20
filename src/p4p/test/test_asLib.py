@@ -94,8 +94,8 @@ class TestACF(unittest.TestCase):
     def test_parse(self):
         inp='''
 UAG(SPECIAL) {
-    "root",
-    role:admin
+    root,
+    "role/admin"
 }
 HAG(GWSTATS)
 {
@@ -123,7 +123,7 @@ ASG(NOTSIMPLE) {
         ast = parse_acf(inp)
 
         self.assertEqual(ast, [
-            ('UAG', 'SPECIAL', ['root', 'role:admin']),
+            ('UAG', 'SPECIAL', ['root', 'role/admin']),
             ('HAG', 'GWSTATS', ['lcls-daemon3', 'other.host', 'strange', 'invalid.host.name.']),
             ('ASG', 'SIMPLE', [
                 ('RULE', 1, 'READ', False, None)
@@ -168,7 +168,7 @@ class TestACL(unittest.TestCase):
         eng = DummyEngine("""
 UAG(SPECIAL) {
     root,
-    role:admin
+    "role/admin"
 }
 ASG(DEFAULT)
 {

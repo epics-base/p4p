@@ -494,7 +494,7 @@ Both user and role names may appear in ``UAG`` lists. eg. ::
     UAG(SPECIAL)
     {
         root,
-        "role:admin"
+        "role/admin"
     }
 
 And a rule: ::

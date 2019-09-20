@@ -219,7 +219,7 @@ class Engine(object):
 
             uags = self._uag.get(user, set())
             for role in roles:
-                uags |= self._uag.get('role:'+role, set())
+                uags |= self._uag.get('role/'+role, set())
             hags = self._hag_addr.get(host, set())
             rules = self._asg.get(group, self._asg_DEFAULT)
 
