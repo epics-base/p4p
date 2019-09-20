@@ -86,7 +86,7 @@ To take an example.  A server has two NICs with IP addresses
     net2 -- nic2;
     net2 -- cli;
 
-In the following configuration we wish that a client running
+In the following configuration we wish a client running
 on the host ``10.1.1.78`` to be able to
 communicate with a server running on ``192.168.1.23``.  ::
 
@@ -160,9 +160,10 @@ CLI Arguments
 Configuration File
 ------------------
 
-Configuration is provided in a file with JSON syntax with C-style comments.
+Configuration is provided as a file using JSON syntax with C-style comments.
 A full list of known keys for configuration scheme version 2. ::
 
+    /* C-style comments allowed */
     {
         "version":2,
         "readOnly":false,
@@ -335,10 +336,10 @@ to allow Clients to receive data without being permitted to change settings.
 
 A more granular policy may be defined in separate PV List file and/or ACF file.
 
-A combination of PV List and ACF may take as into consider the PV name being searched,
-as well as the Client host name/IP when deciding whether to allow a PV.
-Further, allowed PVs then provide credentials which may be used to grant additional privileges
-needed for certain operations.
+A combination of PV List and ACF may take as into consideration the PV name being searched
+and the Client host name/IP when deciding whether to allow a PV.
+Further, allowed PVs then provide credentials which may be used to grant specific privileges
+needed for some operations (mainly PUT and RPC).
 
 .. _gwpvlist:
 
@@ -568,7 +569,7 @@ Negative Results Cache
 
 In order to shield the Python testChannel() handler from repeated reconnect attempts
 for denied PVs, a list of blocked PVs, IPs, and pairs of PV and IP
-is maintained in C++ code.  Sequence requests matching one of these three criteria
+is maintained in C++ code.  Search requests matching one of these three criteria
 will be ignored without calling testChannel().
 
 p4p.gw Frontend
@@ -587,6 +588,10 @@ Setup execution flow for use of the C++ extension is:
 1. Create a `Client`
 2. Create a `Provider` using this client
 3. Create a `p4p.server.Server` referencing the provider name.
+
+More than one `Provider` may reference the same `Client`.
+A `p4p.server.Server` may reference more than one `Provider`,
+and a `Provider` may be referenced by more than one `p4p.server.Server`.
 
 After server startup, the handler object associated with a `Provider`
 will be called according to the `_gw.ProviderHandler` interface.
