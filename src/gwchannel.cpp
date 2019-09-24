@@ -973,12 +973,13 @@ GWProvider::GWProvider(const std::string& name,
     ,audit_run(true)
     ,audit_runner(pvd::Thread::Config(this, &GWProvider::runAudit)
                   .name("GW Auditor")
-                  .autostart(true))
+                  .autostart(false))
     ,timerQueue("GW timers", (pvd::ThreadPriority)epicsThreadPriorityMedium  )
     ,handle(0)
 {
     REFTRACE_INCREMENT(num_instances);
     TRACE("");
+    audit_runner.start();
 }
 
 GWProvider::~GWProvider() {
