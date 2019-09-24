@@ -578,7 +578,7 @@ p4p.gw Frontend
 This module utilizes the related C++ extension to setup and manage a Gateway
 which is configured in a manner similar to the `pva2pva gateway <https://epics-base.github.io/pva2pva/>`_
 with an access control policy defined in a manner similar to `cagateway <https://epics.anl.gov/extensions/gateway/>`_.
-Other means of configuration and policy definition could be implement.
+Other means of configuration and policy definition could be implemented.
 
 C++ Extension
 ~~~~~~~~~~~~~
@@ -589,9 +589,10 @@ Setup execution flow for use of the C++ extension is:
 2. Create a `Provider` using this client
 3. Create a `p4p.server.Server` referencing the provider name.
 
-More than one `Provider` may reference the same `Client`.
+More than one `Provider` may reference to the same `Client`.
 A `p4p.server.Server` may reference more than one `Provider`,
 and a `Provider` may be referenced by more than one `p4p.server.Server`.
+Many `p4p.server.Server` s may be created.
 
 After server startup, the handler object associated with a `Provider`
 will be called according to the `_gw.ProviderHandler` interface.
