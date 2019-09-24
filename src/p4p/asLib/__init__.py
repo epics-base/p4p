@@ -33,7 +33,6 @@ class Engine(object):
     >>> with open(fname, 'r') as F:
             acf = Engine(F.read())
     '''
-    Context = Context # allow tests to replace
 
     defaultACF = """
     ASG(DEFAULT) {
@@ -41,11 +40,11 @@ class Engine(object):
         RULE(1, UNCACHED)
     }
     """
-    def __init__(self, acf = None):
+    def __init__(self, acf = None, ctxt = None):
         self._lock = Lock()
         # {Channel:(group, user, host, level)}
         self._anodes = WeakKeyDictionary()
-        self._ctxt = None
+        self._ctxt = ctxt
         self._inputs = {}
         self._subscriptions = {}
 
@@ -140,7 +139,8 @@ class Engine(object):
         # aka. errors will not be clean
 
         if invars and self._ctxt is None:
-            self._ctxt = self.Context('pva')
+            for var, pv in invars.items():
+                _log.warning('No Client to connect to ACF INP%s = %s', var, pv)
 
         # cancel any active subscriptions
         [S.close() for S in self._subscriptions.values()]
@@ -158,7 +158,8 @@ class Engine(object):
 
         # create new subscriptions
         # which will trigger a lot of recomputes
-        self._subscriptions = {var: self._ctxt.monitor(pv, partial(self._var_update, var), notify_disconnect=True) for var,pv in invars.items()}
+        if self._ctxt is not None:
+            self._subscriptions = {var: self._ctxt.monitor(pv, partial(self._var_update, var), notify_disconnect=True) for var,pv in invars.items()}
 
     def _var_update(self, var, value):
         # clear old value first

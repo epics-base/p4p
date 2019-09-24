@@ -15,6 +15,7 @@ from tempfile import NamedTemporaryFile
 from .nt import NTScalar, Type, NTTable
 from .server import Server, StaticProvider, removeProvider
 from .server.thread import SharedPV, RemoteError
+from .client.thread import Context
 from . import set_debug, listRefs
 from . import _gw
 from .asLib import Engine, ACFError
@@ -561,6 +562,12 @@ class App(object):
 
             access = readnproc(args, jsrv.get('access', ''), Engine)
             pvlist = readnproc(args, jsrv.get('pvlist', ''), PVList)
+
+            aclient = jsrv.get('access.client')
+            if access and aclient:
+                acli = clients[aclient]
+                with acli.installAs('gwcli.'+aclient):
+                    access._ctxt = Context('gwcli.'+aclient)
 
             statusp = StaticProvider(u'gwsts.'+name)
             providers = [statusp]

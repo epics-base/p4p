@@ -39,6 +39,9 @@ std::ostream& show_time(std::ostream&);
 namespace pvd = epics::pvData;
 namespace pva = epics::pvAccess;
 
+void GWInstallClientAliased(const pva::ChannelProvider::shared_pointer& provider,
+                            const std::string& installAs);
+
 struct GWProvider;
 
 struct GWChan : public pva::Channel,
