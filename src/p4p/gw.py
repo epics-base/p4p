@@ -1,4 +1,5 @@
 import sys
+import os
 import logging
 import time
 import socket
@@ -15,6 +16,7 @@ from tempfile import NamedTemporaryFile
 from .nt import NTScalar, Type, NTTable
 from .server import Server, StaticProvider, removeProvider
 from .server.thread import SharedPV, RemoteError
+from .client.thread import Context
 from . import set_debug, listRefs
 from . import _gw
 from .asLib import Engine, ACFError
@@ -421,14 +423,14 @@ class GWHandler(object):
             'permission':chan.perm,
         })
 
-def readnproc(args, fname, fn):
+def readnproc(args, fname, fn, **kws):
     try:
         if fname:
             with open(os.path.join(os.path.dirname(args.config), fname), 'r') as F:
                 data = F.read()
         else:
             data = ''
-        return fn(data)
+        return fn(data, **kws)
     except IOError as e:
         _log.error('In "%s" : %s', fname, e)
         sys.exit(1)
@@ -559,7 +561,21 @@ class App(object):
             if 'serverport' in jsrv:
                 server_conf['EPICS_PVAS_SERVER_PORT'] = str(jsrv['serverport'])
 
-            access = readnproc(args, jsrv.get('access', ''), Engine)
+            # pick client to use for ACF INP*
+            aclient = jsrv.get('access.client')
+            if aclient is None:
+                if len(jsrv['clients'])>1:
+                    _log.warning('Multiple clients and ACF is ambigious.  Add key \'access.client\' to disambiguate')
+                if len(jsrv['clients'])>0:
+                    aclient = jsrv['clients'][0]
+
+            ctxt = None
+            if aclient is not None:
+                acli = clients[aclient]
+                with acli.installAs('gwcli.'+aclient):
+                    ctxt = Context('gwcli.'+aclient)
+
+            access = readnproc(args, jsrv.get('access', ''), Engine, ctxt=ctxt)
             pvlist = readnproc(args, jsrv.get('pvlist', ''), PVList)
 
             statusp = StaticProvider(u'gwsts.'+name)

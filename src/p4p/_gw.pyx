@@ -55,6 +55,12 @@ cdef extern from "<pv/pvAccess.h>" namespace "epics::pvAccess" nogil:
         pass
     cdef cppclass ChannelRequester:
         shared_ptr[const PeerInfo] getPeerInfo() except+
+    cdef cppclass ChannelProviderFactory:
+        pass
+    cdef cppclass ChannelProviderRegistry:
+        @staticmethod
+        shared_ptr[ChannelProviderRegistry] clients() except+
+        shared_ptr[ChannelProviderFactory] remove(string& name) except+
 
 cdef extern from "<pv/configuration.h>" namespace "epics::pvAccess" nogil:
     cdef cppclass Configuration:
@@ -76,6 +82,8 @@ cdef extern from "gwchannel.h" namespace "GWProvider" nogil:
         double operationRX
 
 cdef extern from "gwchannel.h" nogil:
+    void GWInstallClientAliased(shared_ptr[ChannelProvider]& provider, string& installAs) except+
+
     cdef cppclass GWChan:
 
         int allow_put
@@ -126,6 +134,21 @@ cdef extern from "gwchannel.h" nogil:
 
 GWProvider.prepare()
 
+cdef class ClientInstaller(object):
+    cdef string name
+    cdef weak_ptr[ChannelProvider] provider
+
+    def __enter__(self):
+        cdef shared_ptr[ChannelProvider] prov = self.provider.lock()
+        with nogil:
+            if <bool>prov:
+                GWInstallClientAliased(prov, self.name)
+            prov.reset()
+
+    def __exit__(self,A,B,C):
+        with nogil:
+            ChannelProviderRegistry.clients().get().remove(self.name)
+
 cdef class Client(object):
     """Client(provider, config)
     GW Client.  Wraps a C++ class ChannelProvider.  Pass to `Provider` ctor.
@@ -150,6 +173,14 @@ cdef class Client(object):
     def __dealloc__(self):
         with nogil:
             self.provider.reset()
+
+    def installAs(self, unicode name):
+        """Install in process-wide client registry under an alias (eg. not "pva")
+        """
+        cdef ClientInstaller inst = ClientInstaller()
+        inst.name = name.encode('utf-8')
+        inst.provider = <weak_ptr[ChannelProvider]>self.provider
+        return inst
 
 cdef class InfoBase(object):
     cdef shared_ptr[const PeerInfo] info

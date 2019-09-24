@@ -56,7 +56,7 @@ class LocalSubscription(object):
         self.cb = None
     def post(self, V):
         if V is not None:
-            V = self.nt.wrap(V)
+            V = self.nt.unwrap(self.nt.wrap(V))
         cb = self.cb
         if cb is not None:
             cb(V)
@@ -78,7 +78,6 @@ class LocalContext(object):
             S.post(V)
 
 class DummyEngine(Engine):
-    Context = LocalContext
     @staticmethod
     def _gethostbyname(host):
         return {
@@ -280,7 +279,7 @@ ASG(OPERATOR) {
     CALC("A!=0")
   }
 }
-""")
+""", ctxt=LocalContext('pva'))
         self.assertIsNotNone(eng._ctxt)
 
         db = []
@@ -308,7 +307,7 @@ ASG(OPERATOR) {
         for ch, perm in zip(db, [{'put':True , 'rpc':True, 'uncached':False, 'audit': True},
                                  {'put':True , 'rpc':True, 'uncached':False, 'audit': True},
                                  {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
-                                 {'put':False , 'rpc':False, 'uncached':False, 'audit': False},
+                                 {'put':True , 'rpc':True, 'uncached':False, 'audit': True},
                                  ]):
             try:
                 self.assertDictEqual(ch.perm, perm)

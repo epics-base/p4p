@@ -10,7 +10,8 @@ from weakref import WeakKeyDictionary
 
 from .yacc import parse, ACFError
 
-from ..client.thread import Context, LazyRepr
+from .. import Value
+from ..client.thread import Context, LazyRepr, Disconnected
 
 _log = logging.getLogger(__name__)
 
@@ -33,7 +34,6 @@ class Engine(object):
     >>> with open(fname, 'r') as F:
             acf = Engine(F.read())
     '''
-    Context = Context # allow tests to replace
 
     defaultACF = """
     ASG(DEFAULT) {
@@ -41,11 +41,11 @@ class Engine(object):
         RULE(1, UNCACHED)
     }
     """
-    def __init__(self, acf = None):
+    def __init__(self, acf = None, ctxt = None):
         self._lock = Lock()
         # {Channel:(group, user, host, level)}
         self._anodes = WeakKeyDictionary()
-        self._ctxt = None
+        self._ctxt = ctxt
         self._inputs = {}
         self._subscriptions = {}
 
@@ -101,11 +101,12 @@ class Engine(object):
 
                                 # cheating here by using python expression syntax instead of CALC.
                                 try:
-                                    expr = compile(rnode[1], '<acf>', 'single')
+                                    expr = compile(rnode[1], '<acf>', 'eval')
+                                    _log.debug('Compile %s', rnode[1])
                                 except SyntaxError:
                                     _log.exception("Error in CALC expression")
                                     # default to false on error
-                                    expr = compile('0', '<acf>', 'single')
+                                    expr = compile('0', '<acf>', 'eval')
 
                                 rule.append((rnode[0], rnode[1], expr))
 
@@ -140,7 +141,8 @@ class Engine(object):
         # aka. errors will not be clean
 
         if invars and self._ctxt is None:
-            self._ctxt = self.Context('pva')
+            for var, pv in invars.items():
+                _log.warning('No Client to connect to ACF INP%s = %s', var, pv)
 
         # cancel any active subscriptions
         [S.close() for S in self._subscriptions.values()]
@@ -158,16 +160,20 @@ class Engine(object):
 
         # create new subscriptions
         # which will trigger a lot of recomputes
-        self._subscriptions = {var: self._ctxt.monitor(pv, partial(self._var_update, var), notify_disconnect=True) for var,pv in invars.items()}
+        if self._ctxt is not None:
+            [_log.debug('subscribing to INP%s = %s', var,pv) for var,pv in invars.items()]
+            self._subscriptions = {var: self._ctxt.monitor(pv, partial(self._var_update, var), notify_disconnect=True) for var,pv in invars.items()}
 
     def _var_update(self, var, value):
         # clear old value first
         val = None
-        try:
-            if value is not None:
-                val = float(value.value)
-        except:
-            _log.exception('INP%s unable to store %s', var, LazyRepr(value))
+        if not isinstance(value, Disconnected):
+            try:
+                val = float(value or 0.0)
+            except:
+                _log.exception('INP%s unable to store %s', var, LazyRepr(value))
+
+        _log.debug('Update INP%s <- %s', var, val)
 
         with self._lock:
             self._inputs[var] = val
@@ -214,6 +220,7 @@ class Engine(object):
     def create(self, channel, group, user, host, level, roles=[]):
         # Default to restrictive.  Used in case of error
         perm = 0
+        _log.debug('(re)create %s, %s, %s, %s, %s', channel, group, user, host, level)
 
         with self._lock:
 
@@ -239,7 +246,9 @@ class Engine(object):
                                 # this could be any of a number of exceptions
                                 # which all add up to the same.  Invalid expression
                                 accept = False
-                                _log.exception('Error evaluating: %s with %s', cond[1], self._inputs)
+                                _log.exception('Error evaluating: %s with %s', cond[1], [(k,v,type(v)) for k,v in self._inputs.items()])
+                            else:
+                                _log.debug('Evaluate %s with %s -> %s', cond, [(k,v,type(v)) for k,v in self._inputs.items()], accept)
                         else:
                             warnings.warn("Invalid AST RULE: %s"%cond)
                             accept = False
