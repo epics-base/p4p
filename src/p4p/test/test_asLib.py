@@ -78,6 +78,7 @@ class LocalContext(object):
             S.post(V)
 
 class DummyEngine(Engine):
+    Context = LocalContext
     @staticmethod
     def _gethostbyname(host):
         return {
@@ -279,7 +280,7 @@ ASG(OPERATOR) {
     CALC("A!=0")
   }
 }
-""", ctxt=LocalContext('pva'))
+""")
         self.assertIsNotNone(eng._ctxt)
 
         db = []

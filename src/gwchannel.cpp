@@ -17,40 +17,6 @@ size_t ProxyGet::Requester::num_instances;
 size_t ProxyRPC::num_instances;
 size_t ProxyRPC::Requester::num_instances;
 
-namespace {
-struct AliasedChannelProviderFactory : public pva::ChannelProviderFactory
-{
-    const std::string aliasName;
-    const pva::ChannelProvider::shared_pointer provider;
-
-    AliasedChannelProviderFactory(const std::string& name, const pva::ChannelProvider::shared_pointer& provider)
-        :aliasName(name)
-        ,provider(provider)
-    {}
-    virtual ~AliasedChannelProviderFactory() {}
-
-    virtual std::string getFactoryName() OVERRIDE FINAL
-    {
-        return aliasName;
-    }
-    virtual epics::pvAccess::ChannelProvider::shared_pointer sharedInstance() OVERRIDE FINAL
-    {
-        return provider;
-    }
-    virtual epics::pvAccess::ChannelProvider::shared_pointer newInstance(const std::tr1::shared_ptr<epics::pvAccess::Configuration>& conf) OVERRIDE FINAL
-    {
-        return provider;
-    }
-};
-} // namespace
-
-void GWInstallClientAliased(const pva::ChannelProvider::shared_pointer& provider,
-                            const std::string& installAs)
-{
-    pva::ChannelProviderFactory::shared_pointer fact(new AliasedChannelProviderFactory(installAs, provider));
-    if(!pva::ChannelProviderRegistry::clients()->add(fact, false))
-        throw std::invalid_argument(installAs+" Client provider already registered");
-}
 
 GWChan::Requester::Requester()
     :poked(true)
