@@ -562,10 +562,10 @@ class App(object):
                 server_conf['EPICS_PVAS_SERVER_PORT'] = str(jsrv['serverport'])
 
             # pick client to use for ACF INP*
-            aclient = jsrv.get('access.client')
+            aclient = jsrv.get('acf_client')
             if aclient is None:
-                if len(jsrv['clients'])>1:
-                    _log.warning('Multiple clients and ACF is ambigious.  Add key \'access.client\' to disambiguate')
+                if len(jsrv['clients'])>1 and 'access' in jsrv:
+                    _log.warning('Multiple clients and ACF is ambigious.  Add key \'acf_client\' to disambiguate')
                 if len(jsrv['clients'])>0:
                     aclient = jsrv['clients'][0]
 

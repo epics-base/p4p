@@ -266,6 +266,11 @@ Keys
     See `gwpvlist`.
     Relative file names are interpreted in relation to the directory containing the config file.
 
+**servers[].acf_client**
+    Needed only if ``access`` key is provided, and ``clients`` list has more than one entry.
+    Unambiguously selects which client is used to connect ``INP`` PVs for use by conditional ACF rules.
+    If not provided, then the first client in the list is used.
+
 .. _gwstatuspvs:
 
 Status PVs
