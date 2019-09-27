@@ -225,7 +225,7 @@ class Engine(object):
 
     def resolve_hag(self):
         # TODO: racy.  How to make atomic w/o waiting for DNS lookup with lock?
-        _hag_addr = _resolve_hag(self._hag)
+        _hag_addr = self._resolve_hag(self._hag)
         with self._lock:
             self._hag_addr = _hag_addr
 

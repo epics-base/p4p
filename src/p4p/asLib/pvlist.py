@@ -3,8 +3,11 @@ See https://github.com/epics-extensions/ca-gateway/blob/master/docs/GATEWAY.pvli
 """
 
 import socket
+import logging
 import re
 from collections import defaultdict, OrderedDict
+
+_log = logging.getLogger(__name__)
 
 def _sub_add(expr, ngroups, adjust=0):
     '''Adjust RE substitution offsets
