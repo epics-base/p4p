@@ -76,7 +76,7 @@ def main(args):
             persist = json.load(F)
 
         if persist['version']!=1:
-            warning.warn('Unknown persist version %s.  Attempting to load'%persist['version'])
+            warnings.warn('Unknown persist version %s.  Attempting to load'%persist['version'])
         persist = persist['pvs']
 
         for name, type, iv in persist:
