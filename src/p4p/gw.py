@@ -139,6 +139,12 @@ permissionsType = Type([
     ])),
 ], id='epics:p2p/Permission:1.0')
 
+asDebugType = NTTable.buildType([
+    ('asg', 'as'),
+    ('var', 'as'),
+    ('value', 'ad'),
+    ('connected', 'a?'),
+])
 
 class GWStats(object):
     """I manage statistics for all GWHandler instances
@@ -423,6 +429,10 @@ class GWHandler(object):
             'permission':chan.perm,
         })
 
+    @uricall
+    def asDebug(self, op):
+        return asDebugType(self.acf.report())
+
 def readnproc(args, fname, fn, **kws):
     try:
         if fname:
@@ -603,6 +613,10 @@ class App(object):
                     handler.asTestPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
                     handler.asTestPV.rpc(handler.asTest) # TODO this is a deceptive way to assign
                     statusp.add(jsrv['statusprefix']+'asTest', handler.asTestPV)
+
+                    handler.asDebugPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
+                    handler.asDebugPV.rpc(handler.asDebug) # TODO this is a deceptive way to assign
+                    statusp.add(jsrv['statusprefix']+'asDebug', handler.asDebugPV)
 
                     # prevent client from searching for our status PVs
                     for spv in statusp.keys():

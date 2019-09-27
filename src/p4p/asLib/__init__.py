@@ -46,10 +46,25 @@ class Engine(object):
         # {Channel:(group, user, host, level)}
         self._anodes = WeakKeyDictionary()
         self._ctxt = ctxt
-        self._inputs = {}
+        self._asg = {}
         self._subscriptions = {}
 
         self.parse(acf or self.defaultACF)
+
+    def report(self):
+        A, B, C, D = [], [], [], []
+        for asg,(rules,inputs) in self._asg.items():
+            for var, val in inputs.items():
+                A.append(asg)
+                B.append(var)
+                C.append(val or 0.0)
+                D.append(val is not None)
+        return {
+            'value.asg':A,
+            'value.var':B,
+            'value.value':C,
+            'value.connected':D,
+        }
 
     def parse(self, acf):
         ast = parse(acf)
