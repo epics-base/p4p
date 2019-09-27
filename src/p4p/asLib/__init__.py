@@ -59,11 +59,10 @@ class Engine(object):
         hag = defaultdict(set)
         uags, hags = set(), set()
 
+        # {'name';([rules], {vars})}
         asg = {}
-        invars = {}
-        inputs = {}
-        # mapping from variable name to list of ASGs which reference it
-        vargroups = defaultdict(set)
+        # {'pvname':[('name','VAR')]}
+        invars = defaultdict(list)
 
         for node in ast:
             if node[0]=='UAG':
@@ -83,7 +82,7 @@ class Engine(object):
                 #   rule : ('INP', 'A', 'pv:name')
                 #        | ('RULE', 1, 'WRITE', trap, None | [])
 
-                rules = asg[node[1]] = []
+                rules, inputs = asg[node[1]] = [], {}
                 for anode in node[2]:
                     if anode[0]=='RULE':
                         rule = []
@@ -96,7 +95,6 @@ class Engine(object):
                             elif rnode[0]=='CALC':
                                 # ('CALC', '<expr>')
                                 for var in re.findall(r'[A-Z]', rnode[1]):
-                                    vargroups[var].add(node[1])
                                     inputs[var] = None
 
                                 # cheating here by using python expression syntax instead of CALC.
@@ -122,7 +120,7 @@ class Engine(object):
 
                     elif anode[0]=='INP':
                         # ('INP', 'A', 'pv:name')
-                        invars[anode[1]] = anode[2]
+                        invars[anode[2]].append((node[1], anode[1]))
 
                     else:
                         warnings.warn("Invalid Rule AST: %s"%(anode,))
@@ -135,14 +133,14 @@ class Engine(object):
         # prevent accidental insertions
         uag = dict(uag)
         hag = dict(hag)
-        vargroups = dict(vargroups)
+        invars = dict(invars)
 
         # at this point, success is assumed.
         # aka. errors will not be clean
 
         if invars and self._ctxt is None:
-            for var, pv in invars.items():
-                _log.warning('No Client to connect to ACF INP%s = %s', var, pv)
+            for pv, grps in invars.items():
+                _log.warning('No Client to connect to ACF %s for %s', pv, grps)
 
         # cancel any active subscriptions
         [S.close() for S in self._subscriptions.values()]
@@ -153,34 +151,35 @@ class Engine(object):
             self._asg = asg
             self._asg_DEFAULT = asg.get('DEFAULT', [])
             self._hag_addr = hag_addr
-            self._inputs = inputs
-            self._vargroups = vargroups
 
         self._recompute()
 
         # create new subscriptions
         # which will trigger a lot of recomputes
         if self._ctxt is not None:
-            [_log.debug('subscribing to INP%s = %s', var,pv) for var,pv in invars.items()]
-            self._subscriptions = {var: self._ctxt.monitor(pv, partial(self._var_update, var), notify_disconnect=True) for var,pv in invars.items()}
+            [_log.debug('subscribing to %s for %s', pv, grps) for pv,grps in invars.items()]
+            self._subscriptions = {pv: self._ctxt.monitor(pv, partial(self._var_update, grps), notify_disconnect=True) for pv,grps in invars.items()}
+        else:
+            self._subscriptions = {}
 
-    def _var_update(self, var, value):
+    def _var_update(self, grps, value):
         # clear old value first
         val = None
         if not isinstance(value, Disconnected):
             try:
                 val = float(value or 0.0)
             except:
-                _log.exception('INP%s unable to store %s', var, LazyRepr(value))
+                _log.exception('INP%s unable to store %s', grps, LazyRepr(value))
 
-        _log.debug('Update INP%s <- %s', var, val)
+        _log.debug('Update INP%s <- %s', grps, val)
 
         with self._lock:
-            self._inputs[var] = val
-            asgs = self._vargroups.get(var)
+            for asg, var in grps:
+                _rules, inputs = self._asg[asg]
+                inputs[var] = val
 
-        if asgs:
-            self._recompute(only=asgs)
+        if grps:
+            self._recompute(only={asg for asg,var in grps})
 
     def _recompute(self, only=None):
         _log.debug("Recompute %s", only or "all")
@@ -228,7 +227,7 @@ class Engine(object):
             for role in roles:
                 uags |= self._uag.get('role/'+role, set())
             hags = self._hag_addr.get(host, set())
-            rules = self._asg.get(group, self._asg_DEFAULT)
+            rules, inputs = self._asg.get(group, self._asg_DEFAULT)
 
             trapit = False
             try:
@@ -241,14 +240,14 @@ class Engine(object):
                             accept = len(cond[1].intersection(hags))
                         elif cond[0]=='CALC':
                             try:
-                                accept = float(eval(cond[2], {}, self._inputs) or 0.0) >= 0.5 # horray for legacy... I mean compatibility
+                                accept = float(eval(cond[2], {}, inputs) or 0.0) >= 0.5 # horray for legacy... I mean compatibility
                             except:
                                 # this could be any of a number of exceptions
                                 # which all add up to the same.  Invalid expression
                                 accept = False
-                                _log.exception('Error evaluating: %s with %s', cond[1], [(k,v,type(v)) for k,v in self._inputs.items()])
+                                _log.exception('Error evaluating: %s with %s', cond[1], [(k,v,type(v)) for k,v in inputs.items()])
                             else:
-                                _log.debug('Evaluate %s with %s -> %s', cond, [(k,v,type(v)) for k,v in self._inputs.items()], accept)
+                                _log.debug('Evaluate %s with %s -> %s', cond, [(k,v,type(v)) for k,v in inputs.items()], accept)
                         else:
                             warnings.warn("Invalid AST RULE: %s"%cond)
                             accept = False
