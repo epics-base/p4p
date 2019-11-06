@@ -51,7 +51,14 @@ class TableBuilder(object):
         self.type = NTTable.buildType(cols)
 
     def wrap(self, values):
-        ret = self.type({'labels':self.labels})
+        S, NS = divmod(time.time(), 1.0)
+        ret = self.type({
+            'labels':self.labels,
+            'timeStamp': {
+                'secondsPastEpoch': S,
+                'nanoseconds': NS * 1e9,
+            },
+        })
         # unzip list of tuple into tuple of lists
         cols = list([] for k in ret.value)
 
