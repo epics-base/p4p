@@ -303,12 +303,12 @@ class GWStats(object):
                 C.executemany('INSERT INTO us VALUES (?,?,?,?,?,?)', usr)
                 C.executemany('INSERT INTO ds VALUES (?,?,?,?,?,?,?,?)', dsr)
 
-                C.executescript('''
-                    INSERT INTO usbyname SELECT usname, sum(optx), sum(oprx) FROM us GROUP BY usname;
-                    INSERT INTO dsbyname SELECT usname, sum(optx), sum(oprx) FROM ds GROUP BY usname;
-                    INSERT INTO usbypeer SELECT peer, max(trtx), max(trrx) FROM us GROUP BY peer;
-                    INSERT INTO dsbypeer SELECT account, peer, max(trtx), max(trrx) FROM ds GROUP BY peer;
-                ''')
+            C.executescript('''
+                INSERT INTO usbyname SELECT usname, sum(optx), sum(oprx) FROM us GROUP BY usname;
+                INSERT INTO dsbyname SELECT usname, sum(optx), sum(oprx) FROM ds GROUP BY usname;
+                INSERT INTO usbypeer SELECT peer, max(trtx), max(trrx) FROM us GROUP BY peer;
+                INSERT INTO dsbypeer SELECT account, peer, max(trtx), max(trrx) FROM ds GROUP BY peer;
+            ''')
 
             #TODO: create some indicies to speed up these queries?
 
