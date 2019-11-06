@@ -239,6 +239,9 @@ class GWStats(object):
         self.refsPV = SharedPV(nt=RefAdapter(), initial={})
         self._pvs['refs'] = self.refsPV
 
+        self.statsTime = SharedPV(nt=NTScalar('d'), initial=0.0)
+        self._pvs['StatsTime'] = self.statsTime
+
         # PVs for bandwidth usage statistics.
         # 2x tables: us, ds
         # 2x groupings: by PV and by peer
@@ -292,6 +295,7 @@ class GWStats(object):
             handler.sweep()
 
     def update_stats(self):
+        T0 = time.time()
         self.refsPV.post(listRefs())
 
         with sqlite3.connect(self.statsdb) as C:
@@ -342,6 +346,10 @@ class GWStats(object):
         self.statsPV.post(statsType(statsSum))
 
         self.cachePV.post(reduce(set.__or__, [handler.provider.cachePeek() for handler in self.handlers], set()))
+
+        T1 = time.time()
+
+        self.statsTime.post(T1-T0)
 
 class GWHandler(object):
     def __init__(self, acf, pvlist, readOnly=False):
