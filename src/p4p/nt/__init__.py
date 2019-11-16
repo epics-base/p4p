@@ -73,8 +73,6 @@ class ClientUnwrapper(object):
     def wrap(self, val):
         """Pack a arbitrary python object into a Value
         """
-        if self.fn is not None:
-            pass
         return self._wrap(val)
     def unwrap(self, val):
         """Unpack a Value as some other python type

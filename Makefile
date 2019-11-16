@@ -7,6 +7,9 @@ DIRS += configure
 DIRS += src
 src_DEPEND_DIRS = configure
 
+DIRS += testing
+testing_DEPEND_DIRS = src
+
 include $(TOP)/configure/RULES_TOP
 
 UNINSTALL_DIRS += $(wildcard $(INSTALL_LOCATION)/python*)
@@ -17,6 +20,10 @@ sphinx sh ipython: all
 	$(MAKE) -C src/O.$(EPICS_HOST_ARCH) $@ PYTHON=$(PYTHON)
 nose.%: all
 	$(MAKE) -C src/O.$(EPICS_HOST_ARCH) $@ PYTHON=$(PYTHON)
+nose.%: all
+	$(MAKE) -C src/O.$(EPICS_HOST_ARCH) $@ PYTHON=$(PYTHON)
+
+nose: nose.p4p
 
 nose: nose.p4p
 

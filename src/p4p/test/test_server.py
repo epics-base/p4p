@@ -7,7 +7,7 @@ import weakref
 import gc
 import threading
 
-from ..server import Server, installProvider, removeProvider, DynamicProvider
+from ..server import Server, installProvider, removeProvider, DynamicProvider, StaticProvider
 from ..client.thread import Context
 from .utils import RefTestCase
 
@@ -95,3 +95,13 @@ class TestDummyProvider(RefTestCase):
             self.assertIsNone(p())
         finally:
             removeProvider("foo")
+
+class TestServerConf(RefTestCase):
+    def test_bad_iface(self):
+        P = StaticProvider('x')
+        with self.assertRaisesRegexp(RuntimeError, "invalid IP or non-existant hostname"):
+            S = Server(providers=[P], useenv=False, conf={
+                'EPICS_PVAS_INTF_ADDR_LIST':'invalid.host.name.',
+                'EPICS_PVAS_BROADCAST_PORT':'0',
+                'EPICS_PVAS_SERVER_PORT':'0',
+            })

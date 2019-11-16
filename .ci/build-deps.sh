@@ -8,7 +8,7 @@ cd "$HOME/.source"
 
 if [ "$BRPVA" ]
 then
-    git clone --quiet --depth 5 --branch "$BRPVA" https://github.com/epics-base/pvAccessCPP.git pvAccessCPP
+    git clone --quiet --depth 5 --branch "$BRPVA" https://github.com/mdavidsaver/pvAccessCPP.git pvAccessCPP
     (cd pvAccessCPP && git log -n1 )
     cat << EOF >> $CURDIR/configure/RELEASE.local
 PVACCESS=$HOME/.source/pvAccessCPP

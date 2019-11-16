@@ -1,4 +1,5 @@
 
+#include <pv/security.h>
 
 #include "p4p.h"
 
@@ -339,12 +340,47 @@ PyObject* operation_name(PyObject *self)
 PyObject* operation_peer(PyObject *self)
 {
     TRY {
+        const pva::PeerInfo* info = SELF.peer();
+        if(info && !info->peer.empty())
+            return PyUnicode_FromString(info->peer.c_str());
+
         pva::ChannelBaseRequester::shared_pointer req(SELF.getRequester());
         if(req) {
             return PyUnicode_FromString(req->getRequesterName().c_str());
         } else {
             Py_RETURN_NONE;
         }
+    } CATCH()
+    return NULL;
+}
+
+PyObject* operation_account(PyObject *self)
+{
+    TRY {
+        const pva::PeerInfo* info = SELF.peer();
+
+        return PyUnicode_FromString(info ? info->account.c_str() : "");
+    } CATCH()
+    return NULL;
+}
+
+PyObject* operation_roles(PyObject *self)
+{
+    TRY {
+        const pva::PeerInfo* info = SELF.peer();
+
+        PyRef roles(PySet_New(0));
+
+        if(info) {
+            for(pva::PeerInfo::roles_t::const_iterator it(info->roles.begin()), end(info->roles.end()); it!=end; ++it) {
+                PyRef temp(PyUnicode_FromString(it->c_str()));
+                if(PySet_Add(roles.get(), temp.get()))
+                    throw std::runtime_error("XXX");
+            }
+
+        }
+
+        return roles.release();
     } CATCH()
     return NULL;
 }
@@ -435,6 +471,12 @@ static PyMethodDef Operation_methods[] = {
     {"peer", (PyCFunction)&operation_peer, METH_NOARGS,
      "peer() -> str\n"
      "A information about the peer, or None."},
+    {"account", (PyCFunction)&operation_account, METH_NOARGS,
+     "account() -> str\n"
+     "Peer account name, or \"\""},
+    {"roles", (PyCFunction)&operation_roles, METH_NOARGS,
+     "roles() -> {str}\n"
+     "Peer roles, or empty set."},
     {"done", (PyCFunction)&operation_done, METH_VARARGS|METH_KEYWORDS,
      "done(value=None, error=None)\n"
      "Complete in-progress operation.\n"
