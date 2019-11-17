@@ -2,6 +2,8 @@
 
 from __future__ import print_function
 
+import sysconfig
+
 from setuptools_dso import Extension, setup
 from Cython.Build import cythonize
 
@@ -15,17 +17,22 @@ from epicscorelibs.config import get_config_var
 # the following line is matched from cibuild.py
 package_version = '3.3.3a1'
 
-extra = []
+cxxflags = []
+ldflags = []
 import sys
 import platform
-if sys.platform=='linux2':
-    extra += ['-v']
+if sys.platform=='linux2' and not sysconfig.get_config_var('Py_DEBUG'):
+    # c++ debug symbols size is huge.  ~20x code size.
+    # So we choose to only emit debug symbols when building for an interpreter
+    # with debugging enabled (aka 'python-dbg' on debian).
+    cxxflags += ['-g0']
+
 elif platform.system()=='Darwin':
     # avoid later failure where install_name_tool may run out of space.
     #   install_name_tool: changing install names or rpaths can't be redone for:
     #   ... because larger updated load commands do not fit (the program must be relinked,
     #   and you may need to use -headerpad or -headerpad_max_install_names)
-    extra += ['-Wl,-headerpad_max_install_names']
+    ldflags += ['-Wl,-headerpad_max_install_names']
 
 ext = Extension(
     name='p4p._p4p',
@@ -43,8 +50,8 @@ ext = Extension(
     ],
     include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path],
     define_macros = get_config_var('CPPFLAGS'),
-    extra_compile_args = get_config_var('CXXFLAGS'),
-    extra_link_args = get_config_var('LDFLAGS')+extra,
+    extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
+    extra_link_args = get_config_var('LDFLAGS')+ldflags,
     dsos = ['epicscorelibs.lib.pvAccess',
             'epicscorelibs.lib.pvData',
             'epicscorelibs.lib.ca',
@@ -59,8 +66,8 @@ gwext = cythonize([
         sources=['src/p4p/_gw.pyx', 'src/gwchannel.cpp'],
         include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, 'src', 'src/p4p'],
         define_macros = get_config_var('CPPFLAGS'),
-        extra_compile_args = get_config_var('CXXFLAGS'),
-        extra_link_args = get_config_var('LDFLAGS')+extra,
+        extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
+        extra_link_args = get_config_var('LDFLAGS')+ldflags,
         dsos = ['epicscorelibs.lib.pvAccess',
             'epicscorelibs.lib.pvData',
             'epicscorelibs.lib.ca',
