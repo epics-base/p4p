@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 from setuptools_dso import Extension, setup
+from Cython.Build import cythonize
 
 import numpy
 from numpy.distutils.misc_util import get_numpy_include_dirs
@@ -52,6 +53,23 @@ ext = Extension(
     libraries = get_config_var('LDADD'),
 )
 
+gwext = cythonize([
+    Extension(
+        name='p4p._gw',
+        sources=['src/p4p/_gw.pyx', 'src/gwchannel.cpp'],
+        include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, 'src', 'src/p4p'],
+        define_macros = get_config_var('CPPFLAGS'),
+        extra_compile_args = get_config_var('CXXFLAGS'),
+        extra_link_args = get_config_var('LDFLAGS')+extra,
+        dsos = ['epicscorelibs.lib.pvAccess',
+            'epicscorelibs.lib.pvData',
+            'epicscorelibs.lib.ca',
+            'epicscorelibs.lib.Com'
+        ],
+        libraries = get_config_var('LDADD'),
+    )
+])
+
 setup(
     name='p4p',
     version=package_version,
@@ -83,9 +101,10 @@ setup(
         'p4p.client',
         'p4p.test',
         'p4p.server',
+        'p4p.asLib',
     ],
     package_dir={'':'src'},
-    ext_modules = [ext],
+    ext_modules = [ext]+gwext,
     install_requires = [
         epicscorelibs.version.abi_requires(),
         # assume ABI forward compatibility as indicated by
