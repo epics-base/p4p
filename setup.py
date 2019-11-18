@@ -14,7 +14,7 @@ import epicscorelibs.version
 from epicscorelibs.config import get_config_var
 
 # the following line is matched from cibuild.py
-package_version = '3.3.3a1'
+package_version = '3.4.0'
 
 cxxflags = []
 ldflags = []
