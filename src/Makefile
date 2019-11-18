@@ -72,8 +72,13 @@ PY += p4p/test/test_asLib.py
 PY += p4p/test/test_asyncio.py
 PY += p4p/test/asynciotest.py
 
+PERL_SCRIPTS += pvagw
+
 include $(TOP)/configure/RULES
 include $(TOP)/configure/RULES_PY
+
+pvagw: ../bootgw.py
+	$(PYTHON) $< -P "../../python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $@
 
 _gw.cpp: ../p4p/_gw.pyx
 	$(PYTHON) -m cython -o $@ --cplus $<

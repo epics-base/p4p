@@ -117,6 +117,10 @@ setup(
         # https://github.com/numpy/numpy/blob/master/numpy/core/setup_common.py#L28
         'numpy >=%s'%numpy.version.short_version,
         'nose>=1.1.2',
+        'ply', # for asLib
     ],
+    entry_points = {
+        'console_scripts': ['pvagw=p4p.gw:main'],
+    },
     zip_safe = False,
 )

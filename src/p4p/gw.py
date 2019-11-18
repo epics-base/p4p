@@ -706,6 +706,7 @@ def main(args=None):
     if args.debug:
         set_debug(logging.DEBUG)
     App(args).run()
+    return 0
 
 if __name__=='__main__':
     main()
