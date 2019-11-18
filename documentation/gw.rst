@@ -138,7 +138,7 @@ PVs with the name prefix ``GW:STS:``.  See `gwstatuspvs` for details.
 
 This Gateway may be started by saving the preceding JSON as a file ``mygw.conf`` ::
 
-    python -m p4p.gw mygw.conf
+    pvagw mygw.conf
 
 CLI Arguments
 -------------
@@ -153,7 +153,7 @@ CLI Arguments
 .. argparse::
     :module: p4p.gw
     :func: getargs
-    :prog: python -m p4p.gw
+    :prog: pvagw
 
 .. _gwconfref:
 
