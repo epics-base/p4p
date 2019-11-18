@@ -241,7 +241,7 @@ class TestHighLevel(RefTestCase):
         self.startServer()
         _log.debug("US server conf: %s", self._us_conf)
 
-        cfile = NamedTemporaryFile('w+')
+        cfile = self._cfile = NamedTemporaryFile('r+')
         json.dump({
             'version':2,
             'clients':[{
