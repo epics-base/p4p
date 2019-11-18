@@ -4,8 +4,7 @@ from __future__ import print_function
 
 import sysconfig
 
-from setuptools_dso import Extension, setup
-from Cython.Build import cythonize
+from setuptools_dso import Extension, setup, cythonize
 
 import numpy
 from numpy.distutils.misc_util import get_numpy_include_dirs
