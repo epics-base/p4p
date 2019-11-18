@@ -7,12 +7,13 @@ from libc.stddef cimport size_t
 from libc.string cimport strchr
 from libcpp cimport bool
 from libcpp.string cimport string
-from libcpp.set cimport set
 from libcpp.vector cimport vector
 from libcpp.list cimport list as listxx
 
 from cpython.object cimport PyObject, PyTypeObject, traverseproc, visitproc
 from cpython.ref cimport Py_INCREF, Py_XDECREF
+
+from .set cimport set as setxx
 
 cdef extern from "<epicsAtomic.h>":
     cdef void atomic_set "::epics::atomic::set" (int& var, int val)
@@ -45,7 +46,7 @@ cdef extern from "<pv/security.h>" namespace "epics::pvAccess" nogil:
         string authority
         string realm
         string account
-        set[string] roles
+        setxx[string] roles
         unsigned transportVersion
         bool local
         bool identified
@@ -125,7 +126,7 @@ cdef extern from "gwchannel.h" nogil:
         void disconnect(const string& usname) except+
         void forceBan(const string& host, const string& usname) except+
         void clearBan() except+
-        void cachePeek(set[string]& names) except+
+        void cachePeek(setxx[string]& names) except+
         void stats(GWStats& stats)
         void report(vector[ReportItem]& us, vector[ReportItem]& ds, double& period) except+
 
@@ -208,10 +209,11 @@ cdef class InfoBase(object):
 
     @property
     def roles(self):
+        cdef list ret = []
         if <bool>self.info:
-            return [role.decode('UTF-8') for role in self.info.get().roles]
-        else:
-            return []
+            for role in self.info.get().roles:
+                ret.append(role.decode('UTF-8'))
+        return ret
 
     def __dealloc__(self):
         with nogil:
@@ -395,9 +397,13 @@ cdef class Provider:
 
         :returns: a set of strings
         """
-        cdef set[string] ret
+        cdef setxx[string] pvs
+        cdef set ret
 
-        self.provider.get().cachePeek(ret)
+        self.provider.get().cachePeek(pvs)
+        ret = set()
+        for name in pvs:
+            ret.add(name)
         return ret
 
     def stats(self):
