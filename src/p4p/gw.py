@@ -11,7 +11,6 @@ import re
 import sqlite3
 
 from functools import wraps, reduce
-from tempfile import NamedTemporaryFile
 
 from .nt import NTScalar, Type, NTTable
 from .server import Server, StaticProvider, removeProvider
@@ -21,6 +20,7 @@ from . import set_debug, listRefs
 from . import _gw
 from .asLib import Engine, ACFError
 from .asLib.pvlist import PVList
+from .test.utils import RegularNamedTemporaryFile as NamedTemporaryFile
 
 if sys.version_info >= (3, 0):
     unicode = str

@@ -11,6 +11,7 @@ import unittest
 import functools
 import time
 import os
+import tempfile
 import fnmatch
 import weakref
 
@@ -170,3 +171,23 @@ def gctrace(obj, maxdepth=8):
             if R is top or R is next or R is todo:
                 continue
             todo.insert(0, R)
+
+class RegularNamedTemporaryFile(object):
+    """Like tempfile.NamedTemporaryFile which doesn't use O_TEMPORARY on windows
+    """
+    def __init__(self, *args, **kws):
+        fd, self.name = tempfile.mkstemp()
+        try:
+            self.file = os.fdopen(fd, *args, **kws)
+            self.write = self.file.write
+            self.flush = self.file.flush
+        except:
+            os.unlink(self.name)
+            raise
+    def __del__(self):
+        self.close()
+    def close(self):
+        if self.file is not None:
+            self.file.close()
+            os.unlink(self.name)
+            self.file = None

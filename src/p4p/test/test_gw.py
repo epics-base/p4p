@@ -11,14 +11,13 @@ import gc
 import json
 import weakref
 import threading
-from tempfile import NamedTemporaryFile
 
 try:
     from Queue import Queue, Full, Empty
 except ImportError:
     from queue import Queue, Full, Empty
 
-from .utils import RefTestCase
+from .utils import RefTestCase, RegularNamedTemporaryFile as NamedTemporaryFile
 from ..server import Server, StaticProvider, removeProvider
 from ..server.thread import SharedPV, _defaultWorkQueue
 from ..client.thread import Context, Disconnected, TimeoutError, RemoteError
@@ -241,7 +240,7 @@ class TestHighLevel(RefTestCase):
         self.startServer()
         _log.debug("US server conf: %s", self._us_conf)
 
-        cfile = self._cfile = NamedTemporaryFile('r+')
+        cfile = self._cfile = NamedTemporaryFile('w+')
         json.dump({
             'version':2,
             'clients':[{
