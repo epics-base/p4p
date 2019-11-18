@@ -243,11 +243,11 @@ class TestHighLevel(RefTestCase):
 
         cfile = NamedTemporaryFile('w+')
         json.dump({
-            'version':1,
+            'version':2,
             'clients':[{
                 'name':'client1',
                 'provider':'pva',
-                'addrlist':'127.0.0.1 127.255.255.255',
+                'addrlist':'127.0.0.1',
                 'autoaddrlist':False,
                 'bcastport':self._us_conf['EPICS_PVA_BROADCAST_PORT'],
                 'serverport':0,
@@ -256,7 +256,7 @@ class TestHighLevel(RefTestCase):
                 'name':'server1',
                 'clients':['client1'],
                 'interface':['127.0.0.1'],
-                'addrlist':'127.255.255.255',
+                'addrlist':'127.0.0.1',
                 'autoaddrlist':False,
                 'bcastport':0,
                 'serverport':0,
