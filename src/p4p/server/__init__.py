@@ -92,6 +92,7 @@ class Server(object):
                 raise ValueError("providers=[] must be a list of string, SharedPV, or dict.  Not %s"%provider)
 
         if isolate:
+            assert 'useenv' not in kws and 'conf' not in kws, kws
             kws['useenv'] = False
             kws['conf'] = {
                 'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',

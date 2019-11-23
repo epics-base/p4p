@@ -6,6 +6,7 @@ try:
 except ImportError:
     from queue import Queue, Full, Empty
 
+import platform
 import unittest
 import gc
 import json
@@ -220,9 +221,10 @@ class TestApp(App):
             raise KeyboardInterrupt
 
 class TestHighLevel(RefTestCase):
-    timeout = 1
+    timeout = 10
 
     def setUp(self):
+        _log.debug("Enter setUp")
         super(TestHighLevel, self).setUp()
 
         # upstream server
@@ -239,6 +241,7 @@ class TestHighLevel(RefTestCase):
         self._us_server = self._us_conf = None
         self.startServer()
         _log.debug("US server conf: %s", self._us_conf)
+        self.assertNotEqual(0, self._us_conf['EPICS_PVA_BROADCAST_PORT'])
 
         cfile = self._cfile = NamedTemporaryFile('w+')
         json.dump({
@@ -262,6 +265,9 @@ class TestHighLevel(RefTestCase):
             }],
         }, cfile)
         cfile.flush()
+        with open(cfile.name, 'r') as F:
+            _log.debug('GW config')
+            _log.debug(F.read())
 
         # gateway
         args = getargs().parse_args(['--no-ban-local', '-v', cfile.name])
@@ -274,21 +280,26 @@ class TestHighLevel(RefTestCase):
         self._ds_client = Context('pva', conf=self._app.servers[u'server1'].conf(), useenv=False)
 
         self._main.start()
+        _log.debug("Exit setUp")
 
     def startServer(self):
         if self._us_server is None:
             if self._us_conf is None:
+                _log.debug("Starting server fresh")
                 self._us_server = Server(providers=[self._us_provider], isolate=True)
                 self._us_conf = self._us_server.conf()
             else:
+                _log.debug("Starting server with %s", self._us_conf)
                 self._us_server = Server(providers=[self._us_provider], conf=self._us_conf, useenv=False)
 
     def stopServer(self):
         if self._us_server is not None:
+            _log.debug("Stopping server")
             self._us_server.stop()
             self._us_server = None
 
     def tearDown(self):
+        _log.debug("Enter tearDown")
         # downstream client
         self._ds_client.close()
         del self._ds_client
@@ -307,6 +318,7 @@ class TestHighLevel(RefTestCase):
         _defaultWorkQueue.sync()
 
         super(TestHighLevel, self).tearDown()
+        _log.debug("Exit tearDown")
 
     def test_get(self):
         val = self._ds_client.get('pv:name', timeout=self.timeout)
@@ -326,7 +338,44 @@ class TestHighLevel(RefTestCase):
         val = self._ds_client.get('pv:name', timeout=self.timeout)
         self.assertEqual(val, 41)
 
-    def test_mon_discon(self):
+    def test_mon(self):
+        """Setup a monitor through the GW
+        """
+        Q = Queue(maxsize=4)
+        with self._ds_client.monitor('pv:name', Q.put, notify_disconnect=True):
+            V = Q.get(timeout=self.timeout)
+            self.assertIsInstance(V, Disconnected)
+
+            _log.debug("Wait for initial update")
+            V = Q.get(timeout=self.timeout)
+            self.assertEqual(V, 42)
+
+    def test_mon_disconn(self):
+        """See that upstream disconnect propagates
+        """
+        Q = Queue(maxsize=4)
+        with self._ds_client.monitor('pv:name', Q.put, notify_disconnect=True):
+            V = Q.get(timeout=self.timeout)
+            self.assertIsInstance(V, Disconnected)
+
+            with self.assertRaises(Empty):
+                Q.get(timeout=0.1)
+
+            _log.debug("Wait for initial update")
+            V = Q.get(timeout=self.timeout)
+            self.assertEqual(V, 42)
+
+            self.stopServer()
+
+            _log.debug("Wait for Disconnected")
+            V = Q.get(timeout=self.timeout)
+            self.assertIsInstance(V, Disconnected)
+
+    @unittest.skipIf(platform.system()=='Windows',
+                     "not responding to searches after restart.  wrong IP?")
+    def test_mon_disconn_reconn(self):
+        """Start disconnected, the connect and disconnect
+        """
         self.stopServer()
 
         Q = Queue(maxsize=4)
@@ -339,14 +388,17 @@ class TestHighLevel(RefTestCase):
 
             self.startServer()
 
+            _log.debug("Wait for initial update")
             V = Q.get(timeout=self.timeout)
             self.assertEqual(V, 42)
 
             self.stopServer()
 
+            _log.debug("Wait for Disconnected")
             V = Q.get(timeout=self.timeout)
             self.assertIsInstance(V, Disconnected)
 
+            _log.debug("after Disconnected")
             self.pv.post(5)
 
             with self.assertRaises(Empty):
@@ -354,5 +406,6 @@ class TestHighLevel(RefTestCase):
 
             self.startServer()
 
+            _log.debug("Wait for reconnect update")
             V = Q.get(timeout=self.timeout)
             self.assertEqual(V, 5)
