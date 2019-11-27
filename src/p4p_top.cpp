@@ -87,6 +87,34 @@ PyObject* p4p_force_lazy(PyObject *junk)
     return 0;
 }
 
+PyObject* p4p_serialize(PyObject *junk, PyObject *args, PyObject *kws)
+{
+    try {
+        PyObject* obj;
+        int BE = 0;
+        const char *names[] = {"object", "be", 0};
+        if(!PyArg_ParseTupleAndKeywords(args, kws, "O|p", (char**)names, &obj, &BE))
+            return 0;
+
+        std::tr1::shared_ptr<const epics::pvData::Serializable> fld;
+
+        if(PyObject_IsInstance(obj, (PyObject*)P4PType_type)) {
+            fld = P4PType_unwrap(obj);
+        }
+
+        if(!fld)
+            return PyErr_Format(PyExc_ValueError, "Serialization of %s not supported", Py_TYPE(obj)->tp_name);
+
+        std::vector<epicsUInt8> buf;
+        epics::pvData::serializeToVector(fld.get(),
+                                         BE ? EPICS_ENDIAN_BIG : EPICS_ENDIAN_LITTLE,
+                                         buf);
+
+        return PyBytes_FromStringAndSize((char*)&buf[0], buf.size());
+    }CATCH()
+    return 0;
+}
+
 static struct PyMethodDef P4P_methods[] = {
     {"installProvider", (PyCFunction)p4p_add_provider, METH_VARARGS|METH_KEYWORDS,
      "installProvider(\"name\", provider)\n"
@@ -108,6 +136,8 @@ static struct PyMethodDef P4P_methods[] = {
     {"_forceLazy", (PyCFunction)p4p_force_lazy, METH_NOARGS,
      "Force lazy initialization which might cause false positives"
      " leaks in differential ref counter testing."},
+    {"serialize", (PyCFunction)p4p_serialize, METH_VARARGS|METH_KEYWORDS,
+     "Serialize Type or Value to bytes"},
     {NULL}
 };
 
