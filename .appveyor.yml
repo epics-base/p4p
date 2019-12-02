@@ -9,11 +9,6 @@ environment:
     # See: http://stackoverflow.com/a/13751649/163740
     CMD_IN_ENV: "cmd /E:ON /V:ON /C .\\run_with_env.cmd"
 
-    TWINE_USERNAME:
-      secure: V9gFbLxvgMtcE2FKJCHwbg==
-    TWINE_PASSWORD:
-      secure: EsL+EMSQG5uv6TjBQmFq2qDLgP6w5rfiKaXaQr2y5Gc=
-
   matrix:
 
     # Selected pre-installed Python series, which Appveyor may upgrade to
