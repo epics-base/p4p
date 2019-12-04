@@ -135,7 +135,6 @@ cdef extern from "gwchannel.h" nogil:
 
 GWProvider.prepare()
 
-@cython.auto_pickle(False)
 cdef class ClientInstaller(object):
     cdef string name
     cdef weak_ptr[ChannelProvider] provider
@@ -151,7 +150,6 @@ cdef class ClientInstaller(object):
         with nogil:
             ChannelProviderRegistry.clients().get().remove(self.name)
 
-@cython.auto_pickle(False)
 cdef class Client(object):
     """Client(provider, config)
     GW Client.  Wraps a C++ class ChannelProvider.  Pass to `Provider` ctor.
@@ -185,7 +183,6 @@ cdef class Client(object):
         inst.provider = <weak_ptr[ChannelProvider]>self.provider
         return inst
 
-@cython.auto_pickle(False)
 cdef class InfoBase(object):
     cdef shared_ptr[const PeerInfo] info
 
@@ -222,7 +219,6 @@ cdef class InfoBase(object):
         with nogil:
             self.info.reset()
 
-@cython.auto_pickle(False)
 cdef class CreateOp(InfoBase):
     """Handle for in-progress Channel creation request
     """
@@ -258,7 +254,6 @@ cdef class CreateOp(InfoBase):
             raise RuntimeError("Dead CreateOp")
 
 
-@cython.auto_pickle(False)
 cdef class Channel(InfoBase):
     """Wraps C++ class GWChan
 
@@ -305,7 +300,6 @@ cdef class Channel(InfoBase):
             ch.get().disconnect()
 
 @cython.no_gc_clear
-@cython.auto_pickle(False)
 cdef class Provider:
     """Provider(name, client, handler)
     GW Server endpoint.  wrapper for C++ class GWProvider
