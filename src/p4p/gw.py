@@ -525,7 +525,7 @@ class App(object):
                 client_conf['EPICS_PVA_SERVER_PORT'] = str(jcli['serverport'])
 
             _log.info("Client %s input config:\n%s", name, pprint.pformat(client_conf))
-            clients[name] = _gw.Client(jcli.get('provider', 'pva'), client_conf)
+            clients[name] = _gw.Client(jcli.get('provider', u'pva'), client_conf)
 
         servers = self.servers = {}
 
