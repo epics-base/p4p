@@ -103,7 +103,7 @@ communicate with a server running on ``192.168.1.23``.  ::
         "servers":[
             {
                 "name":"server10",
-                "clients":["client10"],
+                "clients":["client192"],
                 "interface":["10.1.1.4"],
                 "addrlist":"10.1.1.255",
                 "autoaddrlist":false,
