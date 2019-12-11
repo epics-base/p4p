@@ -126,7 +126,7 @@ def _metaHelper(F, valtype, display=False, control=False, valueAlarm=False):
         ])
     if control and isnumeric:
         F.extend([
-            ('display', ('S', None, [
+            ('control', ('S', None, [
                 ('limitLow', valtype[-1:]),
                 ('limitHigh', valtype[-1:]),
                 ('minStep', valtype[-1:]),
