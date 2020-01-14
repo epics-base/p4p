@@ -90,18 +90,18 @@ gwchannel$(DEP): _gw.h
 
 ifneq (,$(T_A))
 nose.%:
-	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -m nose -P -v $* $(NOSEFLAGS)
+	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" $(PYTHON) -m nose -P -v $* $(NOSEFLAGS)
 
 # bounce back down to the sphinx generated Makefile
 # aren't Makefiles fun...
 sphinx:
-	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(MAKE) -C $(TOP)/documentation html
+	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" $(MAKE) -C $(TOP)/documentation html
 
 sh:
-	echo "export PYTHONPATH=\$${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" > $(OUTPUT)
+	echo "export PYTHONPATH=\$${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" > $(OUTPUT)
 
 ipython:
-	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $(PYTHON) -c "import sys; sys.argv[0] = '$(PYTHON)'; from IPython.terminal.ipapp import launch_new_instance; launch_new_instance()"
+	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" $(PYTHON) -c "import sys; sys.argv[0] = '$(PYTHON)'; from IPython.terminal.ipapp import launch_new_instance; launch_new_instance()"
 
 endif
 
