@@ -466,15 +466,16 @@ void ProxyGet::Requester::channelDisconnect(bool destroy) {
     }
 }
 
-void ProxyGet::Requester::channelGetConnect(const pvd::Status& status,
+void ProxyGet::Requester::channelGetConnect(const pvd::Status& sts,
                                             pva::ChannelGet::shared_pointer const & channelGet,
                                             pvd::Structure::const_shared_pointer const & structure)
 {
+    pvd::Status status(sts);
     strong_t gets;
-    bool execute;
+    state_t lstate;
     {
         Guard G(mutex);
-        execute = latch(gets);
+        bool execute = latch(gets);
         TRACE(state<<" "<<execute);
         type = structure;
 
@@ -485,18 +486,35 @@ void ProxyGet::Requester::channelGetConnect(const pvd::Status& status,
                 (void)prov->timerQueue.cancel(shared_from_this());
         }
 
-        state = execute ? Executing : Idle;
+        if(!status.isSuccess() || !structure) {
+            state = Dead;
+        } else {
+            state = (execute) ? Executing : Idle;
+        }
+
+        lstate = state;
     }
-    TRACE("notify "<<gets.size()<<" "<<execute);
-    pvd::PVStructurePtr prototype(structure->build());
+    TRACE("notify "<<gets.size()<<" "<<lstate);
+    pvd::PVStructurePtr prototype;
+    if(lstate!=Dead)
+        prototype = structure->build();
     for(size_t i=0, N=gets.size(); i<N; i++) {
         requester_type::shared_pointer req(gets[i]->ds_requester.lock());
         if(req) {
-            gets[i]->mapper.compute(*prototype, *gets[i]->ds_pvRequest);
-            req->channelGetConnect(status, gets[i], gets[i]->mapper.requested());
+            pvd::StructureConstPtr type;
+            if(lstate!=Dead) {
+                try {
+                    gets[i]->mapper.compute(*prototype, *gets[i]->ds_pvRequest);
+                    type = gets[i]->mapper.requested();
+                }catch(std::runtime_error& e){
+                    status = pvd::Status::error(e.what());
+                }
+            }
+
+            req->channelGetConnect(status, gets[i], type);
         }
     }
-    if(execute)
+    if(lstate==Executing)
         us_op->get();
 }
 
@@ -695,20 +713,38 @@ pva::ChannelGet::shared_pointer GWChan::createChannelGet(
 
     ProxyGet::shared_pointer ret(new ProxyGet(entry, requester, pvRequest));
 
+    pvd::Status sts;
     pvd::StructureConstPtr type;
     {
         Guard G(entry->mutex);
-        entry->ds_ops[ret.get()] = ret;
 
-        if(create) {
-            entry->us_op = us_channel->createChannelGet(entry, up);
+        if(entry->state==ProxyGet::Requester::Dead) {
+            sts = pvd::Status::error("Raced with connectChannelGet() error");
+
+        } else {
+            entry->ds_ops[ret.get()] = ret;
+
+            if(create) {
+                entry->us_op = us_channel->createChannelGet(entry, up);
+            }
+            if(entry->state!=ProxyGet::Requester::Disconnected) // implies type!=NULL
+                type = entry->type;
         }
-        if(entry->state!=ProxyGet::Requester::Disconnected) // implies type!=NULL
-            type = entry->type;
     }
+
+    if(sts.isSuccess() && type) {
+        try {
+            ret->mapper.compute(*type->build(), *ret->ds_pvRequest);
+            type = ret->mapper.requested();
+        }catch(std::runtime_error& e){
+            sts = pvd::Status::error(e.what());
+        }
+    }
+    if(!sts.isSuccess())
+        type.reset();
+
     if(type) {
-        ret->mapper.compute(*type->build(), *ret->ds_pvRequest);
-        requester->channelGetConnect(pvd::Status(), ret, ret->mapper.requested());
+        requester->channelGetConnect(sts, ret, type);
     }
 
     TRACE("CREATE cached "<<(create?'T':'F')<<" "<<(type?'T':'F'));
@@ -751,7 +787,7 @@ void ProxyPut::Requester::channelPutConnect(
 
     if(!op)
         err = pvd::Status::error("Dead channel");
-    ds->channelPutConnect(status, op, structure);
+    ds->channelPutConnect(err, op, structure);
 }
 
 void ProxyPut::Requester::putDone(
@@ -920,7 +956,7 @@ void ProxyRPC::Requester::channelRPCConnect(
 
     if(!op)
         err = pvd::Status::error("Dead channel");
-    ds->channelRPCConnect(status, op);
+    ds->channelRPCConnect(err, op);
 
 }
 

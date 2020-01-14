@@ -225,7 +225,9 @@ struct ProxyGet : public pva::ChannelGet,
             // waiting for holdoff timer to expire
             Holdoff,
             // waiting for holdoff timer to expire, after a downstream get()
-            HoldoffQueued
+            HoldoffQueued,
+            // channelGetConnect() errors
+            Dead,
         } state;
 
         // state==Disconnected implies !type

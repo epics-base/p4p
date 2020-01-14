@@ -332,6 +332,10 @@ class TestHighLevel(RefTestCase):
         self.assertEqual(val, 0) # not requested at default
         self.assertFalse(val.raw.changed('value'))
 
+    def test_get_bad_mask(self):
+        with self.assertRaisesRegexp(RemoteError, "No field 'nonexistant' Empty field selection"):
+            val = self._ds_client.get('pv:name', timeout=self.timeout, request='nonexistant')
+
     def test_put(self):
         self._ds_client.put('pv:name', 41, timeout=self.timeout)
 
