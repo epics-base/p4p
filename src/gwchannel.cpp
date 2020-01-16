@@ -327,7 +327,7 @@ pva::Monitor::shared_pointer GWChan::createMonitor(pva::MonitorRequester::shared
     // build upstream request
     // TODO: allow some downstream requests?  (queueSize?)
     pvd::PVStructurePtr up(pvd::ValueBuilder()
-                           .addNested("fields")
+                           .addNested("field")
                            .endNested()
                            .buildPVStructure());
 
@@ -680,7 +680,7 @@ pva::ChannelGet::shared_pointer GWChan::createChannelGet(
     // build upstream request
     // TODO: allow some downstream requests?  (queueSize?)
     pvd::PVStructurePtr up(pvd::ValueBuilder()
-                           .addNested("fields")
+                           .addNested("field")
                            .endNested()
                            .buildPVStructure());
 
