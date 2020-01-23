@@ -127,24 +127,6 @@ if __name__=='__main__':
 
     print('platform =', distutils.util.get_platform())
 
-    try:
-        from pip._internal import pep425tags
-    except ImportError:
-        print('No pip?')
-    else:
-        print('PIP compatible')
-        for parts in pep425tags.get_supported():
-            print('  ', "-".join(parts))
-
-    try:
-        from wheel import pep425tags
-    except ImportError:
-        print('No wheel?')
-    else:
-        print('Wheel compatible')
-        for parts in pep425tags.get_supported():
-            print('  ', "-".join(parts))
-
     args = sys.argv[1:]
     while len(args)>0:
         name = args.pop(0)
