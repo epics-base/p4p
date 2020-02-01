@@ -4,7 +4,8 @@ import logging
 
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit
 
-from p4p.client.PyQt import Context
+from p4p import Value
+from p4p.client.PyQt import Context, Disconnected
 
 _log = logging.getLogger(__name__)
 
@@ -19,11 +20,9 @@ class Demo(QWidget):
         self.pvname.setText(pvname)
 
         self.ctxt = Context('pva', parent=self)
-        self._S = self.ctxt.monitor(pvname, str, notify_disconnect=True, limitHz=1.0)
-        self._S.update.connect(self.value.setText)
-        self._S.error.connect(self.error.setText)
+        self.ctxt.monitor(pvname, self._update, limitHz=1.0)
 
-        self.edit.editingFinished.connect(self.doPut)
+        self.edit.returnPressed.connect(self.doPut)
 
     def initUI(self):
         layout = QVBoxLayout()
@@ -46,21 +45,28 @@ class Demo(QWidget):
         self.setLayout(layout)
         self.setGeometry(200, 200, 250, 150)
 
+    def _update(self, V):
+        _log.debug('_update %s %s', type(V), V)
+        if isinstance(V, Disconnected):
+            self.value.setText("<???>")
+        elif isinstance(V, Exception):
+            self.value.setText("<!!!>")
+            self.error.setText(str(V))
+        else:
+            self.value.setText(str(V))
+
     def doPut(self):
+        _log.debug('Put triggered')
         try:
-            self._put = self.ctxt.put(self._pvname, self.edit.text())
-
-            self._put.success.connect(self.doPutOk)
-            self._put.error.connect(self.doPutFail)
-
+            self.ctxt.put(self._pvname, self.edit.text(), self.donePut)
         except:
             _log.exception('put')
 
-    def doPutOk(self):
-        self.error.setText("Put complete")
-
-    def doPutFail(self, err):
-        self.error.setText("Put err : "+err)
+    def donePut(self, V):
+        if V is None:
+            self.error.setText("Put complete")
+        else:
+            self.error.setText(str(V))
 
 if __name__=='__main__':
     logging.basicConfig(level=logging.DEBUG)
