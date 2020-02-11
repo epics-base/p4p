@@ -175,7 +175,7 @@ class Context(object):
     :param dict unwrap: Legacy :ref:`unwrap`.
     """
 
-    def __init__(self, provider=None, conf=None, useenv=None,
+    def __init__(self, provider='pva', conf=None, useenv=None,
                  unwrap=None, nt=None,
                  **kws):
         self.name = provider

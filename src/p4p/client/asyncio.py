@@ -108,7 +108,7 @@ class Context(raw.Context):
                 yield from dostuff(ctxt, timeout=5)
     """
 
-    def __init__(self, provider, conf=None, useenv=True, nt=None, unwrap=None,
+    def __init__(self, provider='pva', conf=None, useenv=True, nt=None, unwrap=None,
                  loop=None):
         super(Context, self).__init__(provider, conf=conf, useenv=useenv, nt=nt, unwrap=unwrap)
         self.loop = loop or asyncio.get_event_loop()
