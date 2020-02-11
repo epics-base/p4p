@@ -171,7 +171,7 @@ class Context(raw.Context):
     name = ''
     "Provider name string"
 
-    def __init__(self, provider, conf=None, useenv=True, nt=None, unwrap=None,
+    def __init__(self, provider='pva', conf=None, useenv=True, nt=None, unwrap=None,
                  maxsize=0, queue=None):
         self._channel_lock = threading.Lock()
 
