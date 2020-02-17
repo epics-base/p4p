@@ -1,11 +1,11 @@
-
+import signal
 import sys
 import logging
 
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit
+from qtpy.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit
 
 from p4p import Value
-from p4p.client.PyQt import Context, Disconnected
+from p4p.client.Qt import Context, Disconnected
 
 _log = logging.getLogger(__name__)
 
@@ -68,8 +68,10 @@ class Demo(QWidget):
         else:
             self.error.setText(str(V))
 
+
 if __name__=='__main__':
     logging.basicConfig(level=logging.DEBUG)
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     app = QApplication(sys.argv)
     demo = Demo(app.arguments()[1])
     demo.show()

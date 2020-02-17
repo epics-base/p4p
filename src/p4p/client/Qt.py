@@ -1,6 +1,6 @@
 import logging
 
-from PyQt5.QtCore import QObject, QCoreApplication, pyqtSignal, QEvent, QTimer
+from qtpy.QtCore import QObject, QCoreApplication, Signal, QEvent, QTimer
 
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished, LazyRepr
@@ -41,7 +41,7 @@ class Operation(QObject):
     _op = None
     _result = None
     # receives a Value or an Exception
-    result = pyqtSignal('PyQt_PyObject')
+    result = Signal(object)
 
     def __init__(self, parent, timeout):
         QObject.__init__(self, parent)
@@ -73,7 +73,7 @@ class MCache(QObject):
     _op = None
     _last = None
     # receives a Value or an Exception
-    update = pyqtSignal('PyQt_PyObject')
+    update = Signal(object)
 
     def __init__(self, parent):
         QObject.__init__(self, parent)
