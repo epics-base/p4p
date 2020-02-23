@@ -48,7 +48,7 @@ PY += p4p/client/raw.py
 PY += p4p/client/thread.py
 PY += p4p/client/asyncio.py
 PY += p4p/client/cothread.py
-PY += p4p/client/PyQt.py
+PY += p4p/client/Qt.py
 
 PY += p4p/gw.py
 PY += p4p/asLib/__init__.py
