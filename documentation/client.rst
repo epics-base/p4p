@@ -9,10 +9,15 @@ Client API
 This module provides :py:class:`Context` for use in interactive and/or multi-threaded environment.
 Most methods will block the calling thread until a return is available, or an error occurs.
 
-Two alternatives to `p4p.client.thread.Context` are provided
-`p4p.client.cothread.Context` and `p4p.client.asyncio.Context`.
+Alternatives to `p4p.client.thread.Context` are provided
+`p4p.client.cothread.Context`,
+`p4p.client.asyncio.Context`,
+and `p4p.client.Qt.Context`.
 These differ in how blocking for I/O operation is performed,
 and the environment in which Monitor callbacks are run.
+
+Note that `p4p.client.Qt.Context` behaves differently from the others in some respects.
+This is described in `qtclient`_.
 
 Usage
 -----
@@ -113,3 +118,26 @@ API Reference
 .. autoclass:: Finished
 
 .. autoclass:: TimeoutError
+
+.. _qtclient:
+
+Qt Client
+---------
+
+`p4p.client.Qt.Context` exists to bring the results of network operations into a Qt event loop.
+This is done through the native signals and slots mechanism.
+
+Use requires the optional dependency `qtpy <https://github.com/spyder-ide/qtpy>`_ package.
+
+This dependency is expressed as an extras_require= of "qt".
+It may be depended upon accordingly as "p4p[qt]".
+
+`p4p.client.Qt.Context` differs from the other Context classes in several respects.
+
+* Each Context attempts to minimize the number of subscriptions to each named PV.
+  Multiple calls to monitor() will attempt share this subscription if possible (subject to request argument).
+
+* All monitor() calls must express a desired maximum update rate limit through the limitHz argument.
+
+* As a convienence the objects returned by put() and monitor() do not have to be stored by the caller.
+  The internal references kept by the Context may be cleared through the disconnect() method.

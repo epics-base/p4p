@@ -15,11 +15,10 @@ class Demo(QWidget):
         self._pvname = pvname
         self.initUI()
 
-        self._put = None # in-progress put
-
         self.pvname.setText(pvname)
 
         self.ctxt = Context('pva', parent=self)
+        # create subscription
         self.ctxt.monitor(pvname, self._update, limitHz=1.0)
 
         self.edit.returnPressed.connect(self.doPut)
@@ -46,6 +45,7 @@ class Demo(QWidget):
         self.setGeometry(200, 200, 250, 150)
 
     def _update(self, V):
+        # new monitor update
         _log.debug('_update %s %s', type(V), V)
         if isinstance(V, Disconnected):
             self.value.setText("<???>")
@@ -58,11 +58,13 @@ class Demo(QWidget):
     def doPut(self):
         _log.debug('Put triggered')
         try:
+            # initiate put
             self.ctxt.put(self._pvname, self.edit.text(), self.donePut)
         except:
             _log.exception('put')
 
     def donePut(self, V):
+        # put complete
         if V is None:
             self.error.setText("Put complete")
         else:

@@ -24,6 +24,10 @@ P4P can be built and installed in one of two ways.
 As a python package, preferably managed by PIP.
 As an EPICS module.
 
+Optional
+
+* `qtpy <https://github.com/spyder-ide/qtpy>` needed for `p4p.client.Qt.Context`.
+
 Build as Python package
 -----------------------
 

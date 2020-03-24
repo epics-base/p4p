@@ -152,7 +152,17 @@ class MCache(QObject):
             self._active = None
 
 class Context(raw.Context):
-    """PyQt aware Context.
+    """Context(provider, conf=None, useenv=True)
+    
+    PyQt aware Context.
+    Methods in the class give notification of completion/update through Qt signals.
+
+    :param str provider: A Provider name.  Try "pva" or run :py:meth:`Context.providers` for a complete list.
+    :param dict conf: Configuration to pass to provider.  Depends on provider selected.
+    :param bool useenv: Allow the provider to use configuration from the process environment.
+    :param dict nt: Controls :ref:`unwrap`.  None uses defaults.  Set False to disable
+    :param dict unwrap: Legacy :ref:`unwrap`.
+    :param parent QObject: Parent for QObjects created through this Context.
     """
     def __init__(self, provider, parent=None, **kws):
         super(Context, self).__init__(provider, **kws)
@@ -161,13 +171,41 @@ class Context(raw.Context):
         self._mcache = {}
         self._puts = {}
 
+
+    def disconnect(self, name=None):
+        if name is None:
+            self._mcache = {}
+            self._puts = {}
+        else:
+            self._mcache.pop(name)
+            self._puts.pop(name)
+        super(Context, self).disconnect(name)
+
     # get() omitted (why would a gui want to do this?)
 
     def put(self, name, value, slot=None, request=None, timeout=5.0,
             process=None, wait=None, get=True):
-        """Begin put() operation
-        
+        """Write a new value to a single PV.
+
         Returns an Operation instance which will emit either a success and error signal.
+        If the slot argument is provided, this will be connected in a race free way.
+
+        The slot function will receive a python object which is either None (Success) or an Exception.
+
+        Note that the returned Operation will also be stored internally by the Context.
+        So the caller is not required to store it as well.
+        This internal storage will only keep the most recent put() Operation for each PV name.
+        A previous incomplete put() will be cancelled if/when put() is called again.
+
+        :param name: A single name string or list of name strings
+        :param values: A single value, a list of values, a dict, a `Value`.  May be modified by the constructor nt= argument.
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param slot: A callable object, such as a bound method, which can be passed to QObject.connect()
+        :param float timeout: Operation timeout in seconds
+        :param str process: Control remote processing.  May be 'true', 'false', 'passive', or None.
+        :param bool wait: Wait for all server processing to complete.
+        :param bool get: Whether to do a Get before the Put.  If True then the value passed to the builder callable
+                         will be initialized with recent PV values.  eg. use this with NTEnum to find the enumeration list.
         """
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
@@ -188,9 +226,22 @@ class Context(raw.Context):
         return op
 
     def rpc(self, name, value, slot, request=None, timeout=5.0, throw=True):
-        """Begin put() operation
-        
-        Returns an Operation instance which will emit either a success and error signal.
+        """Perform a Remote Procedure Call (RPC) operation
+
+        Returns an Operation instance which will emit either a success and error signal to the provided slot.
+        This Operation instance must be stored by the caller or it will be implicitly cancelled.
+
+        The slot function will receive a python object which is either a Value or an Exception.
+
+        :param str name: PV name string
+        :param Value value: Arguments.  Must be Value instance
+        :param slot: A callable object, such as a bound method, which can be passed to QObject.connect()
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param float timeout: Operation timeout in seconds
+        :param bool throw: When true, operation error throws an exception.
+                     If False then the Exception is returned instead of the Value
+
+        :returns: An Operation
         """
 
         op = Operation(self._parent, timeout)
@@ -199,12 +250,23 @@ class Context(raw.Context):
         return op
 
     def monitor(self, name, slot, request=None, limitHz=10.0):
-        """Returns a Subscription which will emit zero or more update signals, and perhaps an error signal.
+        """Request subscription to named PV
 
-        The mangle function, if provided will receive either a Value or an Exception, and returns
-        the object actually emitted with the signal.
+        Request notification to the provided slot when a PV is updated.
+        Subscriptions are managed by an internal cache,
+        so than multiple calls to monitor() with the same PV name may be satisfied through a single subscription.
 
         limitHz, which must be provided, puts an upper limit on the rate at which the update signal will be emitted.
+        Some update will be dropped in the PV updates more frequently.
+        Reduction is done by discarding the second to last update.
+        eg. It is guaranteed that the last update (present value) in the burst will be delivered.
+
+        :param str name: PV name string
+        :param callable cb: Processing callback
+        :param slot: A callable object, such as a bound method, which can be passed to QObject.connect()
+        :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
+        :param limitHz float: Maximum rate at which signals will be emitted.  In signals per second.
+        :returns: a :py:class:`MCache` instance
         """
         _log.debug('Subscribe to %s with %s', name, request)
         if isinstance(request, (str, bytes)):
