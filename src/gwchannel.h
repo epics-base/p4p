@@ -27,6 +27,17 @@
 #include <pv/configuration.h>
 #include <pv/reftrack.h>
 
+// handle -fvisibility=default
+// effects generated _gw.cpp
+#if __GNUC__ >= 4
+#  undef PyMODINIT_FUNC
+#  if PY_MAJOR_VERSION < 3
+#    define PyMODINIT_FUNC extern "C" __attribute__ ((visibility("default"))) void
+#  else
+#    define PyMODINIT_FUNC extern "C" __attribute__ ((visibility("default"))) PyObject*
+#  endif
+#endif
+
 // enable extremely verbose low level debugging prints.
 #if 0
 #define TRACING
