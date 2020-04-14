@@ -122,7 +122,7 @@ another version.  This will not remove the final tree. ::
     make PYTHON=python2.7
     make PYTHON=python2.7 clean
     make PYTHON=python3.4
-    make PYTHON=python3,4 clean
+    make PYTHON=python3.4 clean
 
 .. note:: If PYTHON= is ever specified, then it must be specified for all targets except 'distclean'.
 
