@@ -15,7 +15,6 @@ CONFIGS += $(subst ../,,$(wildcard $(CONFIG_INSTALLS)))
 include $(TOP)/configure/RULES
 
 os/CONFIG_PY.Common.$(T_A): $(TOP)/makehelper.py
-	[ -d $(dir $@) ] || $(MKDIR) $(dir $@)
 	$(PYTHON) $< $@
 
 ifdef BASE_3_15

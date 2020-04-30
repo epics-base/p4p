@@ -14,16 +14,22 @@ PY_LIBDIRS := /path ...
 from __future__ import print_function
 
 import sys
+import errno
+import os
 
 if len(sys.argv)<2:
     out = sys.stdout
 else:
+    try:
+        os.makedirs(os.path.dirname(sys.argv[1]))
+    except OSError:
+        pass
     out = open(sys.argv[1], 'w')
 
 from distutils.sysconfig import get_config_var, get_python_inc
 
 incdirs = [get_python_inc()]
-libdirs = [get_config_var('LIBDIR')]
+libdir = get_config_var('LIBDIR') or ''
 
 have_np='NO'
 try:
@@ -44,7 +50,7 @@ if ldver is None:
         ldver = ldver+'_d'
 print('PY_LD_VER :=',ldver, file=out)
 print('PY_INCDIRS :=',' '.join(incdirs), file=out)
-print('PY_LIBDIRS :=',' '.join(libdirs), file=out)
+print('PY_LIBDIRS :=',libdir, file=out)
 print('HAVE_NUMPY :=',have_np, file=out)
 
 try:
