@@ -119,6 +119,9 @@ setup(
         'nose>=1.1.2',
         'ply', # for asLib
     ],
+    extras_require={
+        'qt': ['qtpy'],
+    },
     entry_points = {
         'console_scripts': ['pvagw=p4p.gw:main'],
     },
