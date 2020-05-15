@@ -37,7 +37,7 @@ to prevent the use of pre-built binarys. ::
     python -m virtualenv p4ptest
     . p4ptest/bin/activate
     python -m pip install -U pip
-    python -m pip install nose numpy # Optional: avoids building numpy from source (slow)
+    python -m pip install nose ply Cython numpy # Optional: avoids building numpy from source (slow)
     python -m pip install --no-binary :all: p4p
     python -m nose p4p   # Optional: runs automatic tests
 

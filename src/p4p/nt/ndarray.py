@@ -133,7 +133,7 @@ class NTNDArray(object):
     def wrap(self, value):
         """Wrap numpy.ndarray as Value
         """
-        attrib = getattr(value, 'attrib', {})
+        attrib = getattr(value, 'attrib', None) or {}
 
         S, NS = divmod(time.time(), 1.0)
         value = numpy.asarray(value) # loses any special/augmented attributes
