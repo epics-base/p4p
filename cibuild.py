@@ -51,6 +51,7 @@ def call_py(args, **kws):
     print('EXEC DONE', sys.executable, args, kws)
 
 def docker(args):
+    print('UID', os.getuid())
     print("Available pythons")
     for py in glob("/opt/python/*/bin/python"):
         print("  ", py, py==sys.executable)
@@ -63,7 +64,7 @@ def docker(args):
 def prepare(args):
     call_py(['-m', 'pip', 'install', '-U', 'pip'])
     call_py(['-m', 'pip', 'install', '-r', requirments])
-    call_py(['-m', 'pip', 'install', '-U', 'wheel', 'setuptools', 'twine'])
+    call_py(['-m', 'pip', 'install', '-U', 'wheel', 'setuptools', 'twine<3.0.0'])
     if is_pre():
         print('Install pre-release dependencies')
         call_py(['-m', 'pip', 'install', '-U', '--pre', 'setuptools_dso'])
