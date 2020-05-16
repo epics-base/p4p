@@ -135,9 +135,11 @@ It may be depended upon accordingly as "p4p[qt]".
 `p4p.client.Qt.Context` differs from the other Context classes in several respects.
 
 * Each Context attempts to minimize the number of subscriptions to each named PV.
-  Multiple calls to monitor() will attempt share this subscription if possible (subject to request argument).
+  Multiple calls to monitor() will attempt to share this subscription if possible (subject to request argument).
 
 * All monitor() calls must express a desired maximum update rate limit through the limitHz argument.
 
-* As a convienence the objects returned by put() and monitor() do not have to be stored by the caller.
+* As a convienence, the objects returned by put() and monitor() do not have to be stored by the caller.
   The internal references kept by the Context may be cleared through the disconnect() method.
+  This cache extends to a single put and a single monitor subscription per PV.
+  So eg. initiating a put() to a PV will implicitly cancel a previous in-progress put().

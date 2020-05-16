@@ -20,5 +20,7 @@ https://travis-ci.org/mdavidsaver/p4p/
 CI results
 
 https://travis-ci.org/mdavidsaver/p4p
+https://ci.appveyor.com/project/mdavidsaver/p4p
 
 [![Build Status](https://travis-ci.org/mdavidsaver/p4p.svg?branch=master)](https://travis-ci.org/mdavidsaver/p4p)
+[![Build status](https://ci.appveyor.com/api/projects/status/ov2ka6jn52n87vku/branch/master?svg=true)](https://ci.appveyor.com/project/mdavidsaver/p4p/branch/master)

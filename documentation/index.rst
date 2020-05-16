@@ -11,7 +11,7 @@ https://epics.anl.gov/
 P4P includes API for a `clientapi` and `serverapi`,
 as well as a `gwpage` executable (``pvagw``) with which can enforce an access control policy.
 
-Supports Linux, OSX, and Windows.  With python 2.7, 3.4, 3.5, and 3.6 .
+Supports Linux, OSX, and Windows.  With python 2.7 and >=3.4.
 
 The recommended starting point is to install from pypi.org. ::
 
