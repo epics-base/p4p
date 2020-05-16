@@ -38,13 +38,6 @@ const c2t plainmap[] = {
     {'\0'}
 };
 
-pvd::ScalarType stype(char c) {
-    for(const c2t *p = plainmap; p->c; p++) {
-        if(p->c==c) return p->t;
-    }
-    throw std::runtime_error(SB()<<"Unable to map spec '"<<(int)c<<"'");
-}
-
 char sname(pvd::ScalarType t) {
     for(const c2t *p = plainmap; p->c; p++) {
         if(p->t==t) return p->c;
@@ -59,14 +52,14 @@ void py2struct_plain(pvd::FieldBuilderPtr& builder, const char *key, const char 
             builder->add(key, pvd::getFieldCreate()->createVariantUnionArray());
 
         } else {
-            builder->addArray(key, stype(spec[1]));
+            builder->addArray(key, P4P_ScalarType(spec[1]));
         }
 
     } else if(spec[0]=='v') {
         builder->add(key, pvd::getFieldCreate()->createVariantUnion());
 
     } else {
-        builder->add(key, stype(spec[0]));
+        builder->add(key, P4P_ScalarType(spec[0]));
     }
 }
 
@@ -181,15 +174,15 @@ PyObject* field2py(const pvd::FieldConstPtr& fld)
 {
     switch(fld->getType()) {
     case pvd::scalar: {
-        pvd::ScalarType stype = static_cast<const pvd::Scalar*>(fld.get())->getScalarType();
-        char spec[2] = {sname(stype), '\0'};
+        pvd::ScalarType P4P_ScalarType = static_cast<const pvd::Scalar*>(fld.get())->getScalarType();
+        char spec[2] = {sname(P4P_ScalarType), '\0'};
 
         return Py_BuildValue("s", spec);
     }
         break;
     case pvd::scalarArray: {
-        pvd::ScalarType stype = static_cast<const pvd::ScalarArray*>(fld.get())->getElementType();
-        char spec[3] = {'a', sname(stype), '\0'};
+        pvd::ScalarType P4P_ScalarType = static_cast<const pvd::ScalarArray*>(fld.get())->getElementType();
+        char spec[3] = {'a', sname(P4P_ScalarType), '\0'};
         return Py_BuildValue("s", spec);
     }
         break;
@@ -422,6 +415,13 @@ int P4PType_clear(PyObject *self)
 }
 
 } // namespace
+
+pvd::ScalarType P4P_ScalarType(char c) {
+    for(const c2t *p = plainmap; p->c; p++) {
+        if(p->c==c) return p->t;
+    }
+    throw std::runtime_error(SB()<<"Unable to map spec '"<<(int)c<<"'");
+}
 
 PyTypeObject* P4PType_type = &P4PType::type;
 

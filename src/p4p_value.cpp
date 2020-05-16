@@ -392,6 +392,25 @@ void Value::store_union(pvd::PVUnion* fld,
             fld->set(pvd::PVUnion::UNDEFINED_INDEX, P4PValue_unwrap(obj));
             return;
 
+        } else if(PyTuple_Check(obj)) {
+            const char *spec;
+            PyObject *val;
+            if(!PyArg_ParseTuple(obj, "sO", &spec, &val))
+                throw std::runtime_error("XXX");
+
+            bool arr = spec[0]=='a';
+            if(arr)
+                spec++;
+
+            pvd::ScalarType sbase(P4P_ScalarType(spec[0]));
+
+            if(arr)
+                U = pvd::getPVDataCreate()->createPVScalarArray(sbase);
+            else
+                U = pvd::getPVDataCreate()->createPVScalar(sbase);
+            obj = val;
+            // fall down to assignment
+
         } else {
             // TODO: allow guess to be replaced
             pvd::Field::const_shared_pointer UT(P4PType_guess(obj));

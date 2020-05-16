@@ -141,12 +141,12 @@ Here a sub-structure 'alarm' is defined with three fields.
 
 A discriminating union is defined in the same manner.
 
-   >>> T = Type([
+   >>> V = Type([
       ('value', ('u', None, [
           ('ival', 'i'),
           ('sval', 's'),
       ])),
-   ])
+   ])()
    >>> V.value
    None
    >>> V.value = ('ival', 42) # explicitly select union field name
@@ -167,19 +167,27 @@ to variant and union fields can be surprising.
 
 The rules for assigning a variant are as follows:
 
-============= ============================
+============= ================================
 value type    Action
-============= ============================
+============= ================================
 None          clears current value
 Value         Stores a structure
-int           signed 32-bit
+int           signed 32-bit  (python 2.x only)
 long          signed 64-bit
 float         64-bit floating
 bytes|unicode string
 ndarray       array of integer or floating
-============= ============================
+============= ================================
+
+Further, a variant union may be explicitly assigned with a specific scalar/array type
+using a tuple of a type specifier code and value.
 
 Other types throw an Exception.
+
+    >>> V = Type([('x','v')])()
+    >>> V.x = 4.2 # inferred 64-bit floating
+    >>> V.x = ('f', 4.2) # explicit 32-bit floating
+    
 
 The rules for assigning a discriminating union are as follows:
 

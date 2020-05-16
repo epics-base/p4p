@@ -200,6 +200,8 @@ PyObject* p4p_remove_provider(PyObject *junk, PyObject *args, PyObject *kwds);
 PyObject* p4p_remove_all(PyObject *junk, PyObject *args, PyObject *kwds);
 void p4p_server_provider_register(PyObject *mod);
 
+epics::pvData::ScalarType P4P_ScalarType(char c);
+
 extern PyTypeObject* P4PType_type;
 // Extract Structure from P4PType
 PyObject* P4PType_wrap(PyTypeObject *type, const epics::pvData::Structure::const_shared_pointer &);

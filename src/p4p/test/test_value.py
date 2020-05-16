@@ -275,6 +275,9 @@ class TestRawValue(RefTestCase):
 
         self.assertIsNone(V.x)
 
+        V.x = True
+        self.assertIs(V.x, True)
+
         V.x = 5
         self.assertEqual(V.x, 5)
 
@@ -297,6 +300,24 @@ class TestRawValue(RefTestCase):
         if pvdVersion() >= (7, 0, 0, 0):
             V.x = None
             self.assertIsNone(V.x)
+
+    def testVariantUnionExplicit(self):
+        V = Value(Type([
+            ('x', 'v'),
+        ]))
+
+        V.x = ('B', 0xffff)
+        self.assertEqual(V.x, 0xff)
+
+        V.x = ('d', 42)
+        self.assertEqual(V.x, 42.0)
+        self.assertEqual(type(V.x), float)
+
+        V.x = ('ad', np.asarray([1, 2]))
+        assert_aequal(V.x, np.asfarray([1, 2]))
+
+        V.x = ('as', ['one', 'two'])
+        self.assertEqual(V.x, ['one', 'two'])
 
     def testVariantUnionRoundTrip(self):
         "Ensure type is preserved"
