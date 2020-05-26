@@ -101,14 +101,15 @@ def build(args):
     os.chdir('..')
 
 def upload(args):
+    files = []
+    files.extend(glob('dist/*.whl'))
+    # only used by windows builds.  Skip source upload due to EoL
+
+    print('To upload', files)
+
     if 'APPVEYOR_PULL_REQUEST_NUMBER' in os.environ or 'TWINE_USERNAME' not in os.environ:
         print("APPVEYOR is PR, skip upload attempt")
         return
-
-    files = []
-    files.extend(glob('dist/*.whl'))
-    if platform.system()!='Windows': # avoid potential EoL problems
-        files.extend(glob('dist/*.tar.*'))
 
     call_py(['-m', 'twine', 'upload', '--skip-existing']+files)
 
