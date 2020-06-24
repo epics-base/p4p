@@ -13,11 +13,12 @@ from .utils import RefTestCase
 class TestRequest(RefTestCase):
 
     def testEmpty(self):
-        self.assertListEqual(Context.makeRequest("").tolist(), [])
+        self.assertListEqual(Context.makeRequest("").tolist(),
+                             [('field', [])])
 
     def testValue(self):
         self.assertListEqual(Context.makeRequest("field(value)").tolist(),
-                             [('field', [('value', [])])]
+                             [('field', [('value', [])]), ('record', [('_options', [])])]
                              )
 
     def testAll(self):
@@ -27,10 +28,6 @@ class TestRequest(RefTestCase):
 
 
 class TestProviders(RefTestCase):
-
-    def tearDown(self):
-        gc.collect()  # try to provoke any crashes here so they can be associated with this testcase
-
     def testProviders(self):
         providers = Context.providers()
         self.assertIn('pva', providers)
@@ -72,7 +69,7 @@ class TestPVA(RefTestCase):
 
         self.assertIsNone(W())
 
-        self.assertIsNone(_X[0])
+        self.assertIsInstance(_X[0], Cancelled)
 
     def testGCCycle(self):
         _X = [None]
@@ -92,7 +89,7 @@ class TestPVA(RefTestCase):
         self.assertIsNone(W[0]())
         self.assertIsNone(W[1]())
 
-        self.assertIsNone(_X[0])
+        self.assertIsInstance(_X[0], Cancelled)
 
     def testRPCAbort(self):
         P = Value(Type([
@@ -113,7 +110,7 @@ class TestPVA(RefTestCase):
 
         self.assertIsNone(W())
 
-        self.assertIsNone(_X[0])
+        self.assertIsInstance(_X[0], Cancelled)
 
     def testMonAbort(self):
         canery = object()
@@ -126,7 +123,7 @@ class TestPVA(RefTestCase):
 
         op.close()
 
-        self.assertIsInstance(_X[0], Cancelled)
+        self.assertIs(_X[0], canery)
 
     def testMonCycle(self):
         canery = object()

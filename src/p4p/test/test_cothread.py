@@ -11,4 +11,3 @@ except ImportError:
 
 else:
     from .cothreadtest import *
-

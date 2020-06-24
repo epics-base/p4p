@@ -110,13 +110,13 @@ class TestRPCFull(RefTestCase):
             self.assertEqual(sum.value, 3.0)
 
 
-class TestRPCProvider(TestRPCFull):
-
-    """end to end w/o network
-    """
-    runserver = False
-    provider = 'server:TestRPC'
-    getconfig = lambda self: {}
+#class TestRPCProvider(TestRPCFull):
+#
+#    """end to end w/o network
+#    """
+#    runserver = False
+#    provider = 'server:TestRPC'
+#    getconfig = lambda self: {}
 
 
 class TestProxy(RefTestCase):

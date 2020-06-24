@@ -37,10 +37,11 @@ class TestRawValue(RefTestCase):
             return list([l.split() for l in s.splitlines()])
 
         self.assertListEqual(proc(str(V)),
-                         proc('''structure
-    int ival 42
-    double dval 4.2
-    string sval hello
+                         proc('''struct {
+    int32_t ival = 42
+    double dval = 4.2
+    string sval = "hello"
+}
 '''))
 
     def testScalar(self):
@@ -406,7 +407,9 @@ class TestRawValue(RefTestCase):
         self.assertListEqual(V.x, [])
         self.assertListEqual(V.y, [])
 
+        # variant union assignment
         V.x = [1, 4.2, 'foo']
+        # discriminating union automagic selection
         V.y = [2, 5.2, 'bar']
 
         self.assertListEqual(V.x, [1, 4.2, u'foo'])
@@ -574,23 +577,23 @@ class TestRawValue(RefTestCase):
 
         self.assertSetEqual(A.changedSet(), set())
         A.mark('z')
-        self.assertSetEqual(A.changedSet(expand=False, parents=False), {'z'})
-        self.assertSetEqual(A.changedSet(expand=True, parents=False),  {     'z.a', 'z.b',        'z.q.m'})
-        self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z'})
+        #self.assertSetEqual(A.changedSet(expand=False, parents=False), {'z'})
+        self.assertSetEqual(A.changedSet(expand=True, parents=False),  {'z', 'z.a', 'z.b', 'z.q', 'z.q.m'})
+        #self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z'})
         self.assertSetEqual(A.changedSet(expand=True, parents=True),   {'z', 'z.a', 'z.b', 'z.q', 'z.q.m'})
 
         A.unmark()
         A.mark('z.a')
-        self.assertSetEqual(A.changedSet(expand=False, parents=False), {     'z.a'})
+        #self.assertSetEqual(A.changedSet(expand=False, parents=False), {     'z.a'})
         self.assertSetEqual(A.changedSet(expand=True, parents=False),  {     'z.a'})
-        self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z', 'z.a'})
+        #self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z', 'z.a'})
         self.assertSetEqual(A.changedSet(expand=True, parents=True),   {'z', 'z.a'})
 
         A.unmark()
         A.mark('z.q')
-        self.assertSetEqual(A.changedSet(expand=False, parents=False), {     'z.q'})
-        self.assertSetEqual(A.changedSet(expand=True, parents=False),  {            'z.q.m'})
-        self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z', 'z.q'})
+        #self.assertSetEqual(A.changedSet(expand=False, parents=False), {     'z.q'})
+        self.assertSetEqual(A.changedSet(expand=True, parents=False),  {     'z.q', 'z.q.m'})
+        #self.assertSetEqual(A.changedSet(expand=False, parents=True),  {'z', 'z.q'})
         self.assertSetEqual(A.changedSet(expand=True, parents=True),   {'z', 'z.q', 'z.q.m'})
 
     def testTopAssignment(self):

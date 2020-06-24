@@ -1,2 +1,2 @@
 [build-system]
-requires = ["setuptools", "setuptools_dso>=1.3a1", "wheel", "numpy", "Cython", "epicscorelibs>=7.0.3.99.2.0a1",]
+requires = ["setuptools", "setuptools_dso>=1.3a1", "wheel", "numpy", "Cython>=0.20", "epicscorelibs>=7.0.3.99.2.0a1",]

@@ -12,6 +12,7 @@ import weakref
 import gc
 from unittest.case import SkipTest
 
+from .. import Value
 from ..nt import NTScalar
 from ..server import Server, StaticProvider
 from .utils import RefTestCase
@@ -139,16 +140,17 @@ class TestFirstLast(RefTestCase):
 
     class Handler:
         def __init__(self, loop):
-            self.evt = asyncio.Event(loop=loop)
+            self.evtC = asyncio.Event(loop=loop)
+            self.evtD = asyncio.Event(loop=loop)
             self.conn = None
         def onFirstConnect(self, pv):
             _log.debug("onFirstConnect")
             self.conn = True
-            self.evt.set()
+            self.evtC.set()
         def onLastDisconnect(self, pv):
             _log.debug("onLastDisconnect")
             self.conn = False
-            self.evt.set()
+            self.evtD.set()
 
     @inloop
     @asyncio.coroutine
@@ -186,18 +188,27 @@ class TestFirstLast(RefTestCase):
             sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
             try:
 
-                yield from Q.get() # initial update
+                _log.debug('Wait Disconnected')
+                E = yield from Q.get() # Disconnected
+                self.assertIsInstance(E, Disconnected)
+                _log.debug('Wait initial')
+                E = yield from Q.get() # initial update
+                self.assertIsInstance(E, Value)
 
-                _log.debug('TEST')
-                yield from self.H.evt.wait() # onFirstConnect()
-                self.H.evt.clear()
+                _log.debug('Wait onFirstConnect')
+                yield from self.H.evtC.wait() # onFirstConnect()
                 self.assertTrue(self.H.conn)
 
+            except:
+                _log.exception('oops')
+                raise
             finally:
+                _log.debug('sub close()')
                 sub.close()
                 yield from sub.wait_closed()
 
-        yield from self.H.evt.wait() # onLastDisconnect()
+        _log.debug('Wait onLastDisconnect')
+        yield from self.H.evtD.wait() # onLastDisconnect()
         _log.debug('SHUTDOWN')
         self.assertFalse(self.H.conn)
 
@@ -214,13 +225,12 @@ class TestFirstLast(RefTestCase):
                 yield from Q.get() # initial update
 
                 _log.debug('TEST')
-                yield from self.H.evt.wait() # onFirstConnect()
-                self.H.evt.clear()
+                yield from self.H.evtC.wait() # onFirstConnect()
                 self.assertIs(self.H.conn, True)
 
                 self.server.stop()
 
-                yield from self.H.evt.wait() # onLastDisconnect()
+                yield from self.H.evtD.wait() # onLastDisconnect()
                 _log.debug('SHUTDOWN')
                 self.assertIs(self.H.conn, False)
 
@@ -241,8 +251,7 @@ class TestFirstLast(RefTestCase):
                 yield from Q.get() # initial update
 
                 _log.debug('TEST')
-                yield from self.H.evt.wait() # onFirstConnect()
-                self.H.evt.clear()
+                yield from self.H.evtC.wait() # onFirstConnect()
                 self.assertTrue(self.H.conn)
 
                 yield from self.pv.close(destroy=True, sync=True) # onLastDisconnect()

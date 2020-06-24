@@ -151,7 +151,7 @@ class Context(raw.Context):
         def cb(value):
             if F.cancelled() or F.done():
                 return  # ignore
-            elif isinstance(value, (RemoteError, Disconnected, Cancelled)):
+            elif isinstance(value, Exception):
                 F.set_exception(value)
             else:
                 F.set_result(value)
@@ -220,7 +220,7 @@ class Context(raw.Context):
             _log.debug("put done %s %s", name, LazyRepr(value))
             if F.cancelled() or F.done():
                 return  # ignore
-            elif isinstance(value, (RemoteError, Disconnected, Cancelled)):
+            elif isinstance(value, Exception):
                 F.set_exception(value)
             else:
                 F.set_result(value)
@@ -261,7 +261,7 @@ class Context(raw.Context):
         def cb(value):
             if F.cancelled() or F.done():
                 return  # ignore
-            elif isinstance(value, (RemoteError, Disconnected, Cancelled)):
+            elif isinstance(value, Exception):
                 F.set_exception(value)
             else:
                 F.set_result(value)
@@ -291,7 +291,7 @@ class Context(raw.Context):
         """
         assert asyncio.iscoroutinefunction(cb), "monitor callback must be coroutine"
         R = Subscription(name, cb, notify_disconnect=notify_disconnect, loop=self.loop)
-        cb = partial(self.loop.call_soon_threadsafe, R._event)
+        cb = partial(self.loop.call_soon_threadsafe, R._E.set)
 
         R._S = super(Context, self).monitor(name, cb, request)
         return R
@@ -306,10 +306,8 @@ class Subscription(object):
         self.name, self._S, self._cb, self.loop = name, None, cb, loop
         self._notify_disconnect = notify_disconnect
 
-        self._Q = asyncio.Queue(loop=self.loop)
-
-        if notify_disconnect:
-            self._Q.put_nowait(Disconnected())  # all subscriptions are inittially disconnected
+        self._run = True
+        self._E = asyncio.Event(loop=self.loop)
 
         self._T = self.loop.create_task(self._handle())
 
@@ -326,7 +324,8 @@ class Subscription(object):
             # after .close() self._event should never be called
             self._S.close()
             self._S = None
-            self._Q.put_nowait(None)
+            self._run = False
+            self._E.set()
 
     @property
     def done(self):
@@ -345,61 +344,56 @@ class Subscription(object):
         assert self._S is None, "Not close()'d"
         yield from self._T
 
-    def _event(self, value):
-        if self._S is not None:
-            self._Q.put_nowait(value)
-
     @asyncio.coroutine
     def _handle(self):
+        if self._notify_disconnect:
+            yield from self._cb(Disconnected())  # all subscriptions are inittially disconnected
+
         E = None
         try:
-            while True:
-                E = yield from self._Q.get()
-                self._Q.task_done()
-                _log.debug("Subscription %s handle %s", self.name, LazyRepr(E))
-
-                S = self._S
-
-                if isinstance(E, Cancelled):
-                    return
-
-                elif isinstance(E, Disconnected):
-                    _log.debug('Subscription notify for %s with %s', self.name, E)
-                    if self._notify_disconnect:
-                        yield from self._cb(E)
-                    else:
-                        _log.info("Subscription disconnect %s", self.name)
-                    continue
-
-                elif isinstance(E, RemoteError):
-                    _log.debug('Subscription notify for %s with %s', self.name, E)
-                    if self._notify_disconnect:
-                        yield from self._cb(E)
-                    elif isinstance(E, RemoteError):
-                        _log.error("Subscription Error %s", E)
-                    return
-
-                elif S is None:  # already close()'d
-                    return
+            while self._run:
+                yield from self._E.wait()
+                self._E.clear()
+                _log.debug('Subscription %s wakeup', self.name)
 
                 i = 0
-                while True:
+                while self._run:
+                    S = self._S
                     E = S.pop()
-                    if E is None or self._S is None:
+                    if E is None:
                         break
-                    yield from self._cb(E)
+
+                    elif isinstance(E, Disconnected):
+                        _log.debug('Subscription notify for %s with %s', self.name, E)
+                        if self._notify_disconnect:
+                            yield from self._cb(E)
+                        else:
+                            _log.info("Subscription disconnect %s", self.name)
+                        continue
+
+                    elif isinstance(E, RemoteError):
+                        _log.debug('Subscription notify for %s with %s', self.name, E)
+                        if self._notify_disconnect:
+                            yield from self._cb(E)
+                        elif isinstance(E, RemoteError):
+                            _log.error("Subscription Error %s", E)
+                        return
+
+                    else:
+                        yield from self._cb(E)
+
                     i = (i + 1) % 4
                     if i == 0:
                         yield from asyncio.sleep(0)  # Not sure how necessary.  Ensure we go to the scheduler
 
-                if S.done:
-                    _log.debug('Subscription complete %s', self.name)
-                    S.close()
-                    self._S = None
-                    if self._notify_disconnect:
-                        E = Finished()
-                        yield from self._cb(E)
-                    break
+                    if S.done:
+                        _log.debug('Subscription complete %s', self.name)
+                        S.close()
+                        self._S = None
+                        if self._notify_disconnect:
+                            E = Finished()
+                            yield from self._cb(E)
+
         except:
             _log.exception("Error processing Subscription event: %s", LazyRepr(E))
             if self._S is not None:

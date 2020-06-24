@@ -1,4 +1,6 @@
 numpy==1.12.1
 nose2==0.6.5
-Cython==0.25.2
+# too old
+#Cython==0.25.2
+Cython==0.29.2
 ply==3.9

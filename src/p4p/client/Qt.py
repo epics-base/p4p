@@ -5,10 +5,12 @@ from qtpy.QtCore import QObject, QCoreApplication, Signal, QEvent, QTimer
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished, LazyRepr
 from ..wrapper import Value, Type
-from .._p4p import serialize, ClientProvider
+from .._p4p import ClientProvider
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                     logLevelInfo, logLevelWarn, logLevelError,
                     logLevelFatal, logLevelOff)
+
+from .thread import TimeoutError
 
 __all__ = (
     'Context',
@@ -56,7 +58,7 @@ class Operation(QObject):
             self._result = TimeoutError()
             self.result.emit(self._result)
 
-    def _result(self, value):
+    def _resultcb(self, value):
         # called on PVA worker thread
         QCoreApplication.postEvent(self, CBEvent(value))
 
@@ -64,6 +66,7 @@ class Operation(QObject):
     def customEvent(self, evt):
         if self._active is not None:
             self.killTimer(self._active)
+            self._active = None
 
         if self._result is None:
             self._result = evt.result
@@ -71,15 +74,16 @@ class Operation(QObject):
 
 class MCache(QObject):
     _op = None
-    _last = None
     # receives a Value or an Exception
     update = Signal(object)
 
-    def __init__(self, parent):
+    def __init__(self, name, parent):
         QObject.__init__(self, parent)
 
+        self.name = name
         self._active = None
         self._holdoff = 10*1000 # acts as low limit on high limit
+        self._last = Disconnected()
 
     def _add(self, slot, limitHz=10.0):
         holdoff = int(max(0.1, 1.0/limitHz)*1000)
@@ -98,18 +102,16 @@ class MCache(QObject):
         # schedule to receive initial update later (avoids recursion)
         QCoreApplication.postEvent(self, CBEvent(slot))
 
-    def _event(self, E):
-        _log.debug('event1 %s', E)
+    def _event(self):
+        _log.debug('event1 %s', self.name)
         # called on PVA worker thread
-        if isinstance(E, Cancelled):
-            return
 
-        QCoreApplication.postEvent(self, CBEvent(E))
+        QCoreApplication.postEvent(self, CBEvent(None))
 
     @exceptionGuard
     def customEvent(self, evt):
         E = evt.result
-        _log.debug('event2 %s', E)
+        _log.debug('event2 %s %s', self.name, E)
         # E will be one of:
         #   None - FIFO not empty (call pop())
         #   RemoteError
@@ -122,18 +124,6 @@ class MCache(QObject):
                 _log.debug('Start timer with %s', self._holdoff)
             return
 
-        elif isinstance(E, RemoteError):
-            self._last = E
-            self.update.emit(E)
-
-        elif isinstance(E, Disconnected):
-            self._last = E
-            self.update.emit(E)
-
-            if self._active is not None:
-                self.killTimer(self._active)
-                self._active = None
-
         else:
             E(self._last)
             self.update.connect(E)
@@ -141,7 +131,7 @@ class MCache(QObject):
     @exceptionGuard
     def timerEvent(self, evt):
         V = self._op.pop()
-        _log.debug('tick %s', V)
+        _log.debug('tick %s %s', self.name, V)
 
         if V is not None:
             self._last = V
@@ -221,7 +211,7 @@ class Context(raw.Context):
         if slot is not None:
             op.result.connect(slot)
 
-        op._op = super(Context, self).put(name, op._result, builder=value, request=request, get=get)
+        op._op = super(Context, self).put(name, op._resultcb, builder=value, request=request, get=get)
 
         return op
 
@@ -269,17 +259,19 @@ class Context(raw.Context):
         :returns: a :py:class:`MCache` instance
         """
         _log.debug('Subscribe to %s with %s', name, request)
-        if isinstance(request, (str, bytes)):
-            request = ClientProvider.makeRequest(request)
-        if isinstance(request, Value):
-            request = serialize(request)
+        if request is not None:
+            raise NotImplementedError("monitor() with request= not yet implemented")
+        #if isinstance(request, (str, bytes)):
+        #    request = ClientProvider.makeRequest(request)
+        #if isinstance(request, Value):
+        #    request = serialize(request)
 
         key = (name, request) # (str, bytes|None)
 
         try:
             op = self._mcache[key]
         except KeyError:
-            self._mcache[key] = op = MCache(self._parent)
+            self._mcache[key] = op = MCache(name, self._parent)
 
             op._op = super(Context, self).monitor(name, op._event, request)
 

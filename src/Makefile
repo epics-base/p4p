@@ -7,19 +7,21 @@ INSTALL_SHRLIB = $(PY_INSTALL_DIR)/p4p
 
 LOADABLE_LIBRARY_HOST += _p4p
 
-_p4p_SRCS += p4p_top.cpp
-_p4p_SRCS += p4p_type.cpp
-_p4p_SRCS += p4p_value.cpp
-_p4p_SRCS += p4p_array.cpp
-_p4p_SRCS += p4p_server.cpp
-_p4p_SRCS += p4p_server_provider.cpp
-_p4p_SRCS += p4p_server_sharedpv.cpp
+_p4p_CPPFLAGS += -DPY_ARRAY_UNIQUE_SYMBOL=PVXS_PyArray_API
+pvxs_value_CPPFLAGS += -DPY_ARRAY_UNIQUE_SYMBOL=PVXS_PyArray_API
 
-_p4p_SRCS += p4p_client.cpp
+_p4p_SRCS += _p4p.cpp
+_p4p_SRCS += pvxs_type.cpp
+_p4p_SRCS += pvxs_value.cpp
+_p4p_SRCS += pvxs_sharedpv.cpp
+_p4p_SRCS += pvxs_source.cpp
+_p4p_SRCS += pvxs_client.cpp
 
-_p4p_LIBS += pvAccess pvData Com
+_p4p_CPPFLAGS += -DPVXS_ENABLE_EXPERT_API
 
-LOADABLE_LIBRARY_HOST += _gw
+_p4p_LIBS += pvxs
+
+#LOADABLE_LIBRARY_HOST += _gw
 
 _gw_SRCS += _gw.cpp
 _gw_SRCS += gwchannel.cpp
@@ -72,6 +74,9 @@ PY += p4p/test/test_asLib.py
 PY += p4p/test/test_cothread.py
 PY += p4p/test/cothreadtest.py
 
+PY += p4p/test/test_qt.py
+PY += p4p/test/qttest.py
+
 PY += p4p/test/test_asyncio.py
 PY += p4p/test/asynciotest.py
 
@@ -92,6 +97,11 @@ _gw.h: _gw.cpp ../p4p/_gw.pyx
 
 gwchannel$(OBJ): _gw.h
 gwchannel$(DEP): _gw.h
+
+_p4p.cpp: ../p4p/_p4p.pyx $(wildcard ../p4p/pvxs/*.pxd)
+	$(PYTHON) -m cython -I ../p4p -o $@ --cplus $<
+
+#_p4p.h: _p4p.cpp ../p4p/_p4p.pyx
 
 ifneq (,$(T_A))
 nose.%:

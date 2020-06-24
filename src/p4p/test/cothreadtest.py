@@ -93,6 +93,7 @@ class TestGPM(RefTestCase):
                     self.assertIsInstance(Q.Wait(timeout=self.timeout), Disconnected)
 
                     self.pv.open(3)
+                    C.hurryUp()
 
                     self.assertEqual(3, Q.Wait(timeout=self.timeout))
 

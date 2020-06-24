@@ -7,8 +7,10 @@ DIRS += configure
 DIRS += src
 src_DEPEND_DIRS = configure
 
+ifdef EPICS_PVA_MAJOR_VERSION
 DIRS += testing
 testing_DEPEND_DIRS = src
+endif
 
 include $(TOP)/configure/RULES_TOP
 

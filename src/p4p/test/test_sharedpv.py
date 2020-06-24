@@ -50,6 +50,7 @@ class TestGPM(RefTestCase):
         self.sprov.add('bar', self.pv2)
 
         self.server = Server(providers=[self.sprov], isolate=True)
+        _log.debug('Server Conf: %s', self.server.conf())
 
     def tearDown(self):
         self.server.stop()
@@ -68,16 +69,11 @@ class TestGPM(RefTestCase):
 
     def testGet(self):
         with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
+            _log.debug('Client conf: %s', ctxt.conf())
             # PV not yet opened
             self.assertRaises(TimeoutError, ctxt.get, 'foo', timeout=0.1)
 
             self.pv.open(1.0)
-
-            # TODO: this really shouldn't fail, but does due to:
-            # https://github.com/epics-base/pvAccessCPP/issues/103
-            #  also proves that our Channel cache is working...
-            self.assertRaises(RuntimeError, ctxt.get, 'foo', timeout=0.1)
-            ctxt.disconnect('foo')  # clear channel cache and force new channel to ensure we don't race to pick up the broken one
 
             V = ctxt.get('foo')
             self.assertEqual(V, 1.0)
@@ -137,6 +133,7 @@ class TestGPM(RefTestCase):
             self.assertIsInstance(V, Disconnected)
 
             self.pv.open(3.0)
+            ctxt.hurryUp()
 
             V = Q.get(timeout=self.timeout)
             self.assertEqual(V, 3.0)
@@ -221,9 +218,7 @@ class TestRPC(RefTestCase):
                 # self.pv not open()'d
                 ret = C.rpc('foo', args.wrap('foo', kws={'null':True}))
                 _log.debug("RET %s", ret)
-                #self.assertIsNone(ret)
-                self.assertIsInstance(ret, Value)
-                self.assertListEqual(ret.keys(), [])
+                self.assertIsNone(ret)
 
     def test_rpc_error(self):
         with Server(providers=[self.provider], isolate=True) as S:
@@ -324,8 +319,8 @@ class TestPVRequestMask(RefTestCase):
                 self.assertListEqual(V.keys(), ['value'])
 
 
-class TestPVRequestSlice(TestPVRequestMask):
-    mode = 'Slice'
+#class TestPVRequestSlice(TestPVRequestMask):
+#    mode = 'Slice'
 
 class TestFirstLast(RefTestCase):
     maxDiff = 1000
@@ -334,19 +329,19 @@ class TestFirstLast(RefTestCase):
 
     class Handler:
         def __init__(self):
-            self.evt = threading.Event()
+            self.evtC = threading.Event()
+            self.evtD = threading.Event()
             self.conn = None
         def onFirstConnect(self, pv):
             _log.debug("onFirstConnect")
             self.conn = True
-            self.evt.set()
+            self.evtC.set()
         def onLastDisconnect(self, pv):
             _log.debug("onLastDisconnect")
             self.conn = False
-            self.evt.set()
+            self.evtD.set()
 
     def setUp(self):
-        # gc.set_debug(gc.DEBUG_LEAK)
         super(TestFirstLast, self).setUp()
 
         self.H = self.Handler()
@@ -374,14 +369,14 @@ class TestFirstLast(RefTestCase):
             Q = Queue(maxsize=4)
             with ctxt.monitor('foo', Q.put, notify_disconnect=True):
 
-                Q.get(timeout=self.timeout) # initial update
+                self.assertIsInstance(Q.get(timeout=self.timeout), Disconnected)
+                self.assertIsInstance(Q.get(timeout=self.timeout), Value) # initial update
 
                 _log.debug('TEST')
-                self.H.evt.wait(self.timeout) # onFirstConnect()
-                self.H.evt.clear()
+                self.H.evtC.wait(self.timeout) # onFirstConnect()
                 self.assertTrue(self.H.conn)
 
-        self.H.evt.wait(self.timeout) # onLastDisconnect()
+        self.H.evtD.wait(self.timeout) # onLastDisconnect()
         _log.debug('SHUTDOWN')
         self.assertFalse(self.H.conn)
 
@@ -395,13 +390,12 @@ class TestFirstLast(RefTestCase):
                 Q.get(timeout=self.timeout) # initial update
 
                 _log.debug('TEST')
-                self.H.evt.wait(self.timeout) # onFirstConnect()
-                self.H.evt.clear()
+                self.H.evtC.wait(self.timeout) # onFirstConnect()
                 self.assertIs(self.H.conn, True)
 
                 self.server.stop()
 
-                self.H.evt.wait(self.timeout) # onLastDisconnect()
+                self.H.evtD.wait(self.timeout) # onLastDisconnect()
                 _log.debug('SHUTDOWN')
                 self.assertIs(self.H.conn, False)
 
@@ -415,8 +409,7 @@ class TestFirstLast(RefTestCase):
                 Q.get(timeout=self.timeout) # initial update
 
                 _log.debug('TEST')
-                self.H.evt.wait(self.timeout) # onFirstConnect()
-                self.H.evt.clear()
+                self.H.evtC.wait(self.timeout) # onFirstConnect()
                 self.assertTrue(self.H.conn)
 
                 self.pv.close(destroy=True, sync=True, timeout=self.timeout) # onLastDisconnect()

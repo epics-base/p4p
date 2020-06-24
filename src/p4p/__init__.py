@@ -9,7 +9,7 @@ except ImportError:
     pass
 
 from .wrapper import Value, Type
-from ._p4p import (pvdVersion, pvaVersion, listRefs, Cancelled, ClientProvider as _ClientProvider)
+from ._p4p import (version as pvxsVersion, listRefs, logger_level_set as _logger_level_set)
 
 from ._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                    logLevelInfo, logLevelWarn, logLevelError,
@@ -41,6 +41,14 @@ _lvlmap = {
     logging.FATAL:logLevelFatal,
 }
 
+def pvdVersion():
+    # ~equivalent
+    return (8, 0, 0, 0)
+
+def pvaVersion():
+    # ~equivalent
+    return (7, 0, 0, 0)
+
 def set_debug(lvl):
     """Set PVA global debug print level.  This prints directly to stdout,
     bypassing eg. sys.stdout.
@@ -49,7 +57,7 @@ def set_debug(lvl):
     """
     lvl = _lvlmap.get(lvl, lvl)
     assert lvl in _lvls, lvl
-    _ClientProvider.set_debug(lvl)
+    _logger_level_set("p4p.*", lvl)
 
 version = (1, 0, -80)
 

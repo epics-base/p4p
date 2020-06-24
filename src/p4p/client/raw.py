@@ -14,6 +14,7 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from .. import _p4p
+from .._p4p import Cancelled, Disconnected, Finished, RemoteError
 
 from ..wrapper import Value, Type
 from ..nt import buildNT
@@ -37,31 +38,11 @@ class LazyRepr(object):
         return repr(self.value)
     __repr__ = __str__
 
-class Cancelled(RuntimeError):
-    "Cancelled from client end."
-    def __init__(self, msg=None):
-        RuntimeError.__init__(self, msg or "Cancelled by client")
-
-
-class Disconnected(RuntimeError):
-    "Channel becomes disconected."
-    def __init__(self, msg=None):
-        RuntimeError.__init__(self, msg or "Channel disconnected")
-
-
-class Finished(Disconnected):
-    "Special case of Disconnected when a Subscription has received all updates it will ever receive."
-    def __init__(self, msg=None):
-        Disconnected.__init__(self, msg or "Subscription Finished")
-
-
-class RemoteError(RuntimeError):
-    "Thrown with an error message which has been sent by a server to its remote client"
 
 def unwrapHandler(handler, nt):
     """Wrap get/rpc handler to unwrap Value
     """
-    def dounwrap(code, msg, val):
+    def dounwrap(code, msg, val, handler=handler):
         _log.debug("Handler (%s, %s, %s) -> %s", code, msg, LazyRepr(val), handler)
         try:
             if code == 0:
@@ -78,17 +59,10 @@ def unwrapHandler(handler, nt):
 
 
 def monHandler(handler):
-    def cb(code, msg):
-        _log.debug("Update (%s, %s) -> %s", code, msg, handler)
+    def cb(handler=handler):
+        _log.debug("Update %s", handler)
         try:
-            if code == 1:
-                handler(RemoteError(msg))
-            elif code == 2:
-                handler(Cancelled())
-            elif code == 4:
-                handler(Disconnected())
-            elif code == 8:
-                handler(None)
+            handler()
         except:
             _log.exception("Exception in Monitor handler")
     return cb
@@ -141,22 +115,25 @@ class Subscription(_p4p.ClientMonitor):
     cancel() aborts the subscription.
     """
 
-    def __init__(self, context, nt, **kws):
+    def __init__(self, context, name, nt, **kws):
         _log.debug("Subscription(%s)", kws)
-        super(Subscription, self).__init__(**kws)
+        super(Subscription, self).__init__(context, name, **kws)
         self.context = context
         self._nt = nt
+        self.done = False
 
     def pop(self):
         val = super(Subscription, self).pop()
-        if val is not None:
+        assert val is None or isinstance(val, (Value, Exception)), val
+        if isinstance(val, Value):
             val = self._nt.unwrap(val)
+        elif isinstance(val, Finished):
+            self.done = True
         _log.debug("poll() -> %s", LazyRepr(val))
         return val
 
-    @property
-    def done(self):
-        return self.complete()
+    def complete(self):
+        return self.done
 
     def __enter__(self):
         return self
@@ -185,19 +162,19 @@ class Context(object):
 
         self._ctxt = None
 
-        # initialize channel cache
-        self.disconnect()
-
         self._ctxt = _p4p.ClientProvider(provider, conf=conf, useenv=useenv)
+        self.conf = self._ctxt.conf
+        self.hurryUp = self._ctxt.hurryUp
 
         _all_contexts.add(self)
+
+    makeRequest = _p4p.ClientProvider.makeRequest
 
     def close(self):
         if self._ctxt is None:
             return
         self._ctxt.close()
         self._ctxt = None
-        self.disconnect()
 
         _all_contexts.discard(self)
 
@@ -212,27 +189,12 @@ class Context(object):
     def __exit__(self, A, B, C):
         self.close()
 
-    def _channel(self, name):
-        # sub-class may wrap with some kind of lock to prevent the possibility of duplicate/extra channels.
-        # extra channels should be avoided by ChannelProvider impls, but this isn't always the case.
-        try:
-            chan = self._channels[name]
-        except KeyError:
-            chan = _p4p.ClientChannel(self._ctxt, name)  # TODO: expose address and priority?
-            self._channels[name] = chan
-        return chan
-
     def disconnect(self, name=None):
         """Clear internal Channel cache, allowing currently unused channels to be implictly closed.
 
         :param str name: None, to clear the entire cache, or a name string to clear only a certain entry.
         """
-        if name is None:
-            self._channels = {}
-        else:
-            self._channels.pop(name)
-        if self._ctxt is not None:
-            self._ctxt.disconnect(name)
+        self._ctxt.disconnect(name)
 
     def _request(self, process=None, wait=None):
         """helper for building pvRequests
@@ -259,8 +221,7 @@ class Context(object):
 
         :returns: A object with a method cancel() which may be used to abort the operation.
         """
-        chan = self._channel(name)
-        return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._nt),
+        return _p4p.ClientOperation(self._ctxt, name, handler=unwrapHandler(handler, self._nt),
                                     pvRequest=wrapRequest(request), get=True, put=False)
 
     def put(self, name, handler, builder=None, request=None, get=True):
@@ -276,8 +237,7 @@ class Context(object):
 
         :returns: A object with a method cancel() which may be used to abort the operation.
         """
-        chan = self._channel(name)
-        return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._nt),
+        return _p4p.ClientOperation(self._ctxt, name, handler=unwrapHandler(handler, self._nt),
                                     builder=defaultBuilder(builder, self._nt),
                                     pvRequest=wrapRequest(request), get=get, put=True)
 
@@ -290,10 +250,9 @@ class Context(object):
 
         :returns: A object with a method cancel() which may be used to abort the operation.
         """
-        chan = self._channel(name)
         if value is None:
             value = Value(Type([]))
-        return _p4p.ClientOperation(chan, handler=unwrapHandler(handler, self._nt),
+        return _p4p.ClientOperation(self._ctxt, name, handler=unwrapHandler(handler, self._nt),
                                     value=value, pvRequest=wrapRequest(request), rpc=True)
 
     def monitor(self, name, handler, request=None, **kws):
@@ -306,16 +265,16 @@ class Context(object):
 
         :returns: A Subscription
         """
-        chan = self._channel(name)
-        return Subscription(context=self,
+        return Subscription(self._ctxt, name,
                             nt=self._nt,
-                            channel=chan, handler=monHandler(handler), pvRequest=wrapRequest(request),
+                            handler=monHandler(handler), pvRequest=wrapRequest(request),
                             **kws)
 
-# static methods
-Context.providers = _p4p.ClientProvider.providers
-Context.set_debug = _p4p.ClientProvider.set_debug
-Context.makeRequest = _p4p.ClientProvider.makeRequest
+    @staticmethod
+    def providers():
+        return ["pva"]
+
+set_debug = _p4p.logger_level_set
 
 _all_contexts = WeakSet()
 

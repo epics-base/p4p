@@ -57,7 +57,6 @@ class Subscription(object):
         self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
         self._Q = queue or ctxt._Q or _defaultWorkQueue()
-        self._evt = threading.Event()
         if notify_disconnect:
             # all subscriptions are inittially disconnected
             self._Q.push_wait(partial(cb, Disconnected()))
@@ -68,8 +67,6 @@ class Subscription(object):
         if self._S is not None:
             # after .close() self._event should never be called
             self._S.close()
-            # wait for Cancelled to be delivered
-            self._evt.wait()
             self._S = None
 
     def __enter__(self):
@@ -88,53 +85,48 @@ class Subscription(object):
         'Is data pending in event queue?'
         return self._S is None or self._S.empty()
 
-    def _event(self, E):
+    def _event(self):
         try:
             assert self._S is not None, self._S
-            # TODO: ensure ordering of error and data events
-            _log.debug('Subscription wakeup for %s with %s', self.name, LazyRepr(E))
-            self._inprog = True
-            self._Q.push(partial(self._handle, E))
+            _log.debug('Subscription wakeup for %s', self.name)
+            self._Q.push(self._handle)
         except:
-            _log.exception("Lost Subscription update: %s", LazyRepr(E))
+            _log.exception("Lost Subscription update for %s", self.name)
 
-    def _handle(self, E):
+    def _handle(self):
         try:
             S = self._S
-
-            if isinstance(E, Cancelled):
-                self._evt.set()
-                return
-
-            elif isinstance(E, (Disconnected, RemoteError)):
-                _log.debug('Subscription notify for %s with %s', self.name, E)
-                if self._notify_disconnect:
-                    self._cb(E)
-                elif isinstance(E, RemoteError):
-                    _log.error("Subscription Error %s", E)
-                return
-
-            elif S is None:  # already close()'d
+            if S is None:  # already close()'d
                 return
 
             for n in range(4):
                 E = S.pop()
                 if E is None:
-                    break
-                self._cb(E)
+                    break # monitor queue empty
+
+                elif isinstance(E, Exception):
+                    _log.debug('Subscription notify for %s with %s', self.name, E)
+                    if self._notify_disconnect:
+                        self._cb(E)
+
+                    elif isinstance(E, RemoteError):
+                        _log.error("Subscription Error %s", E)
+
+                    if isinstance(E, Finished):
+                        _log.debug('Subscription complete %s', self.name)
+                        self._S = None
+                        S.close()
+
+                else:
+                    self._cb(E)
 
             if E is not None:
                 # removed 4 elements without emptying queue
                 # re-schedule to mux with others
                 self._Q.push(partial(self._handle, True))
-            elif S.done:
-                _log.debug('Subscription complete %s', self.name)
-                S.close()
-                S = None
-                if self._notify_disconnect:
-                    self._cb(Finished())
+
         except:
-            _log.exception("Error processing Subscription event: %s", LazyRepr(E))
+            _log.exception("Error processing Subscription event for %s", self.name)
             if self._S is not None:
                 self._S.close()
             self._S = None

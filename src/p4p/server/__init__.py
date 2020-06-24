@@ -4,13 +4,12 @@ import warnings
 import re
 import time
 import uuid
+from weakref import ref
 
 from weakref import WeakSet
 
+from .. import _p4p
 from .._p4p import (Server as _Server,
-                    installProvider,
-                    removeProvider,
-                    clearProviders,
                     StaticProvider as _StaticProvider,
                     DynamicProvider as _DynamicProvider,
                     ServerOperation,
@@ -29,6 +28,13 @@ __all__ = (
         'DynamicProvider',
         'ServerOperation',
 )
+
+def installProvider(name, provider):
+    _p4p._providers[name] = ref(provider)
+def removeProvider(name):
+    _p4p._providers.pop(name, None)
+def clearProviders():
+    _p4p._providers.clear()
 
 class Server(object):
 
@@ -58,8 +64,11 @@ class Server(object):
 
     Call Server.conf() to see a list of valid server (EPICS_PVAS_*) key names and the actual values.
 
-    The providers list must be a list of name strings (cf. installProvider()),
-    a list of `StaticProvider` or `DynamicProvider` instances, or dict "{'pv:name':`SharedPV`}" to implicitly creat a `StaticProvider`.
+    The providers list may contain: name strings (cf. installProvider()),
+    `StaticProvider` or `DynamicProvider` instances, or a dict "{'pv:name':`SharedPV`}" to implicitly creat a `StaticProvider`.
+    Each entry may also be a tuple "(provider, order)" where "provider" is any of the allowed types,
+    and "order" is an integer used to resolve ambiguity if more than one provider may claim a PV name.
+    (lower numbers are queried first, the default order is 0)
     """
 
     def __init__(self, providers, isolate=False, **kws):
@@ -71,19 +80,26 @@ class Server(object):
 
         Ps = []
         for provider in providers:
+            if isinstance(provider, tuple):
+                provider, order = provider
+            elif hasattr(provider, 'order'):
+                order = provider.order
+            else:
+                order = 0
+
             if isinstance(provider, (bytes, unicode)):
                 if not re.match(r'^[^ \t\n\r]+$', provider):
                     raise ValueError("Invalid provider name: '%s'"%provider)
-                Ps.append(provider)
+                Ps.append((provider, order))
 
-            elif isinstance(provider, (_StaticProvider, _DynamicProvider)):
-                Ps.append(provider)
+            elif isinstance(provider, (_StaticProvider, _DynamicProvider, _p4p.Source)):
+                Ps.append((provider, order))
 
             elif hasattr(provider, 'items'):
                 P = StaticProvider()
                 for name, pv in provider.items():
                     P.add(name, pv)
-                Ps.append(P)
+                Ps.append((P, order))
                 # Normally user code is responsible for keeping the StaticProvider alive.
                 # Not possible in this case though.
                 self.__keep_alive.append(P)
@@ -101,10 +117,22 @@ class Server(object):
                 'EPICS_PVA_SERVER_PORT': '0',
                 'EPICS_PVA_BROADCAST_PORT': '0',
             }
+
+
         _log.debug("Starting Server isolated=%s, %s", isolate, kws)
         self._S = _Server(providers=Ps, **kws)
 
-        _all_servers.add(self._S)
+        self.tostr = self._S.tostr
+
+        self._S.start()
+        try:
+            if _log.isEnabledFor(logging.DEBUG):
+                _log.debug("New Server: %s", self.tostr(5))
+
+            _all_servers.add(self._S)
+        except:
+            self._S.stop()
+            raise
 
     def __enter__(self):
         return self
@@ -151,7 +179,6 @@ class Server(object):
                 pass
             finally:
                 _log.info("Stopping server")
-
 
 class StaticProvider(_StaticProvider):
 

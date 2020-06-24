@@ -69,7 +69,7 @@ class Context(raw.Context):
 
         def cb(value):
             assert not done, value # spurious second callback
-            if isinstance(value, (RemoteError, Disconnected, Cancelled)):
+            if isinstance(value, Exception):
                 done.SignalException(value)
             else:
                 done.Signal(value)
@@ -150,7 +150,7 @@ class Context(raw.Context):
 
         def cb(value):
             assert not done, value
-            if isinstance(value, (RemoteError, Disconnected, Cancelled)):
+            if isinstance(value, Exception):
                 done.SignalException(value)
             else:
                 done.Signal(value)
@@ -198,7 +198,7 @@ class Context(raw.Context):
 
         def cb(value):
             assert not done, value
-            if isinstance(value, (RemoteError, Disconnected, Cancelled)):
+            if isinstance(value, Exception):
                 done.SignalException(value)
             else:
                 done.Signal(value)
@@ -249,10 +249,7 @@ class Subscription(object):
         self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
 
-        self._Q = cothread.EventQueue()
-
-        if notify_disconnect:
-            self._Q.Signal(Disconnected())  # all subscriptions are inittially disconnected
+        self._E = cothread.Event()
 
         self._T = cothread.Spawn(self._handle)
 
@@ -269,7 +266,7 @@ class Subscription(object):
             # after .close() self._event should never be called
             self._S.close()
             self._S = None
-            self._Q.Signal(None)
+            self._E.Signal(None)
             self._T.Wait()
 
     @property
@@ -282,59 +279,61 @@ class Subscription(object):
         'Is data pending in event queue?'
         return self._S is None or self._S.empty()
 
-    def _event(self, value):
+    def _event(self):
         if self._S is not None:
-            self._Q.Signal(value)
+            self._E.Signal()
 
     def _handle(self):
+        if self._notify_disconnect:
+            self._cb(Disconnected())  # all subscriptions are inittially disconnected
+
         E = None
         try:
             while True:
-                E = self._Q.Wait()
-                _log.debug("Subscription %s handle %s", self.name, LazyRepr(E))
+                self._E.Wait()
+                _log.debug("Subscription %s wakeup", self.name)
 
                 S = self._S
-
-                if isinstance(E, Cancelled):
-                    return
-
-                elif isinstance(E, Disconnected):
-                    _log.debug('Subscription notify for %s with %s', self.name, E)
-                    if self._notify_disconnect:
-                        self._cb(E)
-                    else:
-                        _log.info("Subscription disconnect %s", self.name)
-                    continue
-
-                elif isinstance(E, RemoteError):
-                    _log.debug('Subscription notify for %s with %s', self.name, E)
-                    if self._notify_disconnect:
-                        self._cb(E)
-                    elif isinstance(E, RemoteError):
-                        _log.error("Subscription Error %s", E)
-                    return
-
-                elif S is None:  # already close()'d
-                    return
+                if S is None:
+                    break
 
                 i = 0
                 while True:
                     E = S.pop()
-                    if E is None or self._S is None:
-                        break
-                    self._cb(E)
+                    if E is None:
+                        break # queue empty
+
+                    elif isinstance(E, Disconnected):
+                        _log.debug('Subscription notify for %s with %s', self.name, E)
+                        if self._notify_disconnect:
+                            self._cb(E)
+                        else:
+                            _log.info("Subscription disconnect %s", self.name)
+                        continue
+
+                    elif isinstance(E, RemoteError):
+                        _log.debug('Subscription notify for %s with %s', self.name, E)
+                        if self._notify_disconnect:
+                            self._cb(E)
+                        elif isinstance(E, RemoteError):
+                            _log.error("Subscription Error %s", E)
+                        return
+
+                    else:
+                        self._cb(E)
+
                     i = (i + 1) % 4
                     if i == 0:
                         cothread.Yield()
 
-                if S.done:
-                    _log.debug('Subscription complete %s', self.name)
-                    S.close()
-                    self._S = None
-                    if self._notify_disconnect:
-                        E = Finished()
-                        self._cb(E)
-                    break
+                    if S.done:
+                        _log.debug('Subscription complete %s', self.name)
+                        S.close()
+                        self._S = None
+                        if self._notify_disconnect:
+                            E = Finished()
+                            self._cb(E)
+                        break
         except:
             _log.exception("Error processing Subscription event: %s", LazyRepr(E))
             self._S.close()

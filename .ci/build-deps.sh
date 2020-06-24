@@ -31,6 +31,18 @@ EPICS_BASE=$HOME/.source/epics-base
 EOF
 fi
 
+if [ "$BRPVXS" ]
+then
+    git clone --quiet --recursive --depth 5 --branch "$BRPVXS" https://github.com/mdavidsaver/pvxs.git pvxs
+    (cd pvxs && git log -n1 )
+    cat << EOF >> $CURDIR/configure/RELEASE.local
+PVXS=$HOME/.source/pvxs
+EOF
+    cat << EOF > pvxs/configure/RELEASE.local
+EPICS_BASE=$HOME/.source/epics-base
+EOF
+fi
+
 git clone --quiet --depth 5 --branch "$BRBASE" https://github.com/epics-base/epics-base.git epics-base
 (cd epics-base && git log -n1 )
 
@@ -44,3 +56,9 @@ EPICS_HOST_ARCH=`sh epics-base/startup/EpicsHostArch`
 make -j2 -C epics-base "$@"
 [ "$BRPVD" ] && make -j2 -C pvDataCPP "$@"
 [ "$BRPVA" ] && make -j2 -C pvAccessCPP "$@"
+
+if [ "$BRPVXS" ]
+then
+    make -j2 -C pvxs/bundle libevent "$@"
+    make -j2 -C pvxs "$@"
+fi

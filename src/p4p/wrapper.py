@@ -2,7 +2,7 @@
 # which add functionality that is better expressed in python.
 # These types are then pushed (by _magic) down into extension
 # code where they will be used as the types passed to callbacks.
-from ._p4p import TypeBase, ValueBase
+from . import _p4p
 
 __all__ = (
     'Type',
@@ -30,7 +30,7 @@ def UnionArray(spec=None, id=None):
     return ('aU', id, spec)
 
 
-class Type(TypeBase):
+class Type(_p4p._Type):
     """Type(fields, id=None, base=None)
 
     :param list fields: A list of tuples describing members of this data structure.
@@ -79,7 +79,7 @@ class Type(TypeBase):
     ==== =======
     """
     __slots__ = []  # we don't allow custom attributes for now
-    __contains__ = TypeBase.has
+    __contains__ = _p4p._Type.has
 
     def __call__(self, initial=None):
         return Value(self, initial)
@@ -99,10 +99,10 @@ class Type(TypeBase):
         return 'Type(%s, id="%s")' % (fields, id)
     __str__ = __repr__
 
-TypeBase._magic(Type)
+_p4p.Type = Type
 
 
-class Value(ValueBase):
+class Value(_p4p._Value):
     """Value(type[, initial])
 
     :param Type type: The `Type` describing the structure to be instanciated
@@ -136,7 +136,7 @@ class Value(ValueBase):
     """
     __slots__ = []  # prevent attribute access to invalid fields
 
-    __contains__ = ValueBase.has
+    __contains__ = _p4p._Value.has
 
     def keys(self):
         return self.type().keys()
@@ -195,7 +195,7 @@ class Value(ValueBase):
         * expand=False, parents=True gives a way of testing if anything changed within a set of interesting fields
           (cf. set.intersect).
         """
-        return ValueBase.changedSet(self, expand, parents)
+        return _p4p._Value.changedSet(self, expand, parents)
 
     # TODO: deprecate
     asSet = changedSet
@@ -203,7 +203,7 @@ class Value(ValueBase):
     def clear(self):
         self.mark(None, False)
 
-    __str__ = ValueBase.tostr
+    __str__ = _p4p._Value.tostr
 
     def __repr__(self):
         parts = []
@@ -222,4 +222,4 @@ class Value(ValueBase):
 
         return 'Value(%s)'%', '.join(parts)
 
-ValueBase._magic(Value)
+_p4p.Value = Value

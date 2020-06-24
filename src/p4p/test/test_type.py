@@ -169,18 +169,6 @@ class TestRawType(RefTestCase):
         self.assertEqual(T.aspy(),
                          ('S', 'structure', L))
 
-    def testGC(self):
-        T = _Type([('a', 'I')])
-        self.assertTrue(gc.is_tracked(T))
-
-        R = weakref.ref(T)
-        del T
-        gc.collect()
-        T = R()
-        if T is not None:
-            print("Not Dead!", T, gc.get_referrers(T))
-        self.assertIsNone(T)
-
     def testStructID(self):
         T = _Type([('a', 'I')])
         self.assertEqual(T.getID(), "structure")

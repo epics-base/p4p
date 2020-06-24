@@ -19,7 +19,7 @@ class Demo(QWidget):
 
         self.ctxt = Context('pva', parent=self)
         # create subscription
-        self.ctxt.monitor(pvname, self._update, limitHz=1.0)
+        self.ctxt.monitor(pvname, self._update, limitHz=10.0)
 
         self.edit.returnPressed.connect(self.doPut)
 

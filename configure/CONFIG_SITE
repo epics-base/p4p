@@ -40,3 +40,7 @@ CROSS_COMPILER_TARGET_ARCHS =
 
 # default if not set
 PYTHON ?= python
+
+_P4P_CXXFLAGS_gcc = -std=c++11
+_P4P_CXXFLAGS_clang = -std=c++11
+USR_CXXFLAGS += $(_P4P_CXXFLAGS_$(CMPLR_CLASS))
