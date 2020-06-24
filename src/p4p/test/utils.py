@@ -101,7 +101,7 @@ class RefTestMixin(object):
                 if O is None:
                     continue
                 nrefs = sys.getrefcount(O)
-                refs = sys.get_referrers(O)
+                refs = gc.get_referrers(O)
                 nrefs -= len(refs) # exclude tracked refs
                 refs = filter(lambda o:o not in (frame, traceme), refs)
                 _log.debug("ALIVE %s -> %s + %d ext refs", O, refs, nrefs)
