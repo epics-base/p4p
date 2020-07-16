@@ -15,6 +15,8 @@ import tempfile
 import fnmatch
 import weakref
 
+from functools import wraps
+
 from .. import listRefs
 from .._p4p import _forceLazy
 
@@ -116,8 +118,19 @@ class RefTestMixin(object):
                 else:
                     self.assertDictEqual(self.__before, after1)
 
-
 class RefTestCase(RefTestMixin, unittest.TestCase):
+    def __init__(self, methodName='runTest'):
+        # skip reference check for tests which have already failed.
+        meth = getattr(self, methodName)
+        @wraps(meth)
+        def wrapper(*args, **kws):
+            try:
+                return meth(*args, **kws)
+            except:
+                self.ref_check = None
+                raise
+        setattr(self, methodName, wrapper)
+        super(RefTestCase, self).__init__(methodName=methodName)
 
     def setUp(self):
         super(RefTestCase, self).setUp()
