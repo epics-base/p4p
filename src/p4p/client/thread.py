@@ -215,6 +215,9 @@ class Context(raw.Context):
                 T.join()
             _log.debug('Joined Context workers')
             self._Q, self._T = None, None
+        if not Context:
+            # Python 2.7 GC removes Context from scope during destruction of objects.
+            return
         super(Context, self).close()
 
     def get(self, name, request=None, timeout=5.0, throw=True):
