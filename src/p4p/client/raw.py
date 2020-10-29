@@ -204,7 +204,7 @@ class Context(object):
     def __del__(self):
         if self._ctxt is not None:
             warnings.warn("%s collected without close()" % self.__class__)
-        self.close()
+            self.close()
 
     def __enter__(self):
         return self
