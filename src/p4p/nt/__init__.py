@@ -9,13 +9,15 @@ except ImportError:
     izip = zip
 
 import time
-from collections import OrderedDict
+from collections import defaultdict
 from operator import itemgetter
 from ..wrapper import Type, Value
 from .common import timeStamp, alarm
 from .scalar import NTScalar
 from .ndarray import NTNDArray
 from .enum import NTEnum
+
+import numpy
 
 __all__ = [
     'NTScalar',
@@ -142,9 +144,9 @@ class NTTable(object):
 
     """A generic table
 
-    >>> table = NTTable.buildType(columns=[
-        ('columnA', 'ai'),
-        ('columnB', 'as'),
+    >>> table = NTTable(columns=[
+        ('columnA', 'i'),
+        ('columnB', 's'),
     ])
     """
     Value = Value
@@ -168,16 +170,20 @@ class NTTable(object):
 
     def __init__(self, columns=[], extra=[]):
         self.labels = []
-        C = []
+        scols, acols = [], []
         for col, type in columns:
             if type[0] == 'a':
                 raise ValueError("NTTable column types may not be array")
-            C.append((col, 'a' + type))
+            scols.append((col, 'a' + type))
+            if type=='s':
+                type = 'O' # can't assign a meaningful size for a S# field
+            acols.append((col, type))
             self.labels.append(col)
-        self.type = self.buildType(C, extra=extra)
+        self._np = numpy.dtype(acols)
+        self.type = self.buildType(scols, extra=extra)
 
     def wrap(self, values):
-        """Pack an iterable of dict into a Value
+        """Pack an structured numpy.ndarray, or iterable of dict, into a Value
 
         >>> T=NTTable([('A', 'ai'), ('B', 'as')])
         >>> V = T.wrap([
@@ -187,53 +193,59 @@ class NTTable(object):
         """
         if isinstance(values, Value):
             return values
-        cols = dict([(L, []) for L in self.labels])
-        try:
-            # unzip list of dict
-            for V in values:
-                for L in self.labels:
-                    try:
-                        cols[L].append(V[L])
-                    except (IndexError, KeyError):
-                        pass
-            # allow omit empty columns
-            for L in self.labels:
-                V = cols[L]
-                if len(V) == 0:
-                    del cols[L]
 
-            try:
-                return self.Value(self.type, {
-                    'labels': self.labels,
-                    'value': cols,
-                })
-            except:
-                _log.error("Failed to encode '%s' with %s", cols, self.labels)
-                raise
-        except:
-            _log.exception("Failed to wrap: %s", values)
-            raise
+        V = self.type()
+        self.assign(V, values)
+        return V
 
     @staticmethod
-    def unwrap(value):
-        """Iterate an NTTable
+    def unwrap(top):
+        """Iterate a Value conforming to NTTable
 
-        :returns: An iterator yielding an OrderedDict for each column
+        :returns: An structured numpy.ndarray
         """
-        ret = []
+        value = top.value
 
-        # build lists of column names, and value
-        lbl, cols = [], []
-        for cname, cval in value.value.items():
-            lbl.append(cname)
-            cols.append(cval)
+        cols = []
+        for col, type in value.type().items():
+            assert type[0]=='a', (col, type)
+            if type[1]=='s':
+                type = 'aO'
+            cols.append((col, type[1:]))
+        np = numpy.dtype(cols)
 
-        # zip together column arrays to iterate over rows
-        for rval in izip(*cols):
-            # zip together column names and row values
-            ret.append(OrderedDict(zip(lbl, rval)))
+        cols = [(col, value[col]) for col in value]
+        N = max(*(len(col) for _name, col in cols))
+        ret = numpy.zeros(N, dtype=np)
+        for name, col in cols:
+            ret[name] = col
 
         return ret
+
+    def assign(self, V, value):
+        assert isinstance(V, Value), V
+
+        if isinstance(value, Value):
+            V[None] = value
+            return
+
+        elif not isinstance(value, numpy.ndarray):
+            # iterable of tuple mappable (eg. list of dict, or sqlite3.Cursor with sqlite3.Row)
+
+            # accumulate entire result
+            value = list(value)
+
+            arr = numpy.zeros(len(value), dtype=self._np)
+            for i,row in enumerate(value):
+                arow = arr[i]
+                for col in row.keys():
+                    arow[col] = row[col]
+            value = arr
+
+        for col in value.dtype.names:
+            V.value[col] = value[col]
+
+
 
 class NTURI(object):
 
