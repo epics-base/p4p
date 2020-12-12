@@ -69,7 +69,11 @@ class PVList(object):
                 pattern, cmd, parts = parts[0], parts[1], parts[2:]
 
                 # test compile
-                C = re.compile(pattern)
+                try:
+                    C = re.compile(pattern)
+                except Exception as e:
+                    _log.warn("line %s: %s, pattern %s"%(lineno, e, pattern))
+                    continue
 
                 if pattern in allow:
                     continue # ignore duplicate pattern
