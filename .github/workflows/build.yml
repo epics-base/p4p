@@ -1,0 +1,204 @@
+name: P4P
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: ${{ matrix.os }}/${{ matrix.python }}/${{ matrix.pyver }}/${{ matrix.piparch }}/${{ matrix.profile }}
+    runs-on: ${{ matrix.os }}
+    env:
+      # used by cibuild.py
+      BRBASE: ${{ matrix.base }}
+      BRPVD: ${{ matrix.pvd }}
+      BRPVA: ${{ matrix.pva }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux Makefile builds
+          - os: ubuntu-latest
+            python: "2.7"
+            base: "7.0"
+            pvd: "master"
+            pva: "master"
+            profile: deb9
+
+          - os: ubuntu-latest
+            python: "2.7"
+            base: "3.15"
+            pvd: "master"
+            pva: "master"
+            profile: deb8
+
+          # Linux py builds x64
+          - os: ubuntu-latest
+            pyver: cp27-cp27m
+            piparch: manylinux1_x86_64
+            source: true
+
+          - os: ubuntu-latest
+            pyver: cp27-cp27mu
+            piparch: manylinux1_x86_64
+
+          - os: ubuntu-latest
+            pyver: cp35-cp35m
+            piparch: manylinux1_x86_64
+
+          - os: ubuntu-latest
+            pyver: cp36-cp36m
+            piparch: manylinux1_x86_64
+
+          - os: ubuntu-latest
+            pyver: cp37-cp37m
+            piparch: manylinux1_x86_64
+
+          - os: ubuntu-latest
+            pyver: cp38-cp38
+            piparch: manylinux1_x86_64
+
+          # Linux py builds x64
+          - os: ubuntu-latest
+            pyver: cp27-cp27m
+            piparch: manylinux1_i686
+            pre: linux32
+
+          - os: ubuntu-latest
+            pyver: cp27-cp27mu
+            piparch: manylinux1_i686
+            pre: linux32
+
+          - os: ubuntu-latest
+            pyver: cp35-cp35m
+            piparch: manylinux1_i686
+            pre: linux32
+
+          - os: ubuntu-latest
+            pyver: cp36-cp36m
+            piparch: manylinux1_i686
+            pre: linux32
+
+          - os: ubuntu-latest
+            pyver: cp37-cp37m
+            piparch: manylinux1_i686
+            pre: linux32
+
+          - os: ubuntu-latest
+            pyver: cp38-cp38
+            piparch: manylinux1_i686
+            pre: linux32
+
+          # OSX py builds
+          - os: macos-latest
+            python: "2.7"
+            piparch: macosx_10_9_intel
+
+          - os: macos-latest
+            python: "3.6"
+            piparch: macosx_10_9_intel
+
+          - os: macos-latest
+            python: "3.7"
+            piparch: macosx_10_9_intel
+
+          - os: macos-latest
+            python: "3.8"
+            piparch: macosx_10_9_intel
+
+          # Windows py builds
+          - os: windows-latest
+            python: "3.5"
+            piparch: win_amd64
+
+          - os: windows-latest
+            python: "3.6"
+            piparch: win_amd64
+
+          - os: windows-latest
+            python: "3.7"
+            piparch: win_amd64
+
+          - os: windows-latest
+            python: "3.8"
+            piparch: win_amd64
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Setup native python
+        if: matrix.python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+          #architecture: x64
+
+      - name: Install Twine
+        if: true && !matrix.base
+        run: |
+          python -m pip install twine
+          python -m twine -h
+
+      - name: Native Info
+        if: matrix.python
+        run: |
+          which python
+          python --version
+          python -m pip --version
+
+      - name: apt-get install
+        if: runner.os=='Linux' && matrix.base
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install libreadline6-dev libncurses5-dev perl
+
+      - name: Native Make build
+        if: matrix.base
+        run: |
+          python -m pip --version
+          python -m pip install -r requirements-${{ matrix.profile }}.txt
+          python -m pip install cothread
+          ./.ci/build-deps.sh -j2
+          make PYTHON=`which python` -j2
+          make PYTHON=`which python` nose
+
+      - name: Native PY build
+        if: runner.os!='Linux' && !matrix.base
+        run: |
+          python cibuild.py prepare build ${{ matrix.piparch }}
+
+      - name: Docker PY build
+        if: runner.os=='Linux' && !matrix.base
+        run: |
+          docker pull quay.io/pypa/${{ matrix.piparch }}
+          docker run --rm -v `pwd`:/io quay.io/pypa/${{ matrix.piparch }} \
+           ${{ matrix.pre }} "/opt/python/${{ matrix.pyver }}/bin/python" /io/cibuild.py \
+            docker prepare build ${{ matrix.piparch }}
+
+
+      - name: List Artifacts
+        if: true && !matrix.base
+        run: ls dist/*
+
+      - name: Save Artifacts
+        if: true && !matrix.base
+        uses: actions/upload-artifact@v2
+        with:
+          name: p4p
+          path: dist/*
+
+      - name: Upload wheels
+        if: github.event_name=='push' && github.ref=='refs/heads/master' && !matrix.base
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          python -m twine upload --skip-existing dist/*.whl
+
+      - name: Upload source
+        if: github.event_name=='push' && github.ref=='refs/heads/master' && matrix.source && !matrix.base
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          python -m twine upload --skip-existing dist/*.tar.*

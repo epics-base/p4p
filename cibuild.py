@@ -29,14 +29,15 @@ def is_pre():
 
     return ver.find('a')!=-1
 
-if sys.version_info>=(3,7):
+if platform.system()=='Windows':
+    # windows builds suck for Cython and numpy.
+    # Require users to use latest stable from all deps.
+    requirments = 'requirements-latest.txt'
+
+elif sys.version_info>=(3,7):
     # numpy only provides 3.7 wheels for recent releases,
     # and source builds seem to fail on travis?
     requirments = 'requirements-deb10.txt'
-
-elif platform.system()=='Windows':
-    # numpy wheels also not provided for windows until 1.11
-    requirments = 'requirements-windows.txt'
 
 else:
     # for maximum compatibility, build against old numpy
@@ -63,8 +64,8 @@ def docker(args):
 
 def prepare(args):
     call_py(['-m', 'pip', 'install', '-U', 'pip'])
-    call_py(['-m', 'pip', 'install', '-r', requirments])
     call_py(['-m', 'pip', 'install', '-U', 'wheel', 'setuptools', 'twine<3.0.0'])
+    call_py(['-m', 'pip', 'install', '-r', requirments])
     if is_pre():
         print('Install pre-release dependencies')
         call_py(['-m', 'pip', 'install', '-U', '--pre', 'setuptools_dso'])
