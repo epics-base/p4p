@@ -23,10 +23,12 @@ EVALUATION ORDER ALLOW, DENY
 OTRS:DMP1:695:Image:.*     DENY
 PATT:SYS0:1:MPSBURSTCTRL.* ALLOW CANWRITE
 PATT:SYS0:1:MPSBURSTCTRL.* DENY FROM 1.2.3.4 
+PATT:SYS0:1:MPSBURSTCTRL.* DENY From 4.3.2.1
 X(.*) ALIAS Y\1 CANWRITE
 BEAM.* DENY FROM 1.2.3.4   
 BEAM.* ALLOW
 BEAM.* ALLOW RWINSTRMCC 1
+BEAM:L1:.* allow
 
 THIS ALIAS THAT
 
@@ -37,6 +39,7 @@ a:([^:]*):b:([^:]*) ALIAS A:\2:B:\1
         pvl = PVList(pvlist)
 
         self.assertEqual(pvl.compute(b'BEAM:stuff', '127.0.0.1'), ('BEAM:stuff', 'RWINSTRMCC', 1))
+        self.assertEqual(pvl.compute(b'BEAM:L1:Energy', '127.0.0.1'), ('BEAM:L1:Energy', 'DEFAULT', 0))
 
         self.assertEqual(pvl.compute(b'OTHER:stuff', '127.0.0.1'), ('OTHER:stuff', 'DEFAULT', 0))
 
@@ -44,6 +47,7 @@ a:([^:]*):b:([^:]*) ALIAS A:\2:B:\1
 
         self.assertEqual(pvl.compute(b'PATT:SYS0:1:MPSBURSTCTRLX', '127.0.0.1'), ('PATT:SYS0:1:MPSBURSTCTRLX', 'CANWRITE', 0))
         self.assertEqual(pvl.compute(b'PATT:SYS0:1:MPSBURSTCTRLX', '1.2.3.4'), (None, None, None))
+        self.assertEqual(pvl.compute(b'PATT:SYS0:1:MPSBURSTCTRLX', '4.3.2.1'), (None, None, None))
 
         self.assertEqual(pvl.compute(b'Xsomething', '127.0.0.1'), ('Ysomething', 'CANWRITE', 0))
         self.assertEqual(pvl.compute(b'a:one:b:two', '127.0.0.1'), ('A:two:B:one', 'DEFAULT', 0))
