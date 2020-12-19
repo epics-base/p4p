@@ -72,7 +72,7 @@ class PVList(object):
                 try:
                     C = re.compile(pattern)
                 except Exception as e:
-                    _log.warn("line %s: %s, pattern %s"%(lineno, e, pattern))
+                    _log.error("line %s: %s, pattern %s"%(lineno, e, pattern))
                     continue
 
                 if pattern in allow:
