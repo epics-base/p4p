@@ -9,11 +9,10 @@ from libcpp cimport bool
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libcpp.list cimport list as listxx
+from libcpp.set cimport set as setxx
 
 from cpython.object cimport PyObject, PyTypeObject, traverseproc, visitproc
 from cpython.ref cimport Py_INCREF, Py_XDECREF
-
-from .set cimport set as setxx
 
 cdef extern from "<epicsAtomic.h>":
     cdef void atomic_set "::epics::atomic::set" (int& var, int val)
