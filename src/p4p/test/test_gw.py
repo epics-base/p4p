@@ -18,8 +18,9 @@ except ImportError:
     from cString import StringIO
 
 from .utils import RefTestCase, RegularNamedTemporaryFile as NamedTemporaryFile
-from ..server import Server, StaticProvider, removeProvider
+from ..server import Server, StaticProvider
 from ..server.thread import SharedPV, _defaultWorkQueue
+from ..client import raw
 from ..client.thread import Context, Disconnected, TimeoutError, RemoteError
 from ..nt import NTScalar
 from ..gw import App, main, getargs
@@ -33,15 +34,14 @@ class TestGC(RefTestCase):
         class Dummy(object):
             pass
         H = Dummy()
-        CLI = _gw.Client(u'pva', {'EPICS_PVA_BROADCAST_PORT': '0',
-                                  'EPICS_PVA_SERVER_PORT': '0',
-                                  'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
-                                  'EPICS_PVA_ADDR_LIST': '127.0.0.1',
-                                  'EPICS_PVA_AUTO_ADDR_LIST': '0'})
+        CLI = raw.Context(conf={'EPICS_PVA_BROADCAST_PORT': '0',
+                                'EPICS_PVA_SERVER_PORT': '0',
+                                'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
+                                'EPICS_PVA_ADDR_LIST': '127.0.0.1',
+                                'EPICS_PVA_AUTO_ADDR_LIST': '0'})
         GW = _gw.Provider(u'nulltest', CLI, H)
-        removeProvider(u'nulltest')
 
-        self.assertEqual(GW.use_count(), 1)
+        self.assertEqual(GW.use_count(), 2) # one for Provider, one for Source base class
 
         h = weakref.ref(H)
         gw = weakref.ref(GW)
@@ -57,18 +57,15 @@ class TestGC(RefTestCase):
         class Dummy(object):
             pass
         H = Dummy()
-        CLI = _gw.Client(u'pva', {'EPICS_PVA_BROADCAST_PORT': '0',
-                                  'EPICS_PVA_SERVER_PORT': '0',
-                                  'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
-                                  'EPICS_PVA_ADDR_LIST': '127.0.0.1',
-                                  'EPICS_PVA_AUTO_ADDR_LIST': '0'})
+        CLI = raw.Context(conf={'EPICS_PVA_BROADCAST_PORT': '0',
+                                'EPICS_PVA_SERVER_PORT': '0',
+                                'EPICS_PVAS_INTF_ADDR_LIST': '127.0.0.1',
+                                'EPICS_PVA_ADDR_LIST': '127.0.0.1',
+                                'EPICS_PVA_AUTO_ADDR_LIST': '0'})
         GW = _gw.Provider(u'nulltest', CLI, H)
 
-        try:
-            with Server(providers=['nulltest'], isolate=True):
-                self.assertFalse(GW.testChannel(b'invalid:pv:name'))
-        finally:
-            removeProvider(u'nulltest')
+        with Server(providers=[GW], isolate=True):
+            self.assertFalse(GW.testChannel(b'invalid:pv:name'))
 
         h = weakref.ref(H)
         gw = weakref.ref(GW)
@@ -81,7 +78,7 @@ class TestGC(RefTestCase):
         self.assertIsNone(gw())
 
 class TestLowLevel(RefTestCase):
-    timeout = 1
+    timeout = 5
 
     class Handler(object):
         def testChannel(self, pvname, peer):
@@ -91,7 +88,7 @@ class TestLowLevel(RefTestCase):
                 ret = self.provider.testChannel(b'pv:name')
             else:
                 ret = self.provider.BanPV
-            _log.debug("GW Search %s from %s -> %s", pvname, peer, ret)
+            _log.debug("GW Search %r from %r -> %s", pvname, peer, ret)
             return ret
 
         def makeChannel(self, op):
@@ -129,16 +126,11 @@ class TestLowLevel(RefTestCase):
         # GW client side
         # placed weakref in global registry
         H = self.Handler()
-        CLI = _gw.Client(u'pva', self._us_server.conf())
+        CLI = raw.Context(u'pva', self._us_server.conf())
         H.provider = self.gw = _gw.Provider(u'gateway', CLI, H)
 
-        try:
-            # GW server side
-            self._ds_server = Server(providers=['gateway'], isolate=True)
-        finally:
-            # don't need this in the global registry anymore.
-            # Server holds strong ref.
-            removeProvider(u'gateway')
+        # GW server side
+        self._ds_server = Server(providers=[H.provider], isolate=True)
 
         # downstream client
         self._ds_client = Context('pva', conf=self._ds_server.conf(), useenv=False)
@@ -157,7 +149,7 @@ class TestLowLevel(RefTestCase):
         _defaultWorkQueue.sync()
         gc.collect()
 
-        self.assertEqual(self.gw.use_count(), 1)
+        self.assertEqual(self.gw.use_count(), 2)
         gw = weakref.ref(self.gw)
         del self.gw
         gc.collect()
@@ -242,6 +234,15 @@ class TestHighLevel(RefTestCase):
         _log.debug("US server conf: %s", self._us_conf)
         self.assertNotEqual(0, self._us_conf['EPICS_PVA_BROADCAST_PORT'])
 
+        dsconfig = self.setUpGW(self._us_conf)
+        _log.debug("DS server conf: %s", dsconfig)
+
+        # downstream client
+        self._ds_client = Context('pva', dsconfig, useenv=False)
+
+        _log.debug("Exit setUp")
+
+    def setUpGW(self, usconfig):
         cfile = self._cfile = NamedTemporaryFile('w+')
         json.dump({
             'version':2,
@@ -250,7 +251,7 @@ class TestHighLevel(RefTestCase):
                 'provider':'pva',
                 'addrlist':'127.0.0.1',
                 'autoaddrlist':False,
-                'bcastport':self._us_conf['EPICS_PVA_BROADCAST_PORT'],
+                'bcastport':usconfig['EPICS_PVA_BROADCAST_PORT'],
                 'serverport':0,
             }],
             'servers':[{
@@ -269,17 +270,12 @@ class TestHighLevel(RefTestCase):
             _log.debug(F.read())
 
         # gateway
-        args = getargs().parse_args(['--no-ban-local', '-v', cfile.name])
+        args = getargs().parse_args(['-v', cfile.name])
 
         self._app = TestApp(args)
         self._main = threading.Thread(target=self._app.run, name='GW Main')
-        _log.debug("DS server conf: %s", self._app.servers[u'server1_0'].conf())
-
-        # downstream client
-        self._ds_client = Context('pva', conf=self._app.servers[u'server1_0'].conf(), useenv=False)
-
         self._main.start()
-        _log.debug("Exit setUp")
+        return self._app.servers[u'server1_0'].conf()
 
     def startServer(self):
         if self._us_server is None:
@@ -303,11 +299,7 @@ class TestHighLevel(RefTestCase):
         self._ds_client.close()
         del self._ds_client
 
-        # gateway
-        self._app.abort()
-        self._main.join(self.timeout)
-        del self._app
-        del self._main
+        self.tearDownGW()
 
         # upstream server
         self.stopServer()
@@ -318,6 +310,13 @@ class TestHighLevel(RefTestCase):
 
         super(TestHighLevel, self).tearDown()
         _log.debug("Exit tearDown")
+
+    def tearDownGW(self):
+        # gateway
+        self._app.abort()
+        self._main.join(self.timeout)
+        del self._app
+        del self._main
 
     def test_get(self):
         val = self._ds_client.get('pv:name', timeout=self.timeout)
@@ -332,7 +331,7 @@ class TestHighLevel(RefTestCase):
         self.assertFalse(val.raw.changed('value'))
 
     def test_get_bad_mask(self):
-        with self.assertRaisesRegexp(RemoteError, "No field 'nonexistant' Empty field selection"):
+        with self.assertRaisesRegexp(RemoteError, ".*Empty field selection"):
             val = self._ds_client.get('pv:name', timeout=self.timeout, request='nonexistant')
 
     def test_put(self):
@@ -342,7 +341,7 @@ class TestHighLevel(RefTestCase):
         self.assertEqual(val, 41)
 
     def test_put_bad_mask(self):
-        with self.assertRaisesRegexp(RemoteError, "No field 'nonexistant' Empty field selection"):
+        with self.assertRaisesRegexp(RemoteError, ".*Empty field selection"):
             self._ds_client.put('pv:name', 41, request='nonexistant', timeout=self.timeout)
 
     def test_mon(self):
@@ -416,6 +415,89 @@ class TestHighLevel(RefTestCase):
             _log.debug("Wait for reconnect update")
             V = Q.get(timeout=self.timeout)
             self.assertEqual(V, 5)
+
+class TestHighLevelChained(TestHighLevel):
+
+    def setUpGW(self, usconfig):
+        # First GW, connected to upstream server
+        cfile = self._cfile = NamedTemporaryFile('w+')
+        json.dump({
+            'version':2,
+            'clients':[{
+                'name':'client1',
+                'provider':'pva',
+                'addrlist':'127.0.0.1',
+                'autoaddrlist':False,
+                'bcastport':usconfig['EPICS_PVA_BROADCAST_PORT'],
+                'serverport':0,
+            }],
+            'servers':[{
+                'name':'server1',
+                'clients':['client1'],
+                'interface':['127.0.0.1'],
+                'addrlist':'127.0.0.1',
+                'autoaddrlist':False,
+                'bcastport':0,
+                'serverport':0,
+            }],
+        }, cfile)
+        cfile.flush()
+        with open(cfile.name, 'r') as F:
+            _log.debug('GW config')
+            _log.debug(F.read())
+
+        args = getargs().parse_args(['-v', cfile.name])
+
+        self._app1 = TestApp(args)
+        self._main1 = threading.Thread(target=self._app1.run, name='GW1 Main')
+        self._main1.start()
+
+        gw1config = self._app1.servers[u'server1_0'].conf()
+
+        # Second GW, connected to first
+        cfile = self._cfile = NamedTemporaryFile('w+')
+        json.dump({
+            'version':2,
+            'clients':[{
+                'name':'client1',
+                'provider':'pva',
+                'addrlist':'127.0.0.1',
+                'autoaddrlist':False,
+                'bcastport':gw1config['EPICS_PVA_BROADCAST_PORT'],
+                'serverport':0,
+            }],
+            'servers':[{
+                'name':'server1',
+                'clients':['client1'],
+                'interface':['127.0.0.1'],
+                'addrlist':'127.0.0.1',
+                'autoaddrlist':False,
+                'bcastport':0,
+                'serverport':0,
+            }],
+        }, cfile)
+        cfile.flush()
+        with open(cfile.name, 'r') as F:
+            _log.debug('GW config')
+            _log.debug(F.read())
+
+        args = getargs().parse_args(['-v', cfile.name])
+
+        self._app2 = TestApp(args)
+        self._main2 = threading.Thread(target=self._app2.run, name='GW2 Main')
+        self._main2.start()
+
+        return self._app2.servers[u'server1_0'].conf()
+
+    def tearDownGW(self):
+        self._app2.abort()
+        self._app1.abort()
+        self._main2.join(self.timeout)
+        self._main1.join(self.timeout)
+        del self._app2
+        del self._app1
+        del self._main2
+        del self._main1
 
 class TestTestServer(RefTestCase):
     conf_template = '''

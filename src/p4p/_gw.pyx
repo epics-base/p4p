@@ -3,311 +3,154 @@
 
 cimport cython
 
-from libc.stddef cimport size_t
-from libc.string cimport strchr
+from cpython.object cimport PyObject, PyTypeObject, traverseproc, visitproc
+from cpython.ref cimport Py_INCREF, Py_XDECREF, Py_CLEAR
+
 from libcpp cimport bool
+from libcpp.cast cimport dynamic_cast
+from libcpp.memory cimport shared_ptr, weak_ptr
 from libcpp.string cimport string
-from libcpp.vector cimport vector
 from libcpp.list cimport list as listxx
 from libcpp.set cimport set as setxx
+from libcpp.vector cimport vector
 
-from cpython.object cimport PyObject, PyTypeObject, traverseproc, visitproc
-from cpython.ref cimport Py_INCREF, Py_XDECREF
+from .pvxs.client cimport Context, Report, ReportInfo
+from .pvxs.server cimport ServerGUID
+from .pvxs.source cimport Source, ChannelControl, OpBase, ClientCredentials
+from . cimport _p4p
 
-cdef extern from "<epicsAtomic.h>":
-    cdef void atomic_set "::epics::atomic::set" (int& var, int val)
-
-## PVD explicitly uses std::tr1::shared_ptr<> which is _sometimes_ a
-## distinct type, and sometimes an alias for std::shared_ptr<>.
-## So instead of:
-#from libcpp.memory cimport shared_ptr, weak_ptr
-## We replicate a minimal (noexcept) subset of memory.pxd for std::tr1::shared_ptr
-cdef extern from "<pv/sharedPtr.h>" namespace "std::tr1" nogil:
-    cdef cppclass shared_ptr[T]:
-        shared_ptr()
-        void reset()
-        T* get()
-        void swap(shared_ptr&)
-        long use_count()
-        bool unique()
-        # not c++98...
-        #bool operator bool()
-        bool operator!()
-    cdef cppclass weak_ptr[T]:
-        weak_ptr()
-        bool expired()
-        shared_ptr[T] lock()
-
-cdef extern from "<pv/security.h>" namespace "epics::pvAccess" nogil:
-    cdef cppclass PeerInfo:
-        string peer
-        string transport
-        string authority
-        string realm
-        string account
-        setxx[string] roles
-        unsigned transportVersion
-        bool local
-        bool identified
-
-cdef extern from "<pv/pvAccess.h>" namespace "epics::pvAccess" nogil:
-    cdef cppclass ChannelProvider:
-        pass
-    cdef cppclass ChannelRequester:
-        shared_ptr[const PeerInfo] getPeerInfo() except+
-    cdef cppclass ChannelProviderFactory:
-        pass
-    cdef cppclass ChannelProviderRegistry:
-        @staticmethod
-        shared_ptr[ChannelProviderRegistry] clients() except+
-        shared_ptr[ChannelProviderFactory] remove(string& name) except+
-
-cdef extern from "<pv/configuration.h>" namespace "epics::pvAccess" nogil:
-    cdef cppclass Configuration:
-        pass
-    cdef cppclass ConfigurationBuilder:
-        ConfigurationBuilder& add(const string& key, const string& value) except+
-        ConfigurationBuilder& push_map() except+
-        shared_ptr[Configuration] build() except+
-
-cdef extern from "gwchannel.h" namespace "GWProvider" nogil:
-    cdef struct ReportItem:
-        string usname
-        string dsname
-        string transportPeer
-        string transportAccount
-        double transportTX
-        double transportRX
-        double operationTX
-        double operationRX
-
-cdef extern from "gwchannel.h" nogil:
-    void GWInstallClientAliased(shared_ptr[ChannelProvider]& provider, string& installAs) except+
-
-    cdef cppclass GWChan:
-
-        int allow_put
-        int allow_rpc
-        int allow_uncached
-        int audit
-        int get_holdoff
-
-        void disconnect()
-
-    cdef struct GWStats:
-        size_t ccacheSize
-        size_t mcacheSize
-        size_t gcacheSize
-        size_t banHostSize
-        size_t banPVSize
-        size_t banHostPVSize
-
+cdef extern from "pvxs_gw.h" namespace "p4p" nogil:
     enum: GWSearchIgnore
     enum: GWSearchClaim
     enum: GWSearchBanHost
     enum: GWSearchBanPV
     enum: GWSearchBanHostPV
 
-    cdef cppclass GWProvider(ChannelProvider):
-        PyObject* handle
+    cdef cppclass GWChanInfo(ReportInfo):
+        string usname
+
+    ctypedef const GWChanInfo* GWChanInfoCP
+
+    cdef cppclass GWChan:
+        bool allow_put
+        bool allow_rpc
+        bool allow_uncached
+        bool audit
+
+    cdef cppclass GWSource(Source):
+        Context upstream
+        PyObject* handler
 
         @staticmethod
-        shared_ptr[ChannelProvider] buildClient(const string& name, const shared_ptr[Configuration]& conf) except+
-        @staticmethod
-        shared_ptr[GWProvider] build(const string& name, const shared_ptr[ChannelProvider]& provider) except+
+        shared_ptr[GWSource] build(const Context&) except+
 
-        shared_ptr[GWProvider] shared_from_this() except+
-
-        int test(const string& usname)
-        shared_ptr[GWChan] connect(const string &dsname, const string &usname, const shared_ptr[ChannelRequester]& requester) except+
+        int test(const string&) except+
+        shared_ptr[GWChan] connect(const string &dsname, const string &usname, const shared_ptr[ChannelControl]& op) except+
 
         void sweep() except+
         void disconnect(const string& usname) except+
         void forceBan(const string& host, const string& usname) except+
         void clearBan() except+
         void cachePeek(setxx[string]& names) except+
-        void stats(GWStats& stats)
-        void report(vector[ReportItem]& us, vector[ReportItem]& ds, double& period) except+
 
-        @staticmethod
-        void prepare() except+
-
-GWProvider.prepare()
-
-cdef class ClientInstaller(object):
-    cdef string name
-    cdef weak_ptr[ChannelProvider] provider
-
-    def __enter__(self):
-        cdef shared_ptr[ChannelProvider] prov = self.provider.lock()
-        with nogil:
-            if <bool>prov:
-                GWInstallClientAliased(prov, self.name)
-            prov.reset()
-
-    def __exit__(self,A,B,C):
-        with nogil:
-            ChannelProviderRegistry.clients().get().remove(self.name)
-
-cdef class Client(object):
-    """Client(provider, config)
-    GW Client.  Wraps a C++ class ChannelProvider.  Pass to `Provider` ctor.
-
-    ``config`` dict takes the same keys as `p4p.client.thread.Context` with the "pva" provider.
-
-    :param unicode provider: Client provider name from global register
-    :param dict config: Configuration for new client instance.
-    """
-    cdef shared_ptr[ChannelProvider] provider
-
-    def __init__(self, unicode provider, dict config):
-        cdef ConfigurationBuilder builder
-        cdef string name = provider.encode('utf-8')
-
-        for K, V in config.items():
-            builder.add(K.encode('utf-8'), V.encode('utf-8'))
-
-        with nogil:
-            self.provider = GWProvider.buildClient(name, builder.push_map().build())
-
-    def __dealloc__(self):
-        with nogil:
-            self.provider.reset()
-
-    def installAs(self, unicode name):
-        """Install in process-wide client registry under an alias (eg. not "pva")
-        """
-        cdef ClientInstaller inst = ClientInstaller()
-        inst.name = name.encode('utf-8')
-        inst.provider = <weak_ptr[ChannelProvider]>self.provider
-        return inst
+        shared_ptr[GWSource] shared_from_this() except+
 
 cdef class InfoBase(object):
-    cdef shared_ptr[const PeerInfo] info
+    #cdef shared_ptr[const ClientCredentials] info
+
+    cdef shared_ptr[const ClientCredentials] info(self):
+        cdef shared_ptr[const ClientCredentials] empty
+        return empty
 
     @property
     def peer(self):
-        if <bool>self.info:
-            return self.info.get().peer.decode('UTF-8')
+        cred = self.info()
+        if cred:
+            return cred.get().peer.decode('UTF-8')
         else:
             return u''
 
     @property
-    def identified(self):
-        if <bool>self.info:
-            return self.info.get().identified
-        else:
-            return False
-
-    @property
     def account(self):
-        if <bool>self.info:
-            return self.info.get().account.decode('UTF-8')
+        cred = self.info()
+        if cred:
+            return cred.get().account.decode('UTF-8')
         else:
             return u''
 
     @property
     def roles(self):
+        cdef setxx[string] raw
         cdef list ret = []
-        if <bool>self.info:
-            for role in self.info.get().roles:
+        cred = self.info()
+        if cred:
+            raw = self.info().get().roles()
+            for role in raw:
                 ret.append(role.decode('UTF-8'))
         return ret
-
-    def __dealloc__(self):
-        with nogil:
-            self.info.reset()
 
 cdef class CreateOp(InfoBase):
     """Handle for in-progress Channel creation request
     """
     cdef readonly bytes name
-    cdef weak_ptr[ChannelRequester] requester
-    cdef weak_ptr[GWProvider] provider
+    cdef weak_ptr[ChannelControl] op
+    cdef weak_ptr[GWSource] provider
     cdef object __weakref__
 
-    def create(self, bytes name=None):
+    cdef shared_ptr[const ClientCredentials] info(self):
+        cdef shared_ptr[const ClientCredentials] ret
+        op = self.op.lock()
+        if op:
+            ret = op.get().credentials()
+        return ret
+
+    def create(self, bytes name):
         """Create a Channel with a given upstream (server-side) name
 
         :param bytes name: Upstream name to use.  This is what the GW Client will search for.
         :returns: A `Channel`
         """
         cdef shared_ptr[GWChan] gwchan
-        cdef Channel chan = Channel()
+        cdef Channel chan = Channel.__new__(Channel)
         cdef string dsname = self.name
-        cdef string usname = name or self.name
-        cdef shared_ptr[ChannelRequester] requester = self.requester.lock()
-        cdef shared_ptr[GWProvider] provider = self.provider.lock()
+        cdef string usname = name
 
-        if <bool>requester and <bool>provider:
+        op = self.op.lock()
+        provider = self.provider.lock()
+        if <bool>op and <bool>provider:
             with nogil:
-                gwchan = provider.get().connect(dsname, usname, requester)
+                gwchan = provider.get().connect(dsname, usname, op)
 
             if not gwchan:
                 raise RuntimeError("GW Provider will not create %s -> %s"%(usname, dsname))
 
-            chan.channel = <weak_ptr[GWChan]>gwchan
-            chan.info = self.info
+            chan.channel = gwchan
+            chan.info = op.get().credentials()
             return chan
         else:
             raise RuntimeError("Dead CreateOp")
+            
 
-
-cdef class Channel(InfoBase):
-    """Wraps C++ class GWChan
-
-    cf. `CreateOp.create()`
-    """
+cdef class Channel:
     cdef readonly bytes name
-    cdef weak_ptr[GWChan] channel
+    cdef shared_ptr[GWChan] channel
+    cdef shared_ptr[const ClientCredentials] info
     cdef object __weakref__
 
     @property
     def expired(self):
-        """Has this Channel become unused/disconnected?
-        """
-        return self.channel.expired()
+        return self.channel.use_count()<=1
 
     def access(self, put=None, rpc=None, uncached=None, audit=None, holdoff=None):
-        """Configure access control permissions, and other restrictions, on this channel.
-
-        :param put: None to leave unchanged.  bool to permit/deny PUT operations
-        :param rpc: None to leave unchanged.  bool to permit/deny RPC operations
-        :param uncached: None to leave unchanged.  bool to permit/deny cache bypass for GET/MONITOR
-        :param audit: None to leave unchanged.  bool to enable/disable PUT logging
-        :param holdoff: None to leave unchanged.  float value to set GET holdoff period
-        """
-        cdef shared_ptr[GWChan] ch = self.channel.lock()
-        if not ch:
-            return
-        if put is not None:
-            atomic_set(ch.get().allow_put, put==True)
-        if rpc is not None:
-            atomic_set(ch.get().allow_rpc, rpc==True)
-        if uncached is not None:
-            atomic_set(ch.get().allow_uncached, uncached==True)
-        if audit:
-            atomic_set(ch.get().audit, audit==True)
-        if holdoff:
-            atomic_set(ch.get().get_holdoff, holdoff*1000)
-
-    def close(self):
-        """Force disconnect this Channel
-        """
-        cdef shared_ptr[GWChan] ch = self.channel.lock()
-        if <bool>ch:
-            ch.get().disconnect()
+        self.channel.get().allow_put = put==True
+        self.channel.get().allow_rpc = rpc==True
+        self.channel.get().allow_uncached = uncached==True
+        self.channel.get().audit = audit==True
+        # TODO holdoff
 
 @cython.no_gc_clear
-cdef class Provider:
-    """Provider(name, client, handler)
-    GW Server endpoint.  wrapper for C++ class GWProvider
-
-    :param unicode name: Unique name of this provider
-    :param Client client: Associated client to which requests are forwarded
-    :param handler: Callbacks
-    """
-    cdef shared_ptr[GWProvider] provider
+cdef class Provider(_p4p.Source):
+    cdef shared_ptr[GWSource] provider
     cdef object __weakref__
     cdef object dummy # ensure that this type participates in GC
 
@@ -324,19 +167,23 @@ cdef class Provider:
         self.BanPV = GWSearchBanPV
         self.BanHostPV = GWSearchBanHostPV
 
-    def __init__(self, unicode name, Client client, object handler):
+    def __init__(self, unicode name, object client, object handler):
+        cdef _p4p.ClientProvider prov = client._ctxt
         cdef string cname = name.encode('utf-8')
-        cdef shared_ptr[ChannelProvider] cprov
+        self.name = cname
 
-        cprov = client.provider
+        if not prov:
+            raise ValueError('Not a Context')
         with nogil:
-            self.provider = GWProvider.build(cname, cprov)
+            self.provider = GWSource.build(prov.ctxt)
+            self.src = <shared_ptr[Source]>self.provider
 
         Py_INCREF(handler)
-        Py_XDECREF(self.provider.get().handle)
-        self.provider.get().handle = <PyObject*>handler
+        self.provider.get().handler = <PyObject*>handler
 
     def __dealloc__(self):
+        if <bool>self.provider:
+            Py_CLEAR(self.provider.get().handler)
         with nogil:
             self.provider.reset()
 
@@ -391,6 +238,16 @@ cdef class Provider:
         with nogil:
             self.provider.get().clearBan()
 
+    def ignoreByGUID(self, list servers):
+        cdef _p4p.Server serv
+        cdef vector[ServerGUID] guids
+
+        for ent in servers:
+            serv = <_p4p.Server?>ent
+            guids.push_back(serv.serv.config().guid)
+
+        self.provider.get().upstream.ignoreServerGUIDs(guids)
+
     def cachePeek(self):
         """Returns PV names in channel cache
 
@@ -410,63 +267,69 @@ cdef class Provider:
 
         :rtype: dict
         """
-        cdef GWStats stats
-        self.provider.get().stats(stats)
-
-        # cf. statsType in gw.py
+        # TODO
         return {
-            'ccacheSize.value':stats.ccacheSize,
-            'mcacheSize.value':stats.mcacheSize,
-            'gcacheSize.value':stats.gcacheSize,
-            'banHostSize.value':stats.banHostSize,
-            'banPVSize.value':stats.banPVSize,
-            'banHostPVSize.value':stats.banHostPVSize,
+            'ccacheSize.value':0,
+            'mcacheSize.value':0,
+            'gcacheSize.value':0,
+            'banHostSize.value':0,
+            'banPVSize.value':0,
+            'banHostPVSize.value':0,
         }
 
-    def report(self):
-        """Run bandwidth usage report
+    def report(self, float norm=1.0):
+        """Run Client/Upstream bandwidth usage report
 
-        :returns: A tuple of upstream (server side), downstream (client side), and time since last report() call.
-        :rtype: ([(usname, opTx, opRx, peer, trTx, trRx)], [(usname, dsname, opTx, opRx, account, peer, trTx, trRx)], float)
+        :returns: List of tuple
+        :rtype: [(usname, opTx, opRx, peer, trTx, trRx)]
         """
-        cdef vector[ReportItem] us
-        cdef vector[ReportItem] ds
-        cdef double period = 0.0 # initial value not used, but quiets warning
-        cdef ReportItem item
-
+        cdef Report report
+        cdef double cnorm = norm
         with nogil:
-            self.provider.get().report(us, ds, period)
+            report = self.provider.get().upstream.report()
 
-        rus = []
-        for item in us:
-            # order in tuple must match column order
-            rus.append((
-                item.usname.decode('UTF-8'),
-                item.operationTX,
-                item.operationRX,
-                item.transportPeer.decode('UTF-8'),
-                item.transportTX,
-                item.transportRX,
-            ))
+        usinfo = []
+        for conn in report.connections:
+            peer = conn.peer.decode()
+            for chan in conn.channels:
+                usinfo.append((chan.name.decode(), chan.tx/cnorm, chan.rx/cnorm, peer, conn.tx/cnorm, conn.rx/cnorm))
 
-        rds = []
-        for item in ds:
-            # order in tuple must match column order
-            rds.append((
-                item.usname.decode('UTF-8'),
-                item.dsname.decode('UTF-8'),
-                item.operationTX,
-                item.operationRX,
-                item.transportAccount.decode('UTF-8'),
-                item.transportPeer.decode('UTF-8'),
-                item.transportTX,
-                item.transportRX,
-            ))
-
-        return rus, rds, period
+        return usinfo
 
     def use_count(self):
         return self.provider.use_count()
+
+def Server_report(_p4p.Server serv, float norm=1.0):
+    """Return Server/Downstream bandwidth usage report
+
+    :returns: List of tuple
+    :rtype: [(usname, dsname, opTx, opRx, account, peer, trTx, trRx)]
+    """
+    cdef GWChanInfoCP info
+    cdef Report report
+    cdef double cnorm = norm
+    with nogil:
+        report = serv.serv.report()
+
+    dsinfo = []
+    for conn in report.connections:
+        peer = conn.peer.decode()
+        if <bool>conn.credentials:
+            account = conn.credentials.get().account.decode()
+        else:
+            account = ''
+
+        for chan in conn.channels:
+            info = dynamic_cast[GWChanInfoCP](chan.info.get())
+
+            if info:
+                usname = info.usname.decode()
+            else:
+                usname = ''
+
+            dsinfo.append((usname, chan.name.decode(), chan.tx/cnorm, chan.rx/cnorm, account, peer, conn.tx/cnorm, conn.rx/cnorm))
+
+    return dsinfo
 
 # Allow GC to find handler stored in GWProvider
 #   https://github.com/cython/cython/issues/2737
@@ -476,62 +339,39 @@ cdef int holder_traverse(PyObject* raw, visitproc visit, void* arg) except -1:
     cdef int ret = 0
     cdef Provider self = <Provider>raw
 
-    if self.provider.get().handle:
-        visit(self.provider.get().handle, arg)
+    if self.provider.get().handler:
+        visit(self.provider.get().handler, arg)
     return Provider_base_traverse(raw, visit, arg)
 
 Provider_base_traverse = (<PyTypeObject*>Provider).tp_traverse
 (<PyTypeObject*>Provider).tp_traverse = <traverseproc>holder_traverse
 
-# called from gwchannel.cpp
 cdef public:
-    void GWProvider_cleanup(GWProvider* provider) with gil:
-        Py_XDECREF(provider.handle)
-
-    int GWProvider_testChannel(GWProvider* provider, const char* name, const char* peer) with gil:
-        if not provider.handle:
+    int GWProvider_testChannel(object handler, const char* channel, const char* peer) with gil:
+        if not handler:
             return GWSearchBanHost
-        handle = <object>provider.handle
         try:
-            return handle.testChannel(name, peer.decode('UTF-8'))
+            return handler.testChannel(channel, peer.decode())
         except:
-            import traceback
-            traceback.print_exc()
             return GWSearchBanHost
 
-    shared_ptr[GWChan] GWProvider_makeChannel(GWProvider* provider, const string& name, const shared_ptr[ChannelRequester]& requester) with gil:
+    shared_ptr[GWChan] GWProvider_makeChannel(GWSource* src, const shared_ptr[ChannelControl]& op) with gil:
         cdef shared_ptr[GWChan] ret
-        cdef CreateOp op
-        cdef Channel result
+        cdef CreateOp create
+        if not src.handler:
+            return ret
+        try:
+            handler = <object>src.handler
 
-        if provider.handle:
-            op = CreateOp()
-            handle = <object>provider.handle
-            op.name = name.c_str()
-            op.requester = <weak_ptr[ChannelRequester]>requester
-            op.provider = <weak_ptr[GWProvider]>provider.shared_from_this()
-            op.info = requester.get().getPeerInfo()
+            create = CreateOp.__new__(CreateOp)
+            create.name = op.get().name().c_str()
+            create.op = <weak_ptr[ChannelControl]>op;
+            create.provider = <weak_ptr[GWSource]>src.shared_from_this()
 
-            try:
-                chan = handle.makeChannel(op)
-            except:
-                import traceback
-                traceback.print_exc()
-                chan = None
+            chan = handler.makeChannel(create)
 
             if chan is not None:
-                ret = (<Channel?>chan).channel.lock()
-
+                ret = (<Channel?>chan).channel
+        except:
+            pass # expect handler to catch and log
         return ret
-
-    void GWProvider_audit(GWProvider* provider, listxx[string]& audits) with gil:
-        if provider.handle:
-            handle = <object>provider.handle
-
-            for audit in audits:
-                try:
-                    handle.audit(audit)
-                except:
-                    import traceback
-                    traceback.print_exc()
-                    break

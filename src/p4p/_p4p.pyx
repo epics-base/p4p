@@ -282,7 +282,7 @@ cdef class _Value:
         return tostr(self.val, limit, True)
         
 
-cdef public:
+cdef public api:
     cdef bool pvxs_isValue(object v):
         return isinstance(v, _Value)
 

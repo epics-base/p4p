@@ -42,7 +42,7 @@ std::function<void(client::Result&&)> opHandler(PyObject *handler)
 
         auto ret(PyRef::allownull(PyObject_CallFunction(handler, "isO", (int)event, msg.c_str(), arg)));
         if(!ret.obj) {
-            PySys_WriteStderr("Unhandled Exception %s:%d", __FILE__, __LINE__);
+            PySys_WriteStderr("Unhandled Exception %s:%d\n", __FILE__, __LINE__);
             PyErr_Print();
             PyErr_Clear();
         }
@@ -64,7 +64,7 @@ std::function<Value (Value &&)> opBuilder(PyObject *handler)
 
         auto ret(PyRef::allownull(PyObject_CallFunction(handler, "O", arg.obj)));
         if(!ret.obj) {
-            PySys_WriteStderr("Unhandled Exception %s:%d", __FILE__, __LINE__);
+            PySys_WriteStderr("Unhandled Exception %s:%d\n", __FILE__, __LINE__);
             PyErr_Print();
             PyErr_Clear();
         } else if(Py_REFCNT(arg.obj)!=1) {
@@ -84,7 +84,7 @@ void opEvent(client::MonitorBuilder& builder, PyObject *handler)
 
         auto ret(PyRef::allownull(PyObject_CallFunction(handler, "")));
         if(!ret.obj) {
-            PySys_WriteStderr("Unhandled Exception %s:%d", __FILE__, __LINE__);
+            PySys_WriteStderr("Unhandled Exception %s:%d\n", __FILE__, __LINE__);
             PyErr_Print();
             PyErr_Clear();
         }

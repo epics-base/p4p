@@ -161,7 +161,8 @@ class GWStats(object):
     def __init__(self, statsdb=None):
         self.statsdb = statsdb
 
-        self.handlers = [] # GWHandler instances we derive stats from
+        self.handlers = [] # GWHandler instances
+        self.servers = [] # _p4p.Server instances
 
         self._pvs = {} # name suffix -> SharedPV
 
@@ -296,7 +297,7 @@ class GWStats(object):
         for handler in self.handlers:
             handler.sweep()
 
-    def update_stats(self):
+    def update_stats(self, norm):
         T0 = time.time()
         self.refsPV.post(listRefs())
 
@@ -311,10 +312,10 @@ class GWStats(object):
             ''')
 
             for handler in self.handlers:
-                usr, dsr, period = handler.provider.report()
+                C.executemany('INSERT INTO us VALUES (?,?,?,?,?,?)', handler.provider.report(norm))
 
-                C.executemany('INSERT INTO us VALUES (?,?,?,?,?,?)', usr)
-                C.executemany('INSERT INTO ds VALUES (?,?,?,?,?,?,?,?)', dsr)
+            for server in self.servers:
+                C.executemany('INSERT INTO ds VALUES (?,?,?,?,?,?,?,?)', _gw.Server_report(server, norm))
 
             C.executescript('''
                 INSERT INTO usbyname SELECT usname, sum(optx), sum(oprx) FROM us GROUP BY usname;
@@ -347,7 +348,9 @@ class GWStats(object):
                 statsSum[key] += stat[key]
         self.statsPV.post(statsType(statsSum))
 
-        self.cachePV.post(reduce(set.__or__, [handler.provider.cachePeek() for handler in self.handlers], set()))
+        cachepvs = list(reduce(set.__or__, [handler.provider.cachePeek() for handler in self.handlers], set()))
+        cachepvs.sort()
+        self.cachePV.post(cachepvs)
 
         T1 = time.time()
 
@@ -540,7 +543,7 @@ class App(object):
             if args.test_config:
                 clients[name] = None
             else:
-                clients[name] = _gw.Client(jcli.get('provider', u'pva'), client_conf)
+                clients[name] = Context(jcli.get('provider', u'pva'), client_conf)
 
         servers = self.servers = {}
 
@@ -585,6 +588,8 @@ class App(object):
         # but aren't otherwise accessed after startup.
         self.__lifesupport = []
 
+        gwclients = []
+
         for jsrv in jconf['servers']:
             name = jsrv['name']
 
@@ -594,7 +599,7 @@ class App(object):
                 'EPICS_PVAS_INTF_ADDR_LIST':jsrv.get('interface', '0.0.0.0'),
                 'EPICS_PVAS_BEACON_ADDR_LIST':jsrv.get('addrlist', ''),
                 'EPICS_PVAS_AUTO_BEACON_ADDR_LIST':{True:'YES', False:'NO'}[jsrv.get('autoaddrlist',True)],
-                # ignore list not fully implemented.  (aka. never populated or used)
+                'EPICS_PVAS_IGNORE_ADDR_LIST':jsrv.get('ignoreaddr', ''),
             }
             if 'bcastport' in jsrv:
                 server_conf['EPICS_PVAS_BROADCAST_PORT'] = str(jsrv['bcastport'])
@@ -611,9 +616,7 @@ class App(object):
 
             ctxt = None
             if aclient is not None and not args.test_config:
-                acli = clients[aclient]
-                with acli.installAs('gwcli.'+aclient):
-                    ctxt = Context('gwcli.'+aclient)
+                ctxt = clients[aclient]
 
             access = readnproc(args, jsrv.get('access', ''), Engine, ctxt=ctxt)
             pvlist = readnproc(args, jsrv.get('pvlist', ''), PVList)
@@ -625,15 +628,9 @@ class App(object):
             providers = [statusp]
             self.__lifesupport += [statusp]
 
-            # Fetch the list of ignored addresses for this server
-            ignored_addresses = jsrv.get('ignoreaddr') or []
-            if isinstance(ignored_addresses, (unicode, str)):
-                ignored_addresses = [ignored_addresses]
-
             try:
                 for client in jsrv['clients']:
                     pname = u'gws.%s.%s'%(name, client)
-                    providers.append(pname)
 
                     client = clients[client]
 
@@ -642,12 +639,10 @@ class App(object):
 
                     if not args.test_config:
                         handler.provider = _gw.Provider(pname, client, handler) # implied installProvider()
-
-                    # prevent client from searching on ignored addresses
-                    for addr in ignored_addresses:
-                        handler.provider.forceBan(host=addr.encode('utf-8'))
+                        providers.append((handler.provider, 10))
 
                     self.__lifesupport += [client]
+                    gwclients +=[handler.provider]
                     self.stats.handlers.append(handler)
 
                 if 'statusprefix' in jsrv:
@@ -671,6 +666,7 @@ class App(object):
                 except RuntimeError:
                     _log.exception("Unable to create server %s", pprint.pformat(server_conf))
                     sys.exit(1)
+                self.stats.servers.append(server._S)
                 # we're live now...
 
                 _log.info("Server effective config %s :\n%s", name, pprint.pformat(server.conf()))
@@ -687,30 +683,33 @@ class App(object):
         if args.test_config:
             return
 
+        # inform GW clients of GW server GUIDs to be ignored to prevent loops
+        _log.info('Setup GW clients to ignore GW servers')
+        gwservers = [serv._S for serv in servers.values()]
+        for gwclient in gwclients:
+            gwclient.ignoreByGUID(gwservers)
+
         # try to prevent client -> server loops.
         # servers and clients already running, so possible race...
 
-        if not args.no_ban_local:
-            _log.info('Banning local server interfaces to prevent GW client -> GW server loops')
-            for handler in self.stats.handlers:
-                for server in self.servers.values():
-                    server_conf = server.conf()
-                    handler.provider.forceBan(host=server_conf['EPICS_PVAS_INTF_ADDR_LIST'].split(':')[0].encode('utf-8'))
+        if args.no_ban_local:
+            _log.info('--no-ban-local is no longer needed, and is a no-op')
 
 
     def run(self):
+        # needs to be longer than twice the longest search interval
+        period = 30
         try:
             while True:
                 # periodic cleanup of channel cache
                 _log.debug("Channel Cache sweep")
                 try:
                     self.stats.sweep()
-                    self.stats.update_stats()
+                    self.stats.update_stats(period)
                 except:
                     _log.exception("Error during periodic sweep")
 
-                # needs to be longer than twice the longest search interval
-                self.sleep(60)
+                self.sleep(period)
         except KeyboardInterrupt:
             pass
         finally:

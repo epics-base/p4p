@@ -128,14 +128,14 @@ cdef extern from "<pvxs/client.h>" namespace "pvxs::client" nogil:
 
 
     # really netcommon.h, but can't include this directly
-    cdef cppclass UserInfo "pvxs::client::Report::UserInfo":
+    cdef cppclass ReportInfo "pvxs::client::ReportInfo":
         pass
 
     cdef cppclass Channel "pvxs::client::Report::Channel":
         string name
         size_t tx
         size_t rx
-        shared_ptr[const UserInfo] info
+        shared_ptr[const ReportInfo] info
 
     cdef cppclass Connection "pvxs::client::Report::Connection":
         string peer

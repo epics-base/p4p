@@ -21,12 +21,14 @@ _p4p_CPPFLAGS += -DPVXS_ENABLE_EXPERT_API
 
 _p4p_LIBS += pvxs
 
-#LOADABLE_LIBRARY_HOST += _gw
+LOADABLE_LIBRARY_HOST += _gw
+
+_gw_CPPFLAGS += -DPVXS_ENABLE_EXPERT_API
 
 _gw_SRCS += _gw.cpp
-_gw_SRCS += gwchannel.cpp
+_gw_SRCS += pvxs_gw.cpp
 
-_gw_LIBS += pvAccess pvData Com
+_gw_LIBS += pvxs
 
 PY += p4p/__init__.py
 PY += p4p/disect.py
@@ -90,18 +92,14 @@ pvagw: ../bootgw.py
 	$(PYTHON) $< -P "../../python$(PY_LD_VER)/$(T_A)" $@
 endif
 
-_gw.cpp: ../p4p/_gw.pyx
-	$(PYTHON) -m cython -o $@ --cplus $<
-#	$(PYTHON) -c 'from Cython.Compiler.Main import main; main(command_line = 1)' -o $@ --cplus $<
-_gw.h: _gw.cpp ../p4p/_gw.pyx
-
-gwchannel$(OBJ): _gw.h
-gwchannel$(DEP): _gw.h
-
 _p4p.cpp: ../p4p/_p4p.pyx $(wildcard ../p4p/pvxs/*.pxd)
 	$(PYTHON) -m cython -I ../p4p -o $@ --cplus $<
 
-#_p4p.h: _p4p.cpp ../p4p/_p4p.pyx
+_gw.cpp: ../p4p/_gw.pyx $(wildcard ../p4p/pvxs/*.pxd)
+	$(PYTHON) -m cython -I ../p4p -o $@ --cplus $<
+
+pvxs_gw$(OBJ): _gw.cpp
+pvxs_gw$(DEP): _gw.cpp
 
 ifneq (,$(T_A))
 nose.%:
