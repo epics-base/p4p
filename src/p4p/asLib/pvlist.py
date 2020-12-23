@@ -66,7 +66,7 @@ class PVList(object):
                     continue
 
                 parts = [part.strip() for part in line.split(None)]
-                pattern, cmd, parts = parts[0], parts[1], parts[2:]
+                pattern, cmd, parts = parts[0], parts[1].upper(), parts[2:]
 
                 # test compile
                 C = re.compile(pattern)
@@ -75,7 +75,7 @@ class PVList(object):
                     continue # ignore duplicate pattern
 
                 if cmd=='DENY':
-                    if len(parts) and parts[0]=='FROM':
+                    if len(parts) and parts[0].upper()=='FROM':
                         parts = parts[1:]
 
                     if parts:
