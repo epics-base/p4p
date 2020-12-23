@@ -1,11 +1,5 @@
 import logging
 import warnings
-
-try:
-    from Queue import Queue, Full, Empty
-except ImportError:
-    from queue import Queue, Full, Empty
-
 import platform
 import unittest
 import gc
@@ -18,12 +12,17 @@ try:
 except ImportError:
     from queue import Queue, Full, Empty
 
+try:
+    from io import StringIO
+except ImportError:
+    from cString import StringIO
+
 from .utils import RefTestCase, RegularNamedTemporaryFile as NamedTemporaryFile
 from ..server import Server, StaticProvider, removeProvider
 from ..server.thread import SharedPV, _defaultWorkQueue
 from ..client.thread import Context, Disconnected, TimeoutError, RemoteError
 from ..nt import NTScalar
-from ..gw import App, getargs
+from ..gw import App, main, getargs
 
 from .. import _gw
 
@@ -417,3 +416,111 @@ class TestHighLevel(RefTestCase):
             _log.debug("Wait for reconnect update")
             V = Q.get(timeout=self.timeout)
             self.assertEqual(V, 5)
+
+class TestTestServer(RefTestCase):
+    conf_template = '''
+{
+    "version":2,
+    "clients":[
+        {
+            "name":"aclient",
+            "provider":"pva",
+            "addrlist":"1.2.3.4",
+            "autoaddrlist":false,
+            "serverport":5085,
+            "bcastport":5086
+        }
+    ],
+    "servers":[
+        {
+            "name":"theserver",
+            "clients":["aclient"],
+            "interface":["4.3.2.1"],
+            "addrlist":"",
+            "autoaddrlist":false,
+            "serverport":5075,
+            "bcastport":5076,
+            "getholdoff":1.0,
+            "statusprefix":"sts:",
+            "access":"%(acf)s",
+            "pvlist":"%(pvlist)s",
+            "acf_client":"aclient"
+        }
+    ]
+}
+'''
+
+    def setUp(self):
+        RefTestCase.setUp(self)
+        self._files = []
+        self._log = StringIO()
+        self._handler = logging.StreamHandler(self._log)
+        logging.getLogger().addHandler(self._handler)
+
+    def tearDown(self):
+        [f.close() for f in self._files]
+        logging.getLogger().removeHandler(self._handler)
+        RefTestCase.tearDown(self)
+
+    def log(self):
+        self._handler.flush()
+        self._log.seek(0)
+        return self._log.read()
+
+    def write(self, content):
+        F = NamedTemporaryFile('w+')
+        self._files.append(F)
+        F.write(content)
+        F.flush()
+        return F.name
+
+    def test_ok(self):
+        acf = self.write('''
+    ASG(DEFAULT) {
+        RULE(1, WRITE)
+        RULE(1, UNCACHED)
+    }
+''')
+        pvlist = self.write('''
+.* ALLOW
+''')
+
+        conf = self.write(self.conf_template%{'acf':repr(acf)[1:-1], 'pvlist':repr(pvlist)[1:-1]})
+
+        main(['-T', conf])
+
+    def test_bad_acf(self):
+        acf = self.write('''
+    ASG(DEFAULT)
+        RULE(1, WRITE)
+        RULE(1, UNCACHED)
+    }
+''')
+        pvlist = self.write('''
+.* ALLOW
+''')
+
+        conf = self.write(self.conf_template%{'acf':repr(acf)[1:-1], 'pvlist':repr(pvlist)[1:-1]})
+
+        with self.assertRaises(SystemExit):
+            main(['-T', conf])
+
+        self.assertRegex(self.log(), r".*Syntax error.*RULE.*")
+
+    def test_bad_pvlist(self):
+        acf = self.write('''
+    ASG(DEFAULT) {
+        RULE(1, WRITE)
+        RULE(1, UNCACHED)
+    }
+''')
+        pvlist = self.write('''
+.* ALLW
+''')
+
+        conf = self.write(self.conf_template%{'acf':repr(acf)[1:-1], 'pvlist':repr(pvlist)[1:-1]})
+
+        with self.assertRaises(SystemExit):
+            main(['-T', conf])
+
+        self.assertRegex(self.log(), r".*Unknown command.*ALLW.*")

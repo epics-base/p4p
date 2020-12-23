@@ -110,8 +110,7 @@ class PVList(object):
                     raise RuntimeError("Unknown command: %s"%cmd)
 
             except Exception as e:
-                raise
-                #raise e.__class__("Error on line %s: %s"%(lineno, e))
+                raise e.__class__("Error on line %s: %s"%(lineno, e))
 
         deny_all = list(deny_all)
 

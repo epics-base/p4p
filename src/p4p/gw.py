@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 import os
 import logging
@@ -451,12 +453,17 @@ class GWHandler(object):
 def readnproc(args, fname, fn, **kws):
     try:
         if fname:
-            with open(os.path.join(os.path.dirname(args.config), fname), 'r') as F:
+            fullname = os.path.join(os.path.dirname(args.config), fname)
+            args._all_config_files.append(fullname)
+            with open(fullname, 'r') as F:
                 data = F.read()
         else:
             data = ''
         return fn(data, **kws)
     except IOError as e:
+        _log.error('In "%s" : %s', fname, e)
+        sys.exit(1)
+    except RuntimeError as e:
         _log.error('In "%s" : %s', fname, e)
         sys.exit(1)
     except ACFError as e:
@@ -485,11 +492,15 @@ def getargs():
     P.add_argument('--logging', help='Use logging config from file (JSON in dictConfig format)')
     P.add_argument('--debug', action='store_true',
                    help='Enable extremely verbose low level PVA debugging')
+    P.add_argument('-T', '--test-config', action='store_true',
+                   help='Read and validate configuration files, then exit w/o starting a gateway.'+
+                   '  Also prints the names of all configuration files read.')
     return P
 
 class App(object):
 
     def __init__(self, args):
+        args._all_config_files = [args.config]
         with open(args.config, 'r') as F:
             jconf = F.read()
         try:
@@ -498,12 +509,13 @@ class App(object):
             jconf = jload(jconf)
             jver = jconf.get('version', 0)
             if jver not in (1,2):
-                sys.stderr('Warning: config file version %d not in range [1, 2]\n'%jver)
+                _log.error('Warning: config file version %d not in range [1, 2]\n'%jver)
         except ValueError as e:
-            sys.stderr.write('Syntax Error: %s\n'%(e.args,))
+            _log.error.write('Syntax Error in %s: %s\n'%(args.config, e.args))
             sys.exit(1)
 
-        self.stats = GWStats(jconf.get('statsdb'))
+        if not args.test_config:
+            self.stats = GWStats(jconf.get('statsdb'))
 
         clients = {}
         statusprefix = None
@@ -525,7 +537,10 @@ class App(object):
                 client_conf['EPICS_PVA_SERVER_PORT'] = str(jcli['serverport'])
 
             _log.info("Client %s input config:\n%s", name, pprint.pformat(client_conf))
-            clients[name] = _gw.Client(jcli.get('provider', u'pva'), client_conf)
+            if args.test_config:
+                clients[name] = None
+            else:
+                clients[name] = _gw.Client(jcli.get('provider', u'pva'), client_conf)
 
         servers = self.servers = {}
 
@@ -595,13 +610,16 @@ class App(object):
                     aclient = jsrv['clients'][0]
 
             ctxt = None
-            if aclient is not None:
+            if aclient is not None and not args.test_config:
                 acli = clients[aclient]
                 with acli.installAs('gwcli.'+aclient):
                     ctxt = Context('gwcli.'+aclient)
 
             access = readnproc(args, jsrv.get('access', ''), Engine, ctxt=ctxt)
             pvlist = readnproc(args, jsrv.get('pvlist', ''), PVList)
+
+            if args.test_config:
+                continue
 
             statusp = StaticProvider(u'gwsts.'+name)
             providers = [statusp]
@@ -617,7 +635,8 @@ class App(object):
                     handler = GWHandler(access, pvlist, readOnly=jconf.get('readOnly', False))
                     handler.getholdoff = jsrv.get('getholdoff')
 
-                    handler.provider = _gw.Provider(pname, client, handler) # implied installProvider()
+                    if not args.test_config:
+                        handler.provider = _gw.Provider(pname, client, handler) # implied installProvider()
 
                     self.__lifesupport += [client]
                     self.stats.handlers.append(handler)
@@ -655,6 +674,9 @@ class App(object):
 
             # keep it all from being GC'd
             servers[name] = server
+
+        if args.test_config:
+            return
 
         # try to prevent client -> server loops.
         # servers and clients already running, so possible race...
@@ -705,7 +727,15 @@ def main(args=None):
         logging.basicConfig(level=args.verbose)
     if args.debug:
         set_debug(logging.DEBUG)
-    App(args).run()
+
+    app = App(args)
+    if args.test_config:
+        _log.info('Configuration valid')
+        for fname in args._all_config_files:
+            print(fname)
+    else:
+        app.run()
+
     return 0
 
 if __name__=='__main__':

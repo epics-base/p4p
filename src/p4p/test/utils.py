@@ -138,6 +138,12 @@ class RefTestCase(RefTestMixin, unittest.TestCase):
     def tearDown(self):
         super(RefTestCase, self).tearDown()
 
+    if not hasattr(unittest.TestCase, 'assertRegex'):
+        def assertRegex(self, text, regex):
+            import re
+            self.assertTrue(re.search(regex, text),
+                            """Regex didn't match: %r not found in %r"""%(regex, text))
+
 
 def gctrace(obj, maxdepth=8):
     # depth first traversal
