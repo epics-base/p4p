@@ -625,6 +625,11 @@ class App(object):
             providers = [statusp]
             self.__lifesupport += [statusp]
 
+            # Fetch the list of ignored addresses for this server
+            ignored_addresses = jsrv.get('ignoreaddr') or []
+            if isinstance(ignored_addresses, (unicode, str)):
+                ignored_addresses = [ignored_addresses]
+
             try:
                 for client in jsrv['clients']:
                     pname = u'gws.%s.%s'%(name, client)
@@ -637,6 +642,10 @@ class App(object):
 
                     if not args.test_config:
                         handler.provider = _gw.Provider(pname, client, handler) # implied installProvider()
+
+                    # prevent client from searching on ignored addresses
+                    for addr in ignored_addresses:
+                        handler.provider.forceBan(host=addr.encode('utf-8'))
 
                     self.__lifesupport += [client]
                     self.stats.handlers.append(handler)
