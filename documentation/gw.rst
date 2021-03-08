@@ -182,6 +182,7 @@ A full list of known keys for configuration scheme version 2. ::
                 "clients":["theclient"],
                 "interface":["..."],
                 "addrlist":"",
+                "ignoreaddr":["..."],
                 "autoaddrlist":false,
                 "serverport":5075,
                 "bcastport":5076,
@@ -237,6 +238,9 @@ Keys
 
 **servers[].addrlist** (default: "")
     List of broadcast and unicast addresses to which beacon messages will be sent
+
+**servers[].ignoreaddr** (default: "")
+    List of address to add into the banned list to explicit ignore hosts.
 
 **servers[].autoaddrlist** (default: true)
     Whether to automatically populate *addrlist* with **all** local interface broadcast addresses.
