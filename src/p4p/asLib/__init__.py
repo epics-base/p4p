@@ -15,12 +15,14 @@ from ..client.thread import Context, LazyRepr, Disconnected
 
 _log = logging.getLogger(__name__)
 
+NONE = 0
 READ = 1
 PUT = 2
 RPC = 4
 UNCACHED = 8
 WRITE = READ | PUT | RPC
 actionmask = {
+    'NONE': NONE,
     'READ':READ,
     'WRITE':WRITE,
     'PUT':PUT,
