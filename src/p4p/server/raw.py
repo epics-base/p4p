@@ -222,24 +222,28 @@ class SharedPV(_SharedPV):
     def onFirstConnect(self):
         def decorate(fn):
             self._handler.onFirstConnect = fn
+            return fn
         return decorate
 
     @property
     def onLastDisconnect(self):
         def decorate(fn):
             self._handler.onLastDisconnect = fn
+            return fn
         return decorate
 
     @property
     def put(self):
         def decorate(fn):
             self._handler.put = fn
+            return fn
         return decorate
 
     @property
     def rpc(self):
         def decorate(fn):
             self._handler.rpc = fn
+            return fn
         return decorate
 
     def __repr__(self):
