@@ -12,6 +12,7 @@ from .. import nt
 from .utils import RefTestCase
 
 import numpy
+from numpy.testing import assert_array_equal as assert_exact_aequal
 from numpy.testing import assert_array_almost_equal as assert_aequal
 
 _log = logging.getLogger(__name__)
@@ -113,7 +114,7 @@ class TestTable(RefTestCase):
         ])
 
         assert_aequal(V.value.a, [5, 6])
-        self.assertEqual(V.value.b, ['one', 'two'])
+        assert_exact_aequal(V.value.b, ['one', 'two'])
 
     def test_unwrap(self):
         T = nt.NTTable.buildType(columns=[
@@ -128,13 +129,58 @@ class TestTable(RefTestCase):
             },
         })
 
-        P = list(nt.NTTable.unwrap(V))
+        P = nt.NTTable.unwrap(V)
+        self.assertTupleEqual(P.shape, (2,))
+        assert_aequal(P['a'], [5,6])
+        self.assertListEqual(list(P['b']), ['one','two'])
 
-        self.assertListEqual(P, [
-            OrderedDict([('a', 5), ('b', u'one')]),
-            OrderedDict([('a', 6), ('b', u'two')]),
+    def test_sqlite(self):
+        import sqlite3
+
+        # add converters or array scalars will be stored as bytes
+        sqlite3.register_adapter(numpy.int32, int)
+        sqlite3.register_adapter(numpy.int64, int)
+
+        T = nt.NTTable([
+            ('a', 'i'),
+            ('b', 's'),
         ])
 
+        with sqlite3.connect(':memory:') as C:
+            C.row_factory = sqlite3.Row
+
+            C.execute('CREATE TABLE x(a INTEGER,b STRING)')
+
+            V = T.wrap(C.execute('SELECT * from x'))
+
+            assert_aequal(V.value.a, [])
+            assert_aequal(V.value.b, [])
+
+            C.executemany('INSERT INTO x VALUES (?,?)', ((1,'x'),(2,'y'),(3,'z')))
+
+            V = T.wrap(C.execute('SELECT * from x'))
+
+            assert_aequal(V.value.a, [1,2,3])
+            assert_exact_aequal(V.value.b, ['x','y','z'])
+
+            C.execute('DELETE FROM x')
+
+            V = T.type({
+                'value.a': [4,5,6],
+                'value.b': ['x','y','z'],
+            })
+
+            R = T.unwrap(V)
+            assert_aequal(R['a'], [4,5,6])
+            assert_exact_aequal(R['b'], ['x','y','z'])
+
+            # ndarray iterates by row, slice can be mapped by column name
+            C.executemany('INSERT INTO x VALUES (?,?)', R)
+
+            V = T.wrap(C.execute('SELECT * from x'))
+
+            assert_aequal(V.value.a, [4,5,6])
+            assert_exact_aequal(V.value.b, ['x','y','z'])
 
 class TestURI(RefTestCase):
 
