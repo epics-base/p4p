@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import logging
 import warnings
 import sys
+from functools import partial
 _log = logging.getLogger(__name__)
 
 import cothread
@@ -28,6 +29,15 @@ __all__ = [
 if sys.version_info >= (3, 0):
     unicode = str
 
+def cb2event(done, value):
+    if isinstance(value, Cancelled):
+        pass # can ignore cothreads can't be preempted
+    elif done:
+        _log.warn('Internal logic error: spurious second callback')
+    elif isinstance(value, Exception):
+        done.SignalException(value)
+    else:
+        done.Signal(value)
 
 class Context(raw.Context):
 
@@ -67,14 +77,7 @@ class Context(raw.Context):
     def _get_one(self, name, request=None, timeout=5.0, throw=True):
         done = cothread.Event(auto_reset=False)
 
-        def cb(value):
-            assert not done, value # spurious second callback
-            if isinstance(value, Exception):
-                done.SignalException(value)
-            else:
-                done.Signal(value)
-
-        cb = partial(cothread.Callback, cb)
+        cb = partial(cothread.Callback, partial(cb2event, done))
 
         op = super(Context, self).get(name, cb, request=request)
 
@@ -148,14 +151,7 @@ class Context(raw.Context):
     def _put_one(self, name, value, request=None, timeout=5.0, get=True, throw=True):
         done = cothread.Event(auto_reset=False)
 
-        def cb(value):
-            assert not done, value
-            if isinstance(value, Exception):
-                done.SignalException(value)
-            else:
-                done.Signal(value)
-
-        cb = partial(cothread.Callback, cb)
+        cb = partial(cothread.Callback, partial(cb2event, done))
 
         op = super(Context, self).put(name, cb, builder=value, request=request, get=get)
 
@@ -196,14 +192,7 @@ class Context(raw.Context):
         """
         done = cothread.Event(auto_reset=False)
 
-        def cb(value):
-            assert not done, value
-            if isinstance(value, Exception):
-                done.SignalException(value)
-            else:
-                done.Signal(value)
-
-        cb = partial(cothread.Callback, cb)
+        cb = partial(cothread.Callback, partial(cb2event, done))
 
         op = super(Context, self).rpc(name, cb, value, request=request)
 
