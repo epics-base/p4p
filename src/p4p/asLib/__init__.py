@@ -13,6 +13,8 @@ from .yacc import parse, ACFError
 from .. import Value
 from ..client.thread import Context, LazyRepr, Disconnected
 
+from ..util import readnproc
+
 _log = logging.getLogger(__name__)
 
 NONE = 0
@@ -43,7 +45,10 @@ class Engine(object):
         RULE(1, UNCACHED)
     }
     """
-    def __init__(self, acf = None, ctxt = None):
+
+    def __init__(self, args, acf = None, ctxt = None):
+        self.args = args
+        self.acf_file = acf
         self._lock = Lock()
         # {Channel:(group, user, host, level)}
         self._anodes = WeakKeyDictionary()
@@ -51,7 +56,7 @@ class Engine(object):
         self._asg = {}
         self._subscriptions = {}
 
-        self.parse(acf or self.defaultACF)
+        self.update()
 
     def report(self):
         A, B, C, D = [], [], [], []
@@ -67,6 +72,12 @@ class Engine(object):
             'value.value':C,
             'value.connected':D,
         }
+
+    def update(self):
+        if self.acf_file is None:
+            self.parse(self.defaultACF)
+        else:
+            readnproc(self.args, self.acf_file, self.parse)
 
     def parse(self, acf):
         ast = parse(acf)
@@ -237,7 +248,6 @@ class Engine(object):
         # Default to restrictive.  Used in case of error
         perm = 0
         _log.debug('(re)create %s, %s, %s, %s, %s', channel, group, user, host, level)
-
         with self._lock:
 
             uags = self._uag.get(user, set())

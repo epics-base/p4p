@@ -1,4 +1,6 @@
 
+import sys
+import os
 import logging
 _log = logging.getLogger(__name__)
 
@@ -10,10 +12,29 @@ except ImportError:
     from queue import Queue, Full, Empty
 from threading import Thread, Event
 
+
 __all__ = [
+    'readnproc',
     'WorkQueue',
 ]
 
+def readnproc(args, fname, fn, **kws):
+    """ Read the configuration file and call the callback function with the read data.
+    """
+    try:
+        if fname:
+            args._all_config_files.append(fname)
+            with open(fname, 'r') as F:
+                data = F.read()
+        else:
+            data = ''
+        return fn(data, **kws)
+    except IOError as e:
+        _log.error('In "%s" : %s', fname, e)
+        sys.exit(1)
+    except RuntimeError as e:
+        _log.error('In "%s" : %s', fname, e)
+        sys.exit(1)
 
 class WorkQueue(object):
 

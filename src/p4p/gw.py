@@ -450,6 +450,13 @@ class GWHandler(object):
     def asDebug(self, op):
         return asDebugType(self.acf.report())
 
+    def asNew(self,pv, op,args):
+        if op.value():
+            self.provider.clearBan()
+            self.acf.update()
+            self.pvlist.update()
+        pv.post(0)
+
 def readnproc(args, fname, fn, **kws):
     try:
         if fname:
@@ -615,8 +622,17 @@ class App(object):
                 with acli.installAs('gwcli.'+aclient):
                     ctxt = Context('gwcli.'+aclient)
 
-            access = readnproc(args, jsrv.get('access', ''), Engine, ctxt=ctxt)
-            pvlist = readnproc(args, jsrv.get('pvlist', ''), PVList)
+            if jsrv.get('access'):
+                access_file = os.path.join(os.path.dirname(args.config), jsrv.get('access'))
+            else:
+                access_file = None
+            access = Engine(args, access_file, ctxt=ctxt)
+
+            if jsrv.get('pvlist'):
+                pvlist_file = os.path.join(os.path.dirname(args.config), jsrv.get('pvlist'))
+            else:
+                pvlist_file = None
+            pvlist = PVList(args, pvlist_file)
 
             if args.test_config:
                 continue
@@ -660,6 +676,14 @@ class App(object):
                     handler.asDebugPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
                     handler.asDebugPV.rpc(handler.asDebug) # TODO this is a deceptive way to assign
                     statusp.add(jsrv['statusprefix']+'asDebug', handler.asDebugPV)
+
+                    # Create PV flag to reload access security
+                    handler.newAsPV = SharedPV(nt=NTScalar('i'), initial=0)
+                    @handler.newAsPV.put
+                    def doPut(pv, op):
+                        handler.asNew(pv, op, args)
+                        op.done()
+                    statusp.add(jsrv['statusprefix']+'asNew', handler.newAsPV)
 
                     # prevent client from searching for our status PVs
                     for spv in statusp.keys():
@@ -720,7 +744,10 @@ class App(object):
     def sleep(dly):
         time.sleep(dly)
 
-def main(args=None):
+args = None
+
+def main():
+    global args
     args = getargs().parse_args(args)
     if args.logging is not None:
         with open(args.logging, 'r') as F:

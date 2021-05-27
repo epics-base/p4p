@@ -1,13 +1,16 @@
 """
 See https://github.com/epics-extensions/ca-gateway/blob/master/docs/GATEWAY.pvlist
 """
-
+import os
+import sys
 import socket
 import logging
 import re
 from collections import defaultdict, OrderedDict
 
 _log = logging.getLogger(__name__)
+
+from ..util import readnproc
 
 def _sub_add(expr, ngroups, adjust=0):
     '''Adjust RE substitution offsets
@@ -29,7 +32,39 @@ class PVList(object):
     >>> with open(fname, 'r') as F:
             pvl = PVList(F.read())
     '''
-    def __init__(self, pvl):
+
+    defaultPVL = """
+    .* ALLOW
+    """
+
+    def __init__(self, args, pvl_file):
+        """
+
+        :param str pvl_file: Path to the Pvlist file.
+        """
+        self.args = args
+        self.pvl_file = pvl_file
+
+        self._allow_groups = []
+        self._deny_from = {}
+        self._deny_all = None
+        self._allow_actions = []
+        self._allow_pat = None
+
+        self.update()
+
+    def update(self):
+        if self.pvl_file is None:
+            self.parse(self.defaultPVL)
+        else:
+            readnproc(self.args, self.pvl_file, self.parse)
+
+
+    def parse(self, pvl):
+        """
+        :param str pvl: Pvlist file content.
+        """
+
         allowfirst = False
 
         # {'host':[RE, ...]}
@@ -41,7 +76,7 @@ class PVList(object):
         ngroups = 1 # one indexed
         self._allow_groups = []
 
-        lines = (pvl or '.* ALLOW').splitlines()
+        lines = pvl.splitlines()
         # ALLOW entries are given in order of increasing precedence.
         # The last match in the file is used.
         lines.reverse()
