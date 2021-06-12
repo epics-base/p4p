@@ -5,6 +5,7 @@ import atexit
 try:
     # give a chance to adjust DSO loader path
     import epicscorelibs.path
+    import pvxslib.path
 except ImportError:
     pass
 

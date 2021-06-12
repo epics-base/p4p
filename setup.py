@@ -13,6 +13,8 @@ import epicscorelibs.path
 import epicscorelibs.version
 from epicscorelibs.config import get_config_var
 
+import pvxslibs.path
+
 # the following line is matched from cibuild.py
 package_version = '3.5.4'
 
@@ -33,44 +35,35 @@ elif platform.system()=='Darwin':
     #   and you may need to use -headerpad or -headerpad_max_install_names)
     ldflags += ['-Wl,-headerpad_max_install_names']
 
-ext = Extension(
-    name='p4p._p4p',
-    sources = [
-        "src/p4p_top.cpp",
-        "src/p4p_type.cpp",
-        "src/p4p_value.cpp",
-        "src/p4p_array.cpp",
-
-        "src/p4p_server.cpp",
-        "src/p4p_server_provider.cpp",
-        "src/p4p_server_sharedpv.cpp",
-
-        "src/p4p_client.cpp",
-    ],
-    include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path],
-    define_macros = get_config_var('CPPFLAGS'),
-    extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
-    extra_link_args = get_config_var('LDFLAGS')+ldflags,
-    dsos = ['epicscorelibs.lib.pvAccess',
-            'epicscorelibs.lib.pvData',
-            'epicscorelibs.lib.ca',
-            'epicscorelibs.lib.Com'
-    ],
-    libraries = get_config_var('LDADD'),
-)
-
-gwext = cythonize([
+exts = cythonize([
     Extension(
-        name='p4p._gw',
-        sources=['src/p4p/_gw.pyx', 'src/gwchannel.cpp'],
-        include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, 'src', 'src/p4p'],
-        define_macros = get_config_var('CPPFLAGS'),
+        name='p4p._p4p',
+        sources = [
+            "src/p4p/_p4p.pyx",
+            "src/pvxs_client.cpp",
+            "src/pvxs_sharedpv.cpp",
+            "src/pvxs_source.cpp",
+            "src/pvxs_type.cpp",
+            "src/pvxs_value.cpp",
+        ],
+        include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
+        define_macros = get_config_var('CPPFLAGS') + [('PY_ARRAY_UNIQUE_SYMBOL', 'PVXS_PyArray_API'), ('PVXS_ENABLE_EXPERT_API', None)],
         extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
         extra_link_args = get_config_var('LDFLAGS')+ldflags,
-        dsos = ['epicscorelibs.lib.pvAccess',
-            'epicscorelibs.lib.pvData',
-            'epicscorelibs.lib.ca',
-            'epicscorelibs.lib.Com'
+        dsos = ['pvxslibs.lib.pvxs',
+                'epicscorelibs.lib.Com'
+        ],
+        libraries = get_config_var('LDADD'),
+    ),
+    Extension(
+        name='p4p._gw',
+        sources=['src/p4p/_gw.pyx', 'src/pvxs_gw.cpp'],
+        include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
+        define_macros = get_config_var('CPPFLAGS') + [('PVXS_ENABLE_EXPERT_API', None)],
+        extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
+        extra_link_args = get_config_var('LDFLAGS')+ldflags,
+        dsos = ['pvxslibs.lib.pvxs',
+                'epicscorelibs.lib.Com'
         ],
         libraries = get_config_var('LDADD'),
     )
@@ -110,7 +103,7 @@ setup(
         'p4p.asLib',
     ],
     package_dir={'':'src'},
-    ext_modules = [ext]+gwext,
+    ext_modules = exts,
     install_requires = [
         epicscorelibs.version.abi_requires(),
         # assume ABI forward compatibility as indicated by

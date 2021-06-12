@@ -10,7 +10,8 @@
 /python?.*/
 envPaths
 *configure/*.local
-!*configure/ExampleRELEASE.local
+_*.h
+_*.cpp
 O.*/
 QtC-*
 *.so
