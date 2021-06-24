@@ -41,27 +41,6 @@ cat $CURDIR/configure/RELEASE.local
 
 EPICS_HOST_ARCH=`sh epics-base/startup/EpicsHostArch`
 
-case "$CMPLR" in
-clang)
-  echo "Host compiler is clang"
-  cat << EOF >> epics-base/configure/os/CONFIG_SITE.Common.$EPICS_HOST_ARCH
-GNU         = NO
-CMPLR_CLASS = clang
-CC          = clang
-CCC         = clang++
-EOF
-
-  # hack
-  sed -i -e 's/CMPLR_CLASS = gcc/CMPLR_CLASS = clang/' epics-base/configure/CONFIG.gnuCommon
-
-  clang --version
-  ;;
-*)
-  echo "Host compiler is default"
-  gcc --version
-  ;;
-esac
-
 make -j2 -C epics-base "$@"
 [ "$BRPVD" ] && make -j2 -C pvDataCPP "$@"
 [ "$BRPVA" ] && make -j2 -C pvAccessCPP "$@"

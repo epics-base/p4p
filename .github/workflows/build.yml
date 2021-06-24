@@ -4,10 +4,10 @@ on: [push, pull_request]
 
 jobs:
   build:
-    name: ${{ matrix.os }}/${{ matrix.python }}/${{ matrix.pyver }}/${{ matrix.piparch }}/${{ matrix.profile }}
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     env:
-      # used by cibuild.py
+      # used by .ci/build-deps.sh for Make builds
       BRBASE: ${{ matrix.base }}
       BRPVD: ${{ matrix.pvd }}
       BRPVA: ${{ matrix.pva }}
@@ -16,110 +16,208 @@ jobs:
       matrix:
         include:
           # Linux Makefile builds
-          - os: ubuntu-latest
+          - name: Make Linux py2.7 e7.0
+            os: ubuntu-latest
             python: "2.7"
             base: "7.0"
             pvd: "master"
             pva: "master"
             profile: deb9
 
-          - os: ubuntu-latest
+          - name: Make Linux py2.7 e3.15
+            os: ubuntu-latest
             python: "2.7"
             base: "3.15"
             pvd: "master"
             pva: "master"
             profile: deb8
 
-          # Linux py builds x64
-          - os: ubuntu-latest
-            pyver: cp27-cp27m
-            piparch: manylinux1_x86_64
+          # Check build from .tar
+          - name: Source
+            os: ubuntu-latest
+            python: "3.7"
             source: true
 
-          - os: ubuntu-latest
+          # Linux py builds x64
+          - name: linux 2.7 amd64
+            os: ubuntu-latest
+            pyver: cp27-cp27m
+            piparch: manylinux1_x86_64
+            numpy: numpy==1.8.2
+            cython: Cython==0.25.2
+            source: true
+
+          - name: linux 2.7u amd64
+            os: ubuntu-latest
             pyver: cp27-cp27mu
             piparch: manylinux1_x86_64
+            numpy: numpy==1.8.2
+            cython: Cython==0.25.2
 
-          - os: ubuntu-latest
+          - name: linux 3.5 amd64
+            os: ubuntu-latest
             pyver: cp35-cp35m
             piparch: manylinux1_x86_64
+            numpy: numpy==1.12.1
+            cython: Cython==0.25.2
 
-          - os: ubuntu-latest
+          - name: linux 3.6 amd64
+            os: ubuntu-latest
             pyver: cp36-cp36m
             piparch: manylinux1_x86_64
+            numpy: numpy==1.12.1
+            cython: Cython==0.25.2
 
-          - os: ubuntu-latest
+          - name: linux 3.7 amd64
+            os: ubuntu-latest
             pyver: cp37-cp37m
             piparch: manylinux1_x86_64
+            numpy: numpy==1.16.2
+            cython: Cython==0.29.2
 
-          - os: ubuntu-latest
+          - name: linux 3.8 amd64
+            os: ubuntu-latest
             pyver: cp38-cp38
             piparch: manylinux1_x86_64
+            numpy: numpy==1.17.3
+            cython: Cython==0.29.2
+
+          - name: linux 3.9 amd64
+            os: ubuntu-latest
+            pyver: cp39-cp39
+            piparch: manylinux2010_x86_64
+            numpy: numpy==1.19.3
+            cython: Cython==0.29.23
 
           # Linux py builds x64
-          - os: ubuntu-latest
+          - name: linux 2.7 i686
+            os: ubuntu-latest
             pyver: cp27-cp27m
             piparch: manylinux1_i686
+            numpy: numpy==1.11.1
+            cython: Cython==0.25.2
             pre: linux32
 
-          - os: ubuntu-latest
+          - name: linux 2.7u i686
+            os: ubuntu-latest
             pyver: cp27-cp27mu
             piparch: manylinux1_i686
+            numpy: numpy==1.11.1
+            cython: Cython==0.25.2
             pre: linux32
 
-          - os: ubuntu-latest
+          - name: linux 3.5 i686
+            os: ubuntu-latest
             pyver: cp35-cp35m
             piparch: manylinux1_i686
+            numpy: numpy==1.12.1
+            cython: Cython==0.25.2
             pre: linux32
 
-          - os: ubuntu-latest
+          - name: linux 3.6 i686
+            os: ubuntu-latest
             pyver: cp36-cp36m
             piparch: manylinux1_i686
+            numpy: numpy==1.12.1
+            cython: Cython==0.25.2
             pre: linux32
 
-          - os: ubuntu-latest
+          - name: linux 3.7 i686
+            os: ubuntu-latest
             pyver: cp37-cp37m
             piparch: manylinux1_i686
+            numpy: numpy==1.16.2
+            cython: Cython==0.29.2
             pre: linux32
 
-          - os: ubuntu-latest
+          - name: linux 3.8 i686
+            os: ubuntu-latest
             pyver: cp38-cp38
             piparch: manylinux1_i686
+            numpy: numpy==1.17.3
+            cython: Cython==0.29.2
+            pre: linux32
+
+          - name: linux 3.9 i686
+            os: ubuntu-latest
+            pyver: cp39-cp39
+            piparch: manylinux2010_i686
+            numpy: numpy==1.19.3
+            cython: Cython==0.29.23
             pre: linux32
 
           # OSX py builds
-          - os: macos-latest
+          - name: osx 2.7 intel
+            os: macos-latest
             python: "2.7"
             piparch: macosx_10_9_intel
+            numpy: numpy==1.8.2
+            cython: Cython==0.25.2
 
-          - os: macos-latest
+          - name: osx 3.6 intel
+            os: macos-latest
             python: "3.6"
             piparch: macosx_10_9_intel
+            numpy: numpy==1.11.3
+            cython: Cython==0.25.2
 
-          - os: macos-latest
+          - name: osx 3.7 intel
+            os: macos-latest
             python: "3.7"
             piparch: macosx_10_9_intel
+            numpy: numpy==1.16.2
+            cython: Cython==0.29.2
 
-          - os: macos-latest
+          - name: osx 3.8 intel
+            os: macos-latest
             python: "3.8"
             piparch: macosx_10_9_intel
+            numpy: numpy==1.17.3
+            cython: Cython==0.29.2
+
+          - name: osx 3.9 intel
+            os: macos-latest
+            python: "3.9"
+            piparch: macosx_10_9_intel
+            numpy: numpy==1.19.3
+            cython: Cython==0.29.23
 
           # Windows py builds
-          - os: windows-latest
+
+          ## missing Microsoft Visual C++ 9.0
+          #- os: windows-latest
+          #  python: "2.7"
+          #  piparch: win_amd64
+
+          - name: win64 3.5
+            os: windows-latest
             python: "3.5"
             piparch: win_amd64
+            profile: latest
 
-          - os: windows-latest
+          - name: win64 3.6
+            os: windows-latest
             python: "3.6"
             piparch: win_amd64
+            profile: latest
 
-          - os: windows-latest
+          - name: win64 3.7
+            os: windows-latest
             python: "3.7"
             piparch: win_amd64
+            profile: latest
 
-          - os: windows-latest
+          - name: win64 3.8
+            os: windows-latest
             python: "3.8"
             piparch: win_amd64
+            profile: latest
+
+          - name: win64 3.9
+            os: windows-latest
+            python: "3.9"
+            piparch: win_amd64
+            profile: latest
 
     steps:
       - uses: actions/checkout@v2
@@ -138,13 +236,17 @@ jobs:
         run: |
           python -m pip install twine
           python -m twine -h
+          python ./gha-set-pre.py
 
-      - name: Native Info
-        if: matrix.python
+      - name: Native Prep/Info
         run: |
+          python -m pip install --upgrade pip
+          python -m pip install setuptools wheel twine
           which python
           python --version
           python -m pip --version
+          python -m twine -h
+          python ./gha-set-pre.py
 
       - name: apt-get install
         if: runner.os=='Linux' && matrix.base
@@ -152,29 +254,90 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install libreadline6-dev libncurses5-dev perl
 
+      - name: Native Deps
+        if: true && !matrix.pyver
+        shell: bash
+        run: |
+          if [ "${{ matrix.profile }}" ]
+          then
+            python -m pip install -r requirements-${{ matrix.profile }}.txt
+          else
+            python -m pip install --only-binary numpy nose ply cothread ${{ matrix.numpy }} ${{ matrix.cython }}
+          fi
+
+      - name: PY Source
+        shell: bash
+        run: |
+          echo "PRE=$PRE"
+          python -m pip install setuptools wheel nose
+          python -m pip install $PRE setuptools-dso epicscorelibs
+          python setup.py sdist --formats=gztar
+          ls dist/*
+
       - name: Native Make build
         if: matrix.base
         run: |
-          python -m pip --version
-          python -m pip install -r requirements-${{ matrix.profile }}.txt
-          python -m pip install cothread
           ./.ci/build-deps.sh -j2
           make PYTHON=`which python` -j2
           make PYTHON=`which python` nose
 
-      - name: Native PY build
-        if: runner.os!='Linux' && !matrix.base
+      - name: PEP517 Build
+        if: matrix.python && !matrix.base && matrix.source
         run: |
-          python cibuild.py prepare build ${{ matrix.piparch }}
+          python -m pip wheel -v -w dist $PRE dist/*.tar.*
+
+      - name: Native PY build
+        if: matrix.python && !matrix.base && !matrix.source
+        shell: bash
+        run: |
+          python -m pip wheel -v -w dist --no-index --no-deps \
+           --no-build-isolation --no-use-pep517 \
+           --build-option --plat-name=${{ matrix.piparch }} \
+           $PRE \
+           dist/*.tar.*
+
+          cd dist
+          python -m pip install p4p*.whl
+          python -m nose -v p4p
+
 
       - name: Docker PY build
-        if: runner.os=='Linux' && !matrix.base
+        if: matrix.pyver && !matrix.base && !matrix.source
         run: |
-          docker pull quay.io/pypa/${{ matrix.piparch }}
-          docker run --rm -v `pwd`:/io quay.io/pypa/${{ matrix.piparch }} \
-           ${{ matrix.pre }} "/opt/python/${{ matrix.pyver }}/bin/python" /io/cibuild.py \
-            docker prepare build ${{ matrix.piparch }}
+          # can't use GHA native docker support since GHA magic binaries need .so absent from old manylinux images :(
+          cat <<EOF > runit.sh
+          #!/bin/sh
+          set -e -x
+          cd /io
+          [ -d dist ]
+          ls dist/*
+          export PATH="/opt/python/${{ matrix.pyver }}/bin:\$PATH"
+          which python
+          python -m pip install -U pip
+          python -m pip install setuptools wheel nose
+          python -m pip install $PRE setuptools-dso epicscorelibs
+          if [ "${{ matrix.profile }}" ]
+          then
+            python -m pip install -r requirements-${{ matrix.profile }}.txt
+          else
+            python -m pip install --only-binary numpy nose ply cothread ${{ matrix.numpy }} ${{ matrix.cython }}
+          fi
 
+          python -m pip wheel -v -w dist --no-index --no-deps \
+           --no-build-isolation --no-use-pep517 \
+           --build-option --plat-name=${{ matrix.piparch }} \
+           $PRE \
+           dist/*.tar.*
+
+          cd dist
+          python -m pip install p4p*.whl
+          python -m nose -v p4p
+
+          EOF
+          cat runit.sh
+          chmod +x runit.sh
+          docker pull quay.io/pypa/${{ matrix.piparch }}
+          docker run --rm -v `pwd`:/io quay.io/pypa/${{ matrix.piparch }} ${{ matrix.pre }} /io/runit.sh
 
       - name: List Artifacts
         if: true && !matrix.base
@@ -193,7 +356,7 @@ jobs:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          python -m twine upload --skip-existing dist/*.whl
+          python -m twine upload --skip-existing dist/p4p*.whl
 
       - name: Upload source
         if: github.event_name=='push' && github.ref=='refs/heads/master' && matrix.source && !matrix.base
@@ -201,4 +364,4 @@ jobs:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          python -m twine upload --skip-existing dist/*.tar.*
+          python -m twine upload --skip-existing dist/p4p*.tar.*
