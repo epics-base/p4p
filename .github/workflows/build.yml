@@ -45,7 +45,6 @@ jobs:
             piparch: manylinux1_x86_64
             numpy: numpy==1.8.2
             cython: Cython==0.25.2
-            source: true
 
           - name: linux 2.7u amd64
             os: ubuntu-latest
@@ -351,7 +350,7 @@ jobs:
           path: dist/*
 
       - name: Upload wheels
-        if: github.event_name=='push' && github.ref=='refs/heads/master' && !matrix.base
+        if: github.event_name=='push' && github.ref=='refs/heads/master' && !matrix.base && !matrix.source
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
