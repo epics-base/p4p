@@ -89,7 +89,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: Implementation :: CPython',
-        'License :: Freely Distributable',
+        'License :: OSI Approved :: BSD License',
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries',
