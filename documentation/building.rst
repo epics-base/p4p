@@ -10,7 +10,10 @@ The P4P modules requires:
 
 * Python 2.7 or >=3.4
 * numpy >=1.6
-* nosetests (to run unittests)
+* Cython >=0.25.2
+* nosetests (Optional, recommended to run unittests)
+
+and
 
 * EPICS >= 7.0.2
 
@@ -26,19 +29,22 @@ As an EPICS module.
 
 Optional
 
-* `qtpy <https://github.com/spyder-ide/qtpy>` needed for `p4p.client.Qt.Context`.
+* `cothread <https://github.com/dls-controls/cothread>`_ needed by `p4p.client.cothread.Context`.
+* `qtpy <https://github.com/spyder-ide/qtpy>`_ needed for `p4p.client.Qt.Context`.
 
-Build as Python package
------------------------
+Local (re)build as Python package
+---------------------------------
 
-The process for building as a python package using sources from pypi.org by adding the argument "--no-binary :all:"
-to prevent the use of pre-built binarys. ::
+The process for building as a python package using sources from pypi.org by adding the argument "--no-binary"
+to prevent the use of pre-built binarys (except for numpy). ::
 
     python -m virtualenv p4ptest
     . p4ptest/bin/activate
     python -m pip install -U pip
-    python -m pip install nose ply Cython numpy # Optional: avoids building numpy from source (slow)
-    python -m pip install --no-binary :all: p4p
+    python -m pip install \
+     --only-binary numpy \
+     --no-binary epicscorelibs,p4p \
+     p4p
     python -m nose p4p   # Optional: runs automatic tests
 
 Bootstrap a virtualenv offline
@@ -61,7 +67,7 @@ collect the necessary files. ::
     tar -caf p4p-env-`date -u +%Y%m%d`.tar.gz virtualenv.py virtualenv_support
     deactivate
 
-Now move the created file p4p-env-*.tar.gz to the target machine.
+Now move the created file p4p-env-\*.tar.gz to the target machine.
 Then prepare the virtualenv env with. ::
 
     tar -xaf p4p-env-*.tar.gz
@@ -75,27 +81,31 @@ Utilities to automate this process include https://pypi.org/project/pyutilib.vir
 Build as EPICS Module
 ---------------------
 
-P4P can also be built as an EPICS Module, though with additional python dependencies.
+P4P can also be built as an EPICS Module with additional python dependencies.
+
+Prepare the host to build python extensions.  eg. a Debian Linux host::
+
+   sudo apt-get install build-essential python3-dev
 
 Install python dependencies on eg. a Debian Linux host::
 
-   sudo apt-get install python2.7-dev python-numpy python-nose
+   sudo apt-get install python3-numpy python3-nose cython3
 
 or with PIP::
 
-   pip install -r requirements-deb9.txt
+   python3 -m pip install -r requirements-latest.txt
 
 From release tar.::
 
-   curl -L 'https://github.com/mdavidsaver/p4p/releases/download/1.0/p4p-1.0.tar.gz' | tar -xz
-   cd p4p-1.0
+   curl -L 'https://github.com/mdavidsaver/p4p/releases/download/1.0/p4p-3.5.4.tar.gz' | tar -xz
+   cd p4p-3.5.4
 
 or from from versioned source.::
 
    git clone https://github.com/mdavidsaver/p4p.git
    cd p4p
 
-Set location of EPICS modules.  With EPICS >= 7.0.1::
+Set location of EPICS modules.  With EPICS >= 7.0.2::
 
    cat <<EOF > configure/RELEASE.local
    EPICS_BASE=/path/to/epics-base
@@ -108,12 +118,12 @@ By default P4P will build using 'python' found in the system search path.
 To explicitly specify a particular version. ::
 
    make distclean
-   make PYTHON=python3.4
+   make PYTHON=python3
 
 Alternately, the full path of the interpreter can be used. ::
 
    make distclean
-   make PYTHON=/usr/bin/python3.4
+   make PYTHON=/usr/bin/python3
 
 For convenience PYTHON can also be set in configure/CONFIG_SITE
 
@@ -123,10 +133,10 @@ Multiple Python Versions
 To build for multiple python versions it is necessary to do a partial clean before building
 another version.  This will not remove the final tree. ::
 
-    make PYTHON=python2.7
-    make PYTHON=python2.7 clean
-    make PYTHON=python3.4
-    make PYTHON=python3.4 clean
+    make PYTHON=python2
+    make PYTHON=python2 clean
+    make PYTHON=python3
+    make PYTHON=python3 clean
 
 .. note:: If PYTHON= is ever specified, then it must be specified for all targets except 'distclean'.
 
