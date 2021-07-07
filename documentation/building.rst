@@ -11,7 +11,7 @@ The P4P modules requires:
 * Python 2.7 or >=3.4
 * numpy >=1.6
 * Cython >=0.25.2
-* nosetests (Optional, recommended to run unittests)
+* nose2 (Optional, recommended to run unittests)
 
 and
 
@@ -44,8 +44,8 @@ to prevent the use of pre-built binarys (except for numpy). ::
     python -m pip install \
      --only-binary numpy \
      --no-binary epicscorelibs,p4p \
-     p4p
-    python -m nose p4p   # Optional: runs automatic tests
+     nose2 p4p
+    python -m nose2 p4p   # Optional: runs automatic tests
 
 Bootstrap a virtualenv offline
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -63,7 +63,7 @@ collect the necessary files. ::
     unzip virtualenv-*.whl
     python virtualenv.py --never-download prepenv
     . prepenv/bin/activate
-    pip download -d virtualenv_support p4p
+    pip download -d virtualenv_support nose2 p4p
     tar -caf p4p-env-`date -u +%Y%m%d`.tar.gz virtualenv.py virtualenv_support
     deactivate
 
@@ -74,7 +74,7 @@ Then prepare the virtualenv env with. ::
     python virtualenv.py --never-download env
     . env/bin/activate
     pip install --no-index -f virtualenv_support p4p
-    python -m nose p4p   # Optional: runs automatic tests
+    python -m nose2 p4p   # Optional: runs automatic tests
 
 Utilities to automate this process include https://pypi.org/project/pyutilib.virtualenv/
 
@@ -89,7 +89,7 @@ Prepare the host to build python extensions.  eg. a Debian Linux host::
 
 Install python dependencies on eg. a Debian Linux host::
 
-   sudo apt-get install python3-numpy python3-nose cython3
+   sudo apt-get install python3-numpy python3-nose2 cython3
 
 or with PIP::
 
@@ -161,10 +161,6 @@ CLI and unittests
 To run the unittests: ::
 
    make nose
-
-or (change path as appropriate)::
-
-   PYTHONPATH=$PWD/python2.7/linux-x86_64 nosetests
 
 For testing purposes several simple command line client tools are provided.
 For further information run: ::

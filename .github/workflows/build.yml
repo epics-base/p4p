@@ -261,14 +261,14 @@ jobs:
           then
             python -m pip install -r requirements-${{ matrix.profile }}.txt
           else
-            python -m pip install --only-binary numpy nose ply cothread ${{ matrix.numpy }} ${{ matrix.cython }}
+            python -m pip install --only-binary numpy nose2 ply cothread ${{ matrix.numpy }} ${{ matrix.cython }}
           fi
 
       - name: PY Source
         shell: bash
         run: |
           echo "PRE=$PRE"
-          python -m pip install setuptools wheel nose
+          python -m pip install setuptools wheel nose2
           python -m pip install $PRE setuptools-dso epicscorelibs
           python setup.py sdist --formats=gztar
           ls dist/*
@@ -297,7 +297,7 @@ jobs:
 
           cd dist
           python -m pip install p4p*.whl
-          python -m nose -v p4p
+          python -m nose2 -v p4p
 
 
       - name: Docker PY build
@@ -313,13 +313,13 @@ jobs:
           export PATH="/opt/python/${{ matrix.pyver }}/bin:\$PATH"
           which python
           python -m pip install -U pip
-          python -m pip install setuptools wheel nose
+          python -m pip install setuptools wheel nose2
           python -m pip install $PRE setuptools-dso epicscorelibs
           if [ "${{ matrix.profile }}" ]
           then
             python -m pip install -r requirements-${{ matrix.profile }}.txt
           else
-            python -m pip install --only-binary numpy nose ply cothread ${{ matrix.numpy }} ${{ matrix.cython }}
+            python -m pip install --only-binary numpy nose2 ply cothread ${{ matrix.numpy }} ${{ matrix.cython }}
           fi
 
           python -m pip wheel -v -w dist --no-index --no-deps \
@@ -330,7 +330,7 @@ jobs:
 
           cd dist
           python -m pip install p4p*.whl
-          python -m nose -v p4p
+          python -m nose2 -v p4p
 
           EOF
           cat runit.sh

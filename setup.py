@@ -116,7 +116,7 @@ setup(
         # assume ABI forward compatibility as indicated by
         # https://github.com/numpy/numpy/blob/master/numpy/core/setup_common.py#L28
         'numpy >=%s'%numpy.version.short_version,
-        'nose>=1.1.2',
+        'nose2>=0.8.0',
         'ply', # for asLib
     ],
     extras_require={

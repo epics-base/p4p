@@ -93,7 +93,7 @@ gwchannel$(DEP): _gw.h
 
 ifneq (,$(T_A))
 nose.%:
-	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" $(PYTHON) -m nose -P -v $* $(NOSEFLAGS)
+	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" $(PYTHON) -m nose2 -v $* $(NOSEFLAGS)
 
 # bounce back down to the sphinx generated Makefile
 # aren't Makefiles fun...

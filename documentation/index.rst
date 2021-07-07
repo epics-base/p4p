@@ -18,8 +18,8 @@ The recommended starting point is to install from pypi.org. ::
     python -m virtualenv p4ptest
     . p4ptest/bin/activate
     python -m pip install -U pip
-    python -m pip install p4p
-    python -m nose p4p   # Optional: runs automatic tests
+    python -m pip install p4p nose2
+    python -m nose2 p4p   # Optional: runs automatic tests
 
 Release tars can be downloaded from https://github.com/mdavidsaver/p4p/releases
 

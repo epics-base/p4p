@@ -8,8 +8,8 @@ For testing and evaluation, it is recommended to install from pypi.org into a (d
     python -m virtualenv p4ptest
     . p4ptest/bin/activate
     python -m pip install -U pip
-    python -m pip install p4p
-    python -m nose p4p   # Optional: runs automatic tests
+    python -m pip install p4p nose2
+    python -m nose2 p4p   # Optional: runs automatic tests
 
 With this complete, open three terminal instances.
 One to run a PVA client, and two more to run PVA clients.
