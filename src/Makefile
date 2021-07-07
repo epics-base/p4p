@@ -80,8 +80,10 @@ PERL_SCRIPTS += pvagw
 include $(TOP)/configure/RULES
 include $(TOP)/configure/RULES_PY
 
+ifdef T_A
 pvagw: ../bootgw.py
-	$(PYTHON) $< -P "../../python$(PY_LD_VER)/$(EPICS_HOST_ARCH)" $@
+	$(PYTHON) $< -P "../../python$(PY_LD_VER)/$(T_A)" $@
+endif
 
 _gw.cpp: ../p4p/_gw.pyx
 	$(PYTHON) -m cython -o $@ --cplus $<
