@@ -1,5 +1,5 @@
-from __future__ import print_function
 
+import logging
 import unittest
 import random
 import weakref
@@ -14,6 +14,7 @@ from ..rpc import NTURIDispatcher, WorkQueue, rpc, rpccall, rpcproxy
 from ..nt import NTScalar, NTURI
 from .utils import RefTestCase
 
+_log = logging.getLogger(__name__)
 
 class TestService(object):
 
@@ -57,7 +58,7 @@ class TestRPCFull(RefTestCase):
 
         if self.runserver:
             self.server = Server(providers=[dispatch], conf=conf, useenv=False)
-            print("conf", self.server.conf())
+            _log.debug("conf: %s", self.server.conf())
         else:
             installProvider("TestRPC", dispatch)
 
@@ -77,10 +78,10 @@ class TestRPCFull(RefTestCase):
         gc.collect()
         D = self._dispatch()
         if D is not None:
-            print("dispatcher lives! ", sys.getrefcount(D), " refs  referrers:")
+            _log.debug("dispatcher lives! %d refs  referrers:", sys.getrefcount(D))
             import inspect
             for R in gc.get_referrers(D):
-                print(R)
+                _log.debug("%s", R)
         self.assertIsNone(D)
         super(TestRPCFull, self).tearDown()
 
@@ -151,7 +152,6 @@ class TestProxy(RefTestCase):
     def test_call1(self):
         args, kws = self.proxy.bar(4, 'one')
 
-        print(args, kws)
         self.assertEqual(args[0], 'pv:foo')
         self.assertListEqual(args[1].tolist(), [
             ('scheme', u'fake'),
@@ -165,7 +165,6 @@ class TestProxy(RefTestCase):
     def test_call2(self):
         args, kws = self.proxy.bar(4, B='one')
 
-        print(args, kws)
         self.assertEqual(args[0], 'pv:foo')
         self.assertListEqual(args[1].tolist(), [
             ('scheme', u'fake'),
@@ -179,7 +178,6 @@ class TestProxy(RefTestCase):
     def test_call3(self):
         args, kws = self.proxy.bar(4)
 
-        print(args, kws)
         self.assertEqual(args[0], 'pv:foo')
         self.assertListEqual(args[1].tolist(), [
             ('scheme', u'fake'),
@@ -193,7 +191,6 @@ class TestProxy(RefTestCase):
     def test_call4(self):
         args, kws = self.proxy.another('one', Y=2)
 
-        print(args, kws)
         self.assertEqual(args[0], 'pv:baz')
         self.assertListEqual(args[1].tolist(), [
             ('scheme', u'fake'),

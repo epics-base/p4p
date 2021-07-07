@@ -1,6 +1,4 @@
 
-from __future__ import print_function
-
 import weakref
 import gc
 import unittest
@@ -676,7 +674,6 @@ class TestReInit(RefTestCase):
             'x.a.A': 101,
         })
 
-        print(A.x, B.x)
         B.x = A.x
 
         self.assertEqual(B.x.y, 42)

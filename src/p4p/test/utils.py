@@ -154,7 +154,6 @@ def gctrace(obj, maxdepth=8):
 
     while len(todo):
         obj = todo.pop(0)
-        # print('N', obj)
         I = id(obj)
         if inspect.isframe(obj):
             S = 'Frame %s:%d' % (obj.f_code.co_filename, obj.f_lineno)
