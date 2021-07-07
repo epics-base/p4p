@@ -22,8 +22,6 @@ from .._p4p import _forceLazy
 
 _log = logging.getLogger(__name__)
 
-_ignore_transient = os.environ.get('REFTEST_IGNORE_TRANSIENT', '') == 'YES'
-
 _forceLazy()
 
 try:
@@ -73,6 +71,11 @@ class RefTestMixin(object):
         self.__traceme = set()
         if self.ref_check is not None:
             self.__before = self.__refs()
+
+            for mustzero in ('ClientContextImpl',):
+                if self.__before.get(mustzero, 0)!=0:
+                    self.fail('Leftovers from previous test: %s = %d'%(mustzero, self.__before[mustzero]))
+
         super(RefTestMixin, self).setUp()
 
     def traceme(self, obj):
@@ -89,13 +92,10 @@ class RefTestMixin(object):
             gc.collect()
             after = self.__refs()
 
-            test1 = self.__before == after
+            test = self.__before == after
 
-            if not test1:
-                _log.error("Mis-match, attempting to detect if transient")
-                self._sleep(1.0)
-                gc.collect()
-                after1, after = after, self.__refs()
+            for mustzero in ('ClientContextImpl',):
+                test &= after.get(mustzero, 0)==0
 
             frame = inspect.currentframe()
             for T in traceme:
@@ -112,11 +112,10 @@ class RefTestMixin(object):
             # check for any obviously corrupt counters, even those not being compared
             # self.assertFalse(any([V>1000000 for V in refs.values()]), "before %s after %s"%(self.__raw_before, refs))
 
-            if not test1:
-                if _ignore_transient:
-                    _log.info("IGNORE transient refs")
-                else:
-                    self.assertDictEqual(self.__before, after1)
+            if not test:
+                for mustzero in ('ClientContextImpl', 'ServerPvt'):
+                    self.assertEqual(0, after.get(mustzero, 0), mustzero)
+                self.assertDictEqual(self.__before, after1)
 
 class RefTestCase(RefTestMixin, unittest.TestCase):
     def __init__(self, methodName='runTest'):

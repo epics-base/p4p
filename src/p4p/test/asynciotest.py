@@ -134,8 +134,8 @@ class TestTimeout(unittest.TestCase):
         self.assertIs(done, False)
 
 class TestFirstLast(RefTestCase):
-    maxDiff = 1000
-    timeout = 1.0
+    maxDiff = 2000
+    timeout = 5.0
     mode = 'Mask'
 
     class Handler:
