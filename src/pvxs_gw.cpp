@@ -91,9 +91,10 @@ void GWSource::onSearch(Search &op)
     }
 }
 
-GWUpstream::GWUpstream(const std::string& usname, const GWSource &src)
+GWUpstream::GWUpstream(const std::string& usname, GWSource &src)
     :usname(usname)
     ,upstream(src.upstream)
+    ,src(src)
     ,workQ(src.workQ)
     ,connector(upstream.connect(usname)
                .onDisconnect([this]()
@@ -315,7 +316,10 @@ void GWChan::onOp(const std::shared_ptr<GWChan>& pv, std::unique_ptr<server::Con
             std::shared_ptr<server::ExecOp> op(std::move(sop));
 
             bool permit = pv->allow_put;
-            // TODO: audit
+            if(pv->audit) {
+                AuditEvent evt{epicsTime::getCurrent(), pv->us->usname, op->name(), arg, op->credentials()};
+                pv->us->src.auditPush(std::move(evt));
+            }
 
             log_debug_printf(_log, "'%s' PUT exec%s\n", op->name().c_str(), permit ? "" : " DENY");
 
@@ -633,6 +637,69 @@ void GWSource::forceBan(const std::string& host, const std::string& usname) {}
 void GWSource::clearBan() {}
 
 void GWSource::cachePeek(std::set<std::string> &names) const {}
+
+void GWSource::auditPush(AuditEvent&& revt)
+{
+    auto evt(std::move(revt));
+    {
+        constexpr size_t limit = 100u; // TODO: configurable?
+
+        Guard G(mutex);
+
+        if(audits.size() == limit)
+            evt.usname.clear(); // overflow
+
+        if(audits.size() <= limit)
+            audits.push_back(std::move(evt));
+
+        if(audits.size() > 1u)
+            return; // already scheduled
+    }
+
+    workQ->push([this]() {
+        // on queue worker
+
+        decltype (audits) todo;
+        {
+            Guard G(mutex);
+            todo = std::move(audits);
+        }
+
+        std::list<std::string> msgs;
+
+        for(auto& audit : todo) {
+            std::ostringstream strm;
+
+            // log line format
+            //  <timestamp> ' ' [ <method> '/' <account> ] '@' <peer> ' ' <dsname> " as " <usname> [ " -> " <value> ]
+            //  <timestamp> " ... put audit log overflow"
+            {
+                char buf[64];
+                audit.now.strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S.%09f");
+                strm<<buf<<' ';
+            }
+
+            if(audit.usname.empty()) {
+                strm<<"... put audit log overflow";
+
+            } else {
+                if(audit.cred) {
+                    strm<<audit.cred->method<<'/'<<audit.cred->account;
+                }
+                strm<<'@'<<audit.cred->peer<<' '<<audit.dsname<<" as "<<audit.usname;
+
+                if(auto val = audit.val["value"]) {
+                    if(val.type().kind()!=Kind::Compound)
+                        strm<<" -> "<<val.format().arrayLimit(10u);
+                }
+            }
+
+            msgs.push_back(strm.str());
+        }
+
+        GWProvider_audit(this, msgs);
+    });
+}
 
 void GWSource::run()
 {

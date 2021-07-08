@@ -375,3 +375,12 @@ cdef public:
         except:
             pass # expect handler to catch and log
         return ret
+
+    void GWProvider_audit(GWSource* src, listxx[string]& cmsgs) with gil:
+        if src.handler:
+            handler = <object>src.handler
+            msgs = [msg.decode() for msg in cmsgs]
+            try:
+                handler.audit(msgs)
+            except:
+                pass # expect handler to catch and log

@@ -51,6 +51,7 @@ struct GWSubscription {
 struct GWUpstream {
     const std::string usname;
     client::Context upstream;
+    GWSource& src;
 
     mutable epicsMutex dschans_lock;
     std::set<std::shared_ptr<server::ChannelControl>> dschans;
@@ -68,7 +69,7 @@ struct GWUpstream {
 
     const std::shared_ptr<client::Connect> connector;
 
-    explicit GWUpstream(const std::string& usname, const struct GWSource& src);
+    explicit GWUpstream(const std::string& usname, GWSource &src);
     ~GWUpstream();
 };
 
@@ -107,6 +108,14 @@ struct GWChan {
     void onSubscribe(const std::shared_ptr<GWChan>& self, std::unique_ptr<server::MonitorSetupOp>&& sop);
 };
 
+struct AuditEvent {
+    epicsTime now;
+    std::string usname;
+    std::string dsname;
+    Value val;
+    std::shared_ptr<const server::ClientCredentials> cred;
+};
+
 struct GWSource : public server::Source,
                   public std::enable_shared_from_this<GWSource>,
                   private epicsThreadRunable
@@ -122,6 +131,8 @@ struct GWSource : public server::Source,
 
     // channel cache.  Indexed by upstream name
     std::map<std::string, std::shared_ptr<GWUpstream>> channels;
+
+    std::list<AuditEvent> audits;
 
     decltype (GWUpstream::workQ) workQ;
 
@@ -150,6 +161,8 @@ struct GWSource : public server::Source,
     void clearBan();
 
     void cachePeek(std::set<std::string> &names) const;
+
+    void auditPush(AuditEvent&& evt);
 
     virtual void run() override final;
 };

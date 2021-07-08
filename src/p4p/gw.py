@@ -406,8 +406,9 @@ class GWHandler(object):
             _log.exception("Default restrictive for %s from %s", op.name, op.peer)
         return chan
 
-    def audit(self, msg):
-        _log_audit.info('%s', msg)
+    def audit(self, msgs):
+        for msg in msgs:
+            _log_audit.info('%s', msg)
 
     def sweep(self):
         self.provider.sweep()
