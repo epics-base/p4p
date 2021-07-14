@@ -236,7 +236,7 @@ class Engine(object):
     def create(self, channel, group, user, host, level, roles=[]):
         # Default to restrictive.  Used in case of error
         perm = 0
-        _log.debug('(re)create %s, %s, %s, %s, %s', channel, group, user, host, level)
+        _log.debug('(re)create %s, %s, %s, %s, %s', channel.name, group, user, host, level)
 
         with self._lock:
 

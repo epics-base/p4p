@@ -31,7 +31,11 @@ cdef extern from "pvxs_gw.h" namespace "p4p" nogil:
 
     ctypedef const GWChanInfo* GWChanInfoCP
 
+    cdef cppclass GWUpstream:
+        unsigned get_holdoff
+
     cdef cppclass GWChan:
+        const shared_ptr[GWUpstream] us
         bool allow_put
         bool allow_rpc
         bool allow_uncached
@@ -125,6 +129,7 @@ cdef class CreateOp(InfoBase):
                 raise RuntimeError("GW Provider will not create %s -> %s"%(usname, dsname))
 
             chan.channel = gwchan
+            chan.name = name
             chan.info = op.get().credentials()
             return chan
         else:
@@ -142,11 +147,16 @@ cdef class Channel:
         return self.channel.use_count()<=1
 
     def access(self, put=None, rpc=None, uncached=None, audit=None, holdoff=None):
-        self.channel.get().allow_put = put==True
-        self.channel.get().allow_rpc = rpc==True
-        self.channel.get().allow_uncached = uncached==True
-        self.channel.get().audit = audit==True
-        # TODO holdoff
+        if put is not None:
+            self.channel.get().allow_put = put==True
+        if rpc is not None:
+            self.channel.get().allow_rpc = rpc==True
+        if uncached is not None:
+            self.channel.get().allow_uncached = uncached==True
+        if audit is not None:
+            self.channel.get().audit = audit==True
+        if holdoff is not None:
+            self.channel.get().us.get().get_holdoff = holdoff or 0
 
 @cython.no_gc_clear
 cdef class Provider(_p4p.Source):

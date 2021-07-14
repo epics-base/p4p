@@ -38,7 +38,8 @@ def uricall(fn):
     return rpc
 
 class TestChannel(object):
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name # logging only
         self.perm = None
     def access(self, **kws):
         self.perm = kws
@@ -437,7 +438,7 @@ class GWHandler(object):
         if not pvname:
             raise RemoteError("Denied")
 
-        chan=TestChannel()
+        chan=TestChannel('<asTest>')
         self.acf.create(chan, asg, user, peer, asl, roles)
 
         return permissionsType({

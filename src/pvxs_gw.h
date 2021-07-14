@@ -48,6 +48,27 @@ struct GWSubscription {
     std::vector<std::shared_ptr<server::MonitorControlOp>> controls;
 };
 
+struct GWGet {
+    std::weak_ptr<client::Operation> upstream;
+
+    Value prototype;
+    epicsTime lastget;
+    Timer delay;
+    std::string error;
+
+    enum state_t {
+        Connecting, // waiting for onInit()
+        Idle,
+        Exec,
+        Error,
+    } state = Connecting;
+
+    bool firstget = true;
+
+    std::vector<std::shared_ptr<server::ConnectOp>> setups;
+    std::vector<std::shared_ptr<server::ExecOp>> ops;
+};
+
 struct GWUpstream {
     const std::string usname;
     client::Context upstream;
@@ -62,6 +83,8 @@ struct GWUpstream {
     epicsMutex lock;
 
     std::weak_ptr<GWSubscription> subscription;
+
+    std::weak_ptr<GWGet> getop;
 
     bool gcmark = false;
 
