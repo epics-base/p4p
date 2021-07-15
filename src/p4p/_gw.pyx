@@ -59,6 +59,13 @@ cdef extern from "pvxs_gw.h" namespace "p4p" nogil:
 
         shared_ptr[GWSource] shared_from_this() except+
 
+    shared_ptr[Source] makeOdometer(const string& name) except+
+
+def addOdometer(_p4p.Server serv, basestring pvname, int order):
+    cdef string name = pvname.encode()
+    with nogil:
+        serv.serv.addSource(name, makeOdometer(name), order)
+
 cdef class InfoBase(object):
     #cdef shared_ptr[const ClientCredentials] info
 
@@ -156,7 +163,7 @@ cdef class Channel:
         if audit is not None:
             self.channel.get().audit = audit==True
         if holdoff is not None:
-            self.channel.get().us.get().get_holdoff = holdoff or 0
+            self.channel.get().us.get().get_holdoff = holdoff*1000 # sec -> ms
 
 @cython.no_gc_clear
 cdef class Provider(_p4p.Source):

@@ -146,6 +146,7 @@ class TestACL(unittest.TestCase):
     class DummyChannel(object):
         def __init__(self):
             self.perm = None
+            self.name = 'dummy'
         def access(self, **kws):
             self.perm = kws
 

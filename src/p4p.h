@@ -189,6 +189,10 @@ void opEvent(client::MonitorBuilder& builder, PyObject *handler);
 
 PyObject* monPop(const std::shared_ptr<client::Subscription>& mon);
 
+/******* odometer (testing tool) *******/
+
+std::shared_ptr<server::Source> makeOdometer(const std::string& name);
+
 } // namespace p4p
 
 #endif // P4P_H

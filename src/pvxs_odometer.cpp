@@ -6,23 +6,27 @@
 
 #include <iostream>
 
+#include <epicsTime.h>
+
 #include <pvxs/server.h>
 #include <pvxs/source.h>
+#include <pvxs/nt.h>
 #include <pvxs/log.h>
 
 using namespace pvxs;
 
 namespace {
 
-const Value prototype(TypeDef(TypeCode::Struct, {
-                                  members::UInt64("value")
-                              }).create());
-
 struct OdometerSource : public server::Source {
+
     std::string name;
     uint64_t counter = 0u;
+    const Value prototype;
 
-    explicit OdometerSource(const std::string& name) :name(name) {}
+    explicit OdometerSource(const std::string& name)
+        :name(name)
+        ,prototype(nt::NTScalar{TypeCode::UInt64}.create())
+    {}
     virtual ~OdometerSource() {}
 
     // client searching
@@ -40,9 +44,14 @@ struct OdometerSource : public server::Source {
         cop->onOp([this](std::unique_ptr<server::ConnectOp>&& op) { // client starts a GET/PUT operation
             op->onGet([this](std::unique_ptr<server::ExecOp>&& gop) { // execute GET (or Get of PUT)
 
+                epicsTimeStamp now;
+                (void)epicsTimeGetCurrent(&now);
+
                 // send back current count
                 gop->reply(prototype.cloneEmpty()
-                                    .update("value", counter++));
+                                    .update("value", counter++)
+                                    .update("timeStamp.secondsPastEpoch", now.secPastEpoch + POSIX_TIME_AT_EPICS_EPOCH)
+                                    .update("timeStamp.nanoseconds", now.nsec));
             });
 
             // must provide data type for GET/PUT op
@@ -53,20 +62,10 @@ struct OdometerSource : public server::Source {
 
 } // namespace
 
-int main(int argc, char *argv[])
-{
-    if(argc<2) {
-        std::cerr<<"Usage: "<<argv[0]<<" <pvname>"<<std::endl;
-        return 1;
-    }
+namespace p4p {
 
-    logger_config_env(); // read $PVXS_LOG
-
-    // run server with only our Source
-    server::Config::fromEnv()
-            .build()
-            .addSource("odommeter", std::make_shared<OdometerSource>(argv[1]))
-            .run(); // wait for SIGINT
-
-    return 0;
+std::shared_ptr<server::Source> makeOdometer(const std::string& name) {
+    return std::make_shared<OdometerSource>(name);
 }
+
+} // namespace p4p

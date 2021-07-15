@@ -27,6 +27,7 @@ _gw_CPPFLAGS += -DPVXS_ENABLE_EXPERT_API
 
 _gw_SRCS += _gw.cpp
 _gw_SRCS += pvxs_gw.cpp
+_gw_SRCS += pvxs_odometer.cpp
 
 _gw_LIBS += pvxs
 

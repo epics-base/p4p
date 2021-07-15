@@ -213,6 +213,8 @@ class TestApp(App):
 
 class TestHighLevel(RefTestCase):
     timeout = 10
+    getholdoff=None
+    maxDiff = 4096
 
     def setUp(self):
         _log.debug("Enter setUp")
@@ -234,11 +236,11 @@ class TestHighLevel(RefTestCase):
         _log.debug("US server conf: %s", self._us_conf)
         self.assertNotEqual(0, self._us_conf['EPICS_PVA_BROADCAST_PORT'])
 
-        dsconfig = self.setUpGW(self._us_conf)
-        _log.debug("DS server conf: %s", dsconfig)
+        self.dsconfig = self.setUpGW(self._us_conf)
+        _log.debug("DS server conf: %s", self.dsconfig)
 
         # downstream client
-        self._ds_client = Context('pva', dsconfig, useenv=False)
+        self._ds_client = Context('pva', self.dsconfig, useenv=False)
 
         _log.debug("Exit setUp")
 
@@ -262,6 +264,7 @@ class TestHighLevel(RefTestCase):
                 'autoaddrlist':False,
                 'bcastport':0,
                 'serverport':0,
+                'getholdoff':self.getholdoff,
             }],
         }, cfile)
         cfile.flush()
@@ -498,6 +501,27 @@ class TestHighLevelChained(TestHighLevel):
         del self._app1
         del self._main2
         del self._main1
+
+class TestHighLevelGetHoldOff(TestHighLevel):
+    getholdoff = 0.5 # hopefully long enough for CI without exceeding my patience
+
+    def test_get_holdoff(self):
+        _gw.addOdometer(self._us_server._S, 'odometer', 0)
+
+        N = 0
+        Vs = self._ds_client.get(['odometer', 'odometer', 'odometer'], timeout=self.timeout)
+        _log.debug('batch1: %s', Vs)
+
+        # Depending on how things raced, these three values will be either 0 or 1
+        self.assertEqual(min(*Vs), N)
+        self.assertLessEqual(max(*Vs), N+1)
+
+        N = max(*Vs)+1
+        Vs = self._ds_client.get(['odometer', 'odometer', 'odometer'], timeout=self.timeout)
+        _log.debug('batch2: %s', Vs)
+
+        self.assertEqual(min(*Vs), N)
+        self.assertLessEqual(max(*Vs), N+1)
 
 class TestTestServer(RefTestCase):
     conf_template = '''
