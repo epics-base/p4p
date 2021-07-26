@@ -9,8 +9,7 @@ jobs:
     env:
       # used by .ci/build-deps.sh for Make builds
       BRBASE: ${{ matrix.base }}
-      BRPVD: ${{ matrix.pvd }}
-      BRPVA: ${{ matrix.pva }}
+      BRPVXS: ${{ matrix.pvxs }}
     strategy:
       fail-fast: false
       matrix:
@@ -20,16 +19,21 @@ jobs:
             os: ubuntu-latest
             python: "2.7"
             base: "7.0"
-            pvd: "master"
-            pva: "master"
+            pvxs: "master"
             profile: deb9
+
+          - name: Make Linux p3.8 e7.0
+            os: ubuntu-latest
+            python: "3.8"
+            base: "7.0"
+            pvxs: "master"
+            profile: deb10
 
           - name: Make Linux py2.7 e3.15
             os: ubuntu-latest
             python: "2.7"
             base: "3.15"
-            pvd: "master"
-            pva: "master"
+            pvxs: "master"
             profile: deb8
 
           # Check build from .tar
@@ -44,28 +48,28 @@ jobs:
             pyver: cp27-cp27m
             piparch: manylinux1_x86_64
             numpy: numpy==1.8.2
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
 
           - name: linux 2.7u amd64
             os: ubuntu-latest
             pyver: cp27-cp27mu
             piparch: manylinux1_x86_64
             numpy: numpy==1.8.2
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
 
           - name: linux 3.5 amd64
             os: ubuntu-latest
             pyver: cp35-cp35m
             piparch: manylinux1_x86_64
             numpy: numpy==1.12.1
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
 
           - name: linux 3.6 amd64
             os: ubuntu-latest
             pyver: cp36-cp36m
             piparch: manylinux1_x86_64
             numpy: numpy==1.12.1
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
 
           - name: linux 3.7 amd64
             os: ubuntu-latest
@@ -94,7 +98,7 @@ jobs:
             pyver: cp27-cp27m
             piparch: manylinux1_i686
             numpy: numpy==1.11.1
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
             pre: linux32
 
           - name: linux 2.7u i686
@@ -102,7 +106,7 @@ jobs:
             pyver: cp27-cp27mu
             piparch: manylinux1_i686
             numpy: numpy==1.11.1
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
             pre: linux32
 
           - name: linux 3.5 i686
@@ -110,7 +114,7 @@ jobs:
             pyver: cp35-cp35m
             piparch: manylinux1_i686
             numpy: numpy==1.12.1
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
             pre: linux32
 
           - name: linux 3.6 i686
@@ -118,7 +122,7 @@ jobs:
             pyver: cp36-cp36m
             piparch: manylinux1_i686
             numpy: numpy==1.12.1
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
             pre: linux32
 
           - name: linux 3.7 i686
@@ -151,14 +155,14 @@ jobs:
             python: "2.7"
             piparch: macosx_10_9_intel
             numpy: numpy==1.8.2
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
 
           - name: osx 3.6 intel
             os: macos-latest
             python: "3.6"
             piparch: macosx_10_9_intel
             numpy: numpy==1.11.3
-            cython: Cython==0.25.2
+            cython: Cython==0.29.2
 
           - name: osx 3.7 intel
             os: macos-latest
@@ -230,6 +234,9 @@ jobs:
           python-version: ${{ matrix.python }}
           #architecture: x64
 
+      - name: Automatic core dumper analysis
+        uses: mdavidsaver/ci-core-dumper@master
+
       - name: Install Twine
         if: true && !matrix.base
         run: |
@@ -269,7 +276,7 @@ jobs:
         run: |
           echo "PRE=$PRE"
           python -m pip install setuptools wheel nose2
-          python -m pip install $PRE setuptools-dso epicscorelibs
+          python -m pip install $PRE setuptools-dso epicscorelibs pvxslibs
           python setup.py sdist --formats=gztar
           ls dist/*
 
@@ -278,7 +285,7 @@ jobs:
         run: |
           ./.ci/build-deps.sh -j2
           make PYTHON=`which python` -j2
-          make PYTHON=`which python` nose
+          python -m ci_core_dumper exec make PYTHON=`which python` nose
 
       - name: PEP517 Build
         if: matrix.python && !matrix.base && matrix.source
@@ -297,7 +304,7 @@ jobs:
 
           cd dist
           python -m pip install p4p*.whl
-          python -m nose2 -v p4p
+          python -m ci_core_dumper exec python -m nose2 -v p4p
 
 
       - name: Docker PY build
@@ -314,7 +321,7 @@ jobs:
           which python
           python -m pip install -U pip
           python -m pip install setuptools wheel nose2
-          python -m pip install $PRE setuptools-dso epicscorelibs
+          python -m pip install $PRE setuptools-dso epicscorelibs pvxslibs
           if [ "${{ matrix.profile }}" ]
           then
             python -m pip install -r requirements-${{ matrix.profile }}.txt

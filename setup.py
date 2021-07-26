@@ -14,11 +14,12 @@ import epicscorelibs.version
 from epicscorelibs.config import get_config_var
 
 import pvxslibs.path
+import pvxslibs.version
 
 # the following line is matched from cibuild.py
-package_version = '3.5.4'
+package_version = '4.0.0a1'
 
-cxxflags = []
+cxxflags = ['-std=c++11']
 ldflags = []
 import sys
 import platform
@@ -62,7 +63,11 @@ exts = cythonize([
     ),
     Extension(
         name='p4p._gw',
-        sources=['src/p4p/_gw.pyx', 'src/pvxs_gw.cpp'],
+        sources=[
+            'src/p4p/_gw.pyx',
+            'src/pvxs_gw.cpp',
+            'src/pvxs_odometer.cpp'
+        ],
         include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
         define_macros = cppflags + [('PVXS_ENABLE_EXPERT_API', None)],
         extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
@@ -111,6 +116,7 @@ setup(
     ext_modules = exts,
     install_requires = [
         epicscorelibs.version.abi_requires(),
+        pvxslibs.version.abi_requires(),
         # assume ABI forward compatibility as indicated by
         # https://github.com/numpy/numpy/blob/master/numpy/core/setup_common.py#L28
         'numpy >=%s'%numpy.version.short_version,
