@@ -2,6 +2,11 @@ TOP = ..
 include $(TOP)/configure/CONFIG
 include $(TOP)/configure/CONFIG_PY
 
+# Our internal interfaces with generated cython
+# are all c++, and MSVC doesn't allow extern "C" to
+# return c++ types.
+USR_CPPFLAGS += -D__PYX_EXTERN_C=extern
+
 # place .so in subdirectory
 INSTALL_SHRLIB = $(PY_INSTALL_DIR)/p4p
 

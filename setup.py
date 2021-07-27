@@ -35,6 +35,11 @@ elif platform.system()=='Darwin':
     #   and you may need to use -headerpad or -headerpad_max_install_names)
     ldflags += ['-Wl,-headerpad_max_install_names']
 
+# Our internal interfaces with generated cython
+# are all c++, and MSVC doesn't allow extern "C" to
+# return c++ types.
+cppflags = get_config_var('CPPFLAGS') + [('__PYX_EXTERN_C','extern')]
+
 exts = cythonize([
     Extension(
         name='p4p._p4p',
@@ -47,7 +52,7 @@ exts = cythonize([
             "src/pvxs_value.cpp",
         ],
         include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
-        define_macros = get_config_var('CPPFLAGS') + [('PY_ARRAY_UNIQUE_SYMBOL', 'PVXS_PyArray_API'), ('PVXS_ENABLE_EXPERT_API', None)],
+        define_macros = cppflags + [('PY_ARRAY_UNIQUE_SYMBOL', 'PVXS_PyArray_API'), ('PVXS_ENABLE_EXPERT_API', None)],
         extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
         extra_link_args = get_config_var('LDFLAGS')+ldflags,
         dsos = ['pvxslibs.lib.pvxs',
@@ -59,7 +64,7 @@ exts = cythonize([
         name='p4p._gw',
         sources=['src/p4p/_gw.pyx', 'src/pvxs_gw.cpp'],
         include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
-        define_macros = get_config_var('CPPFLAGS') + [('PVXS_ENABLE_EXPERT_API', None)],
+        define_macros = cppflags + [('PVXS_ENABLE_EXPERT_API', None)],
         extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
         extra_link_args = get_config_var('LDFLAGS')+ldflags,
         dsos = ['pvxslibs.lib.pvxs',
