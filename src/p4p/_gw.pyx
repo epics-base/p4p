@@ -67,25 +67,19 @@ def addOdometer(_p4p.Server serv, basestring pvname, int order):
         serv.serv.addSource(name, makeOdometer(name), order)
 
 cdef class InfoBase(object):
-    #cdef shared_ptr[const ClientCredentials] info
-
-    cdef shared_ptr[const ClientCredentials] info(self):
-        cdef shared_ptr[const ClientCredentials] empty
-        return empty
+    cdef shared_ptr[const ClientCredentials] info
 
     @property
     def peer(self):
-        cred = self.info()
-        if cred:
-            return cred.get().peer.decode('UTF-8')
+        if <bool>self.info:
+            return self.info.get().peer.decode('UTF-8')
         else:
             return u''
 
     @property
     def account(self):
-        cred = self.info()
-        if cred:
-            return cred.get().account.decode('UTF-8')
+        if <bool>self.info:
+            return self.info.get().account.decode('UTF-8')
         else:
             return u''
 
@@ -93,10 +87,8 @@ cdef class InfoBase(object):
     def roles(self):
         cdef setxx[string] raw
         cdef list ret = []
-        cred = self.info()
-        if cred:
-            raw = self.info().get().roles()
-            for role in raw:
+        if <bool>self.info:
+            for role in self.info.get().roles():
                 ret.append(role.decode('UTF-8'))
         return ret
 
@@ -107,13 +99,6 @@ cdef class CreateOp(InfoBase):
     cdef weak_ptr[ChannelControl] op
     cdef weak_ptr[GWSource] provider
     cdef object __weakref__
-
-    cdef shared_ptr[const ClientCredentials] info(self):
-        cdef shared_ptr[const ClientCredentials] ret
-        op = self.op.lock()
-        if op:
-            ret = op.get().credentials()
-        return ret
 
     def create(self, bytes name):
         """Create a Channel with a given upstream (server-side) name
@@ -143,10 +128,9 @@ cdef class CreateOp(InfoBase):
             raise RuntimeError("Dead CreateOp")
             
 
-cdef class Channel:
+cdef class Channel(InfoBase):
     cdef readonly bytes name
     cdef shared_ptr[GWChan] channel
-    cdef shared_ptr[const ClientCredentials] info
     cdef object __weakref__
 
     @property
@@ -383,6 +367,7 @@ cdef public:
             create = CreateOp.__new__(CreateOp)
             create.name = op.get().name().c_str()
             create.op = <weak_ptr[ChannelControl]>op;
+            create.info = op.get().credentials()
             create.provider = <weak_ptr[GWSource]>src.shared_from_this()
 
             chan = handler.makeChannel(create)
