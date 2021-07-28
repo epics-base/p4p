@@ -4,10 +4,12 @@ import atexit
 
 try:
     # give a chance to adjust DSO loader path
-    import epicscorelibs.path
-    import pvxslib.path
+    import epicscorelibs
 except ImportError:
     pass
+else:
+    import epicscorelibs.path
+    import pvxslibs.path
 
 from .wrapper import Value, Type
 from ._p4p import (version as pvxsVersion, listRefs, logger_level_set as _logger_level_set)
