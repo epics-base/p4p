@@ -141,6 +141,9 @@ class Subscription(_p4p.ClientMonitor):
     def __exit__(self, A, B, C):
         self.close()
 
+    if unicode is str:
+        def __del__(self):
+            self.close()
 
 class Context(object):
 
@@ -162,7 +165,7 @@ class Context(object):
 
         self._ctxt = None
 
-        self._ctxt = _p4p.ClientProvider(provider, conf=conf, useenv=useenv)
+        self._ctxt = _ClientProvider(provider, conf=conf, useenv=useenv)
         self.conf = self._ctxt.conf
         self.hurryUp = self._ctxt.hurryUp
 
@@ -216,7 +219,7 @@ class Context(object):
 
         :returns: A object with a method cancel() which may be used to abort the operation.
         """
-        return _p4p.ClientOperation(self._ctxt, name, handler=unwrapHandler(handler, self._nt),
+        return _ClientOperation(self._ctxt, name, handler=unwrapHandler(handler, self._nt),
                                     pvRequest=wrapRequest(request), get=True, put=False)
 
     def put(self, name, handler, builder=None, request=None, get=True):
@@ -232,7 +235,7 @@ class Context(object):
 
         :returns: A object with a method cancel() which may be used to abort the operation.
         """
-        return _p4p.ClientOperation(self._ctxt, name, handler=unwrapHandler(handler, self._nt),
+        return _ClientOperation(self._ctxt, name, handler=unwrapHandler(handler, self._nt),
                                     builder=defaultBuilder(builder, self._nt),
                                     pvRequest=wrapRequest(request), get=get, put=True)
 
@@ -247,7 +250,7 @@ class Context(object):
         """
         if value is None:
             value = Value(Type([]))
-        return _p4p.ClientOperation(self._ctxt, name, handler=unwrapHandler(handler, self._nt),
+        return _ClientOperation(self._ctxt, name, handler=unwrapHandler(handler, self._nt),
                                     value=value, pvRequest=wrapRequest(request), rpc=True)
 
     def monitor(self, name, handler, request=None, **kws):
@@ -279,3 +282,13 @@ def _cleanup_contexts():
     contexts = list(_all_contexts)
     for ctxt in contexts:
         ctxt.close()
+
+class _ClientOperation(_p4p.ClientOperation):
+    if unicode is str:
+        def __del__(self):
+            self.close()
+
+class _ClientProvider(_p4p.ClientProvider):
+    if unicode is str:
+        def __del__(self):
+            self.close()

@@ -453,11 +453,13 @@ cdef class ClientOperation:
         self._close()
 
     def _close(self):
+        cdef shared_ptr[client.Operation] op
         cdef bool cancelled = False
-        with nogil:
-            if self.op.get():
-                cancelled = self.op.get().cancel()
-                self.op.reset()
+        self.op.swap(op)
+        if <bool>op:
+            with nogil:
+                cancelled = op.get().cancel()
+                op.reset()
         if cancelled:
             self.handler(1, "", None)
     close = _close
@@ -488,9 +490,8 @@ cdef class ClientMonitor:
 
     def _close(self):
         cdef shared_ptr[client.Subscription] trash
-        if <bool>self.sub:
-            trash = self.sub
-            self.sub.reset()
+        self.sub.swap(trash)
+        if <bool>trash:
             with nogil:
                 trash.get().cancel()
     close = _close
