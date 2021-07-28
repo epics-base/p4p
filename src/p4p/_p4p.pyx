@@ -80,7 +80,7 @@ logLevelFatal = <int>log.Crit
 logLevelOff = <int>log.Crit
 
 def logger_level_set(basestring name, int lvl):
-    log.logger_level_set(name.encode(), <log.Level>lvl)
+    log.logger_level_set(name.encode(), lvl)
 
 ############### util
 
