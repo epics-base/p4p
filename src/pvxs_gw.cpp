@@ -98,10 +98,13 @@ GWUpstream::GWUpstream(const std::string& usname, GWSource &src)
     ,src(src)
     ,workQ(src.workQ)
     ,connector(upstream.connect(usname)
+               .onConnect([this](){
+                    log_debug_printf(_log, "%p upstream connect '%s'\n", &this->src, this->usname.c_str());
+                })
                .onDisconnect([this]()
                 {
                     // on client worker
-                    log_debug_printf(_log, "upstream disconnect %s\n", this->usname.c_str());
+                    log_debug_printf(_log, "%p upstream disconnect '%s'\n", &this->src, this->usname.c_str());
                     Guard G(dschans_lock);
                     for(auto& chan : dschans) {
                         chan->close();
@@ -740,6 +743,8 @@ void GWSource::onCreate(std::unique_ptr<server::ChannelControl> &&op)
     ctrl->onSubscribe([pv](std::unique_ptr<server::MonitorSetupOp>&& sop) mutable {
         GWChan::onSubscribe(pv, std::move(sop));
     }); // onSubscribe
+
+    log_debug_printf(_log, "%p onCreate '%s' as '%s' success\n", this, pv->dsname.c_str(), pv->us->usname.c_str());
 }
 
 GWSearchResult GWSource::test(const std::string &usname)
@@ -757,6 +762,8 @@ GWSearchResult GWSource::test(const std::string &usname)
         auto pair = channels.insert(std::make_pair(usname, chan));
         assert(pair.second); // we already checked
         it = pair.first;
+
+        log_debug_printf(_log, "%p new upstream channel '%s'\n", this, usname.c_str());
     }
 
     if(it->second->gcmark) {
