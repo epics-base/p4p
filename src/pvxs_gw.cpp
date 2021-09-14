@@ -638,57 +638,63 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
     // start new subscription
     sub = std::make_shared<GWSubscription>();
     sub->setups.push_back(op);
-
-    sub->upstream = cli = pv->us->upstream.monitor(pv->us->usname)
-            .syncCancel(false)
-            .maskConnected(true) // upstream should already be connected
-            .maskDisconnected(true) // handled by the client Connect op
-            .event([sub, pv](client::Subscription& cli)
     {
-        // on client worker
+        auto req = pv->us->upstream.monitor(pv->us->usname)
+                .syncCancel(false)
+                .maskConnected(true) // upstream should already be connected
+                .maskDisconnected(true); // handled by the client Connect op
 
-        // only invoked if there is an early error.
-        // replaced below for starting
+        if(!docache)
+            req.rawRequest(op->pvRequest()); // when not cached, pass through upstream client request verbatim.
 
-        try {
-            cli.pop(); // expected to throw
-            throw std::runtime_error("not error??");
-        }catch(std::exception& e){
-            log_warn_printf(_logmon, "'%s' MONITOR setup error: %s\n", cli.name().c_str(), e.what());
-
-            Guard G(pv->us->lock);
-            pv->us->subscription.reset();
-            sub->state = GWSubscription::Error;
-            for(auto& op : sub->setups)
-                op->error(e.what());
-        }
-    })
-            .onInit([sub, pv](client::Subscription& cli, const Value& prototype)
-    {
-        // on client worker
-
-        log_debug_printf(_logmon, "'%s' MONITOR typed\n", cli.name().c_str());
-
-        //auto clisub(cli.shared_from_this());
-
-        cli.onEvent([sub, pv](client::Subscription& cli) { // replace earlier .event(...)
+        sub->upstream = cli = req
+                .event([sub, pv](client::Subscription& cli)
+        {
             // on client worker
 
-            log_debug_printf(_logmon, "'%s' MONITOR wakeup\n", cli.name().c_str());
+            // only invoked if there is an early error.
+            // replaced below for starting
 
-            pv->us->workQ->push([sub, pv]() { onSubEvent(sub, pv); });
-        });
+            try {
+                cli.pop(); // expected to throw
+                throw std::runtime_error("not error??");
+            }catch(std::exception& e){
+                log_warn_printf(_logmon, "'%s' MONITOR setup error: %s\n", cli.name().c_str(), e.what());
 
-        // syncs client worker with server worker
+                Guard G(pv->us->lock);
+                pv->us->subscription.reset();
+                sub->state = GWSubscription::Error;
+                for(auto& op : sub->setups)
+                    op->error(e.what());
+            }
+        })
+                .onInit([sub, pv](client::Subscription& cli, const Value& prototype)
         {
-            Guard G(pv->us->lock);
-            sub->state = GWSubscription::Running;
-            auto setups(std::move(sub->setups));
-            for(auto& setup : setups)
-                sub->controls.push_back(setup->connect(prototype));
-        }
-    })
-            .exec();
+            // on client worker
+
+            log_debug_printf(_logmon, "'%s' MONITOR typed\n", cli.name().c_str());
+
+            //auto clisub(cli.shared_from_this());
+
+            cli.onEvent([sub, pv](client::Subscription& cli) { // replace earlier .event(...)
+                // on client worker
+
+                log_debug_printf(_logmon, "'%s' MONITOR wakeup\n", cli.name().c_str());
+
+                pv->us->workQ->push([sub, pv]() { onSubEvent(sub, pv); });
+            });
+
+            // syncs client worker with server worker
+            {
+                Guard G(pv->us->lock);
+                sub->state = GWSubscription::Running;
+                auto setups(std::move(sub->setups));
+                for(auto& setup : setups)
+                    sub->controls.push_back(setup->connect(prototype));
+            }
+        })
+                .exec();
+    }
 
     if(docache)
         pv->us->subscription = sub;
