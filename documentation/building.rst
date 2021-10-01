@@ -109,6 +109,7 @@ Set location of EPICS modules.  With EPICS >= 7.0.2::
 
    cat <<EOF > configure/RELEASE.local
    EPICS_BASE=/path/to/epics-base
+   PVXS=/path/to/pvxs
    EOF
    make
 
