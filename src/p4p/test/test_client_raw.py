@@ -17,9 +17,8 @@ class TestRequest(RefTestCase):
                              [('field', [])])
 
     def testValue(self):
-        self.assertListEqual(Context.makeRequest("field(value)").tolist(),
-                             [('field', [('value', [])]), ('record', [('_options', [])])]
-                             )
+        R = Context.makeRequest("field(value)")
+        self.assertListEqual(R['field']['value'].tolist(), [])
 
     def testAll(self):
         self.assertListEqual(Context.makeRequest("field()").tolist(),
