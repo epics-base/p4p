@@ -13,6 +13,15 @@ The P4P modules requires:
 * Cython >=0.25.2
 * nose2 (Optional, recommended to run unittests)
 
+Current
+-------
+
+* EPICS Base >= 3.14.12
+* PVXS >= 0.2.0
+
+Prior to 4.0
+------------
+
 and
 
 * EPICS >= 7.0.2
@@ -108,6 +117,7 @@ or from from versioned source.::
 Set location of EPICS modules.  With EPICS >= 7.0.2::
 
    cat <<EOF > configure/RELEASE.local
+   PVXS=/path/to/pvxs
    EPICS_BASE=/path/to/epics-base
    EOF
    make
@@ -148,12 +158,17 @@ Building EPICS dependencies
 If the necessary EPICS modules are not present, then they may be built from source. ::
 
    sudo apt-get install libreadline6-dev libncurses5-dev perl
-   git clone --recursive https://github.com/epics-base/epics-base.git
+   git clone https://github.com/epics-base/epics-base.git
+   git clone https://github.com/mdavidsaver/pvxs.git
+   cat <<EOF > pvxs/configure/RELEASE.local
+   EPICS_BASE=$PWD/epics-base
+   EOF
+   cat <<EOF > p4p/configure/RELEASE.local
+   PVXS=$PWD/pvxs
+   EPICS_BASE=$PWD/epics-base
+   EOF
    make -C epics-base
-   echo "EPICS_BASE=$PWD/epics-base" > ../p4p/configure/RELEASE.local
-
-When building against EPICS < 7.0.1, the pvDataCPP and pvAccessCPP modules
-must be built separately.
+   make -C pvxs
 
 CLI and unittests
 ~~~~~~~~~~~~~~~~~
