@@ -13,7 +13,7 @@ try:
 except ImportError:
     from queue import Queue, Full, Empty
 
-from .. import _p4p
+from .. import _p4p, set_debug as _set_debug
 from .._p4p import Cancelled, Disconnected, Finished, RemoteError
 
 from ..wrapper import Value, Type
@@ -271,6 +271,10 @@ class Context(object):
     @staticmethod
     def providers():
         return ["pva"]
+
+    @staticmethod
+    def set_debug(lvl):
+        _set_debug(lvl)
 
 set_debug = _p4p.logger_level_set
 

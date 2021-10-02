@@ -594,11 +594,11 @@ C++ Extension
 
 Setup execution flow for use of the C++ extension is:
 
-1. Create a `Client`
+1. Create a `ClientProvider`
 2. Create a `Provider` using this client
 3. Create a `p4p.server.Server` referencing the provider name.
 
-More than one `Provider` may reference to the same `Client`.
+More than one `Provider` may reference to the same `ClientProvider`.
 A `p4p.server.Server` may reference more than one `Provider`,
 and a `Provider` may be referenced by more than one `p4p.server.Server`.
 Many `p4p.server.Server` s may be created.
@@ -638,8 +638,6 @@ possibly with port number (eg. "1.2.3.4:5076)", and never host names.
     .. automethod:: stats
 
     .. automethod:: report
-
-.. autoclass:: Client
 
 .. autoclass:: InfoBase
     :members:

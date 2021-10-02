@@ -70,7 +70,4 @@ C Extension
     :members:
     :undoc-members:
 
-    .. autoclass:: Array
-
-    .. autofunction:: clearProviders
-
+    .. autoclass:: SharedArray
