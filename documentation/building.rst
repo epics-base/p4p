@@ -13,16 +13,14 @@ The P4P modules requires:
 * Cython >=0.25.2
 * nose2 (Optional, recommended to run unittests)
 
-Current
--------
+and...
+
+Current (>= 4.0)
 
 * EPICS Base >= 3.14.12
 * PVXS >= 0.2.0
 
 Prior to 4.0
-------------
-
-and
 
 * EPICS >= 7.0.2
 
