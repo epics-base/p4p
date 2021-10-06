@@ -452,7 +452,10 @@ cdef class ClientOperation:
     def __dealloc__(self):
         self._close()
 
-    def _close(self):
+    def close(self):
+        self._close()
+
+    cdef _close(self):
         cdef shared_ptr[client.Operation] op
         cdef bool cancelled = False
         self.op.swap(op)
@@ -462,7 +465,6 @@ cdef class ClientOperation:
                 op.reset()
         if cancelled:
             self.handler(1, "", None)
-    close = _close
 
 # can't tp_clear as we have no way to replace Subscription handler (cancel?)
 @cython.no_gc_clear
@@ -488,13 +490,15 @@ cdef class ClientMonitor:
     def __dealloc__(self):
         self._close()
 
-    def _close(self):
+    def close(self):
+        self._close()
+
+    cdef _close(self):
         cdef shared_ptr[client.Subscription] trash
         self.sub.swap(trash)
         if <bool>trash:
             with nogil:
                 trash.get().cancel()
-    close = _close
 
     def pop(self):
         cdef shared_ptr[client.Subscription] sub = self.sub # local copy to guard against concurrent _close()
