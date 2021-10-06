@@ -99,7 +99,7 @@ class TestDummyProvider(RefTestCase):
 class TestServerConf(RefTestCase):
     def test_bad_iface(self):
         P = StaticProvider('x')
-        with self.assertRaisesRegexp(RuntimeError, "invalid IP or non-existent hostname"):
+        with self.assertRaisesRegexp(RuntimeError, "invalid"):
             S = Server(providers=[P], useenv=False, conf={
                 'EPICS_PVAS_INTF_ADDR_LIST':'invalid.host.name.',
                 'EPICS_PVAS_BROADCAST_PORT':'0',
