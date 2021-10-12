@@ -236,7 +236,7 @@ class Context(raw.Context):
 
         op = Operation(self._parent, timeout)
         op.result.connect(slot)
-        op._op = super(Context, self).rpc(name, op._result, value, request=request)
+        op._op = super(Context, self).rpc(name, op._resultcb, value, request=request)
         return op
 
     def monitor(self, name, slot, request=None, limitHz=10.0):
