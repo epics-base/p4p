@@ -18,14 +18,19 @@ __all__ = (
 
 class ServOpWrap(object):
 
-    def __init__(self, op, unwrap):
-        self._op, self._unwrap = op, unwrap
+    def __init__(self, op, wrap, unwrap):
+        self._op, self._wrap, self._unwrap = op, wrap, unwrap
 
     def value(self):
         return self._unwrap(self._op.value())
 
+    def done(self, value=None, error=None):
+        if value is not None:
+            value = self._wrap(value)
+        self._op.done(value, error)
+
     def __getattr__(self, key):
-        return getattr(self._op, key)
+        return getattr(self._op, key) # dispatch to _p4p.ServerOperation
 
 
 class Handler(object):
@@ -207,7 +212,7 @@ class SharedPV(_SharedPV):
         def put(self, op):
             _log.debug('PUT %s %s', self._pv, op)
             try:
-                self._pv._exec(op, self._real.put, self._pv, ServOpWrap(op, self._pv._unwrap))
+                self._pv._exec(op, self._real.put, self._pv, ServOpWrap(op, self._pv._wrap, self._pv._unwrap))
             except AttributeError:
                 op.done(error="Put not supported")
 
