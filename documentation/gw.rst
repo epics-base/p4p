@@ -327,6 +327,14 @@ These values are aggregated from all GW Servers and GW Clients.
 
   eg. ``ds:bypv:tx`` is data send by the GW Server to Clients grouped by PV name.
 
+**<statusprefix>refs**
+  Table of object type names and instance counts.
+  May be useful for detecting resource leaks while troubleshooting.
+
+**<statusprefix>threads**
+  Available when running with python >= 3.5.
+  An RPC call which returns a text description of all python threads.
+
 .. _gwsec:
 
 Access Control Model
