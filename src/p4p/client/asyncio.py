@@ -1,7 +1,5 @@
 
 import logging
-import warnings
-import sys
 _log = logging.getLogger(__name__)
 
 import asyncio

@@ -1,6 +1,5 @@
 
 import logging
-import sys
 _log = logging.getLogger(__name__)
 
 try:
@@ -8,9 +7,7 @@ try:
 except ImportError:
     izip = zip
 
-import time
 from collections import OrderedDict
-from operator import itemgetter
 from ..wrapper import Type, Value
 from .common import timeStamp, alarm
 from .scalar import NTScalar

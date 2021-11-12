@@ -1,10 +1,9 @@
 
 import logging
-import warnings
 _log = logging.getLogger(__name__)
 
 from functools import partial
-from threading import Thread, Event
+from threading import Event
 
 from ..util import _defaultWorkQueue
 from .raw import SharedPV as _SharedPV, Handler

@@ -1,14 +1,8 @@
 
 import logging
-import warnings
 _log = logging.getLogger(__name__)
 
-from functools import partial
-
-from threading import Thread
-
 from .._p4p import SharedPV as _SharedPV
-from ..client.raw import LazyRepr
 
 __all__ = (
     'SharedPV',

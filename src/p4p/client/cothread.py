@@ -2,14 +2,11 @@
 from __future__ import absolute_import
 
 import logging
-import warnings
 import sys
 from functools import partial
 _log = logging.getLogger(__name__)
 
 import cothread
-
-from functools import partial
 
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished, LazyRepr

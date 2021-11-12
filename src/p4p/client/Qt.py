@@ -1,6 +1,6 @@
 import logging
 
-from qtpy.QtCore import QObject, QCoreApplication, Signal, QEvent, QTimer
+from qtpy.QtCore import QObject, QCoreApplication, Signal, QEvent
 
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished, LazyRepr

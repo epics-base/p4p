@@ -1,6 +1,5 @@
 
 import logging
-import warnings
 _log = logging.getLogger(__name__)
 
 from functools import partial

@@ -5,8 +5,6 @@ import inspect
 from functools import wraps, partial
 _log = logging.getLogger(__name__)
 
-from threading import Thread
-
 from .wrapper import Value, Type
 from .nt import NTURI
 from .client.raw import RemoteError, LazyRepr

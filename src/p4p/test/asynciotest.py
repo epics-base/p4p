@@ -2,14 +2,10 @@
 # Add new TestCase s to __all__
 
 import logging
-import warnings
 _log = logging.getLogger(__name__)
 
 import unittest
 import sys
-import random
-import weakref
-import gc
 from unittest.case import SkipTest
 
 from .. import Value

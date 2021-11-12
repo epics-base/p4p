@@ -15,7 +15,6 @@ except ImportError:
 import logging
 _log = logging.getLogger(__name__)
 
-from .. import Value
 from .. import nt
 from .. import set_debug
 from . import thread

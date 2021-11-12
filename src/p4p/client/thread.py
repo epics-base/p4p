@@ -2,7 +2,6 @@
 from __future__ import print_function
 
 import logging
-import warnings
 import sys
 _log = logging.getLogger(__name__)
 
