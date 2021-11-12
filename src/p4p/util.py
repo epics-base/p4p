@@ -55,7 +55,7 @@ class WorkQueue(object):
                     break
                 callable()
             except:
-                _log.exception("Error from WorkQueue")
+                _log.exception("Error from WorkQueue w/ %r", callable)
             finally:
                 self._Q.task_done()
 

@@ -6,7 +6,6 @@ import logging
 import time
 import socket
 import threading
-import platform
 import pprint
 import json
 import re
@@ -224,27 +223,22 @@ class GWStats(object):
                 );
             """)
 
-        self.clientsPV = SharedPV(nt=NTScalar('as'), initial=[])
-        self._pvs['clients'] = self.clientsPV
+        self._pvs['clients'] = self.clientsPV = SharedPV(nt=NTScalar('as'), initial=[])
 
-        self.cachePV = SharedPV(nt=NTScalar('as'), initial=[])
-        self._pvs['cache'] = self.cachePV
+        self._pvs['cache'] = self.cachePV = SharedPV(nt=NTScalar('as'), initial=[])
 
-        self.statsPV = SharedPV(initial=statsType())
-        self._pvs['stats'] = self.statsPV
+        self._pvs['stats'] = self.statsPV = SharedPV(initial=statsType())
 
-        self.pokeStats = SharedPV(nt=NTScalar('i'), initial=0)
+        self._pvs['poke'] = self.pokeStats = SharedPV(nt=NTScalar('i'), initial=0)
         @self.pokeStats.put
         def pokeStats(pv, op):
             self.update_stats()
             op.done()
-        self._pvs['poke'] = self.pokeStats
 
-        self.refsPV = SharedPV(nt=RefAdapter(), initial={})
-        self._pvs['refs'] = self.refsPV
+        self._pvs['refs'] = self.refsPV = SharedPV(nt=RefAdapter(), initial={})
 
-        self.statsTime = SharedPV(nt=NTScalar('d'), initial=0.0)
-        self._pvs['StatsTime'] = self.statsTime
+        self._pvs['StatsTime'] = self.statsTime = SharedPV(nt=NTScalar('d'), initial=0.0)
+
 
         # PVs for bandwidth usage statistics.
         # 2x tables: us, ds
