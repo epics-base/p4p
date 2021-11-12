@@ -31,6 +31,8 @@ __all__ = (
 )
 
 class Handler:
+    def __init__(self, loop=None):
+        self.loop = loop
 
     @asyncio.coroutine
     def put(self, pv, op):
@@ -47,7 +49,7 @@ class TestGPM(RefTestCase):
     def setUp(self):
         super(TestGPM, self).setUp()
 
-        self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=Handler(), loop=self.loop)
+        self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=Handler(loop=self.loop), loop=self.loop)
         self.pv2 = SharedPV(handler=Handler(), nt=NTScalar('d'), initial=42.0, loop=self.loop)
         self.provider = StaticProvider("serverend")
         self.provider.add('foo', self.pv)

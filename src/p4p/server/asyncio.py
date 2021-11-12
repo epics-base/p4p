@@ -85,7 +85,6 @@ class SharedPV(_SharedPV):
     def __init__(self, handler=None, loop=None, **kws):
         self.loop = loop or asyncio.get_event_loop()
         _SharedPV.__init__(self, handler=handler, **kws)
-        self._handler.loop = self.loop
         self._disconnected = asyncio.Event(loop=self.loop)
         self._disconnected.set()
         if not hasattr(self.loop, '_SharedPV_handlers'):
