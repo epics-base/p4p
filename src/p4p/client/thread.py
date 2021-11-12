@@ -123,7 +123,7 @@ class Subscription(object):
             if E is not None:
                 # removed 4 elements without emptying queue
                 # re-schedule to mux with others
-                self._Q.push(partial(self._handle, True))
+                self._Q.push(self._handle)
 
         except:
             _log.exception("Error processing Subscription event for %s", self.name)
