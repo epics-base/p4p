@@ -696,6 +696,8 @@ cdef public:
         return ret
 
 cdef class ServerOperation:
+    """An in-progress Put or RPC operation from a client.
+    """
     cdef shared_ptr[source.ExecOp] op
     cdef data.Value val
 
@@ -704,31 +706,60 @@ cdef class ServerOperation:
             self.op.reset()
 
     def pvRequest(self):
+        '''pvRequest() -> Value
+        Access the request Value provided by the client, which may ignored, or used to modify handling.
+        '''
         cdef _Value ret = Value.__new__(Value)
         ret.val = self.op.get().pvRequest()
         return ret
 
     def value(self):
+        '''value() -> Value
+        For an RPC operation, the argument Value provided
+        '''
         cdef _Value ret = Value.__new__(Value)
         ret.val = self.val
         return ret
 
     def name(self):
+        '''name() -> str
+        The PV name used by the client
+        '''
         return self.op.get().name().decode()
 
     def peer(self):
+        '''peer() -> str
+        Client address
+        '''
         return self.op.get().peerName().decode()
 
     def account(self):
+        '''account() -> str
+        Client identity
+        '''
         return self.op.get().credentials().get().account.decode()
 
     def roles(self):
+        '''roles() -> {str}
+        Client group memberships
+        '''
         ret = set()
         for role in self.op.get().credentials().get().roles():
             ret.add(role.decode())
         return ret
 
     def done(self, _Value value=None, basestring error=None):
+        '''done(value=None, error=None)
+
+        Signal completion of the operation. ::
+
+          # successful completion without result (Put or RPC)
+          done()
+          # successful completion with result (RPC only)
+          done(Value)
+          # unsuccessful completion (Put or RPC)
+          done(error="msg")
+        '''
         cdef string msg
 
         if error is not None:

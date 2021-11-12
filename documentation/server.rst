@@ -116,15 +116,11 @@ This class is passed to SharedPV handler `Handler.put()` and `Handler.rpc()` met
 
 .. autoclass:: ServerOperation
 
+    .. automethod:: done
+
     .. automethod:: pvRequest
 
     .. automethod:: value
-
-    .. automethod:: done
-
-    .. automethod:: info
-
-    .. automethod:: warn
 
     .. automethod:: name
 

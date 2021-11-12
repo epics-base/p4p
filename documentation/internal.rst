@@ -60,14 +60,3 @@ Raw server API
 
 .. automodule:: p4p.server.raw
     :members:
-
-C Extension
-~~~~~~~~~~~
-
-.. currentmodule:: p4p._p4p
-
-.. automodule:: p4p._p4p
-    :members:
-    :undoc-members:
-
-    .. autoclass:: SharedArray
