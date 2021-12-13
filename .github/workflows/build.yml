@@ -276,7 +276,7 @@ jobs:
         run: |
           echo "PRE=$PRE"
           python -m pip install setuptools wheel nose2
-          python -m pip install $PRE setuptools-dso epicscorelibs pvxslibs
+          python -m pip install --only-binary numpy $PRE setuptools-dso epicscorelibs pvxslibs
           python setup.py sdist --formats=gztar
           ls dist/*
 
@@ -321,10 +321,10 @@ jobs:
           which python
           python -m pip install -U pip
           python -m pip install setuptools wheel nose2
-          python -m pip install $PRE setuptools-dso epicscorelibs pvxslibs
+          python -m pip install --only-binary numpy $PRE setuptools-dso epicscorelibs pvxslibs
           if [ "${{ matrix.profile }}" ]
           then
-            python -m pip install -r requirements-${{ matrix.profile }}.txt
+            python -m pip install --only-binary numpy -r requirements-${{ matrix.profile }}.txt
           else
             python -m pip install --only-binary numpy nose2 ply cothread ${{ matrix.numpy }} ${{ matrix.cython }}
           fi
