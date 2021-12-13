@@ -176,7 +176,7 @@ struct GWSource : public server::Source,
 
     std::shared_ptr<GWChan> connect(const std::string& dsname,
                                     const std::string& usname,
-                                    const std::shared_ptr<server::ChannelControl>& op);
+                                    std::unique_ptr<server::ChannelControl> *op);
 
     void sweep();
     void disconnect(const std::string& usname);

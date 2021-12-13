@@ -719,20 +719,27 @@ void GWSource::onCreate(std::unique_ptr<server::ChannelControl> &&op)
     // To avoid a reference loop, client operation handles must not hold strong refs.
     // to server handles.
 
-    std::shared_ptr<server::ChannelControl> ctrl(std::move(op));
-
     std::shared_ptr<GWChan> pv;
     {
         PyLock L;
 
-        pv = GWProvider_makeChannel(this, ctrl);
+        pv = GWProvider_makeChannel(this, &op);
     }
 
-    if(!pv || !pv->us->connector->connected()) {
-        log_debug_printf(_log, "%p makeChannel returned %s '%s'\n", this, pv ? "disconnected" : "null", ctrl->name().c_str());
-        ctrl->close();
+    if(!pv) {
+        return; // not our PV.  Let other GWSource s try.
+
+    } else if(!pv->us->connector->connected()) {
+        // ours, but something went wrong.
+        log_debug_printf(_log, "%p makeChannel returned '%s'\n", this,
+                         op ? op->name().c_str() : "dead channel");
+        if(op)
+            op->close();
         return;
     }
+
+    assert(pv->dschannel);
+    auto& ctrl = pv->dschannel;
 
     ctrl->updateInfo(pv->reportInfo);
 
@@ -787,7 +794,7 @@ GWSearchResult GWSource::test(const std::string &usname)
 
 std::shared_ptr<GWChan> GWSource::connect(const std::string& dsname,
                                           const std::string& usname,
-                                          const std::shared_ptr<server::ChannelControl>& op)
+                                          std::unique_ptr<server::ChannelControl> *ctrl)
 {
     std::shared_ptr<GWChan> ret;
 
@@ -795,6 +802,7 @@ std::shared_ptr<GWChan> GWSource::connect(const std::string& dsname,
 
     auto it(channels.find(usname));
     if(it!=channels.end() && it->second->connector->connected()) {
+        std::shared_ptr<server::ChannelControl> op(std::move(*ctrl));
         ret.reset(new GWChan(usname, dsname, it->second, op));
     }
 

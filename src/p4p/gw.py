@@ -393,7 +393,7 @@ class GWHandler(object):
         _log.debug("Create %s by %s", op.name, op.peer)
         peer = op.peer.split(':',1)[0]
         usname, asg, asl = self.pvlist.compute(op.name, peer)
-        if not usname:
+        if not usname or self.provider.testChannel(usname.encode())!=self.provider.Claim:
             return None
         chan = op.create(usname.encode('UTF-8'))
 

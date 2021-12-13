@@ -8,7 +8,7 @@ from cpython.ref cimport Py_INCREF, Py_XDECREF, Py_CLEAR
 
 from libcpp cimport bool
 from libcpp.cast cimport dynamic_cast
-from libcpp.memory cimport shared_ptr, weak_ptr
+from libcpp.memory cimport unique_ptr, shared_ptr, weak_ptr
 from libcpp.string cimport string
 from libcpp.list cimport list as listxx
 from libcpp.set cimport set as setxx
@@ -36,6 +36,7 @@ cdef extern from "pvxs_gw.h" namespace "p4p" nogil:
 
     cdef cppclass GWChan:
         const shared_ptr[GWUpstream] us
+        const shared_ptr[ChannelControl] dschannel
         bool allow_put
         bool allow_rpc
         bool allow_uncached
@@ -49,7 +50,7 @@ cdef extern from "pvxs_gw.h" namespace "p4p" nogil:
         shared_ptr[GWSource] build(const Context&) except+
 
         int test(const string&) except+
-        shared_ptr[GWChan] connect(const string &dsname, const string &usname, const shared_ptr[ChannelControl]& op) except+
+        shared_ptr[GWChan] connect(const string &dsname, const string &usname, unique_ptr[ChannelControl]* op) except+
 
         void sweep() except+
         void disconnect(const string& usname) except+
@@ -96,7 +97,7 @@ cdef class CreateOp(InfoBase):
     """Handle for in-progress Channel creation request
     """
     cdef readonly bytes name
-    cdef weak_ptr[ChannelControl] op
+    cdef unique_ptr[ChannelControl]* op
     cdef weak_ptr[GWSource] provider
     cdef object __weakref__
 
@@ -111,18 +112,17 @@ cdef class CreateOp(InfoBase):
         cdef string dsname = self.name
         cdef string usname = name
 
-        op = self.op.lock()
         provider = self.provider.lock()
-        if <bool>op and <bool>provider:
+        if <bool>self.op and <bool>provider:
             with nogil:
-                gwchan = provider.get().connect(dsname, usname, op)
+                gwchan = provider.get().connect(dsname, usname, self.op)
 
             if not gwchan:
                 raise RuntimeError("GW Provider will not create %s -> %s"%(usname, dsname))
 
             chan.channel = gwchan
             chan.name = name
-            chan.info = op.get().credentials()
+            chan.info = gwchan.get().dschannel.get().credentials()
             return chan
         else:
             raise RuntimeError("Dead CreateOp")
@@ -356,26 +356,27 @@ cdef public:
         except:
             return GWSearchBanHost
 
-    shared_ptr[GWChan] GWProvider_makeChannel(GWSource* src, const shared_ptr[ChannelControl]& op) with gil:
+    shared_ptr[GWChan] GWProvider_makeChannel(GWSource* src, unique_ptr[ChannelControl]* op) with gil:
         cdef shared_ptr[GWChan] ret
         cdef CreateOp create
         if not src.handler:
             return ret
-        try:
-            handler = <object>src.handler
 
-            create = CreateOp.__new__(CreateOp)
-            create.name = op.get().name().c_str()
-            create.op = <weak_ptr[ChannelControl]>op;
-            create.info = op.get().credentials()
-            create.provider = <weak_ptr[GWSource]>src.shared_from_this()
+        handler = <object>src.handler
 
-            chan = handler.makeChannel(create)
+        create = CreateOp.__new__(CreateOp)
+        create.name = op.get().name().c_str()
+        create.op = op
+        create.info = op.get().credentials()
+        create.provider = <weak_ptr[GWSource]>src.shared_from_this()
 
-            if chan is not None:
-                ret = (<Channel?>chan).channel
-        except:
-            pass # expect handler to catch and log
+        chan = handler.makeChannel(create)
+
+        create.op = NULL # makeChannel() must decide immediately
+
+        if chan is not None:
+            ret = (<Channel?>chan).channel
+
         return ret
 
     void GWProvider_audit(GWSource* src, listxx[string]& cmsgs) with gil:
