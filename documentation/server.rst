@@ -126,6 +126,12 @@ This class is passed to SharedPV handler `Handler.put()` and `Handler.rpc()` met
 
     .. automethod:: peer
 
+    .. automethod:: account
+
+    .. automethod:: roles
+
+    .. automethod:: onCancel
+
 
 SharedPV concurrency options
 ----------------------------

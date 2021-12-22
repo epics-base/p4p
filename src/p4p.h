@@ -169,6 +169,8 @@ PyObject* tostr(const Value& v, size_t limit=0, bool showval=true);
 std::string toString(const server::Server& serv, int detail=0);
 void attachHandler(server::SharedPV& pv, PyObject *handler);
 void detachHandler(server::SharedPV& pv);
+void attachCleanup(const std::shared_ptr<server::ExecOp> &op, PyObject *handler);
+void detachCleanup(const std::shared_ptr<server::ExecOp> &op);
 
 std::shared_ptr<server::Source> createDynamic(PyObject* handler);
 void disconnectDynamic(const std::shared_ptr<server::Source>& src);

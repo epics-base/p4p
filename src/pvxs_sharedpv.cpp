@@ -90,4 +90,26 @@ void detachHandler(server::SharedPV& pv)
     pv.onRPC(nullptr);
 }
 
+void attachCleanup(const std::shared_ptr<server::ExecOp>& op, PyObject *handler)
+{
+    PyUnlock U;
+
+    op->onCancel([handler]() {
+        PyLock L;
+
+        auto ret(PyRef::allownull(PyObject_CallFunction(handler, "")));
+        if(PyErr_Occurred()) {
+            PySys_WriteStderr("Unhandled Exception %s:%d\n", __FILE__, __LINE__);
+            PyErr_Print();
+            PyErr_Clear();
+        }
+    });
+}
+
+void detachCleanup(const std::shared_ptr<server::ExecOp> &op)
+{
+    PyUnlock U;
+    op->onCancel(nullptr);
+}
+
 }

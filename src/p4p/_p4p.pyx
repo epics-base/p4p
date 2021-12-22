@@ -49,6 +49,8 @@ cdef extern from "<p4p.h>" namespace "p4p":
     string toString(const server.Server& serv, int detail) nogil except+
     void attachHandler(sharedpv.SharedPV& pv, object handler) except+
     void detachHandler(sharedpv.SharedPV& pv) except+
+    void attachCleanup(const shared_ptr[source.ExecOp]& op, object handler) except+
+    void detachCleanup(const shared_ptr[source.ExecOp]& op) except+
 
     # pvxs_source.cpp
     shared_ptr[server.Source] createDynamic(object) except+
@@ -695,13 +697,17 @@ cdef public:
             ret = (<SharedPV>pv).pv
         return ret
 
+@cython.no_gc_clear
 cdef class ServerOperation:
     """An in-progress Put or RPC operation from a client.
     """
     cdef shared_ptr[source.ExecOp] op
     cdef data.Value val
+    cdef object handler
+    cdef object __weakref__
 
     def __dealloc__(self):
+        detachCleanup(self.op)
         with nogil:
             self.op.reset()
 
@@ -774,6 +780,18 @@ cdef class ServerOperation:
         else:
             with nogil:
                 self.op.get().reply(value.val)
+
+    def onCancel(self, handler):
+        '''onCancel(callable|None)
+
+        Set callable which will be invoked if the remote operation is
+        cancelled by the client, or if client connection is lost.
+        '''
+        if handler is None:
+            detachCleanup(self.op)
+        else:
+            attachCleanup(self.op, handler)
+        self.handler = handler
 
     def info(self, msg):
         pass
