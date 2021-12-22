@@ -20,7 +20,7 @@ import time
 import numpy
 
 from ..wrapper import Type, Value
-from .common import alarm, timeStamp
+from .common import alarm, timeStamp, NTBase
 
 from .scalar import ntwrappercommon
 
@@ -57,7 +57,7 @@ class ntndarray(ntwrappercommon, numpy.ndarray):
         return self
 
 
-class NTNDArray(object):
+class NTNDArray(NTBase):
     """Representation of an N-dimensional array with meta-data
 
     Translates into `ntndarray`
@@ -130,12 +130,11 @@ class NTNDArray(object):
     def __init__(self, **kws):
         self.type = self.buildType(**kws)
 
-    def wrap(self, value):
+    def wrap(self, value, **kws):
         """Wrap numpy.ndarray as Value
         """
         attrib = getattr(value, 'attrib', None) or {}
 
-        S, NS = divmod(time.time(), 1.0)
         value = numpy.asarray(value) # loses any special/augmented attributes
         dims = list(value.shape)
         dims.reverse() # inner-most sent as left
@@ -153,22 +152,18 @@ class NTNDArray(object):
 
         dataSize = value.nbytes
 
-        return Value(self.type, {
+        return self._annotate(Value(self.type, {
             'value': (self._code2u[value.dtype.char], value.flatten()),
             'compressedSize': dataSize,
             'uncompressedSize': dataSize,
             'uniqueId': 0,
-            'timeStamp': {
-                'secondsPastEpoch': S,
-                'nanoseconds': NS * 1e9,
-            },
             'attribute': [{'name': K, 'value': V} for K, V in attrib.items()],
             'dimension': [{'size': N,
                            'offset': 0,
                            'fullSize': N,
                            'binning': 1,
                            'reverse': False} for N in dims],
-        })
+        }), **kws)
 
     @classmethod
     def unwrap(klass, value):

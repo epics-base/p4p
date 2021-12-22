@@ -2,9 +2,8 @@ from __future__ import print_function
 
 import logging
 import sys
-import unittest
+import time
 
-from functools import partial
 from collections import OrderedDict
 
 from ..wrapper import Value, Type
@@ -21,7 +20,7 @@ class TestScalar(RefTestCase):
     def test_float_wrap(self, code='d', value=5.0):
         NT = nt.NTScalar(code)
 
-        V = NT.wrap(value)
+        V = NT.wrap(value, timestamp=None)
         self.assertEqual(V.value, value)
         self.assertEqual(V.alarm.severity, 0)
         self.assertIsNone(V.get('display'))
@@ -44,6 +43,25 @@ class TestScalar(RefTestCase):
                 ('format', u''),
                 ('units', u'')
             ])
+
+    def test_time_wrap(self):
+        NT = nt.NTScalar('d')
+        V = NT.wrap(42, timestamp=None) # no timestamp
+        self.assertSetEqual(V.changedSet(), {'value'})
+        self.assertEqual(V['timeStamp.secondsPastEpoch'], 0)
+
+        V = NT.wrap(42, timestamp=(1234, 5678)) # specific
+        self.assertSetEqual(V.changedSet(), {
+            'value',
+            'timeStamp.secondsPastEpoch',
+            'timeStamp.nanoseconds',
+        })
+        self.assertEqual(V['timeStamp.secondsPastEpoch'], 1234)
+        self.assertEqual(V['timeStamp.nanoseconds'], 5678)
+
+        V = NT.wrap(42, timestamp=1234.5) # specific
+        self.assertEqual(V['timeStamp.secondsPastEpoch'], 1234)
+        self.assertEqual(V['timeStamp.nanoseconds'], 500000000)
 
     def test_int_wrap(self):
         self.test_float_wrap(code='i', value=42)

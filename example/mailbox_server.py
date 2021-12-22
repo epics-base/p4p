@@ -46,8 +46,12 @@ class MailboxHandler(object):
         pv.open(newtype)
 
     def put(self, pv, op):
-        print("X", op.value())
-        pv.post(op.value())
+        val = op.value()
+        logging.info("Assign %s = %s", op.name(), val)
+        # Notify any subscribers of the new value.
+        # Also set timeStamp with current system time.
+        pv.post(val, timestamp=time.time())
+        # Notify the client making this PUT operation that it has now completeted
         op.done()
 
 def getargs():

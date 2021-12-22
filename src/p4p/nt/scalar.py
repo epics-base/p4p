@@ -4,7 +4,7 @@ import sys
 import numpy
 
 from ..wrapper import Type, Value
-from .common import alarm, timeStamp
+from .common import alarm, timeStamp, NTBase
 
 if sys.version_info >= (3, 0):
     unicode = str
@@ -148,7 +148,7 @@ def _metaHelper(F, valtype, display=False, control=False, valueAlarm=False):
             ])),
         ])
 
-class NTScalar(object):
+class NTScalar(NTBase):
 
     """Describes a single scalar or array of scalar values and associated meta-data
 
@@ -196,27 +196,23 @@ class NTScalar(object):
     def __init__(self, valtype='d', **kws):
         self.type = self.buildType(valtype, **kws)
 
-    def wrap(self, value, timestamp=None):
+    def wrap(self, value, **kws):
         """Pack python value into Value
 
         Accepts dict to explicitly initialize fields by name.
         Any other type is assigned to the 'value' field.
         """
         if isinstance(value, Value):
-            return value
+            pass
         elif isinstance(value, ntwrappercommon):
-            return value.raw
+            kws.setdefault('timestamp', value.timestamp)
+            value = value.raw
         elif isinstance(value, dict):
-            return self.Value(self.type, value)
+            value = self.Value(self.type, value)
         else:
-            S, NS = divmod(float(timestamp or time.time()), 1.0)
-            return self.Value(self.type, {
-                'value': value,
-                'timeStamp': {
-                    'secondsPastEpoch': S,
-                    'nanoseconds': NS * 1e9,
-                },
-            })
+            value = self.Value(self.type, {'value': value})
+
+        return self._annotate(value, **kws)
 
     typeMap = {
         bool: ntbool,

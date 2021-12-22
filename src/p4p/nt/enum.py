@@ -5,7 +5,7 @@ import sys
 import time
 
 from ..wrapper import Type, Value
-from .common import alarm, timeStamp
+from .common import alarm, timeStamp, NTBase
 from .scalar import _metaHelper, ntwrappercommon
 
 if sys.version_info >= (3, 0):
@@ -35,7 +35,7 @@ class ntenum(ntwrappercommon, int):
 
     # TODO: compare with str
 
-class NTEnum(object):
+class NTEnum(NTBase):
     """Describes a string selected from among a list of possible choices.  Stored internally as an integer
     """
     @staticmethod
@@ -59,15 +59,13 @@ class NTEnum(object):
         # picked up during unwrap
         self._choices = []
 
-    def wrap(self, value, timestamp=None):
+    def wrap(self, value, choices=None, **kws):
         """Pack python value into Value
         """
         V = self.type()
-        S, NS = divmod(float(timestamp or time.time()), 1.0)
-        V.timeStamp = {
-            'secondsPastEpoch': S,
-            'nanoseconds': NS * 1e9,
-        }
+        if choices is not None:
+            V['value.choices'] = choices
+
         if isinstance(value, dict):
             # assume dict of index and choices list
             V.value = value
@@ -75,7 +73,7 @@ class NTEnum(object):
         else:
             # index or string
             self.assign(V, value)
-        return V
+        return self._annotate(V, **kws)
 
     def unwrap(self, value):
         """Unpack a Value into an augmented python type (selected from the 'value' field)
@@ -99,6 +97,10 @@ class NTEnum(object):
                 if py==C:
                     V['value.index'] = i
                     return
+            # attempt to parse as integer
+            py = int(py, 0)
+        else:
+            # attempt to cast as integer
+            py = int(py)
 
-        # attempt to parse as integer
         V['value.index'] = py

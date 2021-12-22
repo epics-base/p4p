@@ -9,7 +9,7 @@ except ImportError:
 
 from collections import OrderedDict
 from ..wrapper import Type, Value
-from .common import timeStamp, alarm
+from .common import timeStamp, alarm, NTBase
 from .scalar import NTScalar
 from .ndarray import NTNDArray
 from .enum import NTEnum
@@ -67,10 +67,10 @@ class ClientUnwrapper(object):
         self.id = None
         self._wrap = self._unwrap = lambda x:x
         self._assign = self._default_assign
-    def wrap(self, val):
+    def wrap(self, val, **kws):
         """Pack a arbitrary python object into a Value
         """
-        return self._wrap(val)
+        return self._wrap(val, **kws)
     def unwrap(self, val):
         """Unpack a Value as some other python type
         """
@@ -103,7 +103,7 @@ class ClientUnwrapper(object):
         return '%s(%s)'%(self.__class__.__name__, repr(self.nt))
     __str__ = __repr__
 
-class NTMultiChannel(object):
+class NTMultiChannel(NTBase):
 
     """Describes a structure holding the equivalent of a number of NTScalar
     """
@@ -135,7 +135,7 @@ class NTMultiChannel(object):
                     ] + extra)
 
 
-class NTTable(object):
+class NTTable(NTBase):
 
     """A generic table
 
@@ -173,7 +173,7 @@ class NTTable(object):
             self.labels.append(col)
         self.type = self.buildType(C, extra=extra)
 
-    def wrap(self, values):
+    def wrap(self, values, **kws):
         """Pack an iterable of dict into a Value
 
         >>> T=NTTable([('A', 'ai'), ('B', 'as')])
@@ -184,32 +184,34 @@ class NTTable(object):
         """
         if isinstance(values, Value):
             return values
-        cols = dict([(L, []) for L in self.labels])
-        try:
-            # unzip list of dict
-            for V in values:
-                for L in self.labels:
-                    try:
-                        cols[L].append(V[L])
-                    except (IndexError, KeyError):
-                        pass
-            # allow omit empty columns
-            for L in self.labels:
-                V = cols[L]
-                if len(V) == 0:
-                    del cols[L]
-
+        else:
+            cols = dict([(L, []) for L in self.labels])
             try:
-                return self.Value(self.type, {
-                    'labels': self.labels,
-                    'value': cols,
-                })
+                # unzip list of dict
+                for V in values:
+                    for L in self.labels:
+                        try:
+                            cols[L].append(V[L])
+                        except (IndexError, KeyError):
+                            pass
+                # allow omit empty columns
+                for L in self.labels:
+                    V = cols[L]
+                    if len(V) == 0:
+                        del cols[L]
+
+                try:
+                    values = self.Value(self.type, {
+                        'labels': self.labels,
+                        'value': cols,
+                    })
+                except:
+                    _log.error("Failed to encode '%s' with %s", cols, self.labels)
+                    raise
             except:
-                _log.error("Failed to encode '%s' with %s", cols, self.labels)
+                _log.exception("Failed to wrap: %s", values)
                 raise
-        except:
-            _log.exception("Failed to wrap: %s", values)
-            raise
+        return self._annotate(values, **kws)
 
     @staticmethod
     def unwrap(value):

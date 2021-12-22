@@ -46,9 +46,19 @@ is an instance of an object conforming to `WrapperInterface`. ::
 
     from p4p.server.thread import SharedPV
     from p4p.nt import NTScalar
-    pv1 = SharedPV() # pv1.open() expects a Value
-    pv2 = SharedPV(nt=NTScalar('d'))
-    pv2.open(4.2) # NTScalar automatically wraps this float into a Value
+    pv1 = SharedPV() # pv1.open() expects a plain Value
+    pv2 = SharedPV(nt=NTScalar('d', display=True))
+
+    # NTScalar automatically wraps this float into a Value
+    pv2.open(4.2)
+
+    # send change w/ system times
+    pv2.post(3.3, timestamp=time.time())
+
+    # explicitly wrap and set additional fields
+    V = pv2.wrap(2.2, timestamp=time.time())
+    V['display.description'] = "My special PV"
+    pv2.post(V)
 
 Conforming objects include `NTScalar`, `NTNDArray`, and others listed below.
 
