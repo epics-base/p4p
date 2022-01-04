@@ -314,12 +314,14 @@ class Context(raw.Context):
         Unless the provided value is a dict, it is assumed to be a plain value
         and an attempt is made to store it in '.value' field.
         """
+        singlepv = isinstance(name, (bytes, unicode))
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:
             request = 'field()record[block=%s,process=%s]' % ('true' if wait else 'false', process or 'passive')
+            if not singlepv:
+                request = [request]*len(name)
 
-        singlepv = isinstance(name, (bytes, unicode))
         if singlepv:
             name = [name]
             values = [values]
