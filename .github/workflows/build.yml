@@ -314,7 +314,7 @@ jobs:
           which python
           python -m pip install -U pip
           python -m pip install setuptools wheel nose2
-          python -m pip install $PRE setuptools-dso epicscorelibs
+          python -m pip install $PRE --only-binary numpy setuptools-dso epicscorelibs
           if [ "${{ matrix.profile }}" ]
           then
             python -m pip install -r requirements-${{ matrix.profile }}.txt
@@ -350,7 +350,7 @@ jobs:
           path: dist/*
 
       - name: Upload wheels
-        if: github.event_name=='push' && github.ref=='refs/heads/master' && !matrix.base && !matrix.source
+        if: github.event_name=='push' && github.ref=='refs/heads/3.x' && !matrix.base && !matrix.source
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -358,7 +358,7 @@ jobs:
           python -m twine upload --skip-existing dist/p4p*.whl
 
       - name: Upload source
-        if: github.event_name=='push' && github.ref=='refs/heads/master' && matrix.source && !matrix.base
+        if: github.event_name=='push' && github.ref=='refs/heads/3.x' && matrix.source && !matrix.base
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
