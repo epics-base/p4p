@@ -30,7 +30,7 @@ Controlling (Un)wrapping
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 Client `p4p.client.thread.Context` accepts an argument nt= which may be
-`None` to sure some reasonable defaults.  `False` disables wrapping,
+``None`` to sure some reasonable defaults.  ``False`` disables wrapping,
 and always works with `Value`.  *nt=* may also be passed a dictionary
 keyed by top level structure IDs mapped to callables returning objects
 conforming to `WrapperInterface`.

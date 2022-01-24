@@ -140,15 +140,20 @@ This Gateway may be started by saving the preceding JSON as a file ``mygw.conf``
 
     pvagw mygw.conf
 
+Loop Avoidance
+--------------
+
+In order to prevent a mis-configured gateway from connection to itself,
+no client within a single pvagw instance will connect to any server
+within the same instance (process).
+If this is desirable (some "chaining" scenarios), then it will be necessary
+to split a configuration into more than one instance.
+
 CLI Arguments
 -------------
 
 .. note::
-    Unless the ``--no-ban-local`` argument is passed, a Gateway
-    will ignore all Client connection attempts originating from
-    the same host.  This prevents a mis-configured Gateway from
-    connecting to itself, but may cause surprise during gateway
-    setup and testing.
+    The ``--no-ban-local`` argument no longer has any effect.
 
 .. argparse::
     :module: p4p.gw
@@ -193,6 +198,10 @@ A full list of known keys for configuration scheme version 2. ::
             }
         ]
     }
+
+See also PVXS `client <https://mdavidsaver.github.io/pvxs/client.html#configuration>`
+and `server <https://mdavidsaver.github.io/pvxs/server.html#configuration` configuration
+references.
 
 Keys
 ~~~~

@@ -500,7 +500,7 @@ def getargs():
     P = ArgumentParser()
     P.add_argument('config', help='Config file')
     P.add_argument('--no-ban-local', action='store_true',
-                    help='Skip ban of local interfaces.  Risk of GW talking to itself.')
+                    help='Legacy option.  Ignored')
     P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO,
                    help='Enable basic logging with DEBUG level')
     P.add_argument('--logging', help='Use logging config from file (JSON in dictConfig format)')

@@ -6,7 +6,7 @@ from .._p4p import SharedPV as _SharedPV
 
 __all__ = (
     'SharedPV',
-        'Handler',
+    'Handler',
 )
 
 
@@ -28,7 +28,6 @@ class ServOpWrap(object):
 
 
 class Handler(object):
-
     """Skeleton of SharedPV Handler
 
     Use of this as a base class is optional.
