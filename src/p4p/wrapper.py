@@ -139,16 +139,19 @@ class Value(_p4p._Value):
     __contains__ = _p4p._Value.has
 
     def keys(self):
+        """keys() -> Iterable[str]
+        """
         return self.type().keys()
 
     def __iter__(self):
         return iter(self.type())
 
     def changed(self, *fields):
-        """Test if one or more fields have changed.
+        """changed(*fields) -> bool
+        Test if one or more named fields have changed.
 
-        A field is considered to have changed if it has been marked as changed,
-        or if any of its parent, or child, fields have been marked as changed.
+        A field is considered to have changed if it is marked as changed,
+        or if its parent, or any child, field is marked as changed.
         """
         S = super(Value, self).changed
         for fld in fields or (None,): # no args tests for any change
@@ -157,7 +160,7 @@ class Value(_p4p._Value):
         return False
 
     def changedSet(self, expand=False, parents=False):
-        """
+        """changedSet(expand=False, parents=False) -> set
         :param bool expand: Whether to expand when entire sub-structures are marked as changed.
                             If True, then sub-structures are expanded and only leaf fields will be included.
                             If False, then a direct translation is made, which may include both leaf and sub-structure fields.

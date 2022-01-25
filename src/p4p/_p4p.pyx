@@ -153,6 +153,12 @@ cdef class _Value:
             raise ValueError("type= or clone= required")
 
     def get(self, key, default=None):
+        """get(key : str, default=None) -> Value | Any
+        dict-like access to sub-field
+
+        :param str key: Sub-field name
+        :param default: returned if sub-field doesn't exist
+        """
         cdef data.Value mem
         lookupMember(&mem, self.val, key, 0)
         if not mem.valid():
@@ -161,58 +167,92 @@ cdef class _Value:
         return asPy(mem, False, False, None)
 
     def items(self, key=None):
+        """items(key : str = None) -> Iterable[Value | Any]
+
+        :param str key: Sub-field name
+        """
         cdef data.Value mem
         lookupMember(&mem, self.val, key, 1)
 
         return asPy(mem, True, False, None)
 
     def __setitem__(self, key, value):
+        """__setitem__(key : str, value)
+
+        :param str key: Sub-field name
+        :param value: value to assign
+        """
         cdef data.Value mem
         lookupMember(&mem, self.val, key, 1)
 
         storePy(mem, value)
 
     def __getitem__(self, key):
+        """items(key : str) -> Value | Any
+
+        :param str key: Sub-field name
+        """
         cdef data.Value mem
         lookupMember(&mem, self.val, key, 1)
 
         return asPy(mem, False, False, None)
 
-    def __setitem__(self, key, value):
-        cdef data.Value mem
-        lookupMember(&mem, self.val, key, 1)
-
-        storePy(mem, value)
-
     def __getattr__(self, key):
+        """__getattr__(key : str) -> Value | Any
+
+        :param str key: Sub-field name
+        """
         cdef data.Value mem
         lookupMember(&mem, self.val, key, 2)
 
         return asPy(mem, False, False, None)
 
     def __setattr__(self, key, value):
+        """__setattr__(key : str, value)
+
+        :param str key: Sub-field name
+        :param value: value to assign
+        """
         cdef data.Value mem
         lookupMember(&mem, self.val, key, 2)
 
         storePy(mem, value)
 
     def has(self, basestring name):
+        """has(name : str) -> bool
+        Test for sub-field existance
+
+        :param str name: Sub-field name
+        """
         cdef string cname = name.encode()
         return self.val[cname].valid()
 
     def tolist(self, name=None):
+        """tolist(name=None) -> List[Tuple[str, Value]]
+        Return this Value (or the named sub-field) translated into a list of tuples
+        """
         cdef data.Value mem
         lookupMember(&mem, self.val, name, 2)
 
         return asPy(mem, True, True, None)
 
-    def todict(self, name=None, wrapper=dict):
+    def todict(self, name=None, wrapper=None):
+        """todict(name=None, wrapper=None) -> Mapping[str, Value]
+
+        Return this Value (or the named sub-field) translated into a dict
+
+        :param str name: Sub-field name, or None
+        :param callable wrapper: Passed an iterable of name,value tuples.  By default ``dict``  eg. could be OrderedDict
+        """
         cdef data.Value mem
         lookupMember(&mem, self.val, name, 2)
 
-        return asPy(mem, True, True, wrapper)
+        return asPy(mem, True, True, wrapper or dict)
 
     def getID(self):
+        """getID() -> str
+        Return Type id= string
+        """
         return self.val.id().decode() or 'structure'
 
     def __iter__(self):
@@ -222,6 +262,11 @@ cdef class _Value:
         return iter(ret)
 
     def type(self, fld=None):
+        """type(fld : str = None) -> Type
+        Return the Type of this Value, or the named sub-field.
+
+        :param str fld: Sub-field name, or None
+        """
         cdef data.Value mem
         cdef _Type type
         lookupMember(&mem, self.val, fld, 1)
@@ -231,6 +276,11 @@ cdef class _Value:
         return type
 
     def select(self, basestring name, basestring selector=None):
+        """select(name : str, selector : str)
+        Explicitly select Union member
+
+        :param str name: Sub-field name
+        """
         cdef string cname = name
         cdef data.Value u
 
@@ -271,16 +321,30 @@ cdef class _Value:
 
         return ret
 
-    def mark(self, field, val=True):
+    def mark(self, field=None, val=True):
+        """mark(field=None, val=True)
+        Mark (or unmark) the this field, or the named sub-field.
+
+        :param str field: Sub-field name
+        :param bool val: To mark, or unmark
+        """
         cdef data.Value mem
         lookupMember(&mem, self.val, field, 1)
 
         mem.mark(val)
 
     def unmark(self):
+        """Unmark Value and all sub-fields.
+        """
         self.val.unmark(True, True)
 
     def tostr(self, int limit=0):
+        """tostr(limit : int = 0) -> str
+
+        Return a string representation, optionally truncated to a length limit
+
+        :param int limit: If greater than zero, formatting is terminated at ``limit`` charactors.
+        """
         return tostr(self.val, limit, True)
         
 
@@ -322,15 +386,24 @@ cdef class _Type:
         self.proto = tdef.create()
 
     def getID(self):
+        """getId() -> str
+        Return Type id= string
+        """
         return self.proto.id().decode() or 'structure'
 
     def keys(self):
+        """keys() -> Iterable[str]
+        Return child field names
+        """
         ret = []
         for child in self.proto.ichildren():
             ret.append(self.proto.nameOf(child).decode())
         return ret
 
     def aspy(self, basestring name=None):
+        """aspy(str=None) -> list
+        Return a Type specification list equivalent to the one passed to the constructor.
+        """
         cdef string cname
         if name is None:
             return asPySpec(self.proto)
@@ -339,6 +412,9 @@ cdef class _Type:
             return asPySpec(self.proto.lookup(cname))
 
     def has(self, basestring name):
+        """has(str) -> bool
+        Does this Type include the named member field?
+        """
         cdef string cname = name.encode()
         return self.proto[cname].valid()
 
@@ -359,6 +435,12 @@ cdef class _Type:
         return self.proto.nmembers()
 
     def tostr(self, int limit=0):
+        """tostr(limit : int = 0) -> str
+
+        Return a string representation, optionally truncated to a length limit
+
+        :param int limit: If greater than zero, formatting is terminated at ``limit`` charactors.
+        """
         return tostr(self.proto, limit, False)
 
 cdef public:
@@ -368,12 +450,6 @@ cdef public:
 # sub-class hooks
 Value = _Value
 Type = _Type
-
-############### internal
-
-cdef splitArgs(vector[string]& out, basestring s):
-    for v in s.split(' '):
-        out.push_back(v.encode())
 
 ############### client
 

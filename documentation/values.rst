@@ -278,8 +278,6 @@ API Reference
 Relation to C++ API
 -------------------
 
-For those familiar with the pvDataCPP API.
-A :py:class:`Type` wraps a Structure.
-:py:class:`Value` wraps a
-PVStructure and an associated BitSet describing which fields have been
-initialized.
+For those familiar with the `PVXS <https://mdavidsaver.github.io/pvxs/>` API.
+A :py:class:`Type` wraps a TypeDef.
+:py:class:`Value` wraps a Value.
