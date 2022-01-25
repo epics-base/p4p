@@ -5,6 +5,25 @@ PVA Gateway
 
 .. currentmodule:: p4p
 
+Quick Start
+-----------
+
+First install P4P (see the main :ref:`starting`).
+Then the following will setup a gateway instance named ``mygw`` ::
+
+    sudo python -m p4p.gw --example-config /etc/pvagw/mygw.conf
+    sudo python -m p4p.gw --example-systemd \
+     /etc/systemd/system/pvagw@.service
+    sudo systemctl daemon-reload
+    sudo systemctl start pvagw@mygw.service
+    # check to see if the instance has started correctly
+    sudo systemctl status pvagw@mygw.service
+    # set the instance to start automatically on boot
+    sudo systemctl enable pvagw@mygw.service
+
+Background
+----------
+
 The PVA Gateway is a specialized proxy for the PV Access (PVA) Protocol
 which sits between groups of PVA client and of servers.  (see `overviewpva`)
 It serves two broad roles.
@@ -65,6 +84,9 @@ numbers of Clients.
 A prototypical scenario of Gateway usage is on a host computer
 with two network interfaces (NICs) on different subnets
 (and thus two different broadcast domains).
+
+Example
+~~~~~~~
 
 To take an example.  A server has two NICs with IP addresses
 192.168.1.5/24 and 10.1.1.4/24 .
@@ -141,7 +163,7 @@ This Gateway may be started by saving the preceding JSON as a file ``mygw.conf``
     pvagw mygw.conf
 
 Loop Avoidance
---------------
+~~~~~~~~~~~~~~
 
 In order to prevent a mis-configured gateway from connection to itself,
 no client within a single pvagw instance will connect to any server
@@ -202,6 +224,8 @@ A full list of known keys for configuration scheme version 2. ::
 See also PVXS `client <https://mdavidsaver.github.io/pvxs/client.html#configuration>`
 and `server <https://mdavidsaver.github.io/pvxs/server.html#configuration` configuration
 references.
+
+Run ``pvagw --example-config -`` to see another example configuration.
 
 Keys
 ~~~~

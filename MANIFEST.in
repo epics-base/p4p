@@ -6,3 +6,5 @@ include src/p4p/*.cpp
 include src/p4p/*.pyx
 include src/p4p/*.pxd
 include src/p4p/pvxs/*.pxd
+include src/p4p/*.conf
+include src/p4p/*.service

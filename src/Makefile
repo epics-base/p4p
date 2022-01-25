@@ -88,6 +88,9 @@ PY += p4p/test/qttest.py
 PY += p4p/test/test_asyncio.py
 PY += p4p/test/asynciotest.py
 
+PY += p4p/example.conf
+PY += p4p/pvagw@.service
+
 PERL_SCRIPTS += pvagw
 
 include $(TOP)/configure/RULES

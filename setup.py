@@ -113,6 +113,7 @@ setup(
         'p4p.asLib',
     ],
     package_dir={'':'src'},
+    package_data={'p4p': ['*.conf', '*.service']},
     ext_modules = exts,
     install_requires = [
         epicscorelibs.version.abi_requires(),

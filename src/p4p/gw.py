@@ -496,7 +496,7 @@ def jload(raw):
     return json.loads(re.sub(r'/\*.*?\*/', comment_sub, raw, flags=re.DOTALL))
 
 def getargs():
-    from argparse import ArgumentParser, ArgumentError
+    from argparse import ArgumentParser
     P = ArgumentParser()
     P.add_argument('config', help='Config file')
     P.add_argument('--no-ban-local', action='store_true',
@@ -509,6 +509,10 @@ def getargs():
     P.add_argument('-T', '--test-config', action='store_true',
                    help='Read and validate configuration files, then exit w/o starting a gateway.'+
                    '  Also prints the names of all configuration files read.')
+    P.add_argument('--example-config', action='store_true',
+                   help='Write an example configuration file and exit.  "--example-config -" writes to stdout')
+    P.add_argument('--example-systemd', action='store_true',
+                   help='Write an example systemd unit file and exit  "--example-systemd -" writes to stdout')
     return P
 
 class App(object):
@@ -732,6 +736,40 @@ class App(object):
 
 def main(args=None):
     args = getargs().parse_args(args)
+
+    catfile = None
+    if args.example_config:
+        catfile = 'example.conf'
+    elif args.example_systemd:
+        catfile = 'pvagw@.service'
+
+    if catfile is not None:
+        if args.config=='-':
+            O = sys.stdout
+            I = '%i'
+            conf = '/etc/pvagw/%i.conf'
+            print('# eg. save as /etc/systemd/system/pvagw@.service', file=sys.stderr)
+        else:
+            O = open(args.config, 'w')
+            I = os.path.splitext(os.path.basename(args.config))[0]
+            conf = os.path.abspath(args.config)
+
+        pythonpath=os.environ.get('PYTHONPATH','').split(os.pathsep)
+        modroot = os.path.dirname(os.path.dirname(__file__)) # directory containing p4p/gw.py
+        if modroot not in sys.path:
+            pythonpath = [modroot]+pythonpath
+
+        with open(os.path.join(os.path.dirname(__file__), catfile), 'r') as F:
+            O.write(F.read().format(
+                python=sys.executable,
+                inst=I,
+                conf=conf,
+                pythonpath=os.pathsep.join(pythonpath),
+            ))
+
+        O.close()
+        sys.exit(0)
+
     if args.logging is not None:
         with open(args.logging, 'r') as F:
             jconf = F.read()
