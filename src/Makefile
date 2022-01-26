@@ -104,11 +104,30 @@ endif
 _p4p.cpp: ../p4p/_p4p.pyx $(wildcard ../p4p/pvxs/*.pxd)
 	$(PYTHON) -m cython -I ../p4p -o $@ --cplus $<
 
+_p4p.h: _p4p.cpp ../p4p/_p4p.pyx
+
 _gw.cpp: ../p4p/_gw.pyx $(wildcard ../p4p/pvxs/*.pxd)
 	$(PYTHON) -m cython -I ../p4p -o $@ --cplus $<
 
-pvxs_gw$(OBJ): _gw.cpp
-pvxs_gw$(DEP): _gw.cpp
+_gw.h: _gw.cpp ../p4p/_gw.pyx
+
+pvxs_gw$(OBJ): _gw.h
+pvxs_gw$(DEP): _gw.h
+
+pvxs_type$(DEP): _p4p.h
+pvxs_type$(OBJ): _p4p.h
+
+pvxs_value$(DEP): _p4p.h
+pvxs_value$(OBJ): _p4p.h
+
+pvxs_sharedpv$(DEP): _p4p.h
+pvxs_sharedpv$(OBJ): _p4p.h
+
+pvxs_source$(DEP): _p4p.h
+pvxs_source$(OBJ): _p4p.h
+
+pvxs_client$(DEP): _p4p.h
+pvxs_client$(OBJ): _p4p.h
 
 ifneq (,$(T_A))
 nose.%:
