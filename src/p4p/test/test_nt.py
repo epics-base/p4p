@@ -352,8 +352,8 @@ class TestArray(RefTestCase):
         V2 = nt.NTNDArray().wrap(img)
 
         assert_aequal(V.value, V2.value)
-        self.assertEqual(V.dimension[0].size, V2.dimension[0].size)
-        self.assertEqual(V.dimension[1].size, V2.dimension[1].size)
+        self.assertEqual(V.dimension[0].size, V2.dimension[0].size, msg=V.dimension)
+        self.assertEqual(V.dimension[1].size, V2.dimension[1].size, msg=V.dimension)
 
     def test_unwrap_3d(self):
         # scipy.misc.face().shape==(768, 1024, 3)

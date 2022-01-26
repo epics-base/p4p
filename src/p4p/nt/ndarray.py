@@ -26,7 +26,6 @@ from .scalar import ntwrappercommon
 
 
 class ntndarray(ntwrappercommon, numpy.ndarray):
-
     """
     Augmented numpy.ndarray with additional attributes
 
@@ -38,7 +37,9 @@ class ntndarray(ntwrappercommon, numpy.ndarray):
     * .raw - The underlying :py:class:`p4p.Value`.
     """
 
-    attrib = None
+    def __init__(self, *args, **kws):
+        super(ntndarray, self).__init__(*args, **kws)
+        self.attrib = {}
 
     def _store(self, value):
         ntwrappercommon._store(self, value)
@@ -80,11 +81,18 @@ class NTNDArray(NTBase):
         'd':'doubleValue',
     }
 
-    @staticmethod
-    def buildType(extra=[]):
+    @classmethod
+    def buildType(klass, extra=[]):
         """Build type
         """
-        return Type([
+        ret = klass._default_type
+        if extra:
+            L = ret.aspy()
+            L.extend(extra)
+            ret = Type(L, ret.getID())
+        return ret
+
+    _default_type = Type([
             ('value', ('U', None, [
                 ('booleanValue', 'a?'),
                 ('byteValue', 'ab'),
@@ -136,8 +144,7 @@ class NTNDArray(NTBase):
         attrib = getattr(value, 'attrib', None) or {}
 
         value = numpy.asarray(value) # loses any special/augmented attributes
-        dims = list(value.shape)
-        dims.reverse() # inner-most sent as left
+        dims = value.shape
 
         if 'ColorMode' not in attrib:
             # attempt to infer color mode from shape
@@ -145,10 +152,12 @@ class NTNDArray(NTBase):
                 attrib['ColorMode'] = 0 # gray
 
             elif value.ndim==3:
-                for idx,dim in enumerate(dims):
+                for idx,dim in enumerate(reversed(dims)): # inner-most sent as left
                     if dim==3: # assume it's a color
                         attrib['ColorMode'] = 2 + idx  # 2 - RGB1, 3 - RGB2, 4 - RGB3
                         break # assume that the first is color, and any subsequent dim=3 is a thin ROI
+                else:
+                    raise ValueError("Unable to deduce color dimension from shape %r"%dims)
 
         dataSize = value.nbytes
 
@@ -162,7 +171,7 @@ class NTNDArray(NTBase):
                            'offset': 0,
                            'fullSize': N,
                            'binning': 1,
-                           'reverse': False} for N in dims],
+                           'reverse': False} for N in reversed(dims)],
         }), **kws)
 
     @classmethod
