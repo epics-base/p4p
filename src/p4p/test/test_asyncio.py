@@ -1,10 +1,10 @@
 import sys
 import unittest
 
-if sys.version_info<(3,4) or sys.version_info>=(3,10):
+if sys.version_info<(3,7):
     class TestDummy(unittest.TestCase):
         def test_asyncio(self):
-            raise unittest.SkipTest("asyncio needs Py >=3.4.  >=3.10 not yet supported")
+            raise unittest.SkipTest("asyncio needs Py >=3.7")
 
 else:
     from .asynciotest import *

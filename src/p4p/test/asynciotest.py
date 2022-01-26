@@ -4,9 +4,7 @@
 import logging
 _log = logging.getLogger(__name__)
 
-import unittest
-import sys
-from unittest.case import SkipTest
+from functools import wraps
 
 from .. import Value
 from ..nt import NTScalar
@@ -18,128 +16,146 @@ import asyncio
 from ..client.asyncio import Context, Disconnected, timesout
 from ..server.asyncio import SharedPV
 
-from .utils import inloop, clearloop
-
 __all__ = (
     'TestGPM',
     'TestTimeout',
     'TestFirstLast',
 )
 
-class Handler:
-    def __init__(self, loop=None):
-        self.loop = loop
+# we should never implicitly use the default loop.
+asyncio.get_event_loop().close()
 
-    @asyncio.coroutine
-    def put(self, pv, op):
-        _log.debug("putting %s <- %s", op.name(), op.value())
-        yield from asyncio.sleep(0, loop=self.loop)  # prove that we can
-        pv.post(op.value() * 2)
-        op.done()
+class AsyncMeta(type):
+    """Automatically wrap and "async def test*():" methods for dispatch to self.loop
+    """
+    def __new__(klass, name, bases, classdict):
+        for name, mem in classdict.items():
+            if name.startswith('test') and asyncio.iscoroutinefunction(mem):
+                @wraps(mem)
+                def wrapper(self, mem=mem):
+                    self.loop.run_until_complete(asyncio.wait_for(mem(self), self.timeout))
+                classdict[name] = wrapper
 
-class TestGPM(RefTestCase):
+        return type.__new__(klass, name, bases, classdict)
+
+class AsyncTest(RefTestCase, metaclass=AsyncMeta):
+    timeout = 1.0
+
+    def setUp(self):
+        super(AsyncTest, self).setUp()
+        self.loop = asyncio.new_event_loop()
+        self.loop.set_debug(True)
+        self.loop.run_until_complete(asyncio.wait_for(self.asyncSetUp(), self.timeout))
+
+    def tearDown(self):
+        self.loop.run_until_complete(asyncio.wait_for(self.asyncTearDown(), self.timeout))
+        self.loop.close()
+        super(AsyncTest, self).tearDown()
+
+    async def asyncSetUp(self):
+        pass
+
+    async def asyncTearDown(self):
+        pass
+
+class TestGPM(AsyncTest):
     timeout = 3  # overall timeout for each test method
 
-    @inloop
-    @asyncio.coroutine
-    def setUp(self):
-        super(TestGPM, self).setUp()
+    class Handler:
+        async def put(self, pv, op):
+            _log.debug("putting %s <- %s", op.name(), op.value())
+            await asyncio.sleep(0)  # prove that we can
+            pv.post(op.value() * 2)
+            op.done()
 
-        self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=Handler(loop=self.loop), loop=self.loop)
-        self.pv2 = SharedPV(handler=Handler(), nt=NTScalar('d'), initial=42.0, loop=self.loop)
+    async def asyncSetUp(self):
+        await super(TestGPM, self).asyncSetUp()
+
+        self.pv = SharedPV(nt=NTScalar('i'), initial=0, handler=self.Handler())
+        self.pv2 = SharedPV(handler=self.Handler(), nt=NTScalar('d'), initial=42.0)
         self.provider = StaticProvider("serverend")
         self.provider.add('foo', self.pv)
         self.provider.add('bar', self.pv2)
 
-    def tearDown(self):
+    async def asyncTearDown(self):
         del self.pv
         del self.pv2
         del self.provider
-        clearloop(self)
-        super(TestGPM, self).tearDown()
+        await super(TestGPM, self).asyncTearDown()
 
-    @inloop
-    @asyncio.coroutine
-    def test_getput(self):
+    async def test_getput(self):
         with Server(providers=[self.provider], isolate=True) as S:
-            with Context('pva', conf=S.conf(), useenv=False, loop=self.loop) as C:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+                self.assertEqual(0, (await C.get('foo')))
+
+                await C.put('foo', 5)
+
+                self.assertEqual(5 * 2, (await C.get('foo')))
+
+    async def test_monitor(self):
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+
+                Q = asyncio.Queue()
+
+                sub = C.monitor('foo', Q.put, notify_disconnect=True)
+                try:
+                    self.assertIsInstance((await Q.get()), Disconnected)
+
+                    self.assertEqual(0, (await Q.get()))
+
+                    await C.put('foo', 2)
+
+                    self.assertEqual(2 * 2, (await Q.get()))
+
+                    self.pv.close()
+
+                    self.assertIsInstance((await Q.get()), Disconnected)
+
+                    self.pv.open(3)
+
+                    self.assertEqual(3, (await Q.get()))
+
+                finally:
+                    sub.close()
+                    await sub.wait_closed()
+
+    @asyncio.coroutine
+    def test_gen_coro(self):
+        # demonstrate interoperability w/ code using generated based coroutines
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
                 self.assertEqual(0, (yield from C.get('foo')))
 
                 yield from C.put('foo', 5)
 
                 self.assertEqual(5 * 2, (yield from C.get('foo')))
 
-    @inloop
-    @asyncio.coroutine
-    def test_monitor(self):
-        with Server(providers=[self.provider], isolate=True) as S:
-            with Context('pva', conf=S.conf(), useenv=False, loop=self.loop) as C:
 
-                Q = asyncio.Queue(loop=self.loop)
+class TestTimeout(AsyncTest):
 
-                sub = C.monitor('foo', Q.put, notify_disconnect=True)
-                try:
-                    self.assertIsInstance((yield from Q.get()), Disconnected)
-
-                    self.assertEqual(0, (yield from Q.get()))
-
-                    yield from C.put('foo', 2)
-
-                    self.assertEqual(2 * 2, (yield from Q.get()))
-
-                    self.pv.close()
-
-                    self.assertIsInstance((yield from Q.get()), Disconnected)
-
-                    self.pv.open(3)
-
-                    self.assertEqual(3, (yield from Q.get()))
-
-                finally:
-                    sub.close()
-                    yield from sub.wait_closed()
-
-
-class TestTimeout(unittest.TestCase):
-
-    def tearDown(self):
-        clearloop(self)
-
-    @inloop
-    def test_timeout(self):
+    async def test_timeout(self):
         done = None
 
-        if sys.version_info >= (3, 4) and sys.version_info < (3, 5):
-            raise SkipTest("wait_for() kind of broken in 3.4")
-            # I'm seeing a test failure with "got Future <Future pending> attached to a different loop"
-            # but I can't find where the different loop gets mixed in.
-            # So I _think_ this is a bug in 3.4.
-
         @timesout()
-        @asyncio.coroutine
-        def action(loop):
+        async def action():
             nonlocal done
             done = False
-            yield from asyncio.sleep(5, loop=loop)
+            await asyncio.sleep(5)
             done = True
 
-        try:
-            yield from action(self.loop, timeout=0.01)
-            self.assertTrue(False)
-        except asyncio.TimeoutError:
-            pass
+        with self.assertRaises(asyncio.TimeoutError):
+            await action(timeout=0.01)
 
-        self.assertIs(done, False)
-
-class TestFirstLast(RefTestCase):
+class TestFirstLast(AsyncTest):
     maxDiff = 2000
     timeout = 5.0
     mode = 'Mask'
 
     class Handler:
-        def __init__(self, loop):
-            self.evtC = asyncio.Event(loop=loop)
-            self.evtD = asyncio.Event(loop=loop)
+        def __init__(self):
+            self.evtC = asyncio.Event()
+            self.evtD = asyncio.Event()
             self.conn = None
         def onFirstConnect(self, pv):
             _log.debug("onFirstConnect")
@@ -150,51 +166,44 @@ class TestFirstLast(RefTestCase):
             self.conn = False
             self.evtD.set()
 
-    @inloop
-    @asyncio.coroutine
-    def setUp(self):
-        # gc.set_debug(gc.DEBUG_LEAK)
-        super(TestFirstLast, self).setUp()
+    async def asyncSetUp(self):
+        await super(TestFirstLast, self).asyncSetUp()
 
-        self.H = self.Handler(self.loop)
+        self.H = self.Handler()
         self.pv = SharedPV(handler=self.H,
                            nt=NTScalar('d'),
-                           options={'mapperMode':self.mode},
-                           loop=self.loop)
+                           options={'mapperMode':self.mode})
         self.sprov = StaticProvider("serverend")
         self.sprov.add('foo', self.pv)
 
         self.server = Server(providers=[self.sprov], isolate=True)
 
-    def tearDown(self):
+    async def asyncTearDown(self):
         self.server.stop()
         #_defaultWorkQueue.stop()
         del self.server
         del self.sprov
         del self.pv
         del self.H
-        clearloop(self)
-        super(TestFirstLast, self).tearDown()
+        await super(TestFirstLast, self).asyncTearDown()
 
-    @inloop
-    @asyncio.coroutine
-    def testClientDisconn(self):
+    async def testClientDisconn(self):
         self.pv.open(1.0)
 
-        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}, loop=self.loop) as ctxt:
-            Q = asyncio.Queue(maxsize=4, loop=self.loop)
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+            Q = asyncio.Queue(maxsize=4)
             sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
             try:
 
                 _log.debug('Wait Disconnected')
-                E = yield from Q.get() # Disconnected
+                E = await Q.get() # Disconnected
                 self.assertIsInstance(E, Disconnected)
                 _log.debug('Wait initial')
-                E = yield from Q.get() # initial update
+                E = await Q.get() # initial update
                 self.assertIsInstance(E, Value)
 
                 _log.debug('Wait onFirstConnect')
-                yield from self.H.evtC.wait() # onFirstConnect()
+                await self.H.evtC.wait() # onFirstConnect()
                 self.assertTrue(self.H.conn)
 
             except:
@@ -203,60 +212,56 @@ class TestFirstLast(RefTestCase):
             finally:
                 _log.debug('sub close()')
                 sub.close()
-                yield from sub.wait_closed()
+                await sub.wait_closed()
 
         _log.debug('Wait onLastDisconnect')
-        yield from self.H.evtD.wait() # onLastDisconnect()
+        await self.H.evtD.wait() # onLastDisconnect()
         _log.debug('SHUTDOWN')
         self.assertFalse(self.H.conn)
 
-    @inloop
-    @asyncio.coroutine
-    def testServerShutdown(self):
+    async def testServerShutdown(self):
         self.pv.open(1.0)
 
-        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}, loop=self.loop) as ctxt:
-            Q = asyncio.Queue(maxsize=4, loop=self.loop)
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+            Q = asyncio.Queue(maxsize=4)
             sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
             try:
 
-                yield from Q.get() # initial update
+                await Q.get() # initial update
 
                 _log.debug('TEST')
-                yield from self.H.evtC.wait() # onFirstConnect()
+                await self.H.evtC.wait() # onFirstConnect()
                 self.assertIs(self.H.conn, True)
 
                 self.server.stop()
 
-                yield from self.H.evtD.wait() # onLastDisconnect()
+                await self.H.evtD.wait() # onLastDisconnect()
                 _log.debug('SHUTDOWN')
                 self.assertIs(self.H.conn, False)
 
             finally:
                 sub.close()
-                yield from sub.wait_closed()
+                await sub.wait_closed()
 
-    @inloop
-    @asyncio.coroutine
-    def testPVClose(self):
+    async def testPVClose(self):
         self.pv.open(1.0)
 
-        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}, loop=self.loop) as ctxt:
-            Q = asyncio.Queue(maxsize=4, loop=self.loop)
+        with Context('pva', conf=self.server.conf(), useenv=False, unwrap={}) as ctxt:
+            Q = asyncio.Queue(maxsize=4)
             sub = ctxt.monitor('foo', Q.put, notify_disconnect=True)
             try:
 
-                yield from Q.get() # initial update
+                await Q.get() # initial update
 
                 _log.debug('TEST')
-                yield from self.H.evtC.wait() # onFirstConnect()
+                await self.H.evtC.wait() # onFirstConnect()
                 self.assertTrue(self.H.conn)
 
-                yield from self.pv.close(destroy=True, sync=True) # onLastDisconnect()
+                await self.pv.close(destroy=True, sync=True) # onLastDisconnect()
 
                 _log.debug('CLOSE')
                 self.assertFalse(self.H.conn)
 
             finally:
                 sub.close()
-                yield from sub.wait_closed()
+                await sub.wait_closed()

@@ -2,13 +2,10 @@
 from __future__ import print_function
 
 import logging
-import warnings
-
 import sys
 import gc
 import inspect
 import unittest
-import functools
 import time
 import os
 import tempfile
@@ -23,34 +20,6 @@ from .._p4p import _forceLazy
 _log = logging.getLogger(__name__)
 
 _forceLazy()
-
-try:
-    import asyncio
-except ImportError:
-    pass
-else:
-    # we should never implicitly use the default loop.
-    asyncio.get_event_loop().close()
-    def inloop(fn):
-        """Decorator assumes wrapping method of object with .loop and maybe .timeout
-        """
-        @functools.wraps(fn)
-        def testmethod(self):
-            F = fn(self)
-            if not hasattr(self, 'loop'):
-                self.loop = asyncio.new_event_loop()
-                self.loop.set_debug(True)
-            timeout = getattr(self, 'timeout', None)
-            if timeout is not None:
-                F = asyncio.wait_for(F, timeout, loop=self.loop)
-            self.loop.run_until_complete(F)
-        return testmethod
-
-    def clearloop(self):
-        if hasattr(self, 'loop'):
-            self.loop.close()
-            del self.loop
-
 
 class RefTestMixin(object):
 

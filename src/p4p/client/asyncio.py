@@ -18,7 +18,7 @@ __all__ = [
     'Value',
     'Type',
     'RemoteError',
-    'timeout',
+    'timesout',
 ]
 
 
@@ -34,31 +34,26 @@ def timesout(deftimeout=5.0):
     It is suggested perform one overall timeout at a high level
     rather than multiple timeouts on low-level operations. ::
 
-        @timesout()
-        @asyncio.coroutine
-        def dostuff(ctxt):
-            yield from ctxt.put('msg', 'Working')
-            A, B = yield from ctxt.get(['foo', 'bar'])
-            yield from ctxt.put('bar', A+B, wait=True)
-            yield from ctxt.put('msg', 'Done')
+        async def dostuff(ctxt):
+            await ctxt.put('msg', 'Working')
+            A, B = await ctxt.get(['foo', 'bar'])
+            await ctxt.put('bar', A+B, wait=True)
+            await ctxt.put('msg', 'Done')
 
-        @asyncio.coroutine
-        def exec():
+        async def exec():
             with Context('pva') as ctxt:
-                yield from dostuff(ctxt, timeout=5)
+                await dostuff(ctxt, timeout=5)
     """
     def decorate(fn):
         assert asyncio.iscoroutinefunction(fn), "Place @timesout before @coroutine"
 
         @wraps(fn)
-        @asyncio.coroutine
-        def wrapper(*args, timeout=deftimeout, **kws):
-            loop = kws.get('loop')
+        async def wrapper(*args, timeout=deftimeout, **kws):
             fut = fn(*args, **kws)
             if timeout is None:
-                yield from fut
+                await fut
             else:
-                yield from asyncio.wait_for(fut, timeout=timeout, loop=loop)
+                await asyncio.wait_for(fut, timeout=timeout)
         return wrapper
     return decorate
 
@@ -93,26 +88,21 @@ class Context(raw.Context):
     rather than multiple timeouts on low-level operations. ::
 
         @timesout()
-        @asyncio.coroutine
-        def dostuff(ctxt):
-            yield from ctxt.put('msg', 'Working')
-            A, B = yield from ctxt.get(['foo', 'bar'])
-            yield from ctxt.put('bar', A+B, wait=True)
-            yield from ctxt.put('msg', 'Done')
+        async def dostuff(ctxt):
+            await ctxt.put('msg', 'Working')
+            A, B = await ctxt.get(['foo', 'bar'])
+            await ctxt.put('bar', A+B, wait=True)
+            await ctxt.put('msg', 'Done')
 
-        @asyncio.coroutine
-        def exec():
+        async def exec():
             with Context('pva') as ctxt:
-                yield from dostuff(ctxt, timeout=5)
+                await dostuff(ctxt, timeout=5)
     """
 
-    def __init__(self, provider='pva', conf=None, useenv=True, nt=None, unwrap=None,
-                 loop=None):
+    def __init__(self, provider='pva', conf=None, useenv=True, nt=None, unwrap=None):
         super(Context, self).__init__(provider, conf=conf, useenv=useenv, nt=nt, unwrap=unwrap)
-        self.loop = loop or asyncio.get_event_loop()
 
-    @asyncio.coroutine
-    def get(self, name, request=None):
+    async def get(self, name, request=None):
         """Fetch current value of some number of PVs.
 
         :param name: A single name string or list of name strings
@@ -124,12 +114,12 @@ class Context(raw.Context):
         When invoked with a list of name, then returns a list of values. ::
 
             with Context('pva') as ctxt:
-                V    = yield from ctxt.get('pv:name')
-                A, B = yield from ctxt.get(['pv:1', 'pv:2'])
+                V    = await ctxt.get('pv:name')
+                A, B = await ctxt.get(['pv:1', 'pv:2'])
         """
         singlepv = isinstance(name, (bytes, str))
         if singlepv:
-            return (yield from self._get_one(name, request=request))
+            return (await self._get_one(name, request=request))
 
         elif request is None:
             request = [None] * len(name)
@@ -138,13 +128,12 @@ class Context(raw.Context):
 
         futs = [self._get_one(N, request=R) for N, R in zip(name, request)]
 
-        ret = yield from asyncio.gather(*futs, loop=self.loop)
+        ret = await asyncio.gather(*futs)
 
         return ret
 
-    @asyncio.coroutine
-    def _get_one(self, name, request=None):
-        F = asyncio.Future(loop=self.loop)
+    async def _get_one(self, name, request=None):
+        F = asyncio.Future()
 
         def cb(value):
             if F.cancelled() or F.done():
@@ -153,18 +142,17 @@ class Context(raw.Context):
                 F.set_exception(value)
             else:
                 F.set_result(value)
-        cb = partial(self.loop.call_soon_threadsafe, cb)
+        cb = partial(asyncio.get_running_loop().call_soon_threadsafe, cb)
 
         op = super(Context, self).get(name, cb, request=request)
 
         _log.debug('get %s request=%s', name, request)
         try:
-            return (yield from F)
+            return (await F)
         finally:
             op.close()
 
-    @asyncio.coroutine
-    def put(self, name, values, request=None, process=None, wait=None, get=True):
+    async def put(self, name, values, request=None, process=None, wait=None, get=True):
         """Write a new value of some number of PVs.
 
         :param name: A single name string or list of name strings
@@ -181,9 +169,9 @@ class Context(raw.Context):
         If 'wait' or 'process' is specified, then 'request' must be omitted or None. ::
 
             with Context('pva') as ctxt:
-                yield from ctxt.put('pv:name', 5.0)
-                yield from ctxt.put(['pv:1', 'pv:2'], [1.0, 2.0])
-                yield from ctxt.put('pv:name', {'value':5})
+                await ctxt.put('pv:name', 5.0)
+                await ctxt.put(['pv:1', 'pv:2'], [1.0, 2.0])
+                await ctxt.put('pv:name', {'value':5})
 
         The provided value(s) will be automatically coerced to the target type.
         If this is not possible then an Exception is raised/returned.
@@ -198,7 +186,7 @@ class Context(raw.Context):
 
         singlepv = isinstance(name, (bytes, str))
         if singlepv:
-            return (yield from self._put_one(name, values, request=request, get=get))
+            return (await self._put_one(name, values, request=request, get=get))
 
         elif request is None:
             request = [None] * len(name)
@@ -208,11 +196,10 @@ class Context(raw.Context):
 
         futs = [self._put_one(N, V, request=R, get=get) for N, V, R in zip(name, values, request)]
 
-        yield from asyncio.gather(*futs, loop=self.loop)
+        await asyncio.gather(*futs)
 
-    @asyncio.coroutine
-    def _put_one(self, name, value, request=None, get=True):
-        F = asyncio.Future(loop=self.loop)
+    async def _put_one(self, name, value, request=None, get=True):
+        F = asyncio.Future()
 
         def cb(value):
             _log.debug("put done %s %s", name, LazyRepr(value))
@@ -222,18 +209,17 @@ class Context(raw.Context):
                 F.set_exception(value)
             else:
                 F.set_result(value)
-        cb = partial(self.loop.call_soon_threadsafe, cb)
+        cb = partial(asyncio.get_running_loop().call_soon_threadsafe, cb)
 
         op = super(Context, self).put(name, cb, builder=value, request=request, get=get)
 
         _log.debug('put %s <- %s request=%s', name, LazyRepr(value), request)
         try:
-            value = yield from F
+            value = await F
         finally:
             op.close()
 
-    @asyncio.coroutine
-    def rpc(self, name, value, request=None):
+    async def rpc(self, name, value, request=None):
         """Perform a Remote Procedure Call (RPC) operation
 
         :param str name: PV name string
@@ -246,7 +232,7 @@ class Context(raw.Context):
 
             uri = NTURI(['A','B'])
             with Context('pva') as ctxt:
-                result = yield from ctxt.rpc('pv:name:add', uri.wrap('pv:name:add', 5, B=6))
+                result = await ctxt.rpc('pv:name:add', uri.wrap('pv:name:add', 5, B=6))
 
         The provided value(s) will be automatically coerced to the target type.
         If this is not possible then an Exception is raised/returned.
@@ -254,7 +240,7 @@ class Context(raw.Context):
         Unless the provided value is a dict or Value, it is assumed to be a plain value
         and an attempt is made to store it in '.value' field.
         """
-        F = asyncio.Future(loop=self.loop)
+        F = asyncio.Future()
 
         def cb(value):
             if F.cancelled() or F.done():
@@ -263,12 +249,12 @@ class Context(raw.Context):
                 F.set_exception(value)
             else:
                 F.set_result(value)
-        cb = partial(self.loop.call_soon_threadsafe, cb)
+        cb = partial(asyncio.get_running_loop().call_soon_threadsafe, cb)
 
         op = super(Context, self).rpc(name, cb, value, request=request)
 
         try:
-            return (yield from F)
+            return (await F)
         finally:
             op.close()
 
@@ -288,8 +274,8 @@ class Context(raw.Context):
         * A sub-class of Exception (Disconnected , RemoteError, or Cancelled)
         """
         assert asyncio.iscoroutinefunction(cb), "monitor callback must be coroutine"
-        R = Subscription(name, cb, notify_disconnect=notify_disconnect, loop=self.loop)
-        cb = partial(self.loop.call_soon_threadsafe, R._E.set)
+        R = Subscription(name, cb, notify_disconnect=notify_disconnect)
+        cb = partial(asyncio.get_running_loop().call_soon_threadsafe, R._E.set)
 
         R._S = super(Context, self).monitor(name, cb, request)
         return R
@@ -300,14 +286,14 @@ class Subscription(object):
     """An active subscription.
     """
 
-    def __init__(self, name, cb, notify_disconnect=False, loop=None):
-        self.name, self._S, self._cb, self.loop = name, None, cb, loop
+    def __init__(self, name, cb, notify_disconnect=False):
+        self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
 
         self._run = True
-        self._E = asyncio.Event(loop=self.loop)
+        self._E = asyncio.Event()
 
-        self._T = self.loop.create_task(self._handle())
+        self._T = asyncio.create_task(self._handle())
 
     def __enter__(self):
         return self
@@ -335,22 +321,20 @@ class Subscription(object):
         'Is data pending in event queue?'
         return self._S is None or self._S.empty()
 
-    @asyncio.coroutine
-    def wait_closed(self):
+    async def wait_closed(self):
         """Wait until subscription is closed.
         """
         assert self._S is None, "Not close()'d"
-        yield from self._T
+        await self._T
 
-    @asyncio.coroutine
-    def _handle(self):
+    async def _handle(self):
         if self._notify_disconnect:
-            yield from self._cb(Disconnected())  # all subscriptions are inittially disconnected
+            await self._cb(Disconnected())  # all subscriptions are inittially disconnected
 
         E = None
         try:
             while self._run:
-                yield from self._E.wait()
+                await self._E.wait()
                 self._E.clear()
                 _log.debug('Subscription %s wakeup', self.name)
 
@@ -364,7 +348,7 @@ class Subscription(object):
                     elif isinstance(E, Disconnected):
                         _log.debug('Subscription notify for %s with %s', self.name, E)
                         if self._notify_disconnect:
-                            yield from self._cb(E)
+                            await self._cb(E)
                         else:
                             _log.info("Subscription disconnect %s", self.name)
                         continue
@@ -372,17 +356,17 @@ class Subscription(object):
                     elif isinstance(E, RemoteError):
                         _log.debug('Subscription notify for %s with %s', self.name, E)
                         if self._notify_disconnect:
-                            yield from self._cb(E)
+                            await self._cb(E)
                         elif isinstance(E, RemoteError):
                             _log.error("Subscription Error %s", E)
                         return
 
                     else:
-                        yield from self._cb(E)
+                        await self._cb(E)
 
                     i = (i + 1) % 4
                     if i == 0:
-                        yield from asyncio.sleep(0)  # Not sure how necessary.  Ensure we go to the scheduler
+                        await asyncio.sleep(0)  # Not sure how necessary.  Ensure we go to the scheduler
 
                     if S.done:
                         _log.debug('Subscription complete %s', self.name)
@@ -390,7 +374,7 @@ class Subscription(object):
                         self._S = None
                         if self._notify_disconnect:
                             E = Finished()
-                            yield from self._cb(E)
+                            await self._cb(E)
 
         except:
             _log.exception("Error processing Subscription event: %s", LazyRepr(E))
