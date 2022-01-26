@@ -40,6 +40,11 @@
 #  endif
 #endif
 
+// avoid numpy deprecation warnings when building with cython >= 3.0
+#if CYTHON_HEX_VERSION>=0x03000000
+#  define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#endif
+
 namespace p4p {
 
 using namespace pvxs;

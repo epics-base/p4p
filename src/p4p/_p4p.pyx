@@ -2,6 +2,7 @@
 #cython: language_level=2
 
 cimport cython
+
 from libc.stdint cimport uint64_t, int64_t
 from libc.string cimport strcpy
 from libcpp cimport bool
@@ -11,8 +12,6 @@ from libcpp.vector cimport vector
 from libcpp.memory cimport shared_ptr
 from cpython cimport PyObject
 from cpython.bytes cimport PyBytes_FromStringAndSize
-
-cimport numpy
 
 from pvxs cimport version as _version
 from pvxs cimport log
@@ -25,14 +24,9 @@ from pvxs cimport server
 from pvxs cimport source
 from pvxs cimport sharedpv
 
-numpy.import_array()
-log.logger_config_env()
-
-if not _version.version_abi_check():
-    raise RuntimeError("PVXS ABI mismatch")
-
 cdef extern from "<p4p.h>" namespace "p4p":
     # p4p.h redefines/overrides some definitions from Python.h (eg. PyMODINIT_FUNC)
+    # it also (re)defines macros effecting numpy/arrayobject.h
 
     # pvxs_type.cpp
     data.TypeDef startPrototype(const string& id, const data.Value& base) except+
@@ -61,6 +55,14 @@ cdef extern from "<p4p.h>" namespace "p4p":
     void opBuilder[Builder](Builder& builder, object handler)
     void opEvent(client.MonitorBuilder& builder, object handler)
     object monPop(const shared_ptr[client.Subscription]& mon) with gil
+
+cimport numpy # must cimport after p4p.h is included
+
+numpy.import_array()
+log.logger_config_env()
+
+if not _version.version_abi_check():
+    raise RuntimeError("PVXS ABI mismatch")
 
 ############### version
 

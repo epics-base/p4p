@@ -53,7 +53,10 @@ exts = cythonize([
             "src/pvxs_value.cpp",
         ],
         include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
-        define_macros = cppflags + [('PY_ARRAY_UNIQUE_SYMBOL', 'PVXS_PyArray_API'), ('PVXS_ENABLE_EXPERT_API', None)],
+        define_macros = cppflags + [
+            ('PY_ARRAY_UNIQUE_SYMBOL', 'PVXS_PyArray_API'),
+            ('PVXS_ENABLE_EXPERT_API', None),
+        ],
         extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
         extra_link_args = get_config_var('LDFLAGS')+ldflags,
         dsos = ['pvxslibs.lib.pvxs',
