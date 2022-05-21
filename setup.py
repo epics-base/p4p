@@ -17,7 +17,7 @@ import pvxslibs.path
 import pvxslibs.version
 
 # the following line is matched from cibuild.py
-package_version = '4.0.1a1'
+package_version = '4.0.1'
 
 cxxflags = ['-std=c++11']
 ldflags = []
