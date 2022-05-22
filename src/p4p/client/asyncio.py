@@ -31,9 +31,10 @@ def timesout(deftimeout=5.0):
 
     :param float deftimeout: The default timeout= for the decorated coroutine.
 
-    It is suggested perform one overall timeout at a high level
+    It is suggested to perform one overall timeout at a high level
     rather than multiple timeouts on low-level operations. ::
 
+        @timesout()
         async def dostuff(ctxt):
             await ctxt.put('msg', 'Working')
             A, B = await ctxt.get(['foo', 'bar'])
@@ -258,13 +259,13 @@ class Context(raw.Context):
         finally:
             op.close()
 
-    def monitor(self, name, cb, request=None, notify_disconnect=False):
-        """Create a subscription.
+    def monitor(self, name, cb, request=None, notify_disconnect=False) -> "Subscription":
+        """Create a callback subscription.
 
         :param str name: PV name string
         :param callable cb: Processing callback
         :param request: A :py:class:`p4p.Value` or string to qualify this request, or None to use a default.
-        :param bool notify_disconnect: In additional to Values, the callback may also be call with instances of Exception.
+        :param bool notify_disconnect: In additional to Values, the callback may also be called with instances of Exception.
                                        Specifically: Disconnected , RemoteError, or Cancelled
         :returns: a :py:class:`Subscription` instance
 
