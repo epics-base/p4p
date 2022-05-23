@@ -8,7 +8,7 @@ Release tars available from https://github.com/mdavidsaver/p4p/releases
 
 The P4P modules requires:
 
-* Python 2.7 or >=3.4
+* Python 2.7 or >=3.5 (>=3.6 for asyncio support)
 * numpy >=1.6
 * Cython >=0.25.2
 * nose2 (Optional, recommended to run unittests)

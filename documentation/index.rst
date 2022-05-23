@@ -1,8 +1,6 @@
 PVAccess for Python (P4P)
 =========================
 
-The canonical version of this page is https://mdavidsaver.github.io/p4p/
-
 **P4P** is a wrapper around the PVAccess (aka. PVA) protocol network client and server.
 P4P is part of the **EPICS** (Experimental Physics and Industrial Control System) ecosystem
 for creating large (and small) scale distributed process control and data acqisition sytems.
@@ -11,7 +9,7 @@ https://epics.anl.gov/
 P4P includes API for a `clientapi` and `serverapi`,
 as well as a `gwpage` executable (``pvagw``) with which can enforce an access control policy.
 
-Supports Linux, OSX, and Windows.  With python 2.7 and >=3.4.
+Supports Linux, OSX, and Windows.  With python 2.7 and >=3.5 (>=3.6 for asyncio support).
 
 The recommended starting point is to install from pypi.org. ::
 
@@ -21,7 +19,8 @@ The recommended starting point is to install from pypi.org. ::
     python -m pip install p4p nose2
     python -m nose2 p4p   # Optional: runs automatic tests
 
-Versioned source can be found at https://github.com/mdavidsaver/p4p
+- VCS: https://github.com/mdavidsaver/p4p
+- Docs: https://mdavidsaver.github.io/p4p/
 
 Contents:
 
