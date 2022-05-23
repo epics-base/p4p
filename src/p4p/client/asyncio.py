@@ -21,6 +21,23 @@ __all__ = [
     'timesout',
 ]
 
+if hasattr(asyncio, 'get_running_loop'): # py >=3.7
+    from asyncio import get_running_loop, create_task, all_tasks
+else:
+    from asyncio import _get_running_loop
+    from asyncio.tasks import Task
+
+    def get_running_loop():
+        ret = _get_running_loop()
+        if ret is None:
+            raise RuntimeError('Thread has no running event loop')
+        return ret
+
+    def create_task(coro, *, name=None):
+        return get_running_loop().create_task(coro)
+
+    def all_tasks():
+        return Task.all_tasks(loop=get_running_loop())
 
 def timesout(deftimeout=5.0):
     """Decorate a coroutine to implement an overall timeout.
@@ -143,7 +160,7 @@ class Context(raw.Context):
                 F.set_exception(value)
             else:
                 F.set_result(value)
-        cb = partial(asyncio.get_running_loop().call_soon_threadsafe, cb)
+        cb = partial(get_running_loop().call_soon_threadsafe, cb)
 
         op = super(Context, self).get(name, cb, request=request)
 
@@ -210,7 +227,7 @@ class Context(raw.Context):
                 F.set_exception(value)
             else:
                 F.set_result(value)
-        cb = partial(asyncio.get_running_loop().call_soon_threadsafe, cb)
+        cb = partial(get_running_loop().call_soon_threadsafe, cb)
 
         op = super(Context, self).put(name, cb, builder=value, request=request, get=get)
 
@@ -250,7 +267,7 @@ class Context(raw.Context):
                 F.set_exception(value)
             else:
                 F.set_result(value)
-        cb = partial(asyncio.get_running_loop().call_soon_threadsafe, cb)
+        cb = partial(get_running_loop().call_soon_threadsafe, cb)
 
         op = super(Context, self).rpc(name, cb, value, request=request)
 
@@ -276,7 +293,7 @@ class Context(raw.Context):
         """
         assert asyncio.iscoroutinefunction(cb), "monitor callback must be coroutine"
         R = Subscription(name, cb, notify_disconnect=notify_disconnect)
-        cb = partial(asyncio.get_running_loop().call_soon_threadsafe, R._E.set)
+        cb = partial(get_running_loop().call_soon_threadsafe, R._E.set)
 
         R._S = super(Context, self).monitor(name, cb, request)
         return R
@@ -294,7 +311,7 @@ class Subscription(object):
         self._run = True
         self._E = asyncio.Event()
 
-        self._T = asyncio.create_task(self._handle())
+        self._T = create_task(self._handle())
 
     def __enter__(self):
         return self

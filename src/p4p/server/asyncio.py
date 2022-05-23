@@ -8,6 +8,7 @@ import asyncio
 from .raw import SharedPV as _SharedPV, Handler
 from ..client.raw import LazyRepr
 from ..client.thread import RemoteError
+from ..client.asyncio import get_running_loop, create_task, all_tasks
 
 __all__ = (
     'SharedPV',
@@ -30,7 +31,7 @@ def _handle(pv, op, M, args): # callback in asyncio loop
         maybeco = M(*args)
         if asyncio.iscoroutine(maybeco):
             _log.debug('SERVER SCHEDULE %s', maybeco)
-            task = asyncio.create_task(maybeco)
+            task = create_task(maybeco)
 
             # we have no good place to join async put()/rpc() handler results
             # other than SharedPV.close(sync=True) which is both optional,
@@ -51,7 +52,7 @@ def _handle(pv, op, M, args): # callback in asyncio loop
 class SharedPV(_SharedPV):
 
     def __init__(self, handler=None, **kws):
-        self.loop = asyncio.get_running_loop()
+        self.loop = get_running_loop()
         _SharedPV.__init__(self, handler=handler, **kws)
         self._disconnected = asyncio.Event()
         self._disconnected.set()
@@ -76,7 +77,7 @@ class SharedPV(_SharedPV):
             return V
 
         Ts = []
-        for t in asyncio.all_tasks():
+        for t in all_tasks():
             if getattr(t, '_SharedPV', None) is not self:
                 continue
             F = asyncio.Future()
