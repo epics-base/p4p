@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+import os
 import sysconfig
 
 from setuptools_dso import Extension, setup, cythonize
@@ -82,10 +83,15 @@ exts = cythonize([
     )
 ])
 
+with open(os.path.join(os.path.dirname(__file__), 'README.md')) as F:
+    long_description = F.read()
+
 setup(
     name='p4p',
     version=package_version,
     description="Python interface to PVAccess protocol client",
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     url='https://mdavidsaver.github.io/p4p',
     author='Michael Davidsaver',
     author_email='mdavidsaver@gmail.com',

@@ -1,4 +1,5 @@
 include pyproject.toml
+include README.md
 include src/*.h
 include src/*.cpp
 include src/p4p/*.h
