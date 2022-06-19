@@ -392,8 +392,16 @@ jobs:
           name: p4p
           path: dist/*
 
+      - name: Check wheels
+        if: ${{ !matrix.base && !matrix.source }}
+        run: python -m twine check dist/p4p*.whl
+
+      - name: Check source
+        if: ${{ matrix.source && !matrix.base }}
+        run: python -m twine check dist/p4p*.tar.*
+
       - name: Upload wheels
-        if: github.event_name=='push' && github.ref=='refs/heads/master' && !matrix.base && !matrix.source
+        if: github.event_name=='push' && github.repository=='mdavidsaver/p4p' && github.ref=='refs/heads/master' && !matrix.base && !matrix.source
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -401,7 +409,7 @@ jobs:
           python -m twine upload --skip-existing dist/p4p*.whl
 
       - name: Upload source
-        if: github.event_name=='push' && github.ref=='refs/heads/master' && matrix.source && !matrix.base
+        if: github.event_name=='push' && github.repository=='mdavidsaver/p4p' && github.ref=='refs/heads/master' && matrix.source && !matrix.base
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
