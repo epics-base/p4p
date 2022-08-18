@@ -394,8 +394,12 @@ class Subscription(object):
                             E = Finished()
                             await self._cb(E)
 
+
+        except asyncio.CancelledError:
+            _log.debug("Cancelled Subscription: %s", LazyRepr(self))
         except:
             _log.exception("Error processing Subscription event: %s", LazyRepr(E))
+        finally:
             if self._S is not None:
                 self._S.close()
             self._S = None
