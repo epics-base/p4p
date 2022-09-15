@@ -223,7 +223,7 @@ jobs:
           #  piparch: win_amd64
 
           - name: win64 3.5
-            os: windows-2016
+            os: windows-2019
             python: "3.5"
             piparch: win_amd64
             profile: latest
