@@ -15,7 +15,7 @@ https://mdavidsaver.github.io/p4p/
 
 Source
 
-https://travis-ci.org/mdavidsaver/p4p/
+https://github.com/mdavidsaver/p4p/
 
 CI results
 
