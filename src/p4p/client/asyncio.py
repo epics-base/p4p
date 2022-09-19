@@ -345,6 +345,9 @@ class Subscription(object):
         assert self._S is None, "Not close()'d"
         await self._T
 
+    def stats(self):
+        return self._S.stats()
+
     async def _handle(self):
         if self._notify_disconnect:
             await self._cb(Disconnected())  # all subscriptions are inittially disconnected

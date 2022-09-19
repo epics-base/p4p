@@ -594,6 +594,21 @@ cdef class ClientMonitor:
         if <bool>sub:
             return monPop(sub) # will unlock/relock GIL
 
+    def stats(self, reset=False):
+        cdef client.SubscriptionStat info
+        cdef shared_ptr[client.Subscription] sub = self.sub
+        cdef bool breset = reset
+        if <bool>sub:
+            with nogil:
+                sub.get().stats(info, breset)
+        return {
+            'nQueue': info.nQueue,
+            'nSrvSquash': info.nSrvSquash,
+            'nCliSquash': info.nCliSquash,
+            'maxQueue': info.maxQueue,
+            'limitQueue': info.limitQueue,
+        }
+
 all_providers = WeakSet()
 
 cdef class ClientProvider:

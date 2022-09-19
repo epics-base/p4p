@@ -84,6 +84,9 @@ class Subscription(object):
         'Is data pending in event queue?'
         return self._S is None or self._S.empty()
 
+    def stats(self):
+        return self._S.stats()
+
     def _event(self):
         try:
             assert self._S is not None, self._S
