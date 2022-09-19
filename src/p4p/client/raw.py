@@ -28,22 +28,12 @@ __all__ = (
     'RemoteError',
 )
 
-class LazyRepr(object):
-    """Log using repr()
-    """
-    __slots__ = ('value',)
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
-    __repr__ = __str__
-
 
 def unwrapHandler(handler, nt):
     """Wrap get/rpc handler to unwrap Value
     """
     def dounwrap(code, msg, val, handler=handler):
-        _log.debug("Handler (%s, %s, %s) -> %s", code, msg, LazyRepr(val), handler)
+        _log.debug("Handler (%s, %s, %r) -> %s", code, msg, val, handler)
         try:
             if code == 0:
                 handler(RemoteError(msg))
@@ -129,7 +119,7 @@ class Subscription(_p4p.ClientMonitor):
             val = self._nt.unwrap(val)
         elif isinstance(val, Finished):
             self.done = True
-        _log.debug("poll() -> %s", LazyRepr(val))
+        _log.debug("poll() -> %r", val)
         return val
 
     def complete(self):

@@ -9,7 +9,7 @@ _log = logging.getLogger(__name__)
 import cothread
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled, Finished, LazyRepr
+from .raw import Disconnected, RemoteError, Cancelled, Finished
 from .thread import TimeoutError
 from ..wrapper import Value, Type
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
@@ -154,7 +154,7 @@ class Context(raw.Context):
 
         op = super(Context, self).put(name, cb, builder=value, request=request, get=get)
 
-        _log.debug('put %s %s request=%s', name, LazyRepr(value), request)
+        _log.debug('put %s %r request=%s', name, value, request)
 
         try:
             ret = done.Wait(timeout)
@@ -195,7 +195,7 @@ class Context(raw.Context):
 
         op = super(Context, self).rpc(name, cb, value, request=request)
 
-        _log.debug('rpc %s %s request=%s', name, LazyRepr(value), request)
+        _log.debug('rpc %s %r request=%s', name, value, request)
 
         try:
             try:
@@ -323,6 +323,6 @@ class Subscription(object):
                             self._cb(E)
                         break
         except:
-            _log.exception("Error processing Subscription event: %s", LazyRepr(E))
+            _log.exception("Error processing Subscription event: %r", E)
             self._S.close()
             self._S = None

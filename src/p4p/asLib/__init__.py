@@ -11,7 +11,7 @@ from weakref import WeakKeyDictionary
 from .yacc import parse, ACFError
 
 from .. import Value
-from ..client.thread import Context, LazyRepr, Disconnected
+from ..client.thread import Context, Disconnected
 
 _log = logging.getLogger(__name__)
 
@@ -186,7 +186,7 @@ class Engine(object):
             try:
                 val = float(value or 0.0)
             except:
-                _log.exception('INP%s unable to store %s', grps, LazyRepr(value))
+                _log.exception('INP%s unable to store %r', grps, value)
 
         _log.debug('Update INP%s <- %s', grps, val)
 

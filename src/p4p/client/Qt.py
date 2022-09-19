@@ -3,7 +3,7 @@ import logging
 from qtpy.QtCore import QObject, QCoreApplication, Signal, QEvent
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled, Finished, LazyRepr
+from .raw import Disconnected, RemoteError, Cancelled, Finished
 from ..wrapper import Value, Type
 from .._p4p import ClientProvider
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,

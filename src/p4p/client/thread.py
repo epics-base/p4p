@@ -19,7 +19,7 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled, Finished, LazyRepr
+from .raw import Disconnected, RemoteError, Cancelled, Finished
 from ..util import _defaultWorkQueue
 from ..wrapper import Value, Type
 from ..rpc import WorkQueue
@@ -252,7 +252,7 @@ class Context(raw.Context):
                     try:
                         if not isinstance(value, Cancelled):
                             done.put_nowait((value, i))
-                        _log.debug('get %s Q %s', N, LazyRepr(value))
+                        _log.debug('get %s Q %r', N, value)
                     except:
                         _log.exception("Error queuing get result %s", value)
 
@@ -267,7 +267,7 @@ class Context(raw.Context):
                         _log.debug('timeout %s after %s', name[i], timeout)
                         raise TimeoutError()
                     break
-                _log.debug('got %s %s', name[i], LazyRepr(value))
+                _log.debug('got %s %r', name[i], value)
                 if throw and isinstance(value, Exception):
                     raise value
                 result[i] = value
@@ -353,7 +353,7 @@ class Context(raw.Context):
                     try:
                         done.put_nowait((value, i))
                     except:
-                        _log.exception("Error queuing put result %s", LazyRepr(value))
+                        _log.exception("Error queuing put result %r", value)
 
                 ops[i] = raw_put(n, cb, builder=value, request=req, get=get)
 

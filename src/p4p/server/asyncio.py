@@ -6,7 +6,6 @@ from functools import partial
 import asyncio
 
 from .raw import SharedPV as _SharedPV, Handler
-from ..client.raw import LazyRepr
 from ..client.thread import RemoteError
 from ..client.asyncio import get_running_loop, create_task, all_tasks
 
@@ -27,7 +26,7 @@ def _log_err(V):
 
 def _handle(pv, op, M, args): # callback in asyncio loop
     try:
-        _log.debug('SERVER HANDLE %s %s %s', op, M, LazyRepr(args))
+        _log.debug('SERVER HANDLE %s %s %r', op, M, args)
         maybeco = M(*args)
         if asyncio.iscoroutine(maybeco):
             _log.debug('SERVER SCHEDULE %s', maybeco)

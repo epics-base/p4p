@@ -7,7 +7,7 @@ _log = logging.getLogger(__name__)
 
 from .wrapper import Value, Type
 from .nt import NTURI
-from .client.raw import RemoteError, LazyRepr
+from .client.raw import RemoteError
 from .server import DynamicProvider
 from .server.raw import SharedPV
 from .util import ThreadedWorkQueue, WorkQueue, Full, Empty
@@ -142,7 +142,7 @@ class RPCDispatcherBase(DynamicProvider):
                     _log.exception("Error encoding %s as %s", R, rtype)
                     op.done(error="Error encoding reply")
                     return
-            _log.debug("RPC reply %s -> %s", request, LazyRepr(R))
+            _log.debug("RPC reply %s -> %r", request, R)
             op.done(R)
 
         except RemoteError as e:
