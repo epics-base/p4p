@@ -295,7 +295,7 @@ class Context(raw.Context):
         R = Subscription(name, cb, notify_disconnect=notify_disconnect)
         cb = partial(get_running_loop().call_soon_threadsafe, R._E.set)
 
-        R._S = super(Context, self).monitor(name, cb, request)
+        R._S = super(Context, self).monitor(name, cb, request, notify_disconnect=notify_disconnect)
         return R
 
 
@@ -304,9 +304,10 @@ class Subscription(object):
     """An active subscription.
     """
 
-    def __init__(self, name, cb, notify_disconnect=False):
+    def __init__(self, name, cb, notify_disconnect=False, batch_limit=None):
         self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
+        self._batch_limit = batch_limit
 
         self._run = True
         self._E = asyncio.Event()
@@ -345,9 +346,12 @@ class Subscription(object):
         assert self._S is None, "Not close()'d"
         await self._T
 
+    def stats(self):
+        return self._S.stats()
+
     async def _handle(self):
         if self._notify_disconnect:
-            await self._cb(Disconnected())  # all subscriptions are inittially disconnected
+            await self._cb(Disconnected())  # all subscriptions are initially disconnected
 
         E = None
         try:
@@ -355,36 +359,41 @@ class Subscription(object):
                 await self._E.wait()
                 self._E.clear()
                 _log.debug('Subscription %s wakeup', self.name)
+                empty = False
 
-                i = 0
-                while self._run:
+                while not empty and self._run:
                     S = self._S
-                    E = S.pop()
-                    if E is None:
+                    if S is None:
                         break
+                    try:
+                        U, empty = S.pop(self._batch_limit or 4)
 
-                    elif isinstance(E, Disconnected):
-                        _log.debug('Subscription notify for %s with %s', self.name, E)
-                        if self._notify_disconnect:
-                            await self._cb(E)
-                        else:
-                            _log.info("Subscription disconnect %s", self.name)
-                        continue
+                    except Exception as E:
+                        if isinstance(E, Disconnected):
+                            _log.debug('Subscription notify for %s with %s', self.name, E)
+                            if self._notify_disconnect:
+                                await self._cb(E)
+                            else:
+                                _log.info("Subscription disconnect %s", self.name)
+                            continue
 
-                    elif isinstance(E, RemoteError):
-                        _log.debug('Subscription notify for %s with %s', self.name, E)
-                        if self._notify_disconnect:
-                            await self._cb(E)
                         elif isinstance(E, RemoteError):
-                            _log.error("Subscription Error %s", E)
-                        return
+                            _log.debug('Subscription notify for %s with %s', self.name, E)
+                            if self._notify_disconnect:
+                                await self._cb(E)
+                            elif isinstance(E, RemoteError):
+                                _log.error("Subscription Error %s", E)
+                            return
 
                     else:
-                        await self._cb(E)
+                        if self._batch_limit is None:
+                            for v in U:
+                                await self._cb(v)
+                        else:
+                            await self._cb(U)
 
-                    i = (i + 1) % 4
-                    if i == 0:
-                        await asyncio.sleep(0)  # Not sure how necessary.  Ensure we go to the scheduler
+                    # go to scheduler between batches
+                    await asyncio.sleep(0)  # Not sure how necessary.
 
                     if S.done:
                         _log.debug('Subscription complete %s', self.name)

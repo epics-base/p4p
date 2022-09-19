@@ -114,11 +114,19 @@ cdef extern from "<pvxs/client.h>" namespace "pvxs::client" nogil:
 
         Value build() except+
 
+    cdef struct SubscriptionStat "pvxs::client::SubscriptionStat":
+        size_t nQueue
+        size_t nSrvSquash
+        size_t nCliSquash
+        size_t maxQueue
+        size_t limitQueue
+
     cdef cppclass Subscription:
         bool cancel() except+
         void pause(bool p) except+
         void resume() except+
         Value pop() except+
+        void stats(SubscriptionStat&, bool reset) except+
 
     cdef cppclass Result:
         pass

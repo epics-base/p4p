@@ -91,20 +91,24 @@ void opEvent(client::MonitorBuilder& builder, PyObject *handler)
     });
 }
 
-PyObject* monPop(const std::shared_ptr<client::Subscription>& mon)
+PyObject* monPop(const std::shared_ptr<client::Subscription>& mon, size_t limit)
 {
     PyObject* klass;
     std::string msg;
     try {
-        Value ret;
+        std::vector<Value> vals;
+        bool notempty;
         {
             PyUnlock U;
-            ret = mon->pop();
+            notempty = mon->pop(vals, limit);
         }
-        if(ret)
-            return pvxs_pack(ret);
-        else
-            Py_RETURN_NONE;
+        PyRef ret(PyList_New(vals.size()));
+        for(size_t i=0u, N=vals.size(); i<N; i++) {
+            PyRef item(pvxs_pack(vals[i]));
+            PyList_SET_ITEM(ret.obj, i, item.release());
+        }
+        return Py_BuildValue("Oi", ret.obj, !notempty);
+
     //}catch(client::Connected&){ // masked
     }catch(client::Finished& e){
         klass = _Finished;
@@ -117,6 +121,6 @@ PyObject* monPop(const std::shared_ptr<client::Subscription>& mon)
         msg = e.what();
     }
 
-    return PyObject_CallFunction(klass, "s", msg.c_str());
+    return PyErr_Format(klass, "%s", msg.c_str());
 }
 } // namespace p4p
