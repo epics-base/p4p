@@ -579,6 +579,7 @@ cdef class ClientMonitor:
         if <bool>trash:
             with nogil:
                 trash.get().cancel()
+                trash.reset()
 
     def pop(self):
         cdef shared_ptr[client.Subscription] sub = self.sub # local copy to guard against concurrent _close()
