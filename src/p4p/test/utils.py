@@ -34,7 +34,7 @@ class RefTestMixin(object):
         names = set()
         for pat in self.ref_check:
             names |= set(fnmatch.filter(refs, pat))
-        return dict([(K, V) for K, V in refs.items() if K in names])
+        return dict([(K, V) for K, V in refs.items() if K in names and V>0])
 
     def setUp(self):
         self.__traceme = set()
@@ -84,7 +84,7 @@ class RefTestMixin(object):
             if not test:
                 for mustzero in ('ClientContextImpl', 'ServerPvt'):
                     self.assertEqual(0, after.get(mustzero, 0), mustzero)
-                self.assertDictEqual(self.__before, after1)
+                self.assertDictEqual(self.__before, after)
 
 class RefTestCase(RefTestMixin, unittest.TestCase):
     def __init__(self, methodName='runTest'):
