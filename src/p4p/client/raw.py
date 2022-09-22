@@ -6,14 +6,13 @@ _log = logging.getLogger(__name__)
 
 import warnings
 import sys
-from weakref import WeakSet
 
 try:
     from Queue import Queue, Full, Empty
 except ImportError:
     from queue import Queue, Full, Empty
 
-from .. import _p4p, set_debug as _set_debug
+from .. import _p4p
 from .._p4p import Cancelled, Disconnected, Finished, RemoteError
 
 from ..wrapper import Value, Type
@@ -159,17 +158,14 @@ class Context(object):
         self.conf = self._ctxt.conf
         self.hurryUp = self._ctxt.hurryUp
 
-        _all_contexts.add(self)
-
     makeRequest = _p4p.ClientProvider.makeRequest
 
     def close(self):
         if self._ctxt is None:
             return
+
         self._ctxt.close()
         self._ctxt = None
-
-        _all_contexts.discard(self)
 
     def __enter__(self):
         return self
@@ -264,16 +260,13 @@ class Context(object):
 
     @staticmethod
     def set_debug(lvl):
-        _set_debug(lvl)
+        _p4p.set_debug(lvl)
 
 set_debug = _p4p.logger_level_set
 
-_all_contexts = WeakSet()
-
-
 def _cleanup_contexts():
-    _log.debug("Closing all Client contexts")
-    contexts = list(_all_contexts)
+    contexts = list(_p4p.all_providers)
+    _log.debug("Closing %d Client contexts", len(contexts))
     for ctxt in contexts:
         ctxt.close()
 

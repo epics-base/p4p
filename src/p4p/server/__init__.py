@@ -128,8 +128,6 @@ class Server(object):
         try:
             if _log.isEnabledFor(logging.DEBUG):
                 _log.debug("New Server: %s", self.tostr(5))
-
-            _all_servers.add(self._S)
         except:
             self._S.stop()
             raise
@@ -239,10 +237,8 @@ class DynamicProvider(_DynamicProvider):
             except:
                 _log.exception("Unexpected")
 
-_all_servers = WeakSet()
-
 def _cleanup_servers():
     _log.debug("Stopping all Server instances")
-    servers = list(_all_servers)
+    servers = list(_p4p.all_servers)
     for srv in servers:
         srv.stop()

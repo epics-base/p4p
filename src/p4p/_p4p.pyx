@@ -24,6 +24,8 @@ from pvxs cimport server
 from pvxs cimport source
 from pvxs cimport sharedpv
 
+from weakref import WeakSet
+
 cdef extern from "<p4p.h>" namespace "p4p":
     # p4p.h redefines/overrides some definitions from Python.h (eg. PyMODINIT_FUNC)
     # it also (re)defines macros effecting numpy/arrayobject.h
@@ -498,6 +500,9 @@ cdef class ClientOperation:
         cdef client.PutBuilder bput
         cdef client.RPCBuilder brpc
 
+        if not <bool>ctxt.ctxt:
+            raise RuntimeError("Context closed")
+
         self.handler = handler
         self.builder = builder
 
@@ -557,6 +562,9 @@ cdef class ClientMonitor:
         cdef string pvname = name.encode()
         cdef client.MonitorBuilder builder
 
+        if not <bool>ctxt.ctxt:
+            raise RuntimeError("Context closed")
+
         self.handler = handler
 
         builder = ctxt.ctxt.monitor(pvname) \
@@ -586,6 +594,8 @@ cdef class ClientMonitor:
         if <bool>sub:
             return monPop(sub) # will unlock/relock GIL
 
+all_providers = WeakSet()
+
 cdef class ClientProvider:
     def __init__(self, basestring provider, conf=None, useenv=True):
         cdef client.Config cconf
@@ -603,16 +613,18 @@ cdef class ClientProvider:
         with nogil:
             self.ctxt = cconf.build()
 
+        all_providers.add(self)
+
     def __dealloc__(self):
-        with nogil:
-            self.ctxt = client.Context()
+        self.close()
 
     def conf(self):
         cdef client.Config_defs_t defs
         ret = {}
-        self.ctxt.config().updateDefs(defs)
-        for K,V in defs:
-            ret[K.decode()] = V.decode()
+        if <bool>self.ctxt:
+            self.ctxt.config().updateDefs(defs)
+            for K,V in defs:
+                ret[K.decode()] = V.decode()
         return ret
 
     def hurryUp(self):
@@ -620,6 +632,8 @@ cdef class ClientProvider:
             self.ctxt.hurryUp()
 
     def close(self):
+        if <bool>self.ctxt:
+            all_providers.discard(self)
         with nogil:
             self.ctxt = client.Context()
 
@@ -627,8 +641,9 @@ cdef class ClientProvider:
         cdef string cname
         if name is not None:
             cname = name
-        with nogil:
-            self.ctxt.cacheClear(cname, client.cacheAction.Disconnect)
+        if <bool>self.ctxt:
+            with nogil:
+                self.ctxt.cacheClear(cname, client.cacheAction.Disconnect)
 
     @staticmethod
     def makeRequest(basestring desc):
@@ -642,6 +657,8 @@ cdef class ClientProvider:
 
 # global provider registry
 _providers = {}
+
+all_servers = WeakSet()
 
 cdef class Server:
     def __init__(self, conf=None, useenv=True, providers=None):
@@ -687,29 +704,44 @@ cdef class Server:
             else:
                 raise ValueError("Unsupported provider type %s"%type(prov))
 
+        all_servers.add(self)
+
     def __dealloc__(self):
+        self.stop()
         with nogil:
             self.serv = server.Server()
 
     def run(self):
+        if not <bool>self.serv:
+            raise RuntimeError("server stop()d")
         with nogil:
             self.serv.run()
 
     def interrupt(self):
-        with nogil:
-            self.serv.interrupt()
+        if <bool>self.serv:
+            with nogil:
+                self.serv.interrupt()
 
     def start(self):
+        if not <bool>self.serv:
+            raise RuntimeError("server stop()d")
         with nogil:
             self.serv.start()
 
     def stop(self):
+        if <bool>self.serv:
+            all_servers.discard(self)
+            with nogil:
+                self.serv.stop()
         with nogil:
-            self.serv.stop()
+            self.serv = server.Server()
 
     def conf(self):
         cdef server.Config_defs_t defs
         ret = {}
+
+        if not <bool>self.serv:
+            raise RuntimeError("server stop()d")
 
         self.serv.config().updateDefs(defs)
         self.serv.clientConfig().updateDefs(defs)
