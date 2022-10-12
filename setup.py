@@ -44,6 +44,7 @@ elif platform.system()=='Darwin':
 # are all c++, and MSVC doesn't allow extern "C" to
 # return c++ types.
 cppflags = get_config_var('CPPFLAGS') + [('__PYX_EXTERN_C','extern')]
+cppflags += [('PVXS_ENABLE_EXPERT_API', None)]
 
 exts = cythonize([
     Extension(
