@@ -43,7 +43,7 @@ Get and Put operations can be performed on single PVs or a list of PVs. ::
    >>> A, B = ctxt.get(['pv:1', 'pv:2'])
    >>> ctxt.put('pv:name', 5)
    >>> ctxt.put('pv:name', {'value': 5}) # equivalent to previous
-   >>> ctxt.put('pv:name', {'field_1.value': 5, 'field_2.value': 5}) # put to multiple fields
+   >>> ctxt.put('pv:name', {'value.field_1': 5, 'value.field_2': 5}) # put to multiple fields
 
 By default the values returned by :py:meth:`Context.get` are subject to :py:ref:`unwrap`.
 
