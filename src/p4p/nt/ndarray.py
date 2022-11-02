@@ -35,6 +35,12 @@ class ntndarray(ntwrappercommon, numpy.ndarray):
     * .timestamp - Seconds since 1 Jan 1970 UTC as a float
     * .raw_stamp - A tuple (seconds, nanoseconds)
     * .raw - The underlying :py:class:`p4p.Value`.
+
+    Keys in the ``attrib`` dictionary may be any python which may be stored in a PVA field,
+    including an arbitrary ``Value``.
+    However, special handling is attempted if the provided ``Value`` appears to be an NTScalar
+    or similar, in which case the .value, .alarm and .timeStamp are unpacked to the NTAttribute
+    and other fields are discarded.
     """
 
     def __init__(self, *args, **kws):
@@ -129,7 +135,7 @@ class NTNDArray(NTBase):
                 ('tags', 'as'),
                 ('descriptor', 's'),
                 ('alarm', alarm),
-                ('timestamp', timeStamp),
+                ('timeStamp', timeStamp),
                 ('sourceType', 'i'),
                 ('source', 's'),
             ])),
@@ -141,7 +147,7 @@ class NTNDArray(NTBase):
     def wrap(self, value, **kws):
         """Wrap numpy.ndarray as Value
         """
-        attrib = getattr(value, 'attrib', None) or {}
+        attrib = getattr(value, 'attrib', None) or kws.pop('attrib', None) or {}
 
         value = numpy.asarray(value) # loses any special/augmented attributes
         dims = value.shape
@@ -166,7 +172,7 @@ class NTNDArray(NTBase):
             'compressedSize': dataSize,
             'uncompressedSize': dataSize,
             'uniqueId': 0,
-            'attribute': [{'name': K, 'value': V} for K, V in attrib.items()],
+            'attribute': [translateNDAttribute(K,V) for K, V in attrib.items()],
             'dimension': [{'size': N,
                            'offset': 0,
                            'fullSize': N,
@@ -188,3 +194,17 @@ class NTNDArray(NTBase):
         """Store python value in Value
         """
         V.value = py
+
+def translateNDAttribute(name, value):
+    if isinstance(value, Value) and 'value' in value: # assume to be NT-like
+        V = {
+            'name': name,
+            'value': value['value'],
+        }
+        if 'alarm' in value:
+            V['alarm'] = value['alarm']
+        if 'timeStamp' in value:
+            V['timeStamp'] = value['timeStamp']
+        return V
+
+    return {'name': name, 'value': value}

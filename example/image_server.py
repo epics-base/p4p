@@ -11,12 +11,12 @@ Then later run in eg. ipython -pylab
 """
 
 import logging
-import sys
+import time
 
 from scipy.misc import face
 
-from p4p.nt import NTNDArray
-from p4p.server import Server, StaticProvider
+from p4p.nt import NTNDArray, NTScalar
+from p4p.server import Server
 from p4p.server.thread import SharedPV
 
 def getargs():
@@ -32,8 +32,12 @@ args = getargs()
 
 logging.basicConfig(level=args.debug)
 
+myattr = NTScalar('d').wrap(42, timestamp=time.time(), severity=1)
+
 pv = SharedPV(nt=NTNDArray(),
-              initial=face(gray=args.gray))
+              initial=face(gray=args.gray),
+              attrib={"plain":"hello",
+                      "withmeta":myattr})
 
 print('serving pv:', args.pvname)
 
