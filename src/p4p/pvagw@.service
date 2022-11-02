@@ -1,19 +1,19 @@
 [Unit]
-Description=PVA Gateway ({inst})
+Description=PVA Gateway (%(inst)s)
 Requires=network.target
 After=network.target
 
 [Service]
 Type=simple
-SyslogIdentifier=pvagw-{inst}
-ExecStart={python} -m p4p.gw {conf}
+SyslogIdentifier=pvagw-%(inst)s
+ExecStart=%(python)s -m p4p.gw %(conf)s
 
-Environment='PYTHONPATH={pythonpath}'
+Environment='PYTHONPATH=%(pythonpath)s'
 
 # pvagw does not need special/root privilege,
 # or even a persistent identity.
 DynamicUser=yes
-# Alternately, with older systemd need to manually create a service user
+# Alternately, with older systemd.
 #User=nobody
 #Group=nogroup
 

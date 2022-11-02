@@ -760,12 +760,12 @@ def main(args=None):
             pythonpath = [modroot]+pythonpath
 
         with open(os.path.join(os.path.dirname(__file__), catfile), 'r') as F:
-            O.write(F.read().format(
-                python=sys.executable,
-                inst=I,
-                conf=conf,
-                pythonpath=os.pathsep.join(pythonpath),
-            ))
+            O.write(F.read()%{
+                'python':sys.executable,
+                'inst':I,
+                'conf':conf,
+                'pythonpath':os.pathsep.join(pythonpath),
+            })
 
         O.close()
         sys.exit(0)
