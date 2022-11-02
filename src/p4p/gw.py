@@ -529,7 +529,7 @@ class App(object):
             if jver not in (1,2):
                 _log.error('Warning: config file version %d not in range [1, 2]\n'%jver)
         except ValueError as e:
-            _log.error.write('Syntax Error in %s: %s\n'%(args.config, e.args))
+            _log.error('Syntax Error in %s: %s\n'%(args.config, e.args))
             sys.exit(1)
 
         if not args.test_config:
