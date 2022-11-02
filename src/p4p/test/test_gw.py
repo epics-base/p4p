@@ -29,6 +29,29 @@ from .. import _gw
 
 _log = logging.getLogger(__name__)
 
+class TestTemplate(unittest.TestCase):
+    def test_config(self):
+        with NamedTemporaryFile() as F:
+            try:
+                main(['--example-config', F.name])
+            except SystemExit as e:
+                self.assertEqual(e.code, 0)
+
+            F.seek(0)
+            content = F.read()
+            self.assertRegexpMatches(content, '"statusprefix"')
+
+    def test_systemd(self):
+        with NamedTemporaryFile() as F:
+            try:
+                main(['--example-systemd', F.name])
+            except SystemExit as e:
+                self.assertEqual(e.code, 0)
+
+            F.seek(0)
+            content = F.read()
+            self.assertRegexpMatches(content, 'multi-user.target')
+
 class TestGC(RefTestCase):
     def test_empty(self):
         class Dummy(object):

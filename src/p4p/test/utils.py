@@ -165,15 +165,25 @@ class RegularNamedTemporaryFile(object):
         fd, self.name = tempfile.mkstemp()
         try:
             self.file = os.fdopen(fd, *args, **kws)
+            self.read = self.file.read
             self.write = self.file.write
             self.flush = self.file.flush
+            self.seek = self.file.seek
         except:
             os.unlink(self.name)
             raise
+
     def __del__(self):
         self.close()
+
+    def __enter__(self):
+        return self
+    def __exit__(self,A,B,C):
+        self.close()
+
     def close(self):
         if self.file is not None:
             self.file.close()
             os.unlink(self.name)
             self.file = None
+            self.read = self.write = self.flush = self.seek = None
