@@ -6,12 +6,13 @@ to the GHA environment for subsequent actions if building a pre-release.
 from __future__ import print_function
 
 import os
-import re
 
-with open('setup.py', 'r') as F:
-    ver = re.match(r".*package_version\s*=\s*'([^']*)'.*", F.read(), flags=re.DOTALL).group(1)
+with open('src/p4p/version.py', 'r') as F:
+    lcl = {}
+    exec(F.read(), None, lcl)
+    version = lcl['version']
 
-if ver.find('a')!=-1:
+if not version.is_release:
     print('Is pre-release')
     # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
     #echo "{name}={value}" >> $GITHUB_ENV

@@ -17,6 +17,7 @@ from ._p4p import (version as pvxsVersion, listRefs, logger_level_set as _logger
 from ._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                    logLevelInfo, logLevelWarn, logLevelError,
                    logLevelFatal, logLevelOff)
+from .version import version
 
 _log = logging.getLogger(__name__)
 
@@ -61,8 +62,6 @@ def set_debug(lvl):
     lvl = _lvlmap.get(lvl, lvl)
     assert lvl in _lvls, lvl
     _logger_level_set("p4p.*", lvl)
-
-version = (1, 0, -80)
 
 def cleanup():
     """P4P sequenced shutdown.  Intended to be atexit.  Idenpotent.

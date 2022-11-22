@@ -17,8 +17,11 @@ from epicscorelibs.config import get_config_var
 import pvxslibs.path
 import pvxslibs.version
 
-# the following line is matched from cibuild.py
-package_version = '4.1.4'
+with open('src/p4p/version.py', 'r') as F:
+    lcl = {}
+    exec(F.read(), None, lcl)
+    package_version = str(lcl['version'])
+    del lcl
 
 cxxflags = ['-std=c++11']
 ldflags = []

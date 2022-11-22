@@ -41,6 +41,7 @@ PY += p4p/disect.py
 PY += p4p/wrapper.py
 PY += p4p/rpc.py
 PY += p4p/util.py
+PY += p4p/version.py
 PY += p4p/server/__init__.py
 PY += p4p/server/raw.py
 PY += p4p/server/thread.py
