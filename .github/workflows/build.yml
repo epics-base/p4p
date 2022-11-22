@@ -259,13 +259,13 @@ jobs:
             profile: latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
 
       - name: Setup native python
         if: matrix.python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
           #architecture: x64
@@ -387,7 +387,7 @@ jobs:
 
       - name: Save Artifacts
         if: true && !matrix.base
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: p4p
           path: dist/*
