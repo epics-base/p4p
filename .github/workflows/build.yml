@@ -10,6 +10,8 @@ jobs:
       # used by .ci/build-deps.sh for Make builds
       BRBASE: ${{ matrix.base }}
       BRPVXS: ${{ matrix.pvxs }}
+      # cf. https://github.com/numpy/numpy/issues/22623
+      SETUPTOOLS_USE_DISTUTILS: stdlib
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +55,7 @@ jobs:
           # Check build from .tar
           - name: Source
             os: ubuntu-latest
-            python: "3.7"
+            python: "3.9"
             source: true
 
           # Linux py builds x64
@@ -354,6 +356,7 @@ jobs:
           [ -d dist ]
           ls dist/*
           export PATH="/opt/python/${{ matrix.pyver }}/bin:\$PATH"
+          export SETUPTOOLS_USE_DISTUTILS=stdlib
           which python
           python -m pip install -U pip
           python -m pip install setuptools wheel nose2
