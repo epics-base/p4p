@@ -555,7 +555,7 @@ cdef class ClientOperation:
 @cython.no_gc_clear
 cdef class ClientMonitor:
     cdef shared_ptr[client.Subscription] sub
-    cdef object handler
+    cdef readonly object handler
     cdef object __weakref__
 
     def __init__(self, ClientProvider ctxt, basestring name, handler=None, _Value pvRequest=None):
@@ -762,7 +762,7 @@ cdef class Server:
 @cython.no_gc_clear
 cdef class SharedPV:
     cdef sharedpv.SharedPV pv
-    cdef object handler
+    cdef readonly object handler
     cdef object __weakref__
 
     def __init__(self, handler=None, options=None):
@@ -814,7 +814,7 @@ cdef class ServerOperation:
     """
     cdef shared_ptr[source.ExecOp] op
     cdef data.Value val
-    cdef object handler
+    cdef readonly object handler
     cdef object __weakref__
 
     def __dealloc__(self):
@@ -961,7 +961,7 @@ cdef class StaticProvider:
 cdef class DynamicProvider:
     cdef string name
     cdef shared_ptr[source.Source] src
-    cdef object handler
+    cdef readonly object handler
     cdef object __weakref__
 
     def __init__(self, basestring name, handler):
