@@ -51,7 +51,7 @@ Note that this example allows clients to change any field, not just '.value'.
 This may be restricted by inspecting the `Value` returned by 'op.value()'
 to see which fields are marked as changed with eg. `Value.changed()`.
 
-A client put operation can be failed with eg. 'op.done(err="oops")'.
+A client put operation can be failed with eg. 'op.done(error="oops")'.
 
 In the put handler function 'pv' is the `SharedPV` and 'op' is a `ServerOperation`.
 
