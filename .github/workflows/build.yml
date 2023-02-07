@@ -17,6 +17,13 @@ jobs:
       matrix:
         include:
           # Linux Makefile builds
+          - name: Make Linux py3.11 e7.0 latest
+            os: ubuntu-latest
+            python: "3.11"
+            base: "7.0"
+            pvxs: "master"
+            profile: latest
+
           - name: Make Linux py2.7 e7.0 latest
             os: ubuntu-latest
             python: "2.7"
