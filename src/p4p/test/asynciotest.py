@@ -120,16 +120,17 @@ class TestGPM(AsyncTest):
                     sub.close()
                     await sub.wait_closed()
 
-    @asyncio.coroutine
-    def test_gen_coro(self):
-        # demonstrate interoperability w/ code using generated based coroutines
-        with Server(providers=[self.provider], isolate=True) as S:
-            with Context('pva', conf=S.conf(), useenv=False) as C:
-                self.assertEqual(0, (yield from C.get('foo')))
+    if hasattr(asyncio, 'coroutine'):
+        @asyncio.coroutine
+        def test_gen_coro(self):
+            # demonstrate interoperability w/ code using generated based coroutines
+            with Server(providers=[self.provider], isolate=True) as S:
+                with Context('pva', conf=S.conf(), useenv=False) as C:
+                    self.assertEqual(0, (yield from C.get('foo')))
 
-                yield from C.put('foo', 5)
+                    yield from C.put('foo', 5)
 
-                self.assertEqual(5 * 2, (yield from C.get('foo')))
+                    self.assertEqual(5 * 2, (yield from C.get('foo')))
 
 
 class TestTimeout(AsyncTest):
