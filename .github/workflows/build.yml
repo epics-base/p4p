@@ -53,7 +53,8 @@ jobs:
             profile: deb8
 
           - name: Make Linux py2.7 e3.14
-            os: ubuntu-latest
+            # https://github.com/epics-base/epics-base/issues/330
+            os: ubuntu-20.04
             python: "2.7"
             base: "3.14"
             pvxs: "master"
