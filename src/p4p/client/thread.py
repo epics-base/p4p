@@ -175,6 +175,11 @@ class Context(raw.Context):
 
         self._Q = queue
 
+        self._hub = raw.Hub(blocking=True)
+        self._hub_worker = threading.Thread(target=self._hub.handle)
+        self._hub_worker.daemon=True
+        self._hub_worker.start()
+
     def _channel(self, name):
         with self._channel_lock:
             return super(Context, self)._channel(name)
@@ -200,6 +205,12 @@ class Context(raw.Context):
     def close(self):
         """Force close all Channels and cancel all Operations
         """
+        if self._hub is not None:
+            _log.debug('Join Hub')
+            self._hub.interrupt()
+            self._hub_worker.join()
+            self._hub = self._hub_worker = None
+            _log.debug('Joined Hub')
         if self._Q is not None:
             for T in self._T:
                 self._Q.interrupt()
@@ -434,5 +445,6 @@ class Context(raw.Context):
         """
         R = Subscription(self, name, cb, notify_disconnect=notify_disconnect, queue=queue)
 
-        R._S = super(Context, self).monitor(name, R._event, request, notify_disconnect=notify_disconnect)
+        R._S = super(Context, self).monitor(name, R._event, request, notify_disconnect=notify_disconnect,
+                                            hub=self._hub)
         return R

@@ -26,6 +26,10 @@ from pvxs cimport sharedpv
 
 from weakref import WeakSet
 
+cdef extern from "<osiSock.h>":
+    struct SOCKET: # osiSock.h
+        pass
+
 cdef extern from "<p4p.h>" namespace "p4p":
     # p4p.h redefines/overrides some definitions from Python.h (eg. PyMODINIT_FUNC)
     # it also (re)defines macros effecting numpy/arrayobject.h
@@ -56,7 +60,22 @@ cdef extern from "<p4p.h>" namespace "p4p":
     void opHandler[Builder](Builder& builder, object handler)
     void opBuilder[Builder](Builder& builder, object handler)
     void opEvent(client.MonitorBuilder& builder, object handler)
+    void opEventHub(NotificationHub& hub, client.MonitorBuilder& builder, object handler)
     object monPop(const shared_ptr[client.Subscription]& mon) with gil
+
+    # notify.cpp
+    cdef cppclass Notifier:
+        void notify() except+
+
+    cdef cppclass NotificationHub:
+        @staticmethod
+        NotificationHub create(bool blocking) nogil except+
+        void close() nogil except+
+        SOCKET fileno() nogil
+        shared_ptr[Notifier] add(object) nogil except+
+        void handle() nogil except+
+        void poll() nogil except+
+        void interrupt() nogil const
 
 cimport numpy # must cimport after p4p.h is included
 
@@ -98,6 +117,38 @@ def listRefs():
 
 def _forceLazy():
     pass
+
+cdef class Hub:
+    """ Mux. notification of updates from multiple Subscriptions.
+    """
+    cdef NotificationHub nh
+    cdef bool blocking
+    def __init__(self, bool blocking=True):
+        self.nh = NotificationHub.create(blocking)
+        self.blocking = blocking
+
+    def fileno(self):
+        """Handle of the underlying socket used to queue notifications.
+           Call handle() when readable.
+        """
+        return <long long>self.nh.fileno()
+
+    def handle(self):
+        """Process any pending notifications.
+           If created with blocking=True, wait for further notifications or interrupt().
+           If blocking=False, returns when none remain pending.
+        """
+        with nogil:
+            if self.blocking:
+                self.nh.handle()
+            else:
+                self.nh.poll()
+
+    def interrupt(self):
+        """When created with blocking=True, cause handle() to return after issueing
+           any pending notifications.
+        """
+        self.nh.interrupt()
 
 ############### data
 
@@ -560,6 +611,7 @@ cdef class ClientMonitor:
     cdef readonly bool notify_disconnect
 
     def __init__(self, ClientProvider ctxt, basestring name, handler=None,
+                 Hub hub=None,
                  _Value pvRequest=None, bool notify_disconnect=True):
         cdef string pvname = name.encode()
         cdef client.MonitorBuilder builder
@@ -574,7 +626,10 @@ cdef class ClientMonitor:
         builder = ctxt.ctxt.monitor(pvname) \
                       .maskConnected(True) \
                       .maskDisconnected(maskDiscon)
-        opEvent(builder, handler)
+        if hub is None:
+            opEvent(builder, handler)
+        else:
+            opEventHub(hub.nh, builder, handler)
         if pvRequest is not None:
             builder.rawRequest(pvRequest.val)
         self.sub = builder.exec_()

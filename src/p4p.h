@@ -3,7 +3,9 @@
 
 #include <stdexcept>
 #include <sstream>
+#include <functional>
 
+#include <osiSock.h>
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 
@@ -51,6 +53,8 @@ using namespace pvxs;
 
 typedef epicsGuard<epicsMutex> Guard;
 typedef epicsGuardRelease<epicsMutex> UnGuard;
+
+struct NotificationHub;
 
 struct SB {
     std::ostringstream strm;
@@ -193,8 +197,31 @@ void opBuilder(Builder& builder, PyObject *handler) {
     builder.build(opBuilder(handler));
 }
 void opEvent(client::MonitorBuilder& builder, PyObject *handler);
+void opEventHub(NotificationHub& hub, client::MonitorBuilder& builder, PyObject *handler);
 
 PyObject* monPop(const std::shared_ptr<client::Subscription>& mon);
+
+/******* notify *******/
+
+struct Notifier {
+    virtual ~Notifier();
+    virtual void notify() =0;
+};
+
+struct NotificationHub {
+    static
+    NotificationHub create(bool blocking);
+    void close();
+    SOCKET fileno() const;
+    std::shared_ptr<Notifier> add(std::function<void()>&& fn);
+    std::shared_ptr<Notifier> add(PyObject *handler);
+    void handle() const;
+    void poll() const;
+    void interrupt() const noexcept;
+    struct Pvt;
+private:
+    std::shared_ptr<Pvt> pvt;
+};
 
 /******* odometer (testing tool) *******/
 

@@ -22,6 +22,7 @@ _p4p_SRCS += pvxs_value.cpp
 _p4p_SRCS += pvxs_sharedpv.cpp
 _p4p_SRCS += pvxs_source.cpp
 _p4p_SRCS += pvxs_client.cpp
+_p4p_SRCS += notify.cpp
 
 _p4p_CPPFLAGS += -DPVXS_ENABLE_EXPERT_API
 

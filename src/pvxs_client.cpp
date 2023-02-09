@@ -91,6 +91,27 @@ void opEvent(client::MonitorBuilder& builder, PyObject *handler)
     });
 }
 
+void opEventHub(NotificationHub& hub, client::MonitorBuilder& builder, PyObject *handler)
+{
+    auto notify(hub.add([handler]() mutable {
+        // on python worker
+
+        PyLock L;
+
+        auto ret(PyRef::allownull(PyObject_CallFunction(handler, "")));
+        if(!ret.obj) {
+            PySys_WriteStderr("Unhandled Exception %s:%d\n", __FILE__, __LINE__);
+            PyErr_Print();
+            PyErr_Clear();
+        }
+    }));
+
+    builder.event([notify](client::Subscription&) mutable {
+        // on PVA worker
+        notify->notify();
+    });
+}
+
 PyObject* monPop(const std::shared_ptr<client::Subscription>& mon)
 {
     PyObject* klass;

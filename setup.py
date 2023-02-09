@@ -56,6 +56,7 @@ exts = cythonize([
             "src/pvxs_source.cpp",
             "src/pvxs_type.cpp",
             "src/pvxs_value.cpp",
+            "src/notify.cpp",
         ],
         include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
         define_macros = cppflags + [
