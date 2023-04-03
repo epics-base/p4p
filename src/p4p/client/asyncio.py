@@ -295,7 +295,7 @@ class Context(raw.Context):
         R = Subscription(name, cb, notify_disconnect=notify_disconnect)
         cb = partial(get_running_loop().call_soon_threadsafe, R._E.set)
 
-        R._S = super(Context, self).monitor(name, cb, request)
+        R._S = super(Context, self).monitor(name, cb, request, notify_disconnect=notify_disconnect)
         return R
 
 
@@ -350,7 +350,7 @@ class Subscription(object):
 
     async def _handle(self):
         if self._notify_disconnect:
-            await self._cb(Disconnected())  # all subscriptions are inittially disconnected
+            await self._cb(Disconnected())  # all subscriptions are initially disconnected
 
         E = None
         try:

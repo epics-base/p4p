@@ -54,7 +54,6 @@ class Subscription(object):
 
     def __init__(self, ctxt, name, cb, notify_disconnect=False, queue=None):
         self.name, self._S, self._cb = name, None, cb
-        self._notify_disconnect = notify_disconnect
         self._Q = queue or ctxt._Q or _defaultWorkQueue()
         if notify_disconnect:
             # all subscriptions are inittially disconnected
@@ -108,7 +107,7 @@ class Subscription(object):
 
                 elif isinstance(E, Exception):
                     _log.debug('Subscription notify for %s with %s', self.name, E)
-                    if self._notify_disconnect:
+                    if S.notify_disconnect:
                         self._cb(E)
 
                     elif isinstance(E, RemoteError):
@@ -435,5 +434,5 @@ class Context(raw.Context):
         """
         R = Subscription(self, name, cb, notify_disconnect=notify_disconnect, queue=queue)
 
-        R._S = super(Context, self).monitor(name, R._event, request)
+        R._S = super(Context, self).monitor(name, R._event, request, notify_disconnect=notify_disconnect)
         return R

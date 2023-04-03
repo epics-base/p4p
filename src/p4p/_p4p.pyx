@@ -557,19 +557,23 @@ cdef class ClientMonitor:
     cdef shared_ptr[client.Subscription] sub
     cdef readonly object handler
     cdef object __weakref__
+    cdef readonly bool notify_disconnect
 
-    def __init__(self, ClientProvider ctxt, basestring name, handler=None, _Value pvRequest=None):
+    def __init__(self, ClientProvider ctxt, basestring name, handler=None,
+                 _Value pvRequest=None, bool notify_disconnect=True):
         cdef string pvname = name.encode()
         cdef client.MonitorBuilder builder
+        cdef bool maskDiscon = not notify_disconnect
 
         if not <bool>ctxt.ctxt:
             raise RuntimeError("Context closed")
 
         self.handler = handler
+        self.notify_disconnect = <bool>notify_disconnect
 
         builder = ctxt.ctxt.monitor(pvname) \
                       .maskConnected(True) \
-                      .maskDisconnected(False)
+                      .maskDisconnected(maskDiscon)
         opEvent(builder, handler)
         if pvRequest is not None:
             builder.rawRequest(pvRequest.val)
