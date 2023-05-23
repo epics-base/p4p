@@ -40,6 +40,7 @@ struct GWSubscription {
 
     enum state_t {
         Connecting, // waiting for onInit()
+        Connected,  // waiting for first event
         Running,
         Error,
     } state = Connecting;

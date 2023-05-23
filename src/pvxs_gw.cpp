@@ -565,10 +565,8 @@ void onSubEvent(const std::shared_ptr<GWSubscription>& sub, const std::shared_pt
             log_debug_printf(_logmon, "'%s' MONITOR event\n", cli->name().c_str());
 
             Guard G(pv->us->lock);
-            if(!sub->current)
-                sub->current = val; // first update
-            else
-                sub->current.assign(val); // accumulate deltas
+            sub->current.assign(val); // accumulate deltas
+            sub->state = GWSubscription::Running;
 
             for(auto& ctrl : sub->controls)
                 ctrl->post(val);
@@ -578,6 +576,8 @@ void onSubEvent(const std::shared_ptr<GWSubscription>& sub, const std::shared_pt
 
             Guard G(pv->us->lock);
             pv->us->subscription.reset();
+            for(auto& ctrl : sub->setups)
+                ctrl->error("Shared monitor finished before starting");
             for(auto& ctrl : sub->controls)
                 ctrl->finish();
 
@@ -620,10 +620,12 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
             sub->setups.push_back(op);
             goto done;
 
+        case GWSubscription::Connected:
         case GWSubscription::Running: {
             log_debug_printf(_logmon, "'%s' MONITOR init run\n", op->name().c_str());
             auto ctrl(op->connect(sub->current));
-            ctrl->post(sub->current); // post current as initial for new subscriber
+            if(sub->state == GWSubscription::Running)
+                ctrl->post(sub->current); // post current as initial for new subscriber
             sub->controls.emplace_back(std::move(ctrl));
             goto done;
         }
@@ -687,10 +689,12 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
             // syncs client worker with server worker
             {
                 Guard G(pv->us->lock);
-                sub->state = GWSubscription::Running;
+                sub->state = GWSubscription::Connected;
+                sub->current = prototype.clone();
                 auto setups(std::move(sub->setups));
-                for(auto& setup : setups)
-                    sub->controls.push_back(setup->connect(prototype));
+                for(auto& setup : setups) {
+                    sub->controls.push_back(setup->connect(sub->current));
+                }
             }
         })
                 .exec();
