@@ -123,6 +123,13 @@ jobs:
             numpy: numpy==1.22.0
             cython: Cython==0.29.23
 
+          - name: linux 3.11 amd64
+            os: ubuntu-latest
+            pyver: cp311-cp311
+            piparch: manylinux2014_x86_64
+            numpy: numpy==1.22.0
+            cython: Cython==0.29.23
+
           # Linux py builds x64
           - name: linux 2.7 i686
             os: ubuntu-latest
@@ -225,6 +232,13 @@ jobs:
             numpy: numpy==1.22.0
             cython: Cython==0.29.23
 
+          - name: osx 3.11 intel
+            os: macos-latest
+            python: "3.11"
+            piparch: macosx_10_9_intel
+            numpy: numpy==1.22.0
+            cython: Cython==0.29.23
+
           # Windows py builds
 
           ## missing Microsoft Visual C++ 9.0
@@ -265,6 +279,12 @@ jobs:
           - name: win64 3.10
             os: windows-latest
             python: "3.10"
+            piparch: win_amd64
+            profile: latest
+
+          - name: win64 3.11
+            os: windows-latest
+            python: "3.11"
             piparch: win_amd64
             profile: latest
 
