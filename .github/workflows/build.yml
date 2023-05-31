@@ -23,6 +23,7 @@ jobs:
             base: "7.0"
             pvxs: "master"
             profile: latest
+            skip_cothread: yes
 
           - name: Make Linux py2.7 e7.0 latest
             os: ubuntu-latest
@@ -129,6 +130,7 @@ jobs:
             piparch: manylinux2014_x86_64
             numpy: numpy==1.23.5
             cython: Cython==0.29.23
+            skip_cothread: yes
 
           # Linux py builds x64
           - name: linux 2.7 i686
@@ -238,6 +240,7 @@ jobs:
             piparch: macosx_10_9_intel
             numpy: numpy==1.23.5
             cython: Cython==0.29.23
+            skip_cothread: yes
 
           # Windows py builds
 
@@ -251,42 +254,49 @@ jobs:
             python: "3.5"
             piparch: win_amd64
             profile: latest
+            skip_cothread: yes
 
           - name: win64 3.6
             os: windows-latest
             python: "3.6"
             piparch: win_amd64
             profile: latest
+            skip_cothread: yes
 
           - name: win64 3.7
             os: windows-latest
             python: "3.7"
             piparch: win_amd64
             profile: latest
+            skip_cothread: yes
 
           - name: win64 3.8
             os: windows-latest
             python: "3.8"
             piparch: win_amd64
             profile: latest
+            skip_cothread: yes
 
           - name: win64 3.9
             os: windows-latest
             python: "3.9"
             piparch: win_amd64
             profile: latest
+            skip_cothread: yes
 
           - name: win64 3.10
             os: windows-latest
             python: "3.10"
             piparch: win_amd64
             profile: latest
+            skip_cothread: yes
 
           - name: win64 3.11
             os: windows-latest
             python: "3.11"
             piparch: win_amd64
             profile: latest
+            skip_cothread: yes
 
     steps:
       - uses: actions/checkout@v3
@@ -334,7 +344,11 @@ jobs:
           then
             python -m pip install -r requirements-${{ matrix.profile }}.txt
           else
-            python -m pip install --only-binary numpy nose2 ply cothread ${{ matrix.numpy }} ${{ matrix.cython }}
+            python -m pip install --only-binary numpy nose2 ply ${{ matrix.numpy }} ${{ matrix.cython }}
+          fi
+          if [ "${{ matrix.skip_cothread }}" != "yes" ]
+          then
+            python -m pip install cothread
           fi
 
       - name: PY Source
@@ -393,7 +407,11 @@ jobs:
           then
             python -m pip install --only-binary numpy -r requirements-${{ matrix.profile }}.txt
           else
-            python -m pip install --only-binary numpy nose2 ply cothread ${{ matrix.numpy }} ${{ matrix.cython }}
+            python -m pip install --only-binary numpy nose2 ply ${{ matrix.numpy }} ${{ matrix.cython }}
+          fi
+          if [ "${{ matrix.skip_cothread }}" != "yes" ]
+          then
+            python -m pip install cothread
           fi
 
           python -m pip wheel -v -w dist --no-index --no-deps \
