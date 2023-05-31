@@ -9,6 +9,7 @@ from pvxs cimport server
 
 cdef class ClientProvider:
     cdef client.Context ctxt
+    cpdef close(self)
 
 cdef class Source:
     cdef string name

@@ -631,7 +631,7 @@ cdef class ClientProvider:
         with nogil:
             self.ctxt.hurryUp()
 
-    def close(self):
+    cpdef close(self):
         if <bool>self.ctxt:
             all_providers.discard(self)
         with nogil:
