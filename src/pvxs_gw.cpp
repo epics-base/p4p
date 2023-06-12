@@ -154,7 +154,7 @@ void GWChan::onRPC(const std::shared_ptr<GWChan>& pv, std::unique_ptr<server::Ex
     log_debug_printf(_log, "'%s' RPC %s\n", sop->name().c_str(), permit ? "begin" : "DENY");
 
     if(!permit) {
-        op->error("RPC permission denied by gateway");
+        sop->error("RPC permission denied by gateway");
         return;
     }
 
