@@ -106,7 +106,7 @@ void appendMembers(std::vector<Member>& members, PyObject* spec)
             std::vector<Member> mmembers;
             appendMembers(mmembers, mdefs);
 
-            members.push_back(Member(mcode, key, mid ? mid : "", mmembers));
+            members.emplace_back(mcode, key, mid ? mid : "", mmembers);
         }
     }
 }
@@ -164,7 +164,7 @@ PyObject* asPySpec(const Value& v, bool fakearray)
 
         PyRef members(PyList_New(0));
 
-        for(auto mem : v.ichildren()) {
+        for(const auto& mem : v.ichildren()) {
             PyRef mspec(asPySpec(mem));
             PyRef tup(Py_BuildValue("sO", v.nameOf(mem).c_str(), mspec.obj));
 

@@ -69,7 +69,7 @@ PyObject* asPy(const Value& v, bool unpackstruct, bool unpackrecurse, PyObject* 
         } else {
             PyRef mems(PyList_New(0));
 
-            for(auto mem : v.ichildren()) {
+            for(const auto &mem : v.ichildren()) {
                 PyRef mval(asPy(mem, unpackrecurse, true, wrapper));
                 PyRef tup(Py_BuildValue("sO", v.nameOf(mem).c_str(), mval.obj));
 
@@ -525,7 +525,7 @@ void storePy(Value& v, PyObject* py)
                 throw std::logic_error(SB()<<"logic error in array Value assignment for "<<v.type());
             }
 
-            PyRef arr(PyArray_FromAny(py, PyArray_DescrFromType(ntype), 0, 0, NPY_CARRAY_RO, NULL));
+            PyRef arr(PyArray_FromAny(py, PyArray_DescrFromType(ntype), 0, 0, NPY_CARRAY_RO, nullptr));
 
             if(PyArray_NDIM(arr.obj)!=1)
                 throw std::logic_error("Only 1-d array can be assigned");
