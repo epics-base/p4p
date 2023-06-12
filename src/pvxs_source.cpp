@@ -15,7 +15,7 @@ namespace {
 DEFINE_LOGGER(_log, "p4p.server.source");
 
 // max entries to track in DynamicSource negative result cache
-constexpr size_t maxCache = 1024u;
+constexpr size_t maxCache = 4096u;
 // expiration time for negative result cache entries
 constexpr double expireIn = 10.0; // sec
 
@@ -79,6 +79,21 @@ public:
 
             // add to neg cache
             negCache[chan.name()] = now + expireIn;
+
+            if(negCache.size() >= maxCache) {
+                // first try to prune any expired
+                auto next(negCache.begin()), end(negCache.end());
+                while(next!=end) {
+                    auto cur(next++);
+                    if(cur->second < now)
+                        negCache.erase(cur);
+                }
+
+                if(negCache.size() >= maxCache) {
+                    // still too many... just drop it on the floor and start again
+                    negCache.clear();
+                }
+            }
         }
     }
     virtual void onCreate(std::unique_ptr<server::ChannelControl> &&op) override final
