@@ -291,9 +291,9 @@ cdef class Provider(_p4p.Source):
 
         usinfo = []
         for conn in report.connections:
-            peer = conn.peer.decode()
+            peer = conn.peer.decode('utf-8', 'replace')
             for chan in conn.channels:
-                usinfo.append((chan.name.decode(), chan.tx/cnorm, chan.rx/cnorm, peer, conn.tx/cnorm, conn.rx/cnorm))
+                usinfo.append((chan.name.decode('utf-8', 'replace'), chan.tx/cnorm, chan.rx/cnorm, peer, conn.tx/cnorm, conn.rx/cnorm))
 
         return usinfo
 
@@ -314,9 +314,9 @@ def Server_report(_p4p.Server serv, float norm=1.0):
 
     dsinfo = []
     for conn in report.connections:
-        peer = conn.peer.decode()
+        peer = conn.peer.decode('utf-8', 'replace')
         if <bool>conn.credentials:
-            account = conn.credentials.get().account.decode()
+            account = conn.credentials.get().account.decode('utf-8', 'replace')
         else:
             account = ''
 
@@ -324,11 +324,11 @@ def Server_report(_p4p.Server serv, float norm=1.0):
             info = dynamic_cast[GWChanInfoCP](chan.info.get())
 
             if info:
-                usname = info.usname.decode()
+                usname = info.usname.decode('utf-8', 'replace')
             else:
                 usname = ''
 
-            dsinfo.append((usname, chan.name.decode(), chan.tx/cnorm, chan.rx/cnorm, account, peer, conn.tx/cnorm, conn.rx/cnorm))
+            dsinfo.append((usname, chan.name.decode('utf-8', 'replace'), chan.tx/cnorm, chan.rx/cnorm, account, peer, conn.tx/cnorm, conn.rx/cnorm))
 
     return dsinfo
 
