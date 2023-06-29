@@ -218,6 +218,19 @@ class TestLowLevel(RefTestCase):
                 self.assertIsInstance(Q2.get(timeout=self.timeout), Disconnected)
                 self.assertEqual(42, Q2.get(timeout=self.timeout))
 
+                # check stats now that we have an active connection
+                S = self.gw.report(1.0)
+                self.assertEqual(len(S), 1, S)
+                self.assertEqual(S[0][0], "pv:name")
+
+                S = _gw.Server_report(self._ds_server._S, 1.0)
+                self.assertEqual(len(S), 2, S)
+                self.assertEqual(S[0][0], "pv:name")
+                self.assertEqual(S[1][0], "pv:name")
+                # TODO: is order stable?
+                self.assertEqual(S[0][1], "pv:ro")
+                self.assertEqual(S[1][1], "pv:rw")
+
                 # no activity on first subscription
                 with self.assertRaises(Empty):
                     Q2.get(timeout=0.01)
