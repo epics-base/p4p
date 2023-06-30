@@ -333,51 +333,56 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
             std::weak_ptr<client::Operation> wcliop(cliop);
             std::weak_ptr<GWUpstream> wus(us);
 
-            get->delay = sop->timerOneShot(delay, [wget, wus, wcliop](){
-                // on server worker
-                // 4. holdoff timer expires
+            pvxs::Timer dly;
+            {
+                UnGuard U(G);
+                dly = sop->timerOneShot(delay, [wget, wus, wcliop](){
+                    // on server worker
+                    // 4. holdoff timer expires
 
-                auto get(wget.lock());
-                auto cliop(wcliop.lock());
-                auto us(wus.lock());
-                if(!get || !cliop || !us)
-                    return; // all downstream disconnect/cancel while holdoff running, and timer somehow not canceled.  Probably can't happen.
+                    auto get(wget.lock());
+                    auto cliop(wcliop.lock());
+                    auto us(wus.lock());
+                    if(!get || !cliop || !us)
+                        return; // all downstream disconnect/cancel while holdoff running, and timer somehow not canceled.  Probably can't happen.
 
-                log_debug_printf(_logget, "'%s' GET holdoff expires\n", us->usname.c_str());
+                    log_debug_printf(_logget, "'%s' GET holdoff expires\n", us->usname.c_str());
 
-                cliop->reExecGet([get, us](client::Result&& result) {
-                    // on client worker
-                    // 5. upstream provides result
+                    cliop->reExecGet([get, us](client::Result&& result) {
+                        // on client worker
+                        // 5. upstream provides result
 
 
-                    decltype (get->ops) ops;
-                    {
-                        Guard G(us->lock);
-                        assert(get->state==GWGet::Exec);
-                        get->state = GWGet::Idle;
+                        decltype (get->ops) ops;
+                        {
+                            Guard G(us->lock);
+                            assert(get->state==GWGet::Exec);
+                            get->state = GWGet::Idle;
 
-                        ops = std::move(get->ops);
-                    }
-
-                    try {
-                        auto value(result());
-                        log_debug_printf(_logget, "'%s' GET exec complete\n", us->usname.c_str());
-                        for(auto& op : ops) {
-                            op->reply(value);
+                            ops = std::move(get->ops);
                         }
-                    }catch(std::exception& e){
-                        log_debug_printf(_logget, "'%s' GET exec complete err='%s'\n", us->usname.c_str(), e.what());
-                        for(auto& op : ops) {
-                            op->error(e.what());
+
+                        try {
+                            auto value(result());
+                            log_debug_printf(_logget, "'%s' GET exec complete\n", us->usname.c_str());
+                            for(auto& op : ops) {
+                                op->reply(value);
+                            }
+                        }catch(std::exception& e){
+                            log_debug_printf(_logget, "'%s' GET exec complete err='%s'\n", us->usname.c_str(), e.what());
+                            for(auto& op : ops) {
+                                op->error(e.what());
+                            }
                         }
-                    }
+                    });
+
+                    // note time at which upstream GET is issued
+                    get->lastget = epicsTime::getCurrent();
+                    get->firstget = false;
                 });
+            }
 
-                // note time at which upstream GET is issued
-                get->lastget = epicsTime::getCurrent();
-                get->firstget = false;
-            });
-
+            get->delay = std::move(dly);
             get->state = GWGet::Exec;
             get->ops.emplace_back(std::move(sop));
             break;
