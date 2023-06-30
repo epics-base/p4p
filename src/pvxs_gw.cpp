@@ -394,7 +394,11 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
             break;
         case GWGet::Error:
             log_debug_printf(_logget, "'%s' GET exec error: %s\n", us->usname.c_str(), get->error.c_str());
-            sop->error(get->error);
+        {
+            auto msg(get->error);
+            UnGuard U(G);
+            sop->error(msg);
+        }
             break;
         }
     });
@@ -579,11 +583,18 @@ void onSubEvent(const std::shared_ptr<GWSubscription>& sub, const std::shared_pt
          } catch(client::Finished&) {
             log_debug_printf(_logmon, "'%s' MONITOR finish\n", cli->name().c_str());
 
-            Guard G(pv->us->lock);
-            pv->us->subscription.reset();
-            for(auto& ctrl : sub->setups)
+            decltype (pv->us->subscription) trash;
+            decltype (sub->setups) setups;
+            decltype (sub->controls) controls;
+            {
+                Guard G(pv->us->lock);
+                trash = std::move(pv->us->subscription);
+                setups = std::move(sub->setups);
+                controls = std::move(sub->controls);
+            }
+            for(auto& ctrl : setups)
                 ctrl->error("Shared monitor finished before starting");
-            for(auto& ctrl : sub->controls)
+            for(auto& ctrl : controls)
                 ctrl->finish();
 
          } catch(std::exception& e) {
@@ -668,10 +679,14 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
             }catch(std::exception& e){
                 log_warn_printf(_logmon, "'%s' MONITOR setup error: %s\n", cli.name().c_str(), e.what());
 
-                Guard G(pv->us->lock);
-                pv->us->subscription.reset();
-                sub->state = GWSubscription::Error;
-                for(auto& op : sub->setups)
+                decltype (pv->us->subscription) trash;
+                decltype (sub->setups) setups;
+                {
+                    Guard G(pv->us->lock);
+                    trash = std::move(pv->us->subscription);
+                    setups = std::move(sub->setups);
+                }
+                for(auto& op : setups)
                     op->error(e.what());
             }
         })
