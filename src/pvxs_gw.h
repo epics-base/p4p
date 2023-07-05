@@ -31,8 +31,6 @@ enum GWSearchResult {
 };
 
 struct GWSubscription {
-    //const std::shared_ptr<GWUpstream> chan;
-
     // should only be lock()'d from server worker
     std::weak_ptr<client::Subscription> upstream;
 
@@ -42,7 +40,6 @@ struct GWSubscription {
         Connecting, // waiting for onInit()
         Connected,  // waiting for first event
         Running,
-        Error,
     } state = Connecting;
 
     std::vector<std::shared_ptr<server::MonitorSetupOp>> setups;
@@ -50,18 +47,21 @@ struct GWSubscription {
 };
 
 struct GWGet {
+    // only access from server worker
     std::weak_ptr<client::Operation> upstream;
+
+    // guarded by GWUpstream::lock
 
     Value prototype;
     epicsTime lastget;
     Timer delay;
     std::string error;
 
-    enum state_t {
-        Connecting, // waiting for onInit()
-        Idle,
-        Exec,
-        Error,
+    enum state_t {  // downstream/server close() at any time...
+        Connecting, // waiting for onInit() from upstream/client
+        Idle,       // waiting for onGet() from downstream/server
+        Exec,       // waiting for reExecGet() from upstream/client
+        Error,      // abnormal completion from upstream/client
     } state = Connecting;
 
     bool firstget = true;
@@ -72,25 +72,27 @@ struct GWGet {
 
 struct GWUpstream {
     const std::string usname;
-    client::Context upstream;
+    client::Context upstream; //const after ctor
     GWSource& src;
+
+    const std::shared_ptr<MPMCFIFO<std::function<void()>>> workQ;
+
+    // only access from server worker
+    std::weak_ptr<GWGet> getop;
 
     mutable epicsMutex dschans_lock;
     std::set<std::shared_ptr<server::ChannelControl>> dschans;
-
-    // time in msec
-    std::atomic<unsigned> get_holdoff{};
 
     epicsMutex lock;
 
     std::weak_ptr<GWSubscription> subscription;
 
-    std::weak_ptr<GWGet> getop;
-
     bool gcmark = false;
 
-    const std::shared_ptr<MPMCFIFO<std::function<void()>>> workQ;
+    // time in msec
+    std::atomic<unsigned> get_holdoff{};
 
+    // must be last (cf. ctor body)
     const std::shared_ptr<client::Connect> connector;
 
     explicit GWUpstream(const std::string& usname, GWSource &src);

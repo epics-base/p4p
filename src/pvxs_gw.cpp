@@ -105,8 +105,12 @@ GWUpstream::GWUpstream(const std::string& usname, GWSource &src)
                 {
                     // on client worker
                     log_debug_printf(_log, "%p upstream disconnect '%s'\n", &this->src, this->usname.c_str());
-                    Guard G(dschans_lock);
-                    for(auto& chan : dschans) {
+                    decltype (dschans) chans;
+                    {
+                        Guard G(dschans_lock);
+                        chans = dschans; // copy...
+                    }
+                    for(auto& chan : chans) {
                         chan->close();
                     }
                 })
@@ -116,8 +120,12 @@ GWUpstream::GWUpstream(const std::string& usname, GWSource &src)
 GWUpstream::~GWUpstream()
 {
     log_debug_printf(_log, "upstream shutdown %s\n", usname.c_str());
-    Guard G(dschans_lock);
-    for(auto& chan : dschans) {
+    decltype (dschans) chans;
+    {
+        Guard G(dschans_lock);
+        chans = std::move(dschans);
+    }
+    for(auto& chan : chans) {
         chan->close();
     }
 }
@@ -220,9 +228,9 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
     // on server worker
     // 1. downstream creating GET operation, maybe with holdoff
 
-    auto us(pv->us);
+    const auto& us(pv->us);
 
-    Guard G(us->lock);
+    // getop and get->upstream are only used within this function (and thread)
     auto get(us->getop.lock());
     auto cliop(get ? get->upstream.lock() : nullptr);
 
@@ -290,15 +298,26 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
                 .exec();
     }
 
-    switch(get->state) {
+    decltype (get->state) state;
+    Value prototype;
+    {
+        Guard G(us->lock);
+        state = get->state;
+        prototype = get->prototype;
+        if(state==GWGet::Connecting) {
+            log_debug_printf(_logget, "'%s' GET init conn\n", ctrl->name().c_str());
+            get->setups.push_back(ctrl);
+        }
+    }
+
+    switch(state) {
     case GWGet::Connecting:
-        log_debug_printf(_logget, "'%s' GET init conn\n", ctrl->name().c_str());
-        get->setups.push_back(ctrl);
+        // handled above under lock
         break;
     case GWGet::Idle:
     case GWGet::Exec:
         log_debug_printf(_logget, "'%s' GET init typed\n", ctrl->name().c_str());
-        ctrl->connect(get->prototype);
+        ctrl->connect(prototype);
         break;
     case GWGet::Error:
         ctrl->error(get->error);
@@ -558,7 +577,9 @@ void GWChan::onOp(const std::shared_ptr<GWChan>& pv, std::unique_ptr<server::Con
 static
 void onSubEvent(const std::shared_ptr<GWSubscription>& sub, const std::shared_ptr<GWChan>& pv)
 {
-    // on workQworker
+    auto& us(pv->us);
+
+    // on client worker or workQ worker
     auto cli(sub->upstream.lock());
     if(!cli)
         return;
@@ -573,22 +594,22 @@ void onSubEvent(const std::shared_ptr<GWSubscription>& sub, const std::shared_pt
 
             log_debug_printf(_logmon, "'%s' MONITOR event\n", cli->name().c_str());
 
-            Guard G(pv->us->lock);
+            Guard G(us->lock);
             sub->current.assign(val); // accumulate deltas
             sub->state = GWSubscription::Running;
 
             for(auto& ctrl : sub->controls)
-                ctrl->post(val);
+                ctrl->post(val); // dispatch() under lock is safe
 
          } catch(client::Finished&) {
             log_debug_printf(_logmon, "'%s' MONITOR finish\n", cli->name().c_str());
 
-            decltype (pv->us->subscription) trash;
+            decltype (us->subscription) trash;
             decltype (sub->setups) setups;
             decltype (sub->controls) controls;
             {
-                Guard G(pv->us->lock);
-                trash = std::move(pv->us->subscription);
+                Guard G(us->lock);
+                trash = std::move(us->subscription);
                 setups = std::move(sub->setups);
                 controls = std::move(sub->controls);
             }
@@ -606,7 +627,7 @@ void onSubEvent(const std::shared_ptr<GWSubscription>& sub, const std::shared_pt
     log_debug_printf(_logmon, "'%s' MONITOR resched\n", cli->name().c_str());
 
     // queue not empty, reschedule for later to give other subscriptions a chance
-    pv->us->workQ->push([sub, pv](){ onSubEvent(sub, pv); });
+    us->workQ->push([sub, pv](){ onSubEvent(sub, pv); });
 }
 
 void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<server::MonitorSetupOp>&& sop)
@@ -624,39 +645,25 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
         return;
     }
 
-    Guard G(pv->us->lock);
+    std::shared_ptr<GWSubscription> sub;
+    std::shared_ptr<client::Subscription> cli;
+    {
+        // check for subscription to re-use
+        Guard G(pv->us->lock);
 
-    auto sub(pv->us->subscription.lock());
-    auto cli(sub ? sub->upstream.lock() : nullptr);
-    if(sub && cli) {
-        // re-use
-        switch(sub->state) {
-        case GWSubscription::Connecting:
-            log_debug_printf(_logmon, "'%s' MONITOR init conn\n", op->name().c_str());
-            sub->setups.push_back(op);
-            goto done;
-
-        case GWSubscription::Connected:
-        case GWSubscription::Running: {
-            log_debug_printf(_logmon, "'%s' MONITOR init run\n", op->name().c_str());
-            auto ctrl(op->connect(sub->current));
-            if(sub->state == GWSubscription::Running)
-                ctrl->post(sub->current); // post current as initial for new subscriber
-            sub->controls.emplace_back(std::move(ctrl));
-            goto done;
-        }
-
-        case GWSubscription::Error:
-            break;
+        sub = pv->us->subscription.lock();
+        if(sub) {
+            cli = sub->upstream.lock();
         }
     }
 
-    log_debug_printf(_logmon, "'%s' MONITOR new\n", op->name().c_str());
+    const bool first = !sub || !cli;
+    if(first) {
+        log_debug_printf(_logmon, "'%s' MONITOR new\n", op->name().c_str());
 
-    // start new subscription
-    sub = std::make_shared<GWSubscription>();
-    sub->setups.push_back(op);
-    {
+        // start new subscription
+        sub = std::make_shared<GWSubscription>();
+
         auto req = pv->us->upstream.monitor(pv->us->usname)
                 .syncCancel(false)
                 .maskConnected(true) // upstream should already be connected
@@ -665,71 +672,103 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
         if(!docache)
             req.rawRequest(op->pvRequest()); // when not cached, pass through upstream client request verbatim.
 
-        sub->upstream = cli = req
-                .event([sub, pv](client::Subscription& cli)
-        {
-            // on client worker
-
-            // only invoked if there is an early error.
-            // replaced below for starting
-
-            try {
-                cli.pop(); // expected to throw
-                throw std::runtime_error("not error??");
-            }catch(std::exception& e){
-                log_warn_printf(_logmon, "'%s' MONITOR setup error: %s\n", cli.name().c_str(), e.what());
-
-                decltype (pv->us->subscription) trash;
-                decltype (sub->setups) setups;
+        cli = req.event([sub, pv](client::Subscription& cli)
                 {
-                    Guard G(pv->us->lock);
-                    trash = std::move(pv->us->subscription);
-                    setups = std::move(sub->setups);
-                }
-                for(auto& op : setups)
-                    op->error(e.what());
-            }
-        })
-                .onInit([sub, pv](client::Subscription& cli, const Value& prototype)
-        {
-            // on client worker
+                    // on client worker
 
-            log_debug_printf(_logmon, "'%s' MONITOR typed\n", cli.name().c_str());
+                    // only invoked if there is an early error.
+                    // replaced below for starting
 
-            //auto clisub(cli.shared_from_this());
+                    try {
+                        cli.pop(); // expected to throw
+                        throw std::runtime_error("not error??");
+                    }catch(std::exception& e){
+                        log_warn_printf(_logmon, "'%s' MONITOR setup error: %s\n", cli.name().c_str(), e.what());
 
-            cli.onEvent([sub, pv](client::Subscription& cli) { // replace earlier .event(...)
-                // on client worker
+                        decltype (pv->us->subscription) trash;
+                        decltype (sub->setups) setups;
+                        {
+                            Guard G(pv->us->lock);
+                            trash = std::move(pv->us->subscription);
+                            setups = std::move(sub->setups);
+                        }
+                        for(auto& op : setups)
+                            op->error(e.what());
+                    }
+                })
+                        .onInit([sub, pv](client::Subscription& cli, const Value& prototype)
+                {
+                    // on client worker
 
-                log_debug_printf(_logmon, "'%s' MONITOR wakeup\n", cli.name().c_str());
+                    log_debug_printf(_logmon, "'%s' MONITOR typed\n", cli.name().c_str());
 
-                pv->us->workQ->push([sub, pv]() { onSubEvent(sub, pv); });
-            });
+                    //auto clisub(cli.shared_from_this());
 
-            // syncs client worker with server worker
-            {
-                Guard G(pv->us->lock);
-                sub->state = GWSubscription::Connected;
-                sub->current = prototype.clone();
-                auto setups(std::move(sub->setups));
-                for(auto& setup : setups) {
-                    sub->controls.push_back(setup->connect(sub->current));
-                }
-            }
-        })
-                .exec();
+                    cli.onEvent([sub, pv](client::Subscription& cli) { // replace earlier .event(...)
+                        // on client worker
+
+                        log_debug_printf(_logmon, "'%s' MONITOR wakeup\n", cli.name().c_str());
+
+                        pv->us->workQ->push([sub, pv]() { onSubEvent(sub, pv); });
+                    });
+
+                    decltype (sub->setups) setups;
+                    decltype (sub->controls) controls;
+                    {
+                        Guard G(pv->us->lock);
+                        sub->state = GWSubscription::Connected;
+                        sub->current = prototype.clone();
+                        setups = std::move(sub->setups);
+                    }
+                    // unlock to call() into server worker.
+                    // since we are on the client worker, no further client events are delivered.
+                    // however, server events may.  So controls[] may not be empty after re-lock
+                    for(auto& setup : setups) {
+                        controls.push_back(setup->connect(sub->current));
+                    }
+                    {
+                        Guard G(pv->us->lock);
+                        for(auto&& ctrl : controls)
+                            sub->controls.push_back(std::move(ctrl));
+                    }
+                })
+                        .exec();
     }
 
-    if(docache)
-        pv->us->subscription = sub;
-
-    // BUG: need to unlock before onClose()
-done:
     // tie client subscription lifetime (and by extension GWSubscription) to server op.
     // Reference to CLI stored in internal server OP struct, so no ref. loop
     op->onClose([cli](const std::string&) {
         log_debug_printf(_log, "sub close '%s'\n", cli->name().c_str());
     });
+
+    {
+        Guard G(pv->us->lock);
+
+        if(first) {
+            sub->upstream = cli;
+
+            if(docache)
+                pv->us->subscription = sub;
+        }
+
+        switch(sub->state) {
+        case GWSubscription::Connecting:
+            log_debug_printf(_logmon, "'%s' MONITOR init conn\n", op->name().c_str());
+            sub->setups.push_back(op);
+            break;
+
+        case GWSubscription::Connected:
+        case GWSubscription::Running: {
+            log_debug_printf(_logmon, "'%s' MONITOR init run\n", op->name().c_str());
+            // post()ing to server worker from server worker will recurse instead of blocking.
+            auto ctrl(op->connect(sub->current));
+            if(sub->state == GWSubscription::Running)
+                ctrl->post(sub->current); // post current as initial for new subscriber
+            sub->controls.emplace_back(std::move(ctrl));
+            break;
+        }
+        }
+    }
 }
 
 void GWSource::onCreate(std::unique_ptr<server::ChannelControl> &&op)
@@ -786,18 +825,23 @@ void GWSource::onCreate(std::unique_ptr<server::ChannelControl> &&op)
 
 GWSearchResult GWSource::test(const std::string &usname)
 {
+    std::shared_ptr<GWUpstream> newchan; // if !pair.second, must unlock before dtor of discarded chan
     Guard G(mutex);
 
     auto it(channels.find(usname));
+    bool miss = it==channels.end();
 
     log_debug_printf(_log, "%p '%s' channel cache %s\n", this, usname.c_str(),
-                     (it==channels.end()) ? "miss" : "hit");
-    if(it==channels.end()) {
+                     miss ? "miss" : "hit");
+    if(miss) {
+        {
+            UnGuard U(G);
+            newchan = std::make_shared<GWUpstream>(usname, *this);
+        }
 
-        auto chan(std::make_shared<GWUpstream>(usname, *this));
-
-        auto pair = channels.insert(std::make_pair(usname, chan));
-        assert(pair.second); // we already checked
+        auto pair = channels.emplace(usname, newchan);
+        // pair.second true if actually inserted, false if collision.
+        // in either case, use what is in the channels map.
         it = pair.first;
 
         log_debug_printf(_log, "%p new upstream channel '%s'\n", this, usname.c_str());
@@ -805,8 +849,8 @@ GWSearchResult GWSource::test(const std::string &usname)
 
     if(it->second->gcmark) {
         log_debug_printf(_log, "%p unmark '%s'\n", this, usname.c_str());
+        it->second->gcmark = false;
     }
-    it->second->gcmark = false;
     auto usconn = it->second->connector->connected();
 
     log_debug_printf(_log, "%p test '%s' -> %c\n", this, usname.c_str(), usconn ? '!' : '_');
@@ -837,13 +881,14 @@ std::shared_ptr<GWChan> GWSource::connect(const std::string& dsname,
 
 void GWSource::sweep()
 {
+    // py worker thread
     log_debug_printf(_log, "%p sweeps\n", this);
 
     std::vector<std::shared_ptr<GWUpstream>> trash;
     // garbage disposal after unlock
-    Guard G(mutex);
 
     {
+        Guard G(mutex);
         auto it(channels.begin()), end(channels.end());
         while(it!=end) {
             auto cur(it++);
@@ -858,11 +903,13 @@ void GWSource::sweep()
             } else { // one for GWSource::channels map
                 log_debug_printf(_log, "%p swept '%s'\n", this, cur->first.c_str());
                 trash.emplace_back(std::move(cur->second));
-                upstream.cacheClear(cur->first);
                 channels.erase(cur);
             }
         }
     }
+
+    for(auto& tr : trash)
+        upstream.cacheClear(tr->usname);
 }
 
 void GWSource::disconnect(const std::string& usname) {}
