@@ -16,11 +16,18 @@ class ServOpWrap(object):
         self._op, self._wrap, self._unwrap = op, wrap, unwrap
 
     def value(self):
-        return self._unwrap(self._op.value())
+        V = self._op.value()
+        try:
+            return self._unwrap(V)
+        except: # py3 will chain automatically, py2 won't
+            raise ValueError("Unable to unwrap %r with %r"%(V, self._unwrap))
 
     def done(self, value=None, error=None):
         if value is not None:
-            value = self._wrap(value)
+            try:
+                value = self._wrap(value)
+            except:
+                raise ValueError("Unable to wrap %r with %r"%(value, self._wrap))
         self._op.done(value, error)
 
     def __getattr__(self, key):
@@ -147,7 +154,11 @@ class SharedPV(_SharedPV):
         self._wrap = wrap or (nt and nt.wrap) or self._wrap
         self._unwrap = unwrap or (nt and nt.unwrap) or self._unwrap
 
-        _SharedPV.open(self, self._wrap(value, **kws))
+        try:
+            V = self._wrap(value, **kws)
+        except: # py3 will chain automatically, py2 won't
+            raise ValueError("Unable to wrap %r with %r and %r"%(value, self._wrap, kws))
+        _SharedPV.open(self, V)
 
     def post(self, value, **kws):
         """Provide an update to the Value of this PV.
@@ -159,10 +170,18 @@ class SharedPV(_SharedPV):
         Any keyword arguments are forwarded to the NT wrap() method (if applicable).
         Common arguments include: timestamp= , severity= , and message= .
         """
-        _SharedPV.post(self, self._wrap(value, **kws))
+        try:
+            V = self._wrap(value, **kws)
+        except: # py3 will chain automatically, py2 won't
+            raise ValueError("Unable to wrap %r with %r and %r"%(value, self._wrap, kws))
+        _SharedPV.post(self, V)
 
     def current(self):
-        return self._unwrap(_SharedPV.current(self))
+        V = _SharedPV.current(self)
+        try:
+            return self._unwrap()
+        except: # py3 will chain automatically, py2 won't
+            raise ValueError("Unable to unwrap %r with %r"%(V, self._unwrap))
 
     def _exec(self, op, M, *args):  # sub-classes will replace this
         try:
