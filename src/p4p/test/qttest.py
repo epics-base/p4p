@@ -1,6 +1,7 @@
 import logging
 import unittest
 from functools import wraps
+from math import ceil
 
 from qtpy.QtCore import QObject, QCoreApplication
 
@@ -49,7 +50,7 @@ class waitSignal(QObject):
 
     def wait(self, timeout=5.0):
         assert self._T is None, self._T
-        self._T = self.startTimer(timeout*1000)
+        self._T = self.startTimer(ceil(timeout*1000))
         try:
             self._args = None
             QCoreApplication.instance().exec_()

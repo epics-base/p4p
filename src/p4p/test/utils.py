@@ -21,6 +21,12 @@ _log = logging.getLogger(__name__)
 
 _forceLazy()
 
+if not hasattr(unittest.TestCase, 'assertRegex'):
+    unittest.TestCase.assertRegex = unittest.TestCase.assertRegexpMatches
+
+if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
+    unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
+
 class RefTestMixin(object):
 
     """Ensure that each test does not result in a net change in extension object counts

@@ -228,7 +228,7 @@ class TestRPC(RefTestCase):
                     ('oops', '?'),
                 ])
 
-                with self.assertRaisesRegexp(RemoteError, 'oops'):
+                with self.assertRaisesRegex(RemoteError, 'oops'):
                     ret = C.rpc('foo', args.wrap('foo', kws={'oops':True}))
 
 class TestRPC2(TestRPC):

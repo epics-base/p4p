@@ -39,7 +39,7 @@ class TestTemplate(unittest.TestCase):
 
             F.seek(0)
             content = F.read()
-            self.assertRegexpMatches(content, '"statusprefix"')
+            self.assertRegex(content, '"statusprefix"')
 
     def test_systemd(self):
         with NamedTemporaryFile() as F:
@@ -50,7 +50,7 @@ class TestTemplate(unittest.TestCase):
 
             F.seek(0)
             content = F.read()
-            self.assertRegexpMatches(content, 'multi-user.target')
+            self.assertRegex(content, 'multi-user.target')
 
 class TestGC(RefTestCase):
     def test_empty(self):
@@ -370,7 +370,7 @@ class TestHighLevel(RefTestCase):
         self.assertFalse(val.raw.changed('value'))
 
     def test_get_bad_mask(self):
-        with self.assertRaisesRegexp(RemoteError, ".*Empty field selection"):
+        with self.assertRaisesRegex(RemoteError, ".*Empty field selection"):
             val = self._ds_client.get('pv:name', timeout=self.timeout, request='nonexistant')
 
     def test_put(self):
@@ -380,7 +380,7 @@ class TestHighLevel(RefTestCase):
         self.assertEqual(val, 41)
 
     def test_put_bad_mask(self):
-        with self.assertRaisesRegexp(RemoteError, ".*Empty field selection"):
+        with self.assertRaisesRegex(RemoteError, ".*Empty field selection"):
             self._ds_client.put('pv:name', 41, request='nonexistant', timeout=self.timeout)
 
     def test_mon(self):

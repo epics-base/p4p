@@ -1,4 +1,5 @@
 import logging
+from math import ceil
 
 from qtpy.QtCore import QObject, QCoreApplication, Signal, QEvent
 
@@ -47,7 +48,7 @@ class Operation(QObject):
 
     def __init__(self, parent, timeout):
         QObject.__init__(self, parent)
-        self._active = self.startTimer(timeout*1000)
+        self._active = self.startTimer(ceil(timeout*1000))
 
     def close(self):
         self._op.close()
@@ -95,7 +96,7 @@ class MCache(QObject):
             if self._active is not None:
                 # restart timer
                 self.killTimer(self._active)
-                self._active = self.startTimer(self._holdoff)
+                self._active = self.startTimer(ceil(self._holdoff))
 
         # TODO: re-adjust on slot disconnect?
 
@@ -120,7 +121,7 @@ class MCache(QObject):
 
         if E is None:
             if self._active is None:
-                self._active = self.startTimer(self._holdoff)
+                self._active = self.startTimer(ceil(self._holdoff))
                 _log.debug('Start timer with %s', self._holdoff)
             return
 
