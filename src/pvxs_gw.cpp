@@ -647,7 +647,7 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
 
     std::shared_ptr<GWSubscription> sub;
     std::shared_ptr<client::Subscription> cli;
-    {
+    if(docache) {
         // check for subscription to re-use
         Guard G(pv->us->lock);
 
@@ -657,8 +657,8 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
         }
     }
 
-    const bool first = !sub || !cli;
-    if(first) {
+    const bool create = !sub || !cli;
+    if(create) {
         log_debug_printf(_logmon, "'%s' MONITOR new\n", op->name().c_str());
 
         // start new subscription
@@ -744,7 +744,7 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
     {
         Guard G(pv->us->lock);
 
-        if(first) {
+        if(create) {
             sub->upstream = cli;
 
             if(docache)
