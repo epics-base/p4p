@@ -124,6 +124,13 @@ def _metaHelper(F, valtype, display=False, control=False, valueAlarm=False):
                 ('units', 's'),
             ])),
         ])
+    elif display and not isnumeric:
+        F.extend([
+            ('display', ('S', None, [
+                ('description', 's'),
+                ('units', 's'),
+            ])),
+        ])
     if control and isnumeric:
         F.extend([
             ('control', ('S', None, [
