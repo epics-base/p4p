@@ -6,6 +6,7 @@ include $(TOP)/configure/CONFIG_PY
 # are all c++, and MSVC doesn't allow extern "C" to
 # return c++ types.
 USR_CPPFLAGS += -D__PYX_EXTERN_C=extern
+USR_CPPFLAGS += -DPVXS_ENABLE_EXPERT_API
 
 # place .so in subdirectory
 INSTALL_SHRLIB = $(PY_INSTALL_DIR)/p4p

@@ -52,10 +52,12 @@ class Subscription(object):
     Returned by `Context.monitor`.
     """
 
-    def __init__(self, ctxt, name, cb, notify_disconnect=False, queue=None):
+    def __init__(self, ctxt, name, cb,
+                 notify_disconnect=False, queue=None,
+                 batch_limit=None):
         self.name, self._S, self._cb = name, None, cb
-        self._notify_disconnect = notify_disconnect
         self._Q = queue or ctxt._Q or _defaultWorkQueue()
+        self._batch_limit = batch_limit
         if notify_disconnect:
             # all subscriptions are inittially disconnected
             self._Q.push_wait(partial(cb, Disconnected()))
@@ -84,6 +86,9 @@ class Subscription(object):
         'Is data pending in event queue?'
         return self._S is None or self._S.empty()
 
+    def stats(self):
+        return self._S.stats()
+
     def _event(self):
         try:
             assert self._S is not None, self._S
@@ -98,29 +103,29 @@ class Subscription(object):
             if S is None:  # already close()'d
                 return
 
-            for n in range(4):
-                E = S.pop()
-                if E is None:
-                    break # monitor queue empty
+            empty = False
+            try:
+                U, empty = S.pop(self._batch_limit or 4)
 
-                elif isinstance(E, Exception):
-                    _log.debug('Subscription notify for %s with %s', self.name, E)
-                    if self._notify_disconnect:
-                        self._cb(E)
-
-                    elif isinstance(E, RemoteError):
-                        _log.error("Subscription Error %s", E)
-
-                    if isinstance(E, Finished):
-                        _log.debug('Subscription complete %s', self.name)
-                        self._S = None
-                        S.close()
-
-                else:
+            except Exception as E:
+                if S.notify_disconnect:
                     self._cb(E)
 
-            if E is not None:
-                # removed 4 elements without emptying queue
+                elif isinstance(E, RemoteError):
+                    _log.error("Subscription Error %s", E)
+
+                if isinstance(E, Finished):
+                    _log.debug('Subscription complete %s', self.name)
+                    self._S = None
+                    S.close()
+            else:
+                if self._batch_limit is None:
+                    [self._cb(v) for v in U]
+                else:
+                    self._cb(U)
+
+            if not empty:
+                # queue not empty.
                 # re-schedule to mux with others
                 self._Q.push(self._handle)
 
@@ -414,7 +419,7 @@ class Context(raw.Context):
             op.close()
             raise
 
-    def monitor(self, name, cb, request=None, notify_disconnect=False, queue=None):
+    def monitor(self, name, cb, request=None, notify_disconnect=False, queue=None, batch_limit=None):
         """Create a subscription.
 
         :param str name: PV name string
@@ -423,6 +428,9 @@ class Context(raw.Context):
         :param bool notify_disconnect: In additional to Values, the callback may also be call with instances of Exception.
                                        Specifically: Disconnected , RemoteError, or Cancelled
         :param WorkQueue queue: A work queue through which monitor callbacks are dispatched.
+        :param int batch_limit: Internal optimization control.  Smaller numbers prioritize fairness,
+                               larger numbers prioritize throughput.
+                               Valid values in range [4, pvRequest queueSize]
         :returns: a :py:class:`Subscription` instance
 
         The callable will be invoked with one argument which is either.
@@ -430,7 +438,7 @@ class Context(raw.Context):
         * A p4p.Value (Subject to :py:ref:`unwrap`)
         * A sub-class of Exception (Disconnected , RemoteError, or Cancelled)
         """
-        R = Subscription(self, name, cb, notify_disconnect=notify_disconnect, queue=queue)
+        R = Subscription(self, name, cb, notify_disconnect=notify_disconnect, queue=queue, batch_limit=batch_limit)
 
-        R._S = super(Context, self).monitor(name, R._event, request)
+        R._S = super(Context, self).monitor(name, R._event, request, notify_disconnect=notify_disconnect)
         return R

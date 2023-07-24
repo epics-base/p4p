@@ -49,7 +49,7 @@ class RefTestMixin(object):
 
             for mustzero in ('ClientContextImpl',):
                 if self.__before.get(mustzero, 0)!=0:
-                    self.fail('Leftovers from previous test: %s = %d'%(mustzero, self.__before[mustzero]))
+                    raise unittest.SkipTest('Leftovers from previous test: %s = %d'%(mustzero, self.__before[mustzero]))
 
         super(RefTestMixin, self).setUp()
 

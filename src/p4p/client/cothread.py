@@ -233,9 +233,10 @@ class Context(raw.Context):
 
 class Subscription(object):
 
-    def __init__(self, name, cb, notify_disconnect=False):
+    def __init__(self, name, cb, notify_disconnect=False, batch_limit=None):
         self.name, self._S, self._cb = name, None, cb
         self._notify_disconnect = notify_disconnect
+        self._batch_limit = batch_limit
 
         self._E = cothread.Event()
 
@@ -267,6 +268,9 @@ class Subscription(object):
         'Is data pending in event queue?'
         return self._S is None or self._S.empty()
 
+    def stats(self):
+        return self._S.stats()
+
     def _event(self):
         if self._S is not None:
             self._E.Signal()
@@ -285,34 +289,36 @@ class Subscription(object):
                 if S is None:
                     break
 
-                i = 0
-                while True:
-                    E = S.pop()
-                    if E is None:
-                        break # queue empty
+                empty = False
+                while not empty:
+                    try:
+                        U, empty = S.pop(self._batch_limit or 4)
 
-                    elif isinstance(E, Disconnected):
-                        _log.debug('Subscription notify for %s with %s', self.name, E)
-                        if self._notify_disconnect:
-                            self._cb(E)
-                        else:
-                            _log.info("Subscription disconnect %s", self.name)
-                        continue
+                    except Exception as E:
+                        if isinstance(E, Disconnected):
+                            _log.debug('Subscription notify for %s with %s', self.name, E)
+                            if self._notify_disconnect:
+                                self._cb(E)
+                            else:
+                                _log.info("Subscription disconnect %s", self.name)
+                            continue
 
-                    elif isinstance(E, RemoteError):
-                        _log.debug('Subscription notify for %s with %s', self.name, E)
-                        if self._notify_disconnect:
-                            self._cb(E)
                         elif isinstance(E, RemoteError):
-                            _log.error("Subscription Error %s", E)
-                        return
+                            _log.debug('Subscription notify for %s with %s', self.name, E)
+                            if self._notify_disconnect:
+                                self._cb(E)
+                            elif isinstance(E, RemoteError):
+                                _log.error("Subscription Error %s", E)
+                            return
 
                     else:
-                        self._cb(E)
+                        if self._batch_limit is None:
+                            [self._cb(v) for v in U]
+                        else:
+                            self._cb(U)
 
-                    i = (i + 1) % 4
-                    if i == 0:
-                        cothread.Yield()
+                    # go to scheduler between batchs
+                    cothread.Yield()
 
                     if S.done:
                         _log.debug('Subscription complete %s', self.name)

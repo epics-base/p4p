@@ -111,15 +111,24 @@ class Subscription(_p4p.ClientMonitor):
         self._nt = nt
         self.done = False
 
-    def pop(self):
-        val = super(Subscription, self).pop()
-        assert val is None or isinstance(val, (Value, Exception)), val
-        if isinstance(val, Value):
-            val = self._nt.unwrap(val)
-        elif isinstance(val, Finished):
+    def pop(self, limit):
+        """pop(limit) -> [Value], bool
+
+        Throws an exception, or returns a list of Value, and whether the queue was emptied
+        """
+        try:
+            U, empty = super(Subscription, self).pop(limit)
+            _log.debug("poll() -> %r, %s", U, empty)
+            return [self._nt.unwrap(v) for v in U], bool(empty)
+
+        except Finished:
+            _log.debug("poll() -> Finished")
             self.done = True
-        _log.debug("poll() -> %r", val)
-        return val
+            raise
+
+        except Exception as e:
+            _log.debug("poll() -> %r", e)
+            raise
 
     def complete(self):
         return self.done

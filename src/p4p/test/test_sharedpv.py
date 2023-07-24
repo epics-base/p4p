@@ -131,9 +131,11 @@ class TestGPM(RefTestCase):
 
             V = Q.get(timeout=self.timeout)
             self.assertIsInstance(V, Disconnected)
+            _log.debug("Disconnected")
 
             self.pv.open(3.0)
             ctxt.hurryUp()
+            _log.debug("reconnecting...")
 
             V = Q.get(timeout=self.timeout)
             self.assertEqual(V, 3.0)

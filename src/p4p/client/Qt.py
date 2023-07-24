@@ -103,6 +103,9 @@ class MCache(QObject):
         # schedule to receive initial update later (avoids recursion)
         QCoreApplication.postEvent(self, CBEvent(slot))
 
+    def stats(self):
+        return self._op.stats()
+
     def _event(self):
         _log.debug('event1 %s', self.name)
         # called on PVA worker thread
@@ -115,8 +118,6 @@ class MCache(QObject):
         _log.debug('event2 %s %s', self.name, E)
         # E will be one of:
         #   None - FIFO not empty (call pop())
-        #   RemoteError
-        #   Disconnected
         #   some method, adding new subscriber
 
         if E is None:
@@ -131,8 +132,17 @@ class MCache(QObject):
 
     @exceptionGuard
     def timerEvent(self, evt):
-        V = self._op.pop()
-        _log.debug('tick %s %s', self.name, V)
+        try:
+            U, empty = self._op.pop(1)
+            assert len(U)<=1, U
+
+        except Exception as e:
+            V = e
+
+        else:
+            V = U[0] if U else None
+
+        _log.debug('tick %s %r', self.name, V)
 
         if V is not None:
             self._last = V

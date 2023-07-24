@@ -56,7 +56,7 @@ cdef extern from "<p4p.h>" namespace "p4p":
     void opHandler[Builder](Builder& builder, object handler)
     void opBuilder[Builder](Builder& builder, object handler)
     void opEvent(client.MonitorBuilder& builder, object handler)
-    object monPop(const shared_ptr[client.Subscription]& mon) with gil
+    object monPop(const shared_ptr[client.Subscription]& mon, size_t limit) with gil
 
 cimport numpy # must cimport after p4p.h is included
 
@@ -557,19 +557,23 @@ cdef class ClientMonitor:
     cdef shared_ptr[client.Subscription] sub
     cdef readonly object handler
     cdef object __weakref__
+    cdef readonly bool notify_disconnect
 
-    def __init__(self, ClientProvider ctxt, basestring name, handler=None, _Value pvRequest=None):
+    def __init__(self, ClientProvider ctxt, basestring name, handler=None,
+                 _Value pvRequest=None, bool notify_disconnect=True):
         cdef string pvname = name.encode()
         cdef client.MonitorBuilder builder
+        cdef bool maskDiscon = not notify_disconnect
 
         if not <bool>ctxt.ctxt:
             raise RuntimeError("Context closed")
 
         self.handler = handler
+        self.notify_disconnect = <bool>notify_disconnect
 
         builder = ctxt.ctxt.monitor(pvname) \
                       .maskConnected(True) \
-                      .maskDisconnected(False)
+                      .maskDisconnected(maskDiscon)
         opEvent(builder, handler)
         if pvRequest is not None:
             builder.rawRequest(pvRequest.val)
@@ -589,10 +593,28 @@ cdef class ClientMonitor:
                 trash.get().cancel()
                 trash.reset()
 
-    def pop(self):
+    def pop(self, size_t limit):
+        cdef bool done
         cdef shared_ptr[client.Subscription] sub = self.sub # local copy to guard against concurrent _close()
         if <bool>sub:
-            return monPop(sub) # will unlock/relock GIL
+            return monPop(sub, limit) # will unlock/relock GIL
+        else:
+            return [], True
+
+    def stats(self, reset=False):
+        cdef client.SubscriptionStat info
+        cdef shared_ptr[client.Subscription] sub = self.sub
+        cdef bool breset = reset
+        if <bool>sub:
+            with nogil:
+                sub.get().stats(info, breset)
+        return {
+            'nQueue': info.nQueue,
+            'nSrvSquash': info.nSrvSquash,
+            'nCliSquash': info.nCliSquash,
+            'maxQueue': info.maxQueue,
+            'limitQueue': info.limitQueue,
+        }
 
 all_providers = WeakSet()
 

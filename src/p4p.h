@@ -194,7 +194,7 @@ void opBuilder(Builder& builder, PyObject *handler) {
 }
 void opEvent(client::MonitorBuilder& builder, PyObject *handler);
 
-PyObject* monPop(const std::shared_ptr<client::Subscription>& mon);
+PyObject* monPop(const std::shared_ptr<client::Subscription>& mon, size_t limit);
 
 /******* odometer (testing tool) *******/
 
