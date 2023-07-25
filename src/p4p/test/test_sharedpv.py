@@ -67,6 +67,10 @@ class TestGPM(RefTestCase):
         self.assertListEqual(R, [None] * len(R))
         super(TestGPM, self).tearDown()
 
+    def testCurrent(self):
+            self.pv.open(1.0)
+            self.assertEqual(self.pv.current(), 1.0)
+
     def testGet(self):
         with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
             _log.debug('Client conf: %s', ctxt.conf())

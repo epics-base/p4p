@@ -179,7 +179,7 @@ class SharedPV(_SharedPV):
     def current(self):
         V = _SharedPV.current(self)
         try:
-            return self._unwrap()
+            return self._unwrap(V)
         except: # py3 will chain automatically, py2 won't
             raise ValueError("Unable to unwrap %r with %r"%(V, self._unwrap))
 
