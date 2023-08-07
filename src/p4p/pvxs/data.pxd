@@ -4,6 +4,9 @@ from libcpp cimport bool
 from libcpp.string cimport string
 
 cdef extern from "<pvxs/data.h>" namespace "pvxs" nogil:
+
+    cdef int unselect "pvxs::unselect"
+
     cdef enum code_t "pvxs::TypeCode::code_t":
         Null "pvxs::TypeCode::Null"
 

@@ -295,7 +295,7 @@ cdef class _Value:
         if selector is not None:
             u = self.val[cname]
         else:
-            u._from(NULL);
+            u._from(data.unselect);
 
     def changed(self, field=None):
         cdef data.Value mem
