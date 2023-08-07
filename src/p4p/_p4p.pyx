@@ -38,7 +38,7 @@ cdef extern from "<p4p.h>" namespace "p4p":
     # pvxs_value.cpp
     int except_map()
     object asPy(const data.Value& v, bool unpackstruct, bool unpackrecurse, object wrapper) except+
-    void storePy(data.Value& v, object py) except+ except_map
+    void storePy(data.Value& v, object py, bool forceCast) except+ except_map
     object tostr(const data.Value& v, size_t limit, bool showval) except+
 
     # pvxs_sharedpv.cpp
@@ -147,7 +147,7 @@ cdef class _Value:
             base = type
             self.val = base.proto.cloneEmpty()
             if value is not None:
-                storePy(self.val, value)
+                storePy(self.val, value, True)
 
         elif clone is not None:
             val = clone
@@ -189,7 +189,7 @@ cdef class _Value:
         cdef data.Value mem
         lookupMember(&mem, self.val, key, 1)
 
-        storePy(mem, value)
+        storePy(mem, value, True)
 
     def __getitem__(self, key):
         """items(key : str) -> Value | Any
@@ -220,7 +220,7 @@ cdef class _Value:
         cdef data.Value mem
         lookupMember(&mem, self.val, key, 2)
 
-        storePy(mem, value)
+        storePy(mem, value, True)
 
     def has(self, basestring name):
         """has(name : str) -> bool

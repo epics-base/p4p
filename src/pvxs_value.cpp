@@ -8,6 +8,10 @@
 //#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
 
+#ifndef NPY_ARRAY_FORCECAST
+#  define NPY_ARRAY_FORCECAST (0)
+#endif
+
 namespace p4p {
 
 int except_map()
@@ -206,7 +210,7 @@ Value inferPy(PyObject* py)
         auto fld(TypeDef(code).create());
 
         try {
-            storePy(fld, val);
+            storePy(fld, val, false);
         }catch(std::exception& e){
             throw std::logic_error(SB()<<"Error assigning explicit type "<<code<<" with "<<Py_TYPE(py)->tp_name<<" : "<<e.what());
         }
@@ -256,7 +260,7 @@ Value inferPy(PyObject* py)
         auto val(TypeDef(code).create());
 
         try {
-            storePy(val, py);
+            storePy(val, py, false);
         }catch(std::exception& e){
             throw std::logic_error(SB()<<"Error assigning inferred type "<<code<<" with "<<Py_TYPE(py)->tp_name<<" : "<<e.what());
         }
@@ -266,7 +270,7 @@ Value inferPy(PyObject* py)
     return v;
 }
 
-void storePy(Value& v, PyObject* py)
+void storePy(Value& v, PyObject* py, bool forceCast)
 {
     if(!v)
         throw std::invalid_argument("Can't assign value to empty field");
@@ -361,7 +365,7 @@ void storePy(Value& v, PyObject* py)
 
                 // attempt assignment from index (as integer or string)
                 if(!found) {
-                    storePy(index, py);
+                    storePy(index, py, forceCast);
                 }
                 return;
 
@@ -383,7 +387,7 @@ void storePy(Value& v, PyObject* py)
                         throw std::runtime_error("XXX");
 
                     auto sub(v.lookup(key));
-                    storePy(sub, val);
+                    storePy(sub, val, forceCast);
                 }
                 return;
 
@@ -404,11 +408,11 @@ void storePy(Value& v, PyObject* py)
                     throw std::runtime_error("XXX");
 
                 auto mem(v.lookup(std::string("->")+select));
-                storePy(mem, val);
+                storePy(mem, val, forceCast);
                 return;
 
             } else if(auto sel = v.as<Value>()) { // assign to previously selected
-                storePy(sel, py);
+                storePy(sel, py, forceCast);
                 return;
 
             } else {
@@ -420,7 +424,7 @@ void storePy(Value& v, PyObject* py)
 
                     // note that fld may be temporary storage
                     try {
-                        storePy(fld, py);
+                        storePy(fld, py, false);
                     }catch(NoConvert&){
                         continue;
                     }catch(std::logic_error&){
@@ -457,7 +461,7 @@ void storePy(Value& v, PyObject* py)
 
                 arr[i] = v.allocMember();
 
-                storePy(arr[i], elem.obj);
+                storePy(arr[i], elem.obj, forceCast);
             }
 
             v = arr.freeze();
@@ -525,7 +529,8 @@ void storePy(Value& v, PyObject* py)
                 throw std::logic_error(SB()<<"logic error in array Value assignment for "<<v.type());
             }
 
-            PyRef arr(PyArray_FromAny(py, PyArray_DescrFromType(ntype), 0, 0, NPY_CARRAY_RO, nullptr));
+            PyRef arr(PyArray_FromAny(py, PyArray_DescrFromType(ntype), 0, 0,
+                                      NPY_CARRAY_RO|NPY_ARRAY_FORCECAST, nullptr));
 
             if(PyArray_NDIM(arr.obj)!=1)
                 throw std::logic_error("Only 1-d array can be assigned");

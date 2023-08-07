@@ -191,6 +191,10 @@ class TestRawValue(RefTestCase):
         assert_aequal(V.dval, np.asfarray([1.1, 2.2]))
         self.assertListEqual(V.sval, [u'a', u'b'])
 
+        # i4 <- u8 violates "safe" casting rules
+        V.ival = np.asarray([4, 5], dtype='u8')
+        assert_aequal(V.ival, np.asarray([4, 5]))
+
     def testSubStruct(self):
         V = Value(Type([
             ('ival', 'i'),

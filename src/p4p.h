@@ -181,7 +181,7 @@ PyObject* asPySpec(const Value& v, bool fakearray=false);
 
 int except_map();
 PyObject* asPy(const Value& v, bool unpackstruct, bool unpackrecurse, PyObject *wrapper);
-void storePy(Value& v, PyObject* py);
+void storePy(Value& v, PyObject* py, bool forceCast);
 PyObject* tostr(const Value& v, size_t limit=0, bool showval=true);
 
 /******* Server *******/

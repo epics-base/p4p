@@ -328,13 +328,13 @@ class TestArray(RefTestCase):
         pixels = numpy.asarray([  # 2x3
             [0, 1, 2],
             [3, 4, 5],
-        ])
+        ], dtype='u4')
         # check my understanding of numpy
         self.assertTupleEqual(pixels.shape, (2, 3)) # inner-most right (in a pixel loop)
         assert_aequal(pixels.flatten(), [0, 1, 2, 3, 4, 5]) # row major
 
         V = Value(nt.NTNDArray.buildType(), {
-            'value': numpy.arange(6),
+            'value->uintValue': numpy.arange(6, dtype=pixels.dtype),
             'dimension': [
                 {'size': 3}, # X, columns
                 {'size': 2}, # Y, rows
@@ -343,10 +343,12 @@ class TestArray(RefTestCase):
                 {'name': 'ColorMode', 'value': 0},
             ],
         })
+        self.assertEqual(V.value.dtype, pixels.dtype)
 
         img = nt.NTNDArray.unwrap(V)
 
         self.assertEqual(img.shape, (2, 3))
+        self.assertEqual(img.dtype, pixels.dtype)
         assert_aequal(img, pixels)
 
         V2 = nt.NTNDArray().wrap(img)
