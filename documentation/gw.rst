@@ -119,7 +119,7 @@ communicate with a server running on ``192.168.1.23``.  ::
             {
                 "name":"client192",
                 "addrlist":"192.168.1.255",
-                "autoaddrlist":false,
+                "autoaddrlist":false
             }
         ],
         "servers":[
@@ -129,7 +129,7 @@ communicate with a server running on ``192.168.1.23``.  ::
                 "interface":["10.1.1.4"],
                 "addrlist":"10.1.1.255",
                 "autoaddrlist":false,
-                "statusprefix":"GW:STS:", /* optional, but suggested */
+                "statusprefix":"GW:STS:" /* optional, but suggested */
             }
             /* optional, allows server side access to Gateway status */
             ,{
@@ -138,7 +138,7 @@ communicate with a server running on ``192.168.1.23``.  ::
                 "interface":["192.168.1.5"],
                 "addrlist":"192.168.1.255",
                 "autoaddrlist":false,
-                "statusprefix":"GW:STS:",
+                "statusprefix":"GW:STS:"
             }
         ]
     }
