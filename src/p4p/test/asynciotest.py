@@ -120,6 +120,12 @@ class TestGPM(AsyncTest):
                     sub.close()
                     await sub.wait_closed()
 
+    async def test_put_noconvert(self):
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+                with self.assertRaisesRegex(ValueError, 'not_an_integer'):
+                    await C.put('foo', 'not_an_integer')
+
     if hasattr(asyncio, 'coroutine'):
         @asyncio.coroutine
         def test_gen_coro(self):
