@@ -10,7 +10,24 @@ namespace {
 enum struct GPRResult {
     Fail,    //!< request ends in failure.  Check message
     Cancel,  //!< request cancelled before completion
+    Builder, //!< error in builder callback
     Success, //!< It worked!
+};
+
+struct PyWrappedError final : std::exception {
+    PyRef obj;
+
+    explicit PyWrappedError(PyRef&& obj)
+        :obj(obj)
+    {}
+    virtual ~PyWrappedError() {
+        PyLock L;
+        obj.clear();
+    }
+
+    virtual const char* what() const noexcept override final {
+        return "PyWrappedError"; // meant to be unwrapped, not printed
+    }
 };
 
 } // namespace
@@ -22,23 +39,30 @@ std::function<void(client::Result&&)> opHandler(PyObject *handler)
         GPRResult event;
         std::string msg;
         Value val;
+
+        PyLock L;
+
+        PyRef pyval;
+        PyObject *arg = Py_None;
+
         try {
             val = result();
             event = GPRResult::Success;
+            if(val) {
+                pyval.reset(pvxs_pack(val));
+                arg = pyval.obj;
+            }
+
+        }catch(PyWrappedError& err){
+            event = GPRResult::Builder;
+            pyval = std::move(err.obj);
+            arg = pyval.obj;
 
         }catch(std::exception& err){
             event = GPRResult::Fail;
             msg = err.what();
         }
 
-        PyLock L;
-
-        PyRef pyval;
-        PyObject *arg = Py_None;
-        if(val) {
-            pyval.reset(pvxs_pack(val));
-            arg = pyval.obj;
-        }
 
         auto ret(PyRef::allownull(PyObject_CallFunction(handler, "isO", (int)event, msg.c_str(), arg)));
         if(!ret.obj) {
@@ -64,9 +88,11 @@ std::function<Value (Value &&)> opBuilder(PyObject *handler)
 
         auto ret(PyRef::allownull(PyObject_CallFunction(handler, "O", arg.obj)));
         if(!ret.obj) {
-            PySys_WriteStderr("Unhandled Exception %s:%d\n", __FILE__, __LINE__);
-            PyErr_Print();
-            PyErr_Clear();
+            PyRef A, B, C;
+            PyErr_Fetch(A.acquire(), B.acquire(), C.acquire());
+            PyRef tup(Py_BuildValue("OOO", A.obj, B.obj, C.obj));
+            throw PyWrappedError(std::move(tup));
+
         } else if(Py_REFCNT(arg.obj)!=1) {
             throw std::logic_error("put builders must be synchronous and can not save the input value");
         }

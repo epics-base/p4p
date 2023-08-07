@@ -38,6 +38,13 @@ def unwrapHandler(handler, nt):
                 handler(RemoteError(msg))
             elif code == 1:
                 handler(Cancelled())
+            elif code == 2: # exception during builder callback
+                A, B, C = val
+                if unicode is str:
+                    E = A(B).with_traceback(C) # py 3
+                else:
+                    E = A(B) # py 2 (bye bye traceback...)
+                handler(E)
             else:
                 if val is not None:
                     val = nt.unwrap(val)
@@ -61,26 +68,16 @@ def defaultBuilder(value, nt):
     """Reasonably sensible default handling of put builder
     """
     if callable(value):
-        def logbuilder(V):
-            try:
-                value(V)
-            except:
-                _log.exception("Error in Builder")
-                raise  # will be logged again
-        return logbuilder
+        return value
 
     def builder(V):
-        try:
-            if isinstance(value, Value):
-                V[None] = value
-            elif isinstance(value, dict):
-                for k, v in value.items():
-                    V[k] = v
-            else:
-                nt.assign(V, value)
-        except:
-            _log.exception("Exception in Put builder")
-            raise  # will be printed to stdout from extension code.
+        if isinstance(value, Value):
+            V[None] = value
+        elif isinstance(value, dict):
+            for k, v in value.items():
+                V[k] = v
+        else:
+            nt.assign(V, value)
     return builder
 
 

@@ -66,7 +66,7 @@ struct PyRef {
     PyObject *obj = nullptr;
 
     PyRef() = default;
-    PyRef(const PyRef& o)
+    PyRef(const PyRef& o) noexcept
         :obj(o.obj)
     {
         Py_XINCREF(o.obj);
@@ -140,6 +140,21 @@ struct PyRef {
     void reset(PyObject *o) {
         (*this) = PyRef(o);
     }
+
+    void clear() noexcept {
+        Py_CLEAR(obj);
+    }
+
+    struct Acquisition {
+        PyRef *ref;
+        PyObject *val = nullptr;
+        operator PyObject**() noexcept { return &val; }
+        constexpr explicit Acquisition(PyRef* ref) : ref(ref) {}
+        ~Acquisition() {
+            ref->reset(val);
+        }
+    };
+    Acquisition acquire() noexcept { return Acquisition{this}; }
 
     explicit operator bool() const { return obj; }
 };
