@@ -596,6 +596,12 @@ cdef class ClientMonitor:
 
 all_providers = WeakSet()
 
+cdef ClientProvider_close(ClientProvider self):
+    if <bool>self.ctxt:
+        all_providers.discard(self)
+    with nogil:
+        self.ctxt = client.Context()
+
 cdef class ClientProvider:
     def __init__(self, basestring provider, conf=None, useenv=True):
         cdef client.Config cconf
@@ -616,7 +622,7 @@ cdef class ClientProvider:
         all_providers.add(self)
 
     def __dealloc__(self):
-        self.close()
+        ClientProvider_close(self)
 
     def conf(self):
         cdef client.Config_defs_t defs
@@ -631,11 +637,8 @@ cdef class ClientProvider:
         with nogil:
             self.ctxt.hurryUp()
 
-    cpdef close(self):
-        if <bool>self.ctxt:
-            all_providers.discard(self)
-        with nogil:
-            self.ctxt = client.Context()
+    def close(self):
+        ClientProvider_close(self)
 
     def disconnect(self, basestring name=None):
         cdef string cname
