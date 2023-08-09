@@ -17,7 +17,7 @@ _log = logging.getLogger(__name__)
 
 class TestScalar(RefTestCase):
 
-    def test_float_wrap(self, code='d', value=5.0):
+    def test_float_wrap(self, code='d', value=5.0, form=False):
         NT = nt.NTScalar(code)
 
         V = NT.wrap(value, timestamp=None)
@@ -25,7 +25,7 @@ class TestScalar(RefTestCase):
         self.assertEqual(V.alarm.severity, 0)
         self.assertIsNone(V.get('display'))
 
-        NT = nt.NTScalar(code, display=True)
+        NT = nt.NTScalar(code, display=True, form=form)
         V = NT.wrap({
             'value': value,
             'alarm': {
@@ -35,7 +35,16 @@ class TestScalar(RefTestCase):
 
         self.assertEqual(V.value, value)
         self.assertEqual(V.alarm.severity, 1)
-        if code!='s':
+        if code!='s' and form:
+            self.assertEqual(V.display.tolist(), [
+                ('limitLow', 0.0),
+                ('limitHigh', 0.0),
+                ('description', u''),
+                ('precision', 0),
+                ('form', [('index', 0), ('choices', [])]),
+                ('units', u'')
+            ])
+        if code!='s' and not form:
             self.assertEqual(V.display.tolist(), [
                 ('limitLow', 0.0),
                 ('limitHigh', 0.0),
@@ -43,6 +52,9 @@ class TestScalar(RefTestCase):
                 ('format', u''),
                 ('units', u'')
             ])
+
+    def test_float_wrap_form(self):
+        self.test_float_wrap(form=True)
 
     def test_time_wrap(self):
         NT = nt.NTScalar('d')

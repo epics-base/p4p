@@ -112,11 +112,21 @@ class ntstringarray(ntwrappercommon, list):
     * .raw - The underlying :py:class:`p4p.Value`.
     """
 
-def _metaHelper(F, valtype, display=False, control=False, valueAlarm=False):
+def _metaHelper(F, valtype, display=False, control=False, valueAlarm=False, form=False):
     isnumeric = valtype[-1:] not in '?su'
     if display and isnumeric:
         F.extend([
             ('display', ('S', None, [
+                ('limitLow', valtype[-1:]),
+                ('limitHigh', valtype[-1:]),
+                ('description', 's'),
+                ('precision', 'i'),
+                ('form', ('S', 'enum_t', [
+                    ('index', 'i'),
+                    ('choices', 'as'),
+                ])),
+                ('units', 's'),
+            ] if form else [
                 ('limitLow', valtype[-1:]),
                 ('limitHigh', valtype[-1:]),
                 ('description', 's'),
@@ -175,11 +185,18 @@ class NTScalar(NTBase):
     * .raw_stamp - A tuple of (seconds, nanoseconds)
     * .severity - An integer in the range [0, 3]
     * .raw - The complete underlying :class:`~p4p.Value`
+
+    :param str valtype: A type code to be used with the 'value' field.  See :ref:`valuecodes`
+    :param list extra: A list of tuples describing additional non-standard fields
+    :param bool display: Include optional fields for display meta-data
+    :param bool control: Include optional fields for control meta-data
+    :param bool valueAlarm: Include optional fields for alarm level meta-data
+    :param bool form: Include ``display.form`` instead of the deprecated ``display.format``.
     """
     Value = Value
 
     @staticmethod
-    def buildType(valtype, extra=[], display=False, control=False, valueAlarm=False):
+    def buildType(valtype, extra=[], *args, **kws):
         """Build a Type
 
         :param str valtype: A type code to be used with the 'value' field.  See :ref:`valuecodes`
@@ -187,6 +204,7 @@ class NTScalar(NTBase):
         :param bool display: Include optional fields for display meta-data
         :param bool control: Include optional fields for control meta-data
         :param bool valueAlarm: Include optional fields for alarm level meta-data
+        :param bool form: Include ``display.form`` instead of the deprecated ``display.format``.
         :returns: A :py:class:`Type`
         """
         isarray = valtype[:1] == 'a'
@@ -195,7 +213,7 @@ class NTScalar(NTBase):
             ('alarm', alarm),
             ('timeStamp', timeStamp),
         ]
-        _metaHelper(F, valtype, display=display, control=control, valueAlarm=valueAlarm)
+        _metaHelper(F, valtype, *args, **kws)
         F.extend(extra)
         return Type(id="epics:nt/NTScalarArray:1.0" if isarray else "epics:nt/NTScalar:1.0",
                     spec=F)
