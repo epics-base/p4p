@@ -295,12 +295,12 @@ Keys
 
 **servers[].access** (default: "")
     Name an ACF file to use for access control decisions for requests made through this server.
-    See `gwacf`.
+    See :ref:`gwacf`.
     Relative file names are interpreted in relation to the directory containing the config file.
 
 **servers[].pvlist** (default: "")
     Name of PV List file to use for access control decisions for PVs accessed through this server.
-    See `gwpvlist`.
+    See :ref:`gwpvlist`.
     Relative file names are interpreted in relation to the directory containing the config file.
 
 **servers[].acf_client**
