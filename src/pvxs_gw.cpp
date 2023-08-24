@@ -912,11 +912,39 @@ void GWSource::sweep()
         upstream.cacheClear(tr->usname);
 }
 
-void GWSource::disconnect(const std::string& usname) {}
-void GWSource::forceBan(const std::string& host, const std::string& usname) {}
-void GWSource::clearBan() {}
+void GWSource::forceBan(const std::string& host, const std::string& usname) {
+    bool nohost = host.empty();
+    bool noname = usname.empty();
+    if(nohost && noname) {
+        throw std::logic_error("forceBan requires a host name/or usname");
+    }
 
-void GWSource::cachePeek(std::set<std::string> &names) const {}
+    Guard G(mutex);
+
+    if(nohost) {
+        banPV.insert(usname);
+    } else if(noname) {
+        banHost.insert(host);
+    } else {
+        banHostPV.emplace(host, usname);
+    }
+}
+
+void GWSource::clearBan() {
+    Guard G(mutex);
+
+    banHost.clear();
+    banPV.clear();
+    banHostPV.clear();
+}
+
+void GWSource::cachePeek(std::set<std::string> &names) const {
+    Guard G(mutex);
+
+    for(const auto& pair : channels) {
+        names.insert(pair.first);
+    }
+}
 
 void GWSource::auditPush(AuditEvent&& revt)
 {

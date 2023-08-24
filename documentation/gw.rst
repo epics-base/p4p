@@ -666,8 +666,6 @@ possibly with port number (eg. "1.2.3.4:5076)", and never host names.
 
     .. automethod:: testChannel
 
-    .. automethod:: disconnect
-
     .. automethod:: sweep
 
     .. automethod:: forceBan

@@ -182,7 +182,6 @@ struct GWSource : public server::Source,
                                     std::unique_ptr<server::ChannelControl> *op);
 
     void sweep();
-    void disconnect(const std::string& usname);
     void forceBan(const std::string& host, const std::string& usname);
     void clearBan();
 

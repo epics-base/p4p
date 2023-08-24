@@ -53,7 +53,6 @@ cdef extern from "pvxs_gw.h" namespace "p4p" nogil:
         shared_ptr[GWChan] connect(const string &dsname, const string &usname, unique_ptr[ChannelControl]* op) except+
 
         void sweep() except+
-        void disconnect(const string& usname) except+
         void forceBan(const string& host, const string& usname) except+
         void clearBan() except+
         void cachePeek(setxx[string]& names) except+
@@ -207,15 +206,6 @@ cdef class Provider(_p4p.Source):
         """
         with nogil:
             self.provider.get().sweep()
-
-    def disconnect(self, bytes usname):
-        """Force disconnection of all channels connected to the named PV
-
-        :param bytes usname: Upstream (Server side) PV name
-        """
-        cdef string n = usname
-        with nogil:
-            self.provider.get().disconnect(n)
 
     def forceBan(self, bytes host = None, bytes usname = None):
         """Preemptively Add an entry to the negative result cache.
