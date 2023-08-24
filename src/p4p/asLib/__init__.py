@@ -112,7 +112,7 @@ class Engine(object):
                             elif rnode[0]=='CALC':
                                 # ('CALC', '<expr>')
                                 for var in re.findall(r'[A-Z]', rnode[1]):
-                                    inputs[var] = None
+                                    inputs[var] = 0.0
 
                                 # cheating here by using python expression syntax instead of CALC.
                                 try:
@@ -193,7 +193,7 @@ class Engine(object):
         with self._lock:
             for asg, var in grps:
                 _rules, inputs = self._asg[asg]
-                inputs[var] = val
+                inputs[var] = val or 0.0
 
         if grps:
             self._recompute(only={asg for asg,var in grps})
