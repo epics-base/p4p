@@ -17,6 +17,13 @@ DEFINE_LOGGER(_log, "p4p.gw");
 DEFINE_LOGGER(_logget, "p4p.gw.get");
 DEFINE_LOGGER(_logmon, "p4p.gw.sub");
 
+namespace {
+// Some rough bounds on the sizes of GWSource::ban*
+constexpr size_t banHostLimit   = 1000;
+constexpr size_t banPVLimit     = 10000;
+constexpr size_t banHostPVLimit = 100000;
+}
+
 namespace p4p {
 
 GWSource::GWSource(const client::Context& ctxt)
@@ -78,13 +85,13 @@ void GWSource::onSearch(Search &op)
             chan.claim();
             break;
         case GWSearchBanHost:
-            banHost.insert(pair.first);
+            forceBan(pair.first, std::string());
             break;
         case GWSearchBanPV:
-            banPV.insert(pair.second);
+            forceBan(std::string(), pair.second);
             break;
         case GWSearchBanHostPV:
-            banHostPV.insert(pair);
+            forceBan(pair.first, pair.second);
             break;
         case GWSearchIgnore:
             break;
@@ -922,10 +929,16 @@ void GWSource::forceBan(const std::string& host, const std::string& usname) {
     Guard G(mutex);
 
     if(nohost) {
+        if(banPV.size() > banPVLimit)
+            banPV.clear();
         banPV.insert(usname);
     } else if(noname) {
+        if(banHost.size() > banHostLimit)
+            banHost.clear();
         banHost.insert(host);
     } else {
+        if(banHostPV.size() > banHostPVLimit)
+            banHostPV.clear();
         banHostPV.emplace(host, usname);
     }
 }
