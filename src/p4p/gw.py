@@ -518,6 +518,7 @@ def getargs():
 class App(object):
 
     def __init__(self, args):
+        _log.info( '*** Gateway STARTS now using "%s".'%args.config)
         args._all_config_files = [args.config]
         with open(args.config, 'r') as F:
             jconf = F.read()
@@ -554,7 +555,10 @@ class App(object):
             if 'serverport' in jcli:
                 client_conf['EPICS_PVA_SERVER_PORT'] = str(jcli['serverport'])
 
-            _log.info("Client %s input config:\n%s", name, pprint.pformat(client_conf))
+            _log.info( "Client effective configuration for %s:", name)
+            for confKeys, confVals in client_conf.items():
+                _log.info( "    %s : %s", confKeys, confVals)
+
             if args.test_config:
                 clients[name] = None
             else:
@@ -684,7 +688,9 @@ class App(object):
                 self.stats.servers.append(server._S)
                 # we're live now...
 
-                _log.info("Server effective config %s :\n%s", name, pprint.pformat(server.conf()))
+                _log.info( "Server effective configuration for %s:", name)
+                for confKeys, confVals in server.conf().items():
+                    _log.info( "    %s : %s", confKeys, confVals)
 
                 for spv in statusp.keys():
                     _log.info('Status PV: %s', spv)
@@ -728,6 +734,7 @@ class App(object):
         except KeyboardInterrupt:
             pass
         finally:
+            _log.info( '*** Gateway STOPS now.')
             [server.stop() for server in self.servers.values()]
 
     @staticmethod
