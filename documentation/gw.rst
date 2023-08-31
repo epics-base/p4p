@@ -37,6 +37,7 @@ which sits between groups of PVA clients and servers.  (see `overviewpva`)
 
 .. graph:: nogw
     :caption: PVA Connections without a Gateway
+
     rankdir="RL";
     serv1 [shape=box,label="EPICS IOC"];
     serv2 [shape=box,label="PVA server"];
@@ -82,8 +83,9 @@ Further, a Gateway de-duplicates subscription data updates
 so that each server sends only a single update to the Gateway,
 which then repeats it to each client.
 
-This structure shields the servers from an excessive number of clients.
-The Gateway is essentially invisible to both clients and servers.
+So the PVA servers and IOCs see only a single client,
+and are shielded from a potentially large number of clients on
+the other side of the gateway.
 
 .. note::
     Each gateway process can define multiple internal Servers and Clients.
@@ -168,17 +170,18 @@ The interface broadcast address is also provided to enable sending of server bea
 This is an optimization to reduce connection time, and it is not required.
 
 The *statusprefix* value is set to ``GW:STS:`` in this example, allowing the gateway to share some internal PVs which provide status information.
-The PV name suffixes are described below, and the *statusprefix* is prepended to each of them to support sites with multiple gateways.
-See `gwstatuspvs` for details.
+The :ref:`gwstatuspvs` suffixes are described below, with the *statusprefix* prepended.
+Sites with multiple gateways on one subnet should give each a unique statusprefix.
 
 A second *servers* section is shown, with its *name* set to ``server192``.  Its set of allowed *clients* is empty, but interfaces and address lists are specified.
 This allows the status PVs mentioned above to be accessed from the subnet hosting the IOCs and other EPICS servers.
 Without this section, those status PVs are only accessible from EPICS clients on the client subnets.
 
 .. note::
-    That part of the gateway which connects to IOCs as a Client, could potentially connect back to its own Server which expects client connections.
-    The gateway disables its internal Client from connecting to its internal Server.
-    If this is somehow required, such as a "chaining" scenario, then it will be necessary to split a configuration into more than one gateway instance.
+    A single gateway will not connect to itself (no Gateway client will connect to a Gateway server in the same instance).
+    However, this automatic loop avoidance is not possible in more complex situations involving multiple gateways.
+    If such a setup is judged necessary, care should be taken to ensure that loops can not form.
+    See also the ``servers[].ignoreaddr`` in :ref:`gwconfigfile`.
 
 Command Line Arguments
 ----------------------
@@ -233,6 +236,8 @@ See also PVXS client_ and server_ configuration references.
 .. _server: https://mdavidsaver.github.io/pvxs/server.html#configuration
 
 Run ``pvagw --example-config -`` to see another example configuration.
+
+.. _gwconfigfile:
 
 Configuration File Keywords
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -398,30 +403,32 @@ These values are aggregated from all defined internal gateway Servers and Client
     The table is sorted by host machine with the highest bandwidth usage to lowest.
 
 .. _gwlogconfig:
+
 Log File Configuration
 ----------------------
 
 The gateway is able to record messages associated with important events to one or more destinations as it runs,
-including log files or a console device. The messages can be debugging aids for developers, or errors encountered as the gateway is working.
+including log files or a console device.
+The messages can be debugging aids for developers,
+or errors encountered as the gateway is working.
 It also records the time at which the gateway starts or stops, and when starting,
 lists the configuration details for the internal clients and servers, and lists each status PV that the gateway will make available.
 
-The logging configuration file can specify the format of the logged messages, including whether time stamps should be recorded, the severity of each message and more.
+A python `dictConfig <https://docs.python.org/3/library/logging.config.html#logging-config-dictschema>`_
+logging configuration file in JSON format can be passed to ``--logging``
+to provide control of formating of the logged messages.
 
-The severity is one of five levels including ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR`` and ``CRITICAL``.
-The mechanism also provides a means by which log files can be moved aside at specific intervals, and can maintain a specific number of previously recorded log files.
+One logger name of special interest is ``p4p.gw.audit`` which is used for messages arising from :ref:`trapwrite`.
 
-An audit file for PUT operations can also be configured, using the same format as regular log files, but with the ``.audit`` suffix appended to the name of the log file's name.
-The audit file contains a record for each PUT operation that succeeds, but only when the associated Access Security Group (ASG) definition includes a ``TRAPWRITE`` statement.
-See the :ref:`gwacf` section for more information.
-
-In any log file configuration, ``loggers`` describe one or more ``handlers``, each of which can specify a unique ``formatter``.
-
-Following is an example of a log configuration file which records ``INFO`` messages or worse to a log file, but also records ``WARNING`` messages or worse to the computer console.
-It specifies different formats for console-bound messages versus log file messages, and instructs the system to maintain daily log files (and audit files, if enabled), in a subdirectory called ``BL3-LOGS``.
+The following is an example of a log configuration file which records ``INFO`` messages or worse to a log file,
+but also records ``WARNING`` messages or worse to the computer console.
+It specifies different formats for console-bound messages versus log file messages,
+and instructs the system to maintain daily log files (and audit files, if enabled),
+in a subdirectory called ``BL3-LOGS``.
 It will create new, empty log files each midnight while keeping previous log files for 14 days.
 
-Note that fixed-width columns are specified for some fields using sequences like ``15s``, ``-4d`` or ``4.4s``, similar to ``printf`` style format specifiers:  ::
+Note that fixed-width columns are specified for some fields using sequences like ``15s``, ``-4d`` or ``4.4s``,
+similar to ``printf`` style format specifiers:  ::
 
         {
             "version": 1,
@@ -460,115 +467,146 @@ Note that fixed-width columns are specified for some fields using sequences like
             }
         }
 
-
-For more information about the logging facility itself, see the ``--logging`` Command Line argument,
-and for details, see the python documentation for `dictConfig() <https://docs.python.org/library/logging.config.html#logging.config.dictConfig>`_
-
 .. _gwsec:
 
 Access Control Model
 --------------------
 
-The gateway applies access security in addition to any access security that may be implemented in the IOCs or other servers to which it connects.
-It supplements but cannot override IOC access security.
-It can enforce access control restrictions on requests flowing through it, however **no restrictions** are made by default;
-a gateway that is not configured will attempt to connect a client to any PV and allow any operation.
+A gateway may apply access control restrictions in addition to any restrictions
+applied by individual IOCs, or other PVA servers, to which it connects.
+By default a gateway apply **no restrictions**.
+A gateway without a :ref:`gwpvlist` or :ref:`gwacf` will allow all clients to attempt any operation on any PV.
 
-One or more of the ``readOnly``, ``access``, and/or ``pvlist`` configuration file keys is needed to enable restrictions within each Server in the gateway.
+One or more of the ``readOnly``, ``access``, and/or ``pvlist`` configuration file keys enable
+restrictions within a gateway.
 
-The simplest and most direct restriction is the ``readOnly`` configuration file key, which applies to **all** Servers in the gateway.
+The **simplest and most direct restriction is the readOnly** configuration file key,
+which applies to all logical Servers within a gateway.
 If set, no PUT or RPC operations are allowed.
 Both MONITOR and GET operations are allowed, so ``readOnly`` applies a simple one-way policy
 to allow clients to receive data without being permitted to change any PV settings.
 
-A more granular policy is sometimes required, such as allowing only certain PVs to be accessible from clients running on certain hosts,
-while other PVs can be changed only by certain users.
-Such access security policies are specified in two files:
+A more granular policy is often desired,
+which can be expressed with a :ref:`gwpvlist` and/or :ref:`gwacf`.
 
-#. **A PVList File** specifies which process variables will be allowed or denied access by EPICS clients.  A different PVFile can be specified for each Server defined in the gateway, and the **servers[].pvlist** key in the configuration file is used to set the file's name.  Details are described under :ref:`gwpvlist` below.
-#. **An ACF File** specifies access security rules to be followed.  A different ACF file can be specified for each Server defined in the gateway, and the **servers[].access** key in the configuration file is used to set the file's name.  Details are described under the :ref:`gwacf` section.
+Access decisions are made as follows:
+
+1. PV name and client IP address are looked up in a PVList.
+   If DENY, then client searches are ignored.
+2. If ``readOnly`` is set, then any PUT or RPC operation is rejected.  GET/MONITOR proceed.
+3. The PV name and peer IP address are looked up in a PVList.
+   If DENY, then the operation is rejected.
+   If ALLOW/ALIAS then an ASG name and level (0 or 1) is found.
+4. The ASG name and level are look up in a ACF file.
+   GET/MONITOR operations are always allowed (no write only PVs).
+   PUT or RPC operations are allowed if appropriate WRITE/PUT/RPC permission is granted.
 
 .. _gwpvlist:
 
 PVList File
-------------
+-----------
 
-The purpose of the PVList file is to specify which PVs are allowed or denied and to optionally associate those PVs with access security groups and security levels in the access file.
+The purpose of the PVList file is to specify which PVs are allowed or denied,
+and to associate those PVs with access security groups (ASG) and security levels (ASL) in the access file.
 Supported PVList file syntax is mostly compatible with that of the Channel Access Gateway_.
 
 .. _Gateway: https://epics.anl.gov/EpicsDocumentation/ExtensionsManuals/Gateway/Gateway.html
 
-At present, only the "ALLOW, DENY" evaluation order is supported.
+If not provided, the default PVList file used is ``.* ALLOW``.
 
-There are four types of entries available in a PVList file.  Optional parts are enclosed in brackets **[ ]**:
+While allows all PV names from all clients.
 
-#. **An evaluation order statement**, primarily to maintain backward compatibility.  It confirms the existing, default behaviour of the gateway, and is of the form ::
+PVList files are line based, with lines consisting of the following.
 
+.. note:: Matching is *not* in strict lexical order.  See below.
+
+#. Blank lines and ``#`` comments are allowed. ::
+
+    # comment line
+
+#. **Evaluation order statement**, primarily to maintain backward compatibility with CA Gateway. ::
+
+    # (default if omitted)
     EVALUATION ORDER ALLOW, DENY
 
-#. **An ALLOW statement** which specifies that certain PVs are allowed to be accessed from EPICS clients.  It can specify an optional *Access Security Group* (ASG), with an accompanying but optional *Access Security Level*, both of which are defined in the **ACF** file.  The statement is of the form ::
+    # Not currently supported
+    #EVALUATION ORDER DENY, ALLOW
 
-   <PV name pattern> ALLOW [<ASG>[<ASL>]]
+#. **A DENY statement** which specifies that certain PVs are denied access from certain EPICS clients.
+   It can specify an optional host from which clients will be denied access.
+   ``<PV name regexp>`` is a `regular expression`_ to match PV names.
+   This statement is of the forms ::
 
-#. **A DENY statement** which specifies that certain PVs are denied access from certain EPICS clients.  It can specify an optional host from which clients will be denied access.  The statement is of the form ::
+   <PV name regexp> DENY
+   <PV name regexp> DENY FROM <hostname_or_IP>
 
-   <PV name pattern> DENY [FROM <hostname>]
+.. _regular expression: https://docs.python.org/3/library/re.html#regular-expression-syntax
 
-#. **An Alias statement** which provides a way to specify a specific PV name based on a more general pattern.  This is functionaly similar to the **ALLOW** statement, and can also specify an *ASG* and *ASL*.  The statement is of the form ::
+#. **An ALLOW statement** which specifies that certain PVs are allowed to be accessed from EPICS clients.
+   It can specify an optional *Access Security Group* (ASG),
+   with an accompanying but optional *Access Security Level* (``0`` or ``1``),
+   both of which used when evaluating an **ACF** file.
+   This statement is of the forms ::
 
-   <PV name pattern> ALIAS <real PV name> [<ASG>[<ASL>]]
+   <PV name regexp> ALLOW
+   <PV name regexp> ALLOW <ASG>
+   <PV name regexp> ALLOW <ASG> <ASL_0_or_1>
 
-The most common entries in the PVList file are the **ALLOW** and **DENY** statements.
-The *<PV name pattern>* is a *regular expression* which is similar to having wildcard characters to match PV names.
-When a gateway Server receives a request from a client to access a PV, the PV's name is compared to each pattern in the list
-and if the pattern's regular expression matches that PV name, the corresponding privilege is applied to the request.
-For example, consider the followng PVList entry ::
+If not provided, ``ASG`` is ``DEFAULT``, and ``ASL`` is ``0``.
 
-    .*    ALLOW
+#. **An Alias statement** which provides a way to specify a specific PV name based on a more general pattern.
+   This is equivalent to a **ALLOW** statement with an additional name translation.
+   This statement is of the forms ::
 
-This matches every PV request, since ``.*`` will match all PV names, and allow EPICS clients to access them.
+   <PV name regexp> ALIAS <real PV name>
+   <PV name regexp> ALIAS <real PV name> <ASG>
+   <PV name regexp> ALIAS <real PV name> <ASG> <ASL_0_or_1>
 
-The lines in the PVList file are read from bottom to top as they are checked against each request.
-Therefore, if both a general pattern and a more specific pattern matches the PV name, the most specific pattern that matches should be near the bottom of the PVList file.
-By default, if both a DENY and ALLOW statement are being applied to a PV, the DENY privilege will be used.
+When a gateway Server receives a request from a client to access a PV,
+the PV name is compared to each pattern in the list.
 
-If no PVList file is provided, an implicit default is used
-which allows any PV name through under the ``DEFAULT`` ASG. ::
+The order in which regular expressions are matched is that all DENY statements are considered
+before any ALLOW/ALIAS statements (regardless of lexical order).
+PV names which do not match any statement are DENYed.
 
-    # implied default PVList file
-    .*   ALLOW DEFAULT 1
+When a PV name matches more than one ALLOW/ALIAS statements,
+lexical order is used.
+The last match will have effect.
 
-.. Syntax is line based.  Order of precedence is **DENY over ALLOW** and **last to first**.
-.. So a line ``.* DENY`` intended to block all names not specifically allowed must be placed at the top of the file.
+Considering the following PVList file: ::
 
-The following lines are valid in the PVList file ::
+    ACCL:CRYO:.* DENY
+    ACCL:.*      ALLOW MISCONFIG
+    ACCL:.*      ALLOW
+    ACCL:RF.*    ALLOW RF
 
-    # comment
+``ACCL:CRYO:ESTOP`` would match the ``DENY`` rule, so a gateway will not allow any access.
 
-    # explicitly specify evaluation order.
-    # ALLOW, DENY is the default
-    # DENY, ALLOW is not supported
-    EVALUATION ORDER ALLOW, DENY
+``ACCL:RF:FPWR`` would match the ``ALLOW RF`` rule, and be allowed subject to rules for ``ASG(RF)``.
 
-    # Allow matching PVs.  Use ASG DEFAULT and ASL 1
-    <regexp> ALLOW
-    # Allow matching PVs.  Use ASG MYGRP and ASL 1
-    <regexp> ALLOW MYGRP
-    # Allow matching PVs.  Use ASG MYGRP and ASL 0
-    <regexp> ALLOW MYGRP 0
+``ACCL:ARC:CNT`` would match the last ``ALLOW`` rule, and be allowed subject to ``ASG(DEFAULT)``.
 
-    # Allow Client requests matching PVs.  Forward to Servers under a different name
-    # regexp captures may be used.
-    # otherwise behaves like ALLOW
-    <regexp> ALIAS <subst>
-    <regexp> ALIAS <subst> MYGRP
-    <regexp> ALIAS <subst> MYGRP 0
+Because both the ``ALLOW MISCONFIG`` and ``ALLOW`` rules have identical patterns,
+the ``ALLOW`` will always be used and ``ALLOW MISCONFIG`` will never be used.
 
-    # Ignore any client searches
-    <regexp> DENY
+Note that because ``DENY`` rules are always considered before ``ALLOW`` or ``ALIAS`` rules,
+the preceding file is functionally identical to the following as moving the ``DENY``
+relative to ``ALLOW`` does not change the evaluation order.  ::
 
-    # Ignore specific searches from a specific client
-    <regexp> DENY FROM <hostname>
+    ACCL:.*      ALLOW MISCONFIG
+    ACCL:.*      ALLOW
+    ACCL:RF.*    ALLOW RF
+    ACCL:CRYO:.* DENY
+
+When building a PVList file containing ``ALLOW`` or ``ALIAS`` rules with overlapping patterns,
+it is therefore necessary to put the more general patterns before the more specific patterns.
+eg. ::
+
+    ACCL:RF.*    ALLOW RF
+    ACCL:.*      ALLOW
+
+In this example the ``ALLOW RF`` rule is effectively hidden, and will never be matched.
+
 
 .. _gwacf:
 
@@ -585,32 +623,7 @@ If no ``DEFAULT`` group is defined, then no privileges are granted.
 Each ACF file may define zero or more Host Access Groups (``HAG`` s) and/or
 User Access Groups (``UAG`` s).
 Also, one or more list of rules (``ASG`` s).
-The HAG is basically a list of host names, and the UAG a list of user names.
-
-Syntax
-~~~~~~
-
-.. productionlist:: acf
-    acf: | item acf
-    item : uag | hag | asg
-    uag : UAG ( "NAME" ) { users }
-    hag : HAG ( "NAME" ) { hosts }
-    asg : ASG ( "NAME" ) { asitems }
-    users : "HOSTNAME"
-          :"HOSTNAME" , users
-    hosts : "USERNAME"
-          : "USERNAME" , hosts
-    asitems : | asitem asitems
-    asitem : INP[A-Z] ( "PVNAME" )
-           : RULE ( ASL#, priv) rule_cond
-           : RULE ( ASL#, priv, trap) rule_cond
-    priv : READ | WRITE | PUT | RPC | UNCACHED
-    trap : TRAPWRITE | NOTRAPWRITE
-    rule_cond : | { conds }
-    conds : | cond conds
-    cond : UAG ( "NAME" )
-         : HAG ( "NAME" )
-         : CALC ( "EXPR" )
+The HAG is a list of host names, and the UAG a list of user names.
 
 eg. PVs in ASG ``DEFAULT`` only permit PUT or RPC requests originating from
 hosts ``incontrol`` or ``physics``.
@@ -666,7 +679,7 @@ UAG and Credentials
 
 PV Access protocol provides a weakly authenticated means of identification based on a remotely provided user name.
 This is combined with a set of "role"s taken by looking up system groups of which the username is a member.
-(See ``/etc/nsswitch.conf``).
+(See ``/etc/nsswitch.conf`` on Linux).
 
 Both user and role names may appear in ``UAG`` lists. eg. ::
 
@@ -691,6 +704,8 @@ In this case, such a match will grant the ``WRITE`` privilege for PVs in the ``D
 
 Role/group membership can be tested with the ``<statusprefix>asTest`` status PV.
 
+.. _trapwrite:
+
 TRAPWRITE and Put logging
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -700,17 +715,42 @@ Refer to the :ref:`gwlogconfig` section for more information.
 
 Messages are logged through the ``p4p.gw.audit`` python logger.
 
+ACF Syntax
+~~~~~~~~~~
+
+.. productionlist:: acf
+    acf: | item acf
+    item : uag | hag | asg
+    uag : UAG ( "NAME" ) { users }
+    hag : HAG ( "NAME" ) { hosts }
+    asg : ASG ( "NAME" ) { asitems }
+    users : "HOSTNAME"
+          :"HOSTNAME" , users
+    hosts : "USERNAME"
+          : "USERNAME" , hosts
+    asitems : | asitem asitems
+    asitem : INP[A-Z] ( "PVNAME" )
+           : RULE ( ASL#, priv) rule_cond
+           : RULE ( ASL#, priv, trap) rule_cond
+    priv : READ | WRITE | PUT | RPC | UNCACHED
+    trap : TRAPWRITE | NOTRAPWRITE
+    rule_cond : | { conds }
+    conds : | cond conds
+    cond : UAG ( "NAME" )
+         : HAG ( "NAME" )
+         : CALC ( "EXPR" )
+
 Application Notes
 -----------------
 
-The process of configuring a Gateway will usually begin by looking at the
+The process of configuring a Gateway begins by looking at the
 physical and/or logical topology of the networks in question.
 
 A Gateway is typically placed at the boundary between one or more networks (subnets).
 
 While a simple Gateway configuration will have a single GW Server connected to a single GW Client,
 more complicated configurations are possible, with many GW Servers and one GW Client,
-on GW Server and many GW Clients, or a many to many configuration.
+or one GW Server and many GW Clients, or a many to many configuration.
 
 It is valid for a GW Client and GW Server to be associated with the same host interface and port
 provided that they are not associated with each other.
@@ -735,10 +775,10 @@ Implementation Details
 ----------------------
 
 Gateway is implemented as a hybrid of Python and C++.
-In the interest of performance, Python code is only in the "fast" path
+In the interest of performance, Python code is only in the "slow" path
 for the PV search/connection decision.
 After a PV is connected; permissions changes, auditing, and monitoring are communicated
-asynchronously from Python code.
+externally from Python code.
 
 The APIs described below are not currently considered stable or public for use by external modules.
 They are documentation here for the purposes of internal development and debugging.
