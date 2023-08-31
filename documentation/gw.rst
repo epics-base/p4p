@@ -9,36 +9,40 @@ Quick Start
 -----------
 
 First install P4P (see the main :ref:`starting`).
-Then the following will setup a gateway instance named ``mygw`` ::
 
+The following commands will set up a gateway instance named ``mygw`` on a Linux system that uses *systemd*: ::
+
+      # generate a simple configuration file
     sudo python -m p4p.gw --example-config /etc/pvagw/mygw.conf
+      # generate a systemd unit file to support the gateway
     sudo python -m p4p.gw --example-systemd \
-     /etc/systemd/system/pvagw@.service
+         /etc/systemd/system/pvagw@.service
+      # start the gateway
     sudo systemctl daemon-reload
     sudo systemctl start pvagw@mygw.service
-    # check to see if the instance has started correctly
+      # check to see if the instance has started correctly
     sudo systemctl status pvagw@mygw.service
-    # set the instance to start automatically on boot
+      # set the instance to start automatically on boot
     sudo systemctl enable pvagw@mygw.service
 
 Background
 ----------
 
-The PVA Gateway is a specialized proxy for the PV Access (PVA) Protocol
-which sits between groups of PVA client and of servers.  (see `overviewpva`)
-It serves two broad roles.
-To reduce the resource load on the server-facing side,
-and to apply access control restrictions to requests from the client facing side.
+The PVA Gateway provides a way for EPICS client software to access IOCs on an isolated network.
+
+In doing so, it reduces the resource load on the server-facing side,
+and provides access control restrictions to requests from the client facing side.
+The gateway is a specialized proxy for the PV Access (PVA) Protocol
+which sits between groups of PVA clients and servers.  (see `overviewpva`)
 
 .. graph:: nogw
-    :caption: Connections without Gateway
-    
-    rankdir="LR";
-    serv1 [shape=box,label="PVA Server"];
-    serv2 [shape=box,label="PVA Server"];
-    serv3 [shape=box,label="PVA Server"];
-    cli1 [shape=box,label="PVA Client"];
-    cli2 [shape=box,label="PVA Client"];
+    :caption: PVA Connections without a Gateway
+    rankdir="RL";
+    serv1 [shape=box,label="EPICS IOC"];
+    serv2 [shape=box,label="PVA server"];
+    serv3 [shape=box,label="EPICS IOC"];
+    cli1 [shape=box,label="pvget"];
+    cli2 [shape=box,label="PVA client"];
     serv1 -- cli1
     serv2 -- cli1
     serv3 -- cli1
@@ -46,24 +50,24 @@ and to apply access control restrictions to requests from the client facing side
     serv2 -- cli2
     serv3 -- cli2
 
-In this situation without a Gateway ``M`` clients connect to ``N`` servers
-with ``M*N`` TCP connections (sockets).  If all clients are subscribed
+Without a Gateway, ``M`` clients connect to ``N`` servers
+with ``M*N`` connections (TCP sockets).  If all clients are subscribed
 to the same set of PVs, then each server is sending the same data values
 ``M`` times.
 
 .. graph:: gwnames
-    :caption: Gateway processes and connection
+    :caption: PVA Connections through a Gateway
 
-    rankdir="LR";
-    serv1 [shape=box,label="PVA Server"];
+    rankdir="RL";
+    serv1 [shape=box,label="EPICS IOC"];
     serv2 [shape=box,label="PVA Server"];
-    serv3 [shape=box,label="PVA Server"];
+    serv3 [shape=box,label="EPICS IOC"];
     subgraph clustergw {
-        label="GW Process";
-        gwc [label="GW Client"];
-        gws [label="GW Server"];
+        label="Gateway\nProcess";
+        gwc [label="Gateway\nClient"];
+        gws [label="Gateway\nServer"];
     }
-    cli1 [shape=box,label="PVA Client"];
+    cli1 [shape=box,label="pvget"];
     cli2 [shape=box,label="PVA Client"];
 
     serv1 -- gwc;
@@ -73,46 +77,53 @@ to the same set of PVs, then each server is sending the same data values
     gws -- cli2;
 
 Adding a Gateway reduces the number of connections to ``M+N``.
-With ``M`` one side, and ``N`` on the other.
+With ``M`` clients connecting to a gateway server on one side, and one gateway client connecting to ``N`` servers on the other.
 Further, a Gateway de-duplicates subscription data updates
-so that each server sends only a single copy to the Gateway,
+so that each server sends only a single update to the Gateway,
 which then repeats it to each client.
 
-These two facts combine to shield the Servers from an excessive
-numbers of Clients.
+This structure shields the servers from an excessive number of clients.
+The Gateway is essentially invisible to both clients and servers.
 
-A prototypical scenario of Gateway usage is on a host computer
-with two network interfaces (NICs) on different subnets
-(and thus two different broadcast domains).
+.. note::
+    Each gateway process can define multiple internal Servers and Clients.
+    This allows, for example, a single gateway process to connect to multiple IOC subnets,
+    providing EPICS clients to access all IOCs.
 
 Example
 ~~~~~~~
 
-To take an example.  A server has two NICs with IP addresses
-192.168.1.5/24 and 10.1.1.4/24 .
+A common scenario is to have a gateway running on a host computer
+with two network interfaces (NICs) on different subnets,
+and thus two different broadcast domains.
+
+In this example, a server has two NICs with IP addresses
+192.168.1.5/24 and 10.1.1.4/24.
 
 .. graph:: gwnet
+    :caption: Example: A Multi-homed Host for a Gateway
 
     rankdir="LR";
-    serv [shape=box,label="PVA Server\n192.168.1.23"];
-    cli  [shape=box,label="PVA Client\n10.1.1.78"];
-    net1 [shape=none,label="Net 192.168.1.0/24"];
-    net2 [shape=none,label="Net 10.1.1.0/24"];
+    serv [shape=box,label="PVA server\n192.168.1.23"];
+    cli  [shape=box,label="PVA client\n10.1.1.78"];
     subgraph clustergw {
-        label="GW Host";
+        label="Gateway\nHost";
+        nic2 [shape=cds,label="NIC 10.1.1.4",orientation=180];
         nic1 [shape=cds,label="NIC 192.168.1.5"];
-        nic2 [shape=cds,label="NIC 10.1.1.4"];
     }
-    net1 -- nic1;
-    net1 -- serv;
-    net2 -- nic2;
-    net2 -- cli;
+    cli -- nic2;
+    nic1 -- serv;
 
-In the following configuration we wish a client running
-on the host ``10.1.1.78`` to be able to
-communicate with a server running on ``192.168.1.23``.  ::
+To support this host, the gateway can be set up with the
+following configuration file.
+The intent is that the gateway provides EPICS clients on
+the ``10.1.1.0/24`` subnet with access to IOCs or other PVA servers
+on the ``192.168.1.0/24`` subnet.
 
-    /* JSON with C-style comments */
+Each of the statements in this configuration file are explained
+below ::
+
+    /* C-style comments are supported */
     {
         "version":2,
         "clients":[
@@ -131,7 +142,7 @@ communicate with a server running on ``192.168.1.23``.  ::
                 "autoaddrlist":false,
                 "statusprefix":"GW:STS:" /* optional, but suggested */
             }
-            /* optional, allows server side access to Gateway status */
+        /* optional, allows server side access to Gateway status */
             ,{
                 "name":"server192",
                 "clients":[],
@@ -143,39 +154,34 @@ communicate with a server running on ``192.168.1.23``.  ::
         ]
     }
 
-GW Client ``client192`` is configured to search on the ``192.168.1.0/24`` subnet by
-providing the ``192.168.1.255`` broadcast address.  This is the network
-to which the PVA Server is attached, so it will receive broadcast searches
-from this GW Client.
+The *version* statement is described below.
 
-GW Server ``server10`` is configured to listen on the ``10.1.1.0/24`` subnet by providing
-the local interface address ``10.1.1.4``.  This is the network to which the PVA
-Client is attached, so this GW Server will receive search messages sent
-by the client.
-The interface broadcast address is also provided to enable sending of server
-beacon packets.  This is an optimization to reduce connection time, and not required.
+The *clients* section specifies the *name* of its only Client to be ``client192`` and is configured to search on the ``192.168.1.0/24`` subnet by
+providing the ``192.168.1.255`` broadcast address as the only member of the *addrlist*.
+This is the network to which an EPICS IOC is attached, so it will receive broadcast searches
+from this gateway acting as a client.
 
-Additionally, both GW Servers ``server10`` and ``server192`` are configured to provide internal Gateway status
-PVs with the name prefix ``GW:STS:``.  See `gwstatuspvs` for details.
+The *servers* section specifies the *name* of its first Server to be ``server10``, and indicates which *clients* can have access to it, in this case clients which are part of the ``clients192`` section.
+It is configured to listen on the ``10.1.1.0/24`` subnet by specifying the local *interface* address ``10.1.1.4``.
+This is the network on which an EPICS client such as *pvget* or *pvput* is attached, and this gateway will act as a Server to receive their search messages.
+The interface broadcast address is also provided to enable sending of server beacon packets.
+This is an optimization to reduce connection time, and it is not required.
 
-This Gateway may be started by saving the preceding JSON as a file ``mygw.conf`` ::
+The *statusprefix* value is set to ``GW:STS:`` in this example, allowing the gateway to share some internal PVs which provide status information.
+The PV name suffixes are described below, and the *statusprefix* is prepended to each of them to support sites with multiple gateways.
+See `gwstatuspvs` for details.
 
-    pvagw mygw.conf
-
-Loop Avoidance
-~~~~~~~~~~~~~~
-
-In order to prevent a mis-configured gateway from connection to itself,
-no client within a single pvagw instance will connect to any server
-within the same instance (process).
-If this is desirable (some "chaining" scenarios), then it will be necessary
-to split a configuration into more than one instance.
-
-CLI Arguments
--------------
+A second *servers* section is shown, with its *name* set to ``server192``.  Its set of allowed *clients* is empty, but interfaces and address lists are specified.
+This allows the status PVs mentioned above to be accessed from the subnet hosting the IOCs and other EPICS servers.
+Without this section, those status PVs are only accessible from EPICS clients on the client subnets.
 
 .. note::
-    The ``--no-ban-local`` argument no longer has any effect.
+    That part of the gateway which connects to IOCs as a Client, could potentially connect back to its own Server which expects client connections.
+    The gateway disables its internal Client from connecting to its internal Server.
+    If this is somehow required, such as a "chaining" scenario, then it will be necessary to split a configuration into more than one gateway instance.
+
+Command Line Arguments
+----------------------
 
 .. argparse::
     :module: p4p.gw
@@ -187,8 +193,7 @@ CLI Arguments
 Configuration File
 ------------------
 
-Configuration is provided as a file using JSON syntax with C-style comments.
-A full list of known keys for configuration scheme version 2. ::
+Configuration is provided as a file using JSON syntax with C-style comments. ::
 
     /* C-style comments allowed */
     {
@@ -221,27 +226,31 @@ A full list of known keys for configuration scheme version 2. ::
         ]
     }
 
-See also PVXS `client <https://mdavidsaver.github.io/pvxs/client.html#configuration>`
-and `server <https://mdavidsaver.github.io/pvxs/server.html#configuration` configuration
-references.
+See also PVXS client_ and server_ configuration references.
+
+.. _client: https://mdavidsaver.github.io/pvxs/client.html#configuration
+
+.. _server: https://mdavidsaver.github.io/pvxs/server.html#configuration
 
 Run ``pvagw --example-config -`` to see another example configuration.
 
-Keys
-~~~~
+Configuration File Keywords
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Here is a full list of JSON keys available for the configuration file, version 2.
 
 **version**
-    Scheme version number.  2 is recommended for new files.  Valid values are 1 or 2.
+    JSON Scheme version number.  2 is recommended for new files.  Valid values are 1 or 2.
 
 **readOnly** (default: false)
     Boolean flag which, if set, acts as a global access control rule which rejects
-    all PUT or RPC operations.  This take precedence over any ACF file rules.
+    all PUT or RPC operations.  This takes precedence over any ACF file rules.
 
 **clients**
-    List of GW Client configurations.
+    List of Gateway Client configurations.
 
 **clients[].name**
-    Unique name for this GW Client
+    Unique name for this Client within this gateway process.
 
 **clients[].provider** (default: "pva")
     Selects a ChannelProvider.  Currently only "pva" is valid.
@@ -257,17 +266,17 @@ Keys
     UDP port to which searches are sent.
 
 **servers**
-    List of GW Server configurations.
+    List of gateway Server configurations.
 
 **servers[].name**
-    Unique name of this GW Server
+    Unique name of this Server within this gateway process.
 
 **servers[].clients**
-    A list of zero or more GW Client names.  Search requests allowed through this server
-    will be made through all listed clients.
+    A list of zero or more gateway Client names.
+    Search requests allowed through this server will be made through all listed clients.
 
 **servers[].interface** (default: ["0.0.0.0"])
-    A list of local interface addresses to which this GW Server will bind.
+    A list of local interface addresses to which this gateway Server will bind.
 
 **servers[].addrlist** (default: "")
     List of broadcast and unicast addresses to which beacon messages will be sent
@@ -283,15 +292,21 @@ Keys
     Default TCP port to bind.  If not possible, a random port will be used.
 
 **servers[].bcastport** (default: 5076)
-    UDP port bound to receive search requests.  Also to which beacons are sent.
+    UDP port bound to receive search requests, as well as the port to which beacons are sent.
 
 **servers[].getholdoff** (default: 0)
-    A value greater than zero enables rate limiting of Get operations.  ``getholdoff`` defines as a hold-off time
-    after a GET on a PV completes before the another will be issued.  Another GET for the same PV
-    made before the hold-off expires will be delayed until expiration.
+    A value greater than zero enables rate limiting of Get operations.
+    ``getholdoff`` defines a hold-off time after a GET on a PV completes, before the another will be issued.
+    Another GET for the same PV made before the hold-off expires will be delayed until expiration.
     Concurrent GET operations may be combined.
 
     This activity is per PV.
+
+**servers[].statusprefix** (default: "")
+    The text used by this gateway as a prefix to construct names for PVs which communicate status information.
+    The PVs report overall status for the gateway process, regardless of the number of internal Clients or Servers.
+    Each of the status PVs are defined in :ref:`gwstatuspvs`.
+    Note that the prefix will typically end with the delimiter used in your PV naming convention, such as ``:``.
 
 **servers[].access** (default: "")
     Name an ACF file to use for access control decisions for requests made through this server.
@@ -299,7 +314,7 @@ Keys
     Relative file names are interpreted in relation to the directory containing the config file.
 
 **servers[].pvlist** (default: "")
-    Name of PV List file to use for access control decisions for PVs accessed through this server.
+    Name of PVList file used to restrict access to certain PVs through this Server.
     See :ref:`gwpvlist`.
     Relative file names are interpreted in relation to the directory containing the config file.
 
@@ -314,10 +329,14 @@ Status PVs
 ----------
 
 Servers with the ``statusprefix`` key set will provide access to the following PVs.
-These values are aggregated from all GW Servers and GW Clients.
+These values are aggregated from all defined internal gateway Servers and Clients.
+
+.. warning::
+    The PV names resulting from the ``statusprefix`` and the PV suffixes shown below must be unique across your site.
+    Each gateway instance must have a unique ``statusprefix`` value.
 
 **<statusprefix>asTest**
-    An RPC only PV which allows testing of pvlist and ACF rules. ::
+    An RPC only PV which allows testing of PVList and ACF rules. ::
 
         $ pvcall <statusprefix>asTest pv=some:name
 
@@ -325,40 +344,10 @@ These values are aggregated from all GW Servers and GW Clients.
     If omitted, the credentials of the requesting client are used.
 
 **<statusprefix>clients**
-    A list of clients names connected to the GW server
+    A list of client's names connected to the GW server
 
 **<statusprefix>cache**
-  A list of channels to which the GW Client is connected
-
-**<statusprefix>us:bypv:tx**
-
-**<statusprefix>us:bypv:rx**
-
-**<statusprefix>ds:bypv:tx**
-
-**<statusprefix>ds:bypv:rx**
-
-**<statusprefix>us:byhost:tx**
-
-**<statusprefix>us:byhost:rx**
-
-**<statusprefix>ds:byhost:tx**
-
-**<statusprefix>ds:byhost:rx**
-  Each is a table showing bandwidth usage reports aggregated in various ways.
-
-  ``us`` for upstream, GW Client side.  ``ds`` for downstream, GW Server side.
-
-  ``bypv`` vs. ``byhost`` group results by the PV name involved, or the peer host.
-  ``us:byhost:*`` is grouped by upstream server (IOC).  ``ds:byhost:*`` is grouped
-  by downstream client.
-
-  ``tx`` vs. ``rx`` is direction of data flow as seen by the gateway process.
-
-  eg. ``us:byhost:rx`` is data received from Servers by the GW Client grouped
-  by Server IP.
-
-  eg. ``ds:bypv:tx`` is data send by the GW Server to Clients grouped by PV name.
+    A list of channels to which the GW Client is connected
 
 **<statusprefix>refs**
   Table of object type names and instance counts.
@@ -368,54 +357,191 @@ These values are aggregated from all GW Servers and GW Clients.
   Available when running with python >= 3.5.
   An RPC call which returns a text description of all python threads.
 
+.. note::
+    The following PVs provide data bandwidth information for the overall gateway.
+
+    * The ``ds`` in the names refer to *downstream* requests from EPICS clients to the gateway, or responses from the gateway to EPICS clients.
+    * The ``us`` in the names refer to *upstream* requests from the gateway to IOCs, or responses from an IOC to the gateway.
+    * The ``bypv`` or ``byhost`` in the names refer to status relating to the involved PVs or host machines, respectively.
+    * The ``rx`` and ``tx`` in the names refer to receiving or transmitting data from the gateway's perspective.
+
+**<statusprefix>ds:bypv:rx**
+    A table containing bandwidth usage of requests for each PV sent from PVA clients such as **pvget** or **pvput** to this gateway.  This can be a relatively low number since the requests are often small in size.
+    The table is sorted from highest bandwidth PVs to lowest.
+
+**<statusprefix>us:bypv:tx**
+    A table containing bandwidth usage of requests for each PV sent from this gateway to PVA Servers such as IOCs.  This can be a relatively low number since the requests are often small in size.
+    The table is sorted from highest bandwidth PVs to lowest.
+
+**<statusprefix>us:bypv:rx**
+    A table containing bandwidth usage of responses from each PV sent from PVA Servers such as IOCs to this gateway.
+    The table is sorted from highest bandwidth PVs to lowest.
+
+**<statusprefix>ds:bypv:tx**
+    A table containing bandwidth usage of responses from each PV sent from this gateway to EPICS clients that made the original requests.
+    The table is sorted from highest bandwidth PVs to lowest.
+
+**<statusprefix>ds:byhost:rx**
+    A table containing bandwidth usage of each host sending requests from PVA clients such as **pvget** or **pvput** to this gateway.  This can be a relatively low number since the requests are often small in size.
+    The table is sorted by host machine with the highest bandwidth usage to lowest.
+
+**<statusprefix>us:byhost:tx**
+    A table containing bandwidth usage of requests sent from this gateway to each host containing PVA Servers such as IOCs.  This can be a relatively low number since the requests are often small in size.
+    The table is sorted by host machine with the highest bandwidth usage to lowest.
+
+**<statusprefix>us:byhost:rx**
+    A table containing bandwidth usage of each host providing responses from PVA Servers such as IOCs to this gateway.
+    The table is sorted by host machine with the highest bandwidth usage to lowest.
+
+**<statusprefix>ds:byhost:tx**
+    A table containing bandwidth usage of each client's host accepting responses from this gateway.
+    The table is sorted by host machine with the highest bandwidth usage to lowest.
+
+.. _gwlogconfig:
+Log File Configuration
+----------------------
+
+The gateway is able to record messages associated with important events to one or more destinations as it runs,
+including log files or a console device. The messages can be debugging aids for developers, or errors encountered as the gateway is working.
+It also records the time at which the gateway starts or stops, and when starting,
+lists the configuration details for the internal clients and servers, and lists each status PV that the gateway will make available.
+
+The logging configuration file can specify the format of the logged messages, including whether time stamps should be recorded, the severity of each message and more.
+
+The severity is one of five levels including ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR`` and ``CRITICAL``.
+The mechanism also provides a means by which log files can be moved aside at specific intervals, and can maintain a specific number of previously recorded log files.
+
+An audit file for PUT operations can also be configured, using the same format as regular log files, but with the ``.audit`` suffix appended to the name of the log file's name.
+The audit file contains a record for each PUT operation that succeeds, but only when the associated Access Security Group (ASG) definition includes a ``TRAPWRITE`` statement.
+See the :ref:`gwacf` section for more information.
+
+In any log file configuration, ``loggers`` describe one or more ``handlers``, each of which can specify a unique ``formatter``.
+
+Following is an example of a log configuration file which records ``INFO`` messages or worse to a log file, but also records ``WARNING`` messages or worse to the computer console.
+It specifies different formats for console-bound messages versus log file messages, and instructs the system to maintain daily log files (and audit files, if enabled), in a subdirectory called ``BL3-LOGS``.
+It will create new, empty log files each midnight while keeping previous log files for 14 days.
+
+Note that fixed-width columns are specified for some fields using sequences like ``15s``, ``-4d`` or ``4.4s``, similar to ``printf`` style format specifiers:  ::
+
+        {
+            "version": 1,
+            "disable_existing_loggers": false,
+            "formatters": {
+                "fileFormat": {
+                    "format": "%(asctime)s | %(name)15s line %(lineno)-4d [%(levelname)4.4s] %(message)s"
+                },
+                "consoleFormat": {
+                    "format": "%(asctime)s | %(name)s: %(levelname)s - %(message)s"
+                }
+            },
+            "handlers": {
+                "fileMessages": {
+                    "level": "INFO",
+                    "class": "logging.handlers.TimedRotatingFileHandler",
+                    "formatter": "fileFormat",
+                    "filename": "BL3-LOGS/gateway-BL3-DMZ.log",
+                    "when": "midnight",
+                    "interval": 1,
+                    "backupCount": 14
+                },
+                "consoleMessages": {
+                    "level": "WARNING",
+                    "class": "logging.StreamHandler",
+                    "formatter": "consoleFormat",
+                    "stream": "ext://sys.stdout"
+                }
+            },
+            "loggers": {
+                "": {
+                    "handlers": ["fileMessages","consoleMessages"],
+                    "level": "INFO",
+                    "propagate": true
+                }
+            }
+        }
+
+
+For more information about the logging facility itself, see the ``--logging`` Command Line argument,
+and for details, see the python documentation for `dictConfig() <https://docs.python.org/library/logging.config.html#logging.config.dictConfig>`_
+
 .. _gwsec:
 
 Access Control Model
 --------------------
 
-A Gateway can enforce access control restrictions on requests flowing through it.
-However, **no restrictions** are made by default.
-And a Gateway will attempt to connect any PV and allow any operation.
-One or more of the ``readOnly``, ``access``, and/or ``pvlist`` configuration file
-keys is needed to enable restrictions.
+The gateway applies access security in addition to any access security that may be implemented in the IOCs or other servers to which it connects.
+It supplements but cannot override IOC access security.
+It can enforce access control restrictions on requests flowing through it, however **no restrictions** are made by default;
+a gateway that is not configured will attempt to connect a client to any PV and allow any operation.
 
-The simplest and more direct restriction is the ``readOnly`` configuration file key.
-If set, no PUT and RPC operations are allowed.
-MONITOR and GET operations are allowed, so ``readOnly`` applies a simple one-way policy
-to allow Clients to receive data without being permitted to change settings.
+One or more of the ``readOnly``, ``access``, and/or ``pvlist`` configuration file keys is needed to enable restrictions within each Server in the gateway.
 
-A more granular policy may be defined in separate PV List file and/or ACF file.
+The simplest and most direct restriction is the ``readOnly`` configuration file key, which applies to **all** Servers in the gateway.
+If set, no PUT or RPC operations are allowed.
+Both MONITOR and GET operations are allowed, so ``readOnly`` applies a simple one-way policy
+to allow clients to receive data without being permitted to change any PV settings.
 
-A combination of PV List and ACF may take as into consideration the PV name being searched
-and the Client host name/IP when deciding whether to allow a PV.
-Further, allowed PVs then provide credentials which may be used to grant specific privileges
-needed for some operations (mainly PUT and RPC).
+A more granular policy is sometimes required, such as allowing only certain PVs to be accessible from clients running on certain hosts,
+while other PVs can be changed only by certain users.
+Such access security policies are specified in two files:
+
+#. **A PVList File** specifies which process variables will be allowed or denied access by EPICS clients.  A different PVFile can be specified for each Server defined in the gateway, and the **servers[].pvlist** key in the configuration file is used to set the file's name.  Details are described under :ref:`gwpvlist` below.
+#. **An ACF File** specifies access security rules to be followed.  A different ACF file can be specified for each Server defined in the gateway, and the **servers[].access** key in the configuration file is used to set the file's name.  Details are described under the :ref:`gwacf` section.
 
 .. _gwpvlist:
 
-PV List File
+PVList File
 ------------
 
-A PV List file contains a list of regular expressions, each with a corresponding
-action.  Either to deny (ignore) a Client search attempt, or to allow it through,
-possibly with a different PV name, and/or subject to
-further restrictions in an ACF file (according to ASG name).
+The purpose of the PVList file is to specify which PVs are allowed or denied and to optionally associate those PVs with access security groups and security levels in the access file.
+Supported PVList file syntax is mostly compatible with that of the Channel Access Gateway_.
 
-Supported PV List file syntax is mostly compatible with that of the Channel Access Gateway.
+.. _Gateway: https://epics.anl.gov/EpicsDocumentation/ExtensionsManuals/Gateway/Gateway.html
+
 At present, only the "ALLOW, DENY" evaluation order is supported.
 
-If no PV List file is provided, an implicit default is used
+There are four types of entries available in a PVList file.  Optional parts are enclosed in brackets **[ ]**:
+
+#. **An evaluation order statement**, primarily to maintain backward compatibility.  It confirms the existing, default behaviour of the gateway, and is of the form ::
+
+    EVALUATION ORDER ALLOW, DENY
+
+#. **An ALLOW statement** which specifies that certain PVs are allowed to be accessed from EPICS clients.  It can specify an optional *Access Security Group* (ASG), with an accompanying but optional *Access Security Level*, both of which are defined in the **ACF** file.  The statement is of the form ::
+
+   <PV name pattern> ALLOW [<ASG>[<ASL>]]
+
+#. **A DENY statement** which specifies that certain PVs are denied access from certain EPICS clients.  It can specify an optional host from which clients will be denied access.  The statement is of the form ::
+
+   <PV name pattern> DENY [FROM <hostname>]
+
+#. **An Alias statement** which provides a way to specify a specific PV name based on a more general pattern.  This is functionaly similar to the **ALLOW** statement, and can also specify an *ASG* and *ASL*.  The statement is of the form ::
+
+   <PV name pattern> ALIAS <real PV name> [<ASG>[<ASL>]]
+
+The most common entries in the PVList file are the **ALLOW** and **DENY** statements.
+The *<PV name pattern>* is a *regular expression* which is similar to having wildcard characters to match PV names.
+When a gateway Server receives a request from a client to access a PV, the PV's name is compared to each pattern in the list
+and if the pattern's regular expression matches that PV name, the corresponding privilege is applied to the request.
+For example, consider the followng PVList entry ::
+
+    .*    ALLOW
+
+This matches every PV request, since ``.*`` will match all PV names, and allow EPICS clients to access them.
+
+The lines in the PVList file are read from bottom to top as they are checked against each request.
+Therefore, if both a general pattern and a more specific pattern matches the PV name, the most specific pattern that matches should be near the bottom of the PVList file.
+By default, if both a DENY and ALLOW statement are being applied to a PV, the DENY privilege will be used.
+
+If no PVList file is provided, an implicit default is used
 which allows any PV name through under the ``DEFAULT`` ASG. ::
 
-    # implied default PV List file
-    .* ALLOW DEFAULT 1
+    # implied default PVList file
+    .*   ALLOW DEFAULT 1
 
-Syntax is line based.  Order of precedence is **DENY over ALLOW** and **last to first**.
+.. Syntax is line based.  Order of precedence is **DENY over ALLOW** and **last to first**.
+.. So a line ``.* DENY`` intended to block all names not specifically allowed must be placed at the top of the file.
 
-So a line ``.* DENY`` intended to block all names not specifically allowed
-must be placed at the top of the file.
-
-Valid (non-blank) lines are ::
+The following lines are valid in the PVList file ::
 
     # comment
 
@@ -450,14 +576,16 @@ ACF Rules File
 --------------
 
 An Access Security File (ACF) is a list of access control rules to be applied
-to requests based on which ASG was selected by a PV List file, or ``DEFAULT``
-if no PV List file is used.  The ``ASG`` name selects which a group of rules.
+to requests based on which Access Security Group (``ASG``) was selected by a PVList file, or ``DEFAULT``
+if no PVList file is used.  The ``ASG`` name selects which a group of rules.
 
 Unknown ``ASG`` names use the ``DEFAULT`` rules.
 If no ``DEFAULT`` group is defined, then no privileges are granted.
 
-Each ACF file may define zero or more groups of host names (``HAG`` s) and/or
-user names (``UAG`` s).  Also, one or more list of rules (``ASG`` s).
+Each ACF file may define zero or more Host Access Groups (``HAG`` s) and/or
+User Access Groups (``UAG`` s).
+Also, one or more list of rules (``ASG`` s).
+The HAG is basically a list of host names, and the UAG a list of user names.
 
 Syntax
 ~~~~~~
@@ -485,7 +613,8 @@ Syntax
          : CALC ( "EXPR" )
 
 eg. PVs in ASG ``DEFAULT`` only permit PUT or RPC requests originating from
-hosts ``incontrol`` or ``physics``.  PUT requests from ``physics`` will logged. ::
+hosts ``incontrol`` or ``physics``.
+PUT requests from ``physics`` will be logged. ::
 
     HAG(MCF) { "incontrol" }
     HAG(OTHER) { "physics" }
@@ -504,13 +633,13 @@ Privileges
 ``RULE`` s may grant one of the following privileges.
 
 ``WRITE``
-    Shorthand to grant both ``PUT`` and ``RPC``.
+    Shorthand to grant both ``PUT`` and ``RPC`` requests.
 
 ``PUT``
     Allow PUT operation on all fields.
 
 ``RPC``
-    Allow RPC operation
+    Allow RPC operations.
 
 ``UNCACHED``
     Special privilege which allows a client to bypass deduplication/sharing of subscription data.
@@ -519,8 +648,8 @@ Privileges
 
 ``READ``
     Accepted for compatibility.
-    PVA Gateway always allows read access for any PV which is allowed by the PV List file.
-    Use a ``DENY`` in a PV List file to prevent client(s) from reading/subscribing to certain PVs.
+    PVA Gateway always allows read access for any PV which is allowed by the PVList file.
+    Use a ``DENY`` in a PVList file to prevent clients from reading or subscribing to certain PVs.
 
 HAG Hostnames and IPs
 ~~~~~~~~~~~~~~~~~~~~~
@@ -566,10 +695,10 @@ TRAPWRITE and Put logging
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If a ``RULE`` includes the ``TRAPWRITE`` modifier, then a ``PUT`` operation it allows
-will be logged through the ``p4p.gw.audit`` python logger.
+will be logged.
+Refer to the :ref:`gwlogconfig` section for more information.
 
-See the ``--logging`` CLI argument,
-and the python documentation of `dictConfig() <https://docs.python.org/library/logging.config.html#logging.config.dictConfig>`_
+Messages are logged through the ``p4p.gw.audit`` python logger.
 
 Application Notes
 -----------------
