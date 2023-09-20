@@ -52,6 +52,7 @@ struct GWGet {
 
     // guarded by GWUpstream::lock
 
+    // prototype also serves to accumulated deltas
     Value prototype;
     epicsTime lastget;
     Timer delay;
@@ -67,7 +68,8 @@ struct GWGet {
     bool firstget = true;
 
     std::vector<std::shared_ptr<server::ConnectOp>> setups;
-    std::vector<std::shared_ptr<server::ExecOp>> ops;
+    // (op, whether next reply is the first)
+    std::vector<std::pair<std::shared_ptr<server::ExecOp>, bool>> ops;
 };
 
 struct GWUpstream {

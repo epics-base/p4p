@@ -276,7 +276,7 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
                         setup->error(msg);
                     }
                     for(auto& op : ops) {
-                        op->error(msg);
+                        op.first->error(msg);
                     }
                 })
                 .onInit([get, us](const Value& prototype){
@@ -389,15 +389,29 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
                         }
 
                         try {
-                            auto value(result());
+                            auto value(result()); // "delta" from this (re)exec
+                            Value total; // can give every new client the same (copy of) accumulation
+
+                            get->prototype.from(value); // accumulate...
+
                             log_debug_printf(_logget, "'%s' GET exec complete\n", us->usname.c_str());
+
                             for(auto& op : ops) {
-                                op->reply(value);
+                                if(op.second) { // after first update, send delta
+                                    op.first->reply(value);
+
+                                } else { // first update to this client.  send accumulated
+                                    if(!total)
+                                        total = get->prototype.clone();
+
+                                    op.second = true;
+                                    op.first->reply(total);
+                                }
                             }
                         }catch(std::exception& e){
                             log_debug_printf(_logget, "'%s' GET exec complete err='%s'\n", us->usname.c_str(), e.what());
                             for(auto& op : ops) {
-                                op->error(e.what());
+                                op.first->error(e.what());
                             }
                         }
                     });
@@ -410,13 +424,13 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
 
             get->delay = std::move(dly);
             get->state = GWGet::Exec;
-            get->ops.emplace_back(std::move(sop));
+            get->ops.emplace_back(std::move(sop), false);
             break;
         }
         case GWGet::Exec:
             // combine with in progress upstream GET
             log_debug_printf(_logget, "'%s' GET exec combine\n", us->usname.c_str());
-            get->ops.emplace_back(std::move(sop));
+            get->ops.emplace_back(std::move(sop), false);
             break;
         case GWGet::Error:
             log_debug_printf(_logget, "'%s' GET exec error: %s\n", us->usname.c_str(), get->error.c_str());
