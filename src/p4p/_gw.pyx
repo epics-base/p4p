@@ -32,7 +32,7 @@ cdef extern from "pvxs_gw.h" namespace "p4p" nogil:
     ctypedef const GWChanInfo* GWChanInfoCP
 
     cdef cppclass GWUpstream:
-        unsigned get_holdoff
+        double get_holdoff
 
     cdef cppclass GWChan:
         const shared_ptr[GWUpstream] us
@@ -146,7 +146,7 @@ cdef class Channel(InfoBase):
         if audit is not None:
             self.channel.get().audit = audit==True
         if holdoff is not None:
-            self.channel.get().us.get().get_holdoff = holdoff*1000 # sec -> ms
+            self.channel.get().us.get().get_holdoff = holdoff
 
 @cython.no_gc_clear
 cdef class Provider(_p4p.Source):

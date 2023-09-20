@@ -92,7 +92,7 @@ struct GWUpstream {
     bool gcmark = false;
 
     // time in msec
-    std::atomic<unsigned> get_holdoff{};
+    std::atomic<double> get_holdoff{};
 
     // must be last (cf. ctor body)
     const std::shared_ptr<client::Connect> connector;

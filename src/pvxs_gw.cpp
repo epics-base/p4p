@@ -345,7 +345,7 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
 
         case GWGet::Idle: {
             // need to exec
-            auto delay = us->get_holdoff * 1e-3;
+            auto delay = us->get_holdoff.load();
             auto now(epicsTime::getCurrent());
             auto age(now - get->lastget);
 
