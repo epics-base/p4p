@@ -7,10 +7,12 @@ import json
 import weakref
 import threading
 
-try:
+try: # 2.7
     from Queue import Queue, Full, Empty
-except ImportError:
+    from time import time as monotonic
+except ImportError: # 3.x
     from queue import Queue, Full, Empty
+    from time import monotonic
 
 try:
     from io import StringIO
@@ -478,6 +480,7 @@ class TestHighLevelChained(TestHighLevel):
                 'autoaddrlist':False,
                 'bcastport':0,
                 'serverport':0,
+                'getholdoff':self.getholdoff,
             }],
         }, cfile)
         cfile.flush()
@@ -542,22 +545,31 @@ class TestHighLevelGetHoldOff(TestHighLevel):
     getholdoff = 0.5 # hopefully long enough for CI without exceeding my patience
 
     def test_get_holdoff(self):
+        N = 1 # shadow odometer counter
         _gw.addOdometer(self._us_server._S, 'odometer', 0)
 
-        N = 0
-        Vs = self._ds_client.get(['odometer', 'odometer', 'odometer'], timeout=self.timeout)
-        _log.debug('batch1: %s', Vs)
+        # first op will complete immeidately and start holdoff timer
+        T0 = monotonic()
+        Vs = self._ds_client.get('odometer', timeout=self.timeout)
+        self.assertEqual(Vs, N)
+        N = Vs + 1
 
-        # Depending on how things raced, these three values will be either 0 or 1
-        self.assertEqual(min(*Vs), N)
-        self.assertLessEqual(max(*Vs), N+1)
+        for _i in range(4):
+            # issue a batch.  Due to runner timing, holdoff may already have expired :(
+            # so make allowances...
+            T1 = monotonic()
+            Vs = self._ds_client.get(['odometer', 'odometer', 'odometer'], timeout=self.timeout)
+            T2 = monotonic()
+            Vmin = min(*Vs)
+            Vmax = max(*Vs)
 
-        N = max(*Vs)+1
-        Vs = self._ds_client.get(['odometer', 'odometer', 'odometer'], timeout=self.timeout)
-        _log.debug('batch2: %s', Vs)
+            self.assertTrue(Vmin==N and
+                            Vmax<=N+1 and
+                            T2-T1 >= self.getholdoff and
+                            T2-T0 >= (Vmax - Vmin + 1) * self.getholdoff,
+                            "%.3f, %.3f : %d %s"%(T1-T0, T2-T0, N, Vs))
 
-        self.assertEqual(min(*Vs), N)
-        self.assertLessEqual(max(*Vs), N+1)
+            N = Vmax+1
 
 class TestTestServer(RefTestCase):
     conf_template = '''

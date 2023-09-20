@@ -347,12 +347,13 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
             // need to exec
             auto delay = us->get_holdoff.load();
             auto now(epicsTime::getCurrent());
-            auto age(now - get->lastget);
+            auto age(now - us->lastget);
 
-            if(get->firstget || age <= delay)
+            log_debug_printf(_logget, "'%s' GET exec issue%s %.03f <= %.03f\n",
+                             us->usname.c_str(), us->firstget ? " first" : "", age, delay);
+
+            if(us->firstget || age >= delay)
                 delay = 0.0;
-
-            log_debug_printf(_logget, "'%s' GET exec issue %.03f\n", us->usname.c_str(), delay);
 
             // avoid ref loop GWGet::delay -> client::Operation -> GWChan -> GWUpstream -> GWGet
             std::weak_ptr<GWGet> wget(get);
@@ -417,8 +418,8 @@ void onGetCached(const std::shared_ptr<GWChan>& pv, const std::shared_ptr<server
                     });
 
                     // note time at which upstream GET is issued
-                    get->lastget = epicsTime::getCurrent();
-                    get->firstget = false;
+                    us->lastget = epicsTime::getCurrent();
+                    us->firstget = false;
                 });
             }
 

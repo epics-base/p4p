@@ -20,7 +20,7 @@ namespace {
 struct OdometerSource : public server::Source {
 
     std::string name;
-    uint64_t counter = 0u;
+    uint64_t counter = 1u;
     const Value prototype;
 
     explicit OdometerSource(const std::string& name)

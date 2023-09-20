@@ -54,7 +54,6 @@ struct GWGet {
 
     // prototype also serves to accumulated deltas
     Value prototype;
-    epicsTime lastget;
     Timer delay;
     std::string error;
 
@@ -64,8 +63,6 @@ struct GWGet {
         Exec,       // waiting for reExecGet() from upstream/client
         Error,      // abnormal completion from upstream/client
     } state = Connecting;
-
-    bool firstget = true;
 
     std::vector<std::shared_ptr<server::ConnectOp>> setups;
     // (op, whether next reply is the first)
@@ -88,6 +85,9 @@ struct GWUpstream {
     epicsMutex lock;
 
     std::weak_ptr<GWSubscription> subscription;
+
+    epicsTime lastget;
+    bool firstget = true;
 
     bool gcmark = false;
 
