@@ -50,7 +50,7 @@ to prevent the use of pre-built binarys (except for numpy). ::
     python -m pip install -U pip
     python -m pip install \
      --only-binary numpy \
-     --no-binary epicscorelibs,p4p \
+     --no-binary epicscorelibs,pvxslibs,p4p \
      nose2 p4p
     python -m nose2 p4p   # Optional: runs automatic tests
 
@@ -102,14 +102,9 @@ or with PIP::
 
    python3 -m pip install -r requirements-latest.txt
 
-From release tar.::
+From from versioned source.  (may replace "master" with release version number)::
 
-   curl -L 'https://github.com/mdavidsaver/p4p/releases/download/1.0/p4p-3.5.4.tar.gz' | tar -xz
-   cd p4p-3.5.4
-
-or from from versioned source.::
-
-   git clone https://github.com/mdavidsaver/p4p.git
+   git clone --branch master https://github.com/mdavidsaver/p4p.git
    cd p4p
 
 Set location of EPICS modules.  With EPICS >= 7.0.2::
