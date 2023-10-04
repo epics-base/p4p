@@ -422,3 +422,16 @@ class TestArray(RefTestCase):
         self.assertEqual(V2.value.dtype, pixels.dtype)
         self.assertEqual(V2.attribute[0].name, u'ColorMode')
         self.assertEqual(V2.attribute[0].value, 2)
+
+    def testAssign(self):
+        V = nt.NTNDArray.buildType()()
+        pixels = numpy.asarray([  # 2x3
+            [0, 1, 2],
+            [3, 4, 5],
+        ], dtype='u4')
+
+        nt.NTNDArray().assign(V, pixels)
+
+        assert_aequal(V.value, pixels.flatten())
+        self.assertEqual(V.dimension[0].size, 3)
+        self.assertEqual(V.dimension[1].size, 2)

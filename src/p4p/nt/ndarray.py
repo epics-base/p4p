@@ -193,7 +193,7 @@ class NTNDArray(NTBase):
     def assign(self, V, py):
         """Store python value in Value
         """
-        V.value = py
+        V[None] = self.wrap(py)
 
 def translateNDAttribute(name, value):
     if isinstance(value, Value) and 'value' in value: # assume to be NT-like
