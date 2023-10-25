@@ -7,7 +7,7 @@ for creating large (and small) scale distributed process control and data acqisi
 https://epics.anl.gov/
 
 P4P includes API for a `clientapi` and `serverapi`,
-as well as a `gwpage` executable (``pvagw``) with which can enforce an access control policy.
+as well as a `gwpage` executable (``pvagw``) which can optionally enforce an access control policy.
 
 Supports Linux, OSX, and Windows.  With python 2.7 and >=3.5 (>=3.6 for asyncio support).
 
