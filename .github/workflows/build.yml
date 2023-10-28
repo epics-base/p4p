@@ -10,8 +10,6 @@ jobs:
       # used by .ci/build-deps.sh for Make builds
       BRBASE: ${{ matrix.base }}
       BRPVXS: ${{ matrix.pvxs }}
-      # cf. https://github.com/numpy/numpy/issues/22623
-      SETUPTOOLS_USE_DISTUTILS: stdlib
     strategy:
       fail-fast: false
       matrix:
@@ -111,6 +109,14 @@ jobs:
             piparch: manylinux2014_x86_64
             numpy: numpy==1.23.5
             cython: Cython==0.29.35
+            skip_cothread: yes
+
+          - name: linux 3.12 amd64
+            os: ubuntu-latest
+            pyver: cp312-cp312
+            piparch: manylinux2014_x86_64
+            numpy: numpy==1.26.1
+            cython: Cython==0.29.36
             skip_cothread: yes
 
           # Linux py builds x64
@@ -216,6 +222,14 @@ jobs:
             cython: Cython==0.29.35
             skip_cothread: yes
 
+          - name: osx 3.12 intel
+            os: macos-latest
+            python: "3.12"
+            piparch: macosx_10_9_intel
+            numpy: numpy==1.26.1
+            cython: Cython==0.29.36
+            skip_cothread: yes
+
           # Windows py builds
 
           ## missing Microsoft Visual C++ 9.0
@@ -268,6 +282,13 @@ jobs:
           - name: win64 3.11
             os: windows-latest
             python: "3.11"
+            piparch: win_amd64
+            profile: latest
+            skip_cothread: yes
+
+          - name: win64 3.12
+            os: windows-latest
+            python: "3.12"
             piparch: win_amd64
             profile: latest
             skip_cothread: yes
@@ -360,7 +381,6 @@ jobs:
           python -m pip install p4p*.whl
           python -m ci_core_dumper exec python -m nose2 -v p4p
 
-
       - name: Docker PY build
         if: matrix.pyver && !matrix.base && !matrix.source
         run: |
@@ -372,7 +392,6 @@ jobs:
           [ -d dist ]
           ls dist/*
           export PATH="/opt/python/${{ matrix.pyver }}/bin:\$PATH"
-          export SETUPTOOLS_USE_DISTUTILS=stdlib
           which python
           python -m pip install -U pip
           python -m pip install setuptools wheel nose2

@@ -33,11 +33,16 @@ libdir = get_config_var('LIBDIR') or ''
 
 have_np='NO'
 try:
-    from numpy.distutils.misc_util import get_numpy_include_dirs
-    incdirs = get_numpy_include_dirs()+incdirs
+    from numpy import get_include
+    incdirs.append(get_include())
     have_np='YES'
 except ImportError:
-    pass
+    try:
+        from numpy.distutils.misc_util import get_numpy_include_dirs
+        incdirs = get_numpy_include_dirs()+incdirs
+        have_np='YES'
+    except ImportError:
+        pass
 
 print('TARGET_CFLAGS +=',get_config_var('BASECFLAGS'), file=out)
 print('TARGET_CXXFLAGS +=',get_config_var('BASECFLAGS'), file=out)

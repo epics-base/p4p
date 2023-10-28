@@ -8,7 +8,17 @@ import sysconfig
 from setuptools_dso import Extension, setup, cythonize
 
 import numpy
-from numpy.distutils.misc_util import get_numpy_include_dirs
+
+numpy_include_dirs = []
+try:
+    # For numpy >1.23.0 in python 3.12
+    from numpy import get_include
+    numpy_include_dirs = [get_include()]
+except ImportError:
+    from numpy.distutils.misc_util import get_numpy_include_dirs
+    numpy_include_dirs = get_numpy_include_dirs()
+
+
 
 import epicscorelibs.path
 import epicscorelibs.version
@@ -56,7 +66,7 @@ exts = cythonize([
             "src/pvxs_type.cpp",
             "src/pvxs_value.cpp",
         ],
-        include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
+        include_dirs = numpy_include_dirs + [epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
         define_macros = cppflags + [
             ('PY_ARRAY_UNIQUE_SYMBOL', 'PVXS_PyArray_API'),
             ('PVXS_ENABLE_EXPERT_API', None),
@@ -75,7 +85,7 @@ exts = cythonize([
             'src/pvxs_gw.cpp',
             'src/pvxs_odometer.cpp'
         ],
-        include_dirs = get_numpy_include_dirs()+[epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
+        include_dirs = numpy_include_dirs + [epicscorelibs.path.include_path, pvxslibs.path.include_path, 'src', 'src/p4p'],
         define_macros = cppflags + [('PVXS_ENABLE_EXPERT_API', None)],
         extra_compile_args = get_config_var('CXXFLAGS')+cxxflags,
         extra_link_args = get_config_var('LDFLAGS')+ldflags,
