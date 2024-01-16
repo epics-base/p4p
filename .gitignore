@@ -13,7 +13,8 @@ envPaths
 _*.h
 _*.cpp
 O.*/
-QtC-*
+/QtC-*
+/.qtc_*
 *.so
 *.pyc
 *.local
