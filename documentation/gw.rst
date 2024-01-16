@@ -566,11 +566,11 @@ When a gateway Server receives a request from a client to access a PV,
 the PV name is compared to each pattern in the list.
 
 The order in which regular expressions are matched is that all DENY statements are considered
-before any ALLOW/ALIAS statements (regardless of lexical order).
+before any ALLOW/ALIAS statements (regardless of the order of lines).
 PV names which do not match any statement are DENYed.
 
 When a PV name matches more than one ALLOW/ALIAS statements,
-lexical order is used.
+the order of lines is used.
 The last match will have effect.
 
 Considering the following PVList file: ::
