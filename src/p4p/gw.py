@@ -745,21 +745,28 @@ def main(args=None):
     args = getargs().parse_args(args)
 
     catfile = None
+    I = '%i'
+    conf = '/etc/pvagw/%i.conf'
     if args.example_config:
         catfile = 'example.conf'
+        I = os.path.splitext(os.path.basename(args.config))[0]
+        conf = os.path.abspath(args.config)
     elif args.example_systemd:
         catfile = 'pvagw@.service'
+        inst = os.path.splitext(os.path.basename(args.config))[0].split('@')
+        if len(inst) == 2 and inst[1]:
+            I = inst[1]
+            conf = '/etc/pvagw/{0}.conf'.format(I)
 
     if catfile is not None:
         if args.config=='-':
             O = sys.stdout
-            I = '%i'
-            conf = '/etc/pvagw/%i.conf'
-            print('# eg. save as /etc/systemd/system/pvagw@.service', file=sys.stderr)
+            if args.example_config:
+                print('# eg. save as /etc/pvagw/<instance>.conf', file=sys.stderr)
+            elif args.example_systemd:
+                print('# eg. save as /etc/systemd/system/pvagw@.service', file=sys.stderr)
         else:
             O = open(args.config, 'w')
-            I = os.path.splitext(os.path.basename(args.config))[0]
-            conf = os.path.abspath(args.config)
 
         pythonpath=os.environ.get('PYTHONPATH','').split(os.pathsep)
         modroot = os.path.dirname(os.path.dirname(__file__)) # directory containing p4p/gw.py
