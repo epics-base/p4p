@@ -8,7 +8,9 @@ import gc
 import threading
 
 from ..server import Server, installProvider, removeProvider, DynamicProvider, StaticProvider
+from ..server.thread import SharedPV
 from ..client.thread import Context
+from ..nt import NTScalar
 from .utils import RefTestCase
 
 
@@ -95,6 +97,24 @@ class TestDummyProvider(RefTestCase):
             self.assertIsNone(p())
         finally:
             removeProvider("foo")
+
+class TestMultipleProviders(RefTestCase):
+    class Single(DynamicProvider):
+        def __init__(self, pv):
+            super(TestMultipleProviders.Single, self).__init__(pv, self)
+            self._name = pv
+            self._pv = SharedPV(nt=NTScalar('s'), initial=pv)
+        def testChannel(self, name):
+            return name==self._name
+        def makeChannel(self, name, peer):
+            if name==self._name:
+                return self._pv
+
+    def test_multiple(self):
+        with Server([self.Single('one'), self.Single('two')], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+                self.assertEqual('one', C.get('one'))
+                self.assertEqual('two', C.get('two'))
 
 class TestServerConf(RefTestCase):
     def test_bad_iface(self):
