@@ -23,12 +23,6 @@ PROD_DEPLIB_DIRS += $(PY_LIBDIRS)
 
 INCLUDES += $(PY_INCDIRS:%=-I%)
 
-ifeq ($(HAVE_NUMPY),YES)
-TARGET_CPPFLAGS += -DHAVE_NUMPY
-else
-$(error numpy required)
-endif
-
 #LIB_SYS_LIBS += python$(PY_LD_VER)
 #PROD_SYS_LIBS += python$(PY_LD_VER)
 

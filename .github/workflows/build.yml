@@ -10,8 +10,6 @@ jobs:
       # used by .ci/build-deps.sh for Make builds
       BRBASE: ${{ matrix.base }}
       BRPVXS: ${{ matrix.pvxs }}
-      # cf. https://github.com/numpy/numpy/issues/22623
-      SETUPTOOLS_USE_DISTUTILS: stdlib
     strategy:
       fail-fast: false
       matrix:

@@ -8,7 +8,11 @@ import sysconfig
 from setuptools_dso import Extension, setup, cythonize
 
 import numpy
-from numpy.distutils.misc_util import get_numpy_include_dirs
+try:
+    from numpy.distutils.misc_util import get_numpy_include_dirs
+except ImportError:
+    def get_numpy_include_dirs():
+        return [numpy.get_include()]
 
 import epicscorelibs.path
 import epicscorelibs.version
