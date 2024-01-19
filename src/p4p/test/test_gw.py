@@ -43,8 +43,8 @@ class TestTemplate(unittest.TestCase):
             content = F.read()
             self.assertRegex(content, '"statusprefix"')
 
-    def test_systemd(self):
-        with NamedTemporaryFile() as F:
+    def test_systemd_instance(self):
+        with NamedTemporaryFile(suffix='@blah.service') as F:
             try:
                 main(['--example-systemd', F.name])
             except SystemExit as e:
@@ -52,6 +52,19 @@ class TestTemplate(unittest.TestCase):
 
             F.seek(0)
             content = F.read()
+            self.assertRegex(content, '-m p4p.gw /etc/pvagw/blah.conf')
+            self.assertRegex(content, 'multi-user.target')
+
+    def test_systemd_template(self):
+        with NamedTemporaryFile(suffix='@.service') as F:
+            try:
+                main(['--example-systemd', F.name])
+            except SystemExit as e:
+                self.assertEqual(e.code, 0)
+
+            F.seek(0)
+            content = F.read()
+            self.assertRegex(content, '-m p4p.gw /etc/pvagw/%i.conf')
             self.assertRegex(content, 'multi-user.target')
 
 class TestGC(RefTestCase):
