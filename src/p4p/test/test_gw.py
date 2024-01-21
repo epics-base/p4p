@@ -225,7 +225,7 @@ class TestLowLevel(RefTestCase):
         Q2 = Queue(maxsize=4)
 
         with self._ds_client.monitor('pv:ro', Q1.put, notify_disconnect=True):
-            
+
             self.assertIsInstance(Q1.get(timeout=self.timeout), Disconnected)
             self.assertEqual(42, Q1.get(timeout=self.timeout))
 
@@ -296,7 +296,7 @@ class TestHighLevel(RefTestCase):
         _log.debug("Exit setUp")
 
     def setUpGW(self, usconfig):
-        cfile = self._cfile = NamedTemporaryFile('w+')
+        cfile = self._cfile = NamedTemporaryFile(mode='w+')
         json.dump({
             'version':2,
             'clients':[{
@@ -474,7 +474,7 @@ class TestHighLevelChained(TestHighLevel):
 
     def setUpGW(self, usconfig):
         # First GW, connected to upstream server
-        cfile = self._cfile = NamedTemporaryFile('w+')
+        cfile = self._cfile = NamedTemporaryFile(mode='w+')
         json.dump({
             'version':2,
             'clients':[{
@@ -510,7 +510,7 @@ class TestHighLevelChained(TestHighLevel):
         gw1config = self._app1.servers[u'server1_0'].conf()
 
         # Second GW, connected to first
-        cfile = self._cfile = NamedTemporaryFile('w+')
+        cfile = self._cfile = NamedTemporaryFile(mode='w+')
         json.dump({
             'version':2,
             'clients':[{
@@ -635,7 +635,7 @@ class TestTestServer(RefTestCase):
         return self._log.read()
 
     def write(self, content):
-        F = NamedTemporaryFile('w+')
+        F = NamedTemporaryFile(mode='w+')
         self._files.append(F)
         F.write(content)
         F.flush()
