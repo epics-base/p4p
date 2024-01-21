@@ -170,9 +170,14 @@ class RegularNamedTemporaryFile(object):
     """Like tempfile.NamedTemporaryFile which doesn't use O_TEMPORARY on windows
     """
     def __init__(self, *args, **kws):
-        fd, self.name = tempfile.mkstemp(**kws)
+        mkstemp_kws = {k: v for k, v in kws.items()
+                       if k in ['suffix', 'prefix', 'dir']}
+        fd, self.name = tempfile.mkstemp(**mkstemp_kws)
         try:
-            self.file = os.fdopen(fd, *args, **kws)
+            if 'mode' in kws:
+                self.file = os.fdopen(fd, kws['mode'])
+            else:
+                self.file = os.fdopen(fd)
             self.read = self.file.read
             self.write = self.file.write
             self.flush = self.file.flush
