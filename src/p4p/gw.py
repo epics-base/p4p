@@ -10,6 +10,7 @@ import pprint
 import json
 import re
 import sqlite3
+from contextlib import closing
 
 from functools import wraps, reduce
 
@@ -171,7 +172,8 @@ class GWStats(object):
             self.statsdb = self.__tempdb.name
             _log.debug("Using temporary stats db: %s", self.statsdb)
 
-        with sqlite3.connect(self.statsdb) as C:
+        # open .db and manage transaction
+        with closing(sqlite3.connect(self.statsdb)) as C, C:
             C.executescript("""
                 DROP TABLE IF EXISTS us;
                 DROP TABLE IF EXISTS usbyname;
@@ -311,7 +313,7 @@ class GWStats(object):
         T0 = time.time()
         self.refsPV.post(listRefs())
 
-        with sqlite3.connect(self.statsdb) as C:
+        with closing(sqlite3.connect(self.statsdb)) as C, C:
             C.executescript('''
                 DELETE FROM us;
                 DELETE FROM ds;
