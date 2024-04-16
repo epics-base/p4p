@@ -8,11 +8,6 @@ import sysconfig
 from setuptools_dso import Extension, setup, cythonize
 
 import numpy
-try:
-    from numpy.distutils.misc_util import get_numpy_include_dirs
-except ImportError:
-    def get_numpy_include_dirs():
-        return [numpy.get_include()]
 
 import epicscorelibs.path
 import epicscorelibs.version
@@ -20,6 +15,11 @@ from epicscorelibs.config import get_config_var
 
 import pvxslibs.path
 import pvxslibs.version
+
+
+def get_numpy_include_dirs():
+    return [numpy.get_include()]
+
 
 with open('src/p4p/version.py', 'r') as F:
     lcl = {}

@@ -43,7 +43,7 @@ jobs:
           # Check build from .tar
           - name: Source
             os: ubuntu-latest
-            python: "3.9"
+            python: "3.12"
             source: true
 
           # Linux py builds x64
@@ -109,6 +109,13 @@ jobs:
             piparch: manylinux2014_x86_64
             numpy: numpy==1.23.5
             cython: Cython==0.29.35
+
+          - name: linux 3.12 amd64
+            os: ubuntu-latest
+            pyver: cp312-cp312
+            piparch: manylinux2014_x86_64
+            numpy: numpy==1.26.4
+            cython: Cython==3.0.10
             skip_cothread: yes
 
           # Linux py builds x64
@@ -163,9 +170,13 @@ jobs:
           - name: linux 3.9 i686
             os: ubuntu-latest
             pyver: cp39-cp39
+
+          - name: linux 3.12 i686
+            os: ubuntu-latest
+            pyver: cp312-cp312
             piparch: manylinux2010_i686
-            numpy: numpy==1.19.3
-            cython: Cython==0.29.23
+            numpy: numpy==1.26.4
+            cython: Cython==3.0.10
             pre: linux32
 
           # numpy i386 wheels not built >= 3.10
@@ -212,13 +223,20 @@ jobs:
             piparch: macosx_10_9_intel
             numpy: numpy==1.23.5
             cython: Cython==0.29.35
+
+          - name: osx 3.12 intel
+            os: macos-latest
+            python: "3.12"
+            piparch: macosx_10_9_intel
+            numpy: numpy==1.26.4
+            cython: Cython==3.0.10
             skip_cothread: yes
 
           # Windows py builds
 
           ## missing Microsoft Visual C++ 9.0
           #- os: windows-latest
-          #  python: "2.7"
+          #  python: "3.12"
           #  piparch: win_amd64
 
           - name: win64 3.5
@@ -266,6 +284,13 @@ jobs:
           - name: win64 3.11
             os: windows-latest
             python: "3.11"
+            piparch: win_amd64
+            profile: latest
+            skip_cothread: yes
+
+          - name: win64 3.12
+            os: windows-latest
+            python: "3.12"
             piparch: win_amd64
             profile: latest
             skip_cothread: yes
