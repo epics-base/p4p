@@ -4,8 +4,6 @@
 pvput -w 10 foo 4
 """
 
-from __future__ import print_function
-
 import time, logging
 
 import cothread

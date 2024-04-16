@@ -10,8 +10,6 @@ to show that this can be done asynchronously.
    $ pvget -m foo
 """
 
-from __future__ import print_function
-
 import time, logging
 _log = logging.getLogger(__name__)
 

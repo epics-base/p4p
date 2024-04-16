@@ -3,7 +3,6 @@
 # cf.
 # example/monitor_client.py
 
-from __future__ import print_function
 
 import sys, time, logging
 
@@ -16,6 +15,7 @@ def cb(value):
         print("Meta update")
         for fld in value.raw.asSet():
             print(" ",fld,value.raw[fld])
+
 
 print("Create Context")
 with Context('pva') as ctxt:
