@@ -4,7 +4,7 @@
 Building
 ========
 
-Release tars available from https://github.com/mdavidsaver/p4p/releases
+Release tars available from https://github.com/epics-base/p4p/releases
 
 The P4P modules requires:
 
@@ -104,7 +104,7 @@ or with PIP::
 
 From from versioned source.  (may replace "master" with release version number)::
 
-   git clone --branch master https://github.com/mdavidsaver/p4p.git
+   git clone --branch master https://github.com/epics-base/p4p.git
    cd p4p
 
 Set location of EPICS modules.  With EPICS >= 7.0.2::
@@ -152,7 +152,7 @@ If the necessary EPICS modules are not present, then they may be built from sour
 
    sudo apt-get install libreadline6-dev libncurses5-dev perl
    git clone https://github.com/epics-base/epics-base.git
-   git clone https://github.com/mdavidsaver/pvxs.git
+   git clone https://github.com/epics-base/pvxs.git
    cat <<EOF > pvxs/configure/RELEASE.local
    EPICS_BASE=$PWD/epics-base
    EOF

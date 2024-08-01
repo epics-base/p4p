@@ -278,6 +278,6 @@ API Reference
 Relation to C++ API
 -------------------
 
-For those familiar with the `PVXS <https://mdavidsaver.github.io/pvxs/>` API.
+For those familiar with the `PVXS <https://epics-base.github.io/pvxs/>` API.
 A :py:class:`Type` wraps a TypeDef.
 :py:class:`Value` wraps a Value.

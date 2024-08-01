@@ -19,8 +19,8 @@ The recommended starting point is to install from pypi.org. ::
     python -m pip install p4p nose2
     python -m nose2 p4p   # Optional: runs automatic tests
 
-- VCS: https://github.com/mdavidsaver/p4p
-- Docs: https://mdavidsaver.github.io/p4p/
+- VCS: https://github.com/epics-base/p4p
+- Docs: https://epics-base.github.io/p4p/
 
 Contents:
 

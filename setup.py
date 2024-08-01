@@ -99,7 +99,7 @@ setup(
     description="Python interface to PVAccess protocol client",
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://mdavidsaver.github.io/p4p',
+    url='https://epics-base.github.io/p4p',
     author='Michael Davidsaver',
     author_email='mdavidsaver@gmail.com',
     license='BSD',
