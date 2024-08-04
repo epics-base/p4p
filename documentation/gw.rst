@@ -231,9 +231,9 @@ Configuration is provided as a file using JSON syntax with C-style comments. ::
 
 See also PVXS client_ and server_ configuration references.
 
-.. _client: https://mdavidsaver.github.io/pvxs/client.html#configuration
+.. _client: https://epics-base.github.io/pvxs/client.html#configuration
 
-.. _server: https://mdavidsaver.github.io/pvxs/server.html#configuration
+.. _server: https://epics-base.github.io/pvxs/server.html#configuration
 
 Run ``pvagw --example-config -`` to see another example configuration.
 

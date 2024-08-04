@@ -11,12 +11,12 @@ Python bindings for the PVAccess network client and server.
 
 See documentation
 
-https://mdavidsaver.github.io/p4p/
+https://epics-base.github.io/p4p/
 
 Source
 
-https://github.com/mdavidsaver/p4p/
+https://github.com/epics-base/p4p/
 
 CI results
 
-![Github Actions](https://github.com/mdavidsaver/p4p/workflows/P4P/badge.svg)
+![Github Actions](https://github.com/epics-base/p4p/workflows/P4P/badge.svg)

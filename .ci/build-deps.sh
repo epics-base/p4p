@@ -33,7 +33,7 @@ fi
 
 if [ "$BRPVXS" ]
 then
-    git clone --quiet --recursive --depth 5 --branch "$BRPVXS" https://github.com/mdavidsaver/pvxs.git pvxs
+    git clone --quiet --recursive --depth 5 --branch "$BRPVXS" https://github.com/epics-base/pvxs.git pvxs
     (cd pvxs && git log -n1 )
     cat << EOF >> $CURDIR/configure/RELEASE.local
 PVXS=$HOME/.source/pvxs
