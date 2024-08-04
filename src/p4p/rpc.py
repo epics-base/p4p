@@ -264,13 +264,14 @@ def _wrapMethod(K, V):
     if S.varargs is not None or keywords is not None:
         raise TypeError("vararg not supported for proxy method %s" % K)
 
-    if len(S.args) != len(S.defaults):
+    args, defaults = ([] if v is None else v for v in (S.args, S.defaults))
+    if len(args) != len(defaults):
         raise TypeError("proxy method %s must specify types for all arguments" % K)
 
     try:
-        NT = NTURI(zip(S.args, S.defaults))
+        NT = NTURI(zip(args, defaults))
     except Exception as e:
-        raise TypeError("%s : failed to build method from %s, %s" % (e, S.args, S.defaults))
+        raise TypeError("%s : failed to build method from %s, %s" % (e, args, defaults))
 
     @wraps(V)
     def mcall(self, *args, **kws):
