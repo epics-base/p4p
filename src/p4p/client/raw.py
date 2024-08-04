@@ -13,7 +13,7 @@ except ImportError:
     from queue import Queue, Full, Empty
 
 from .. import _p4p
-from .._p4p import Cancelled, Disconnected, Finished, RemoteError
+from .._p4p import Cancelled, Disconnected, Finished, RemoteError, Hub
 
 from ..wrapper import Value, Type
 from ..nt import buildNT
@@ -25,6 +25,7 @@ __all__ = (
     'Subscription',
     'Context',
     'RemoteError',
+    'Hub',
 )
 
 

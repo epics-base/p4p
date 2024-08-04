@@ -3,6 +3,7 @@ import logging
 _log = logging.getLogger(__name__)
 
 import asyncio
+import socket
 
 from functools import partial, wraps
 
@@ -119,6 +120,39 @@ class Context(raw.Context):
 
     def __init__(self, provider='pva', conf=None, useenv=True, nt=None, unwrap=None):
         super(Context, self).__init__(provider, conf=conf, useenv=useenv, nt=nt, unwrap=unwrap)
+
+        self._hub = None
+        self._hub_reader = None
+
+    async def __hub_read(self):
+        W = None
+        try:
+            sock = socket.fromfd(self._hub.fileno(), socket.AF_INET, socket.SOCK_STREAM) # dup()s
+            R, W = await asyncio.open_connection(sock=sock)
+            while True:
+                await R.read(1024) # ignore what is read.  Only meaning is to wakeup and poll()
+                self._hub.handle()
+        except asyncio.CancelledError:
+            pass
+        except:
+            _log.exception("Error while processing Notifications")
+            raise
+        finally:
+            if W is not None:
+                W.close()
+
+    def __hub(self):
+        H = self._hub
+        if H is None:
+            self._hub = H = raw.Hub(blocking=False)
+            self._hub_reader = create_task(self.__hub_read())
+        return H
+
+    def close(self):
+        if self._hub is not None:
+            self._hub_reader.cancel()
+            self._hub = self._hub_reader = None
+        super(Context, self).close()
 
     async def get(self, name, request=None):
         """Fetch current value of some number of PVs.
@@ -293,9 +327,10 @@ class Context(raw.Context):
         """
         assert asyncio.iscoroutinefunction(cb), "monitor callback must be coroutine"
         R = Subscription(name, cb, notify_disconnect=notify_disconnect)
-        cb = partial(get_running_loop().call_soon_threadsafe, R._E.set)
+        cb = R._E.set
 
-        R._S = super(Context, self).monitor(name, cb, request)
+        R._S = super(Context, self).monitor(name, cb, request, notify_disconnect=notify_disconnect,
+                                            hub=self.__hub())
         return R
 
 
@@ -345,9 +380,12 @@ class Subscription(object):
         assert self._S is None, "Not close()'d"
         await self._T
 
+    def stats(self):
+        return self._S.stats()
+
     async def _handle(self):
         if self._notify_disconnect:
-            await self._cb(Disconnected())  # all subscriptions are inittially disconnected
+            await self._cb(Disconnected())  # all subscriptions are initially disconnected
 
         E = None
         try:

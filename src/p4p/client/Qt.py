@@ -103,6 +103,9 @@ class MCache(QObject):
         # schedule to receive initial update later (avoids recursion)
         QCoreApplication.postEvent(self, CBEvent(slot))
 
+    def stats(self):
+        return self._op.stats()
+
     def _event(self):
         _log.debug('event1 %s', self.name)
         # called on PVA worker thread
