@@ -47,6 +47,7 @@ jobs:
             source: true
 
           # Linux py builds x64
+          # TODO: manylinux1 and 2014 are EOL, even more reason to remove these supported versions
           - name: linux 2.7 amd64
             os: ubuntu-latest
             pyver: cp27-cp27m
@@ -114,11 +115,12 @@ jobs:
             os: ubuntu-latest
             pyver: cp312-cp312
             piparch: manylinux2014_x86_64
-            numpy: numpy==1.26.4
+            numpy: numpy==2.0.1
             cython: Cython==3.0.10
             skip_cothread: yes
 
           # Linux py builds x64
+          # TODO: manylinux1 and 2014 are EOL, even more reason to remove these supported versions
           - name: linux 2.7 i686
             os: ubuntu-latest
             pyver: cp27-cp27m
@@ -158,77 +160,80 @@ jobs:
             numpy: numpy==1.16.2
             cython: Cython==0.29.2
             pre: linux32
+            skip_cothread: yes
 
           - name: linux 3.8 i686
             os: ubuntu-latest
             pyver: cp38-cp38
             piparch: manylinux1_i686
-            numpy: numpy==1.17.3
+            numpy: numpy==1.19.5
             cython: Cython==0.29.2
             pre: linux32
+            skip_cothread: yes
 
           - name: linux 3.9 i686
             os: ubuntu-latest
             pyver: cp39-cp39
-
-          - name: linux 3.12 i686
-            os: ubuntu-latest
-            pyver: cp312-cp312
             piparch: manylinux2010_i686
-            numpy: numpy==1.26.4
-            cython: Cython==3.0.10
+            numpy: numpy==1.19.5
+            cython: Cython==0.29.23
             pre: linux32
+            skip_cothread: yes
 
           # numpy i386 wheels not built >= 3.10
 
           # OSX py builds
           - name: osx 3.6 intel
-            os: macos-latest
+            os: macos-13
             python: "3.6"
             piparch: macosx_10_9_intel
             numpy: numpy==1.11.3
             cython: Cython==0.29.2
 
           - name: osx 3.7 intel
-            os: macos-latest
+            os: macos-13
             python: "3.7"
             piparch: macosx_10_9_intel
             numpy: numpy==1.16.2
             cython: Cython==0.29.2
 
-          - name: osx 3.8 intel
+          - name: osx 3.8 arm64
             os: macos-latest
             python: "3.8"
-            piparch: macosx_10_9_intel
-            numpy: numpy==1.17.3
+            piparch: macosx_11_0_universal2
+            numpy: numpy==1.24.4
             cython: Cython==0.29.2
+            skip_cothread: yes
 
-          - name: osx 3.9 intel
+          - name: osx 3.9 arm64
             os: macos-latest
             python: "3.9"
-            piparch: macosx_10_9_intel
-            numpy: numpy==1.19.3
-            cython: Cython==0.29.23
+            piparch: macosx_11_0_universal2
+            numpy: numpy==2.0.1
+            cython: Cython==3.0.10
+            skip_cothread: yes
 
-          - name: osx 3.10 intel
+          - name: osx 3.10 arm64
             os: macos-latest
             python: "3.10"
-            piparch: macosx_10_9_intel
-            numpy: numpy==1.22.0
-            cython: Cython==0.29.23
+            piparch: macosx_11_0_universal2
+            numpy: numpy==2.0.1
+            cython: Cython==3.0.10
+            skip_cothread: yes
 
-          - name: osx 3.11 intel
+          - name: osx 3.11 arm64
             os: macos-latest
             python: "3.11"
-            piparch: macosx_10_9_intel
-            numpy: numpy==1.23.5
-            cython: Cython==0.29.35
+            piparch: macosx_11_0_universal2
+            numpy: numpy==2.0.1
+            cython: Cython==3.0.10
+            skip_cothread: yes
 
-          - name: osx 3.12 intel
+          - name: osx 3.12 arm64
             os: macos-latest
             python: "3.12"
-            piparch: macosx_10_9_intel
-            numpy: numpy==1.26.4
+            piparch: macosx_11_0_universal2
+            numpy: numpy==2.0.1
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -302,10 +307,16 @@ jobs:
 
       - name: Setup native python
         if: matrix.python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           #architecture: x64
+
+      # TLS 1.0 and 1.1 support was removed from pypi so the cached pip won't work
+      - name: Python 3.5 Fix
+        if: ${{ matrix.python == '3.5' }}
+        run: |
+          curl https://bootstrap.pypa.io/pip/3.5/get-pip.py | python
 
       - name: Automatic core dumper analysis
         uses: mdavidsaver/ci-core-dumper@master
@@ -383,7 +394,6 @@ jobs:
           python -m pip install p4p*.whl
           python -m ci_core_dumper exec python -m nose2 -v p4p
 
-
       - name: Docker PY build
         if: matrix.pyver && !matrix.base && !matrix.source
         run: |
@@ -395,7 +405,6 @@ jobs:
           [ -d dist ]
           ls dist/*
           export PATH="/opt/python/${{ matrix.pyver }}/bin:\$PATH"
-          export SETUPTOOLS_USE_DISTUTILS=stdlib
           which python
           python -m pip install -U pip
           python -m pip install setuptools wheel nose2
