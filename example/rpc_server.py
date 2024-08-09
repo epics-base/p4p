@@ -22,8 +22,6 @@ or rpc_client.py
 
 """
 
-from __future__ import print_function
-
 import time, logging
 
 from p4p.rpc import rpc, quickRPCServer

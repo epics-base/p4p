@@ -3,8 +3,6 @@
 to the GHA environment for subsequent actions if building a pre-release.
 """
 
-from __future__ import print_function
-
 import os
 
 with open('src/p4p/version.py', 'r') as F:
