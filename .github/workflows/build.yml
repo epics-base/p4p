@@ -94,22 +94,22 @@ jobs:
             os: ubuntu-latest
             pyver: cp39-cp39
             piparch: manylinux2010_x86_64
-            numpy: numpy==1.19.3
-            cython: Cython==0.29.23
+            numpy: numpy==2.0.1
+            cython: Cython==3.0.10
 
           - name: linux 3.10 amd64
             os: ubuntu-latest
             pyver: cp310-cp310
             piparch: manylinux2014_x86_64
-            numpy: numpy==1.22.0
-            cython: Cython==0.29.23
+            numpy: numpy==2.0.1
+            cython: Cython==3.0.10
 
           - name: linux 3.11 amd64
             os: ubuntu-latest
             pyver: cp311-cp311
             piparch: manylinux2014_x86_64
-            numpy: numpy==1.23.5
-            cython: Cython==0.29.35
+            numpy: numpy==2.0.1
+            cython: Cython==3.0.10
 
           - name: linux 3.12 amd64
             os: ubuntu-latest
