@@ -67,4 +67,4 @@ class Version(object):
     def __gt__(self, o):
         return self._cmp(o)>0
 
-version = Version('4.2.0a1')
+version = Version('4.2.0a2')
