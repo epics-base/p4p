@@ -93,6 +93,20 @@ exts = cythonize([
 with open(os.path.join(os.path.dirname(__file__), 'README.md')) as F:
     long_description = F.read()
 
+install_requires = [
+    epicscorelibs.version.abi_requires(),
+    pvxslibs.version.abi_requires(),
+    'nose2>=0.8.0',
+    'ply', # for asLib
+]
+
+if numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0b1':
+    install_requires += ['numpy >= 1.7', 'numpy < 3']
+else:
+    # assume ABI forward compatibility as indicated by
+    # https://github.com/numpy/numpy/blob/master/numpy/core/setup_common.py#L28
+    install_requires += ['numpy >=%s'%numpy.version.short_version, 'numpy < 2']
+
 setup(
     name='p4p',
     version=package_version,
@@ -131,15 +145,7 @@ setup(
     package_dir={'':'src'},
     package_data={'p4p': ['*.conf', '*.service']},
     ext_modules = exts,
-    install_requires = [
-        epicscorelibs.version.abi_requires(),
-        pvxslibs.version.abi_requires(),
-        # assume ABI forward compatibility as indicated by
-        # https://github.com/numpy/numpy/blob/master/numpy/core/setup_common.py#L28
-        'numpy >=%s'%numpy.version.short_version,
-        'nose2>=0.8.0',
-        'ply', # for asLib
-    ],
+    install_requires = install_requires,
     extras_require={
         'qt': ['qtpy'],
     },
