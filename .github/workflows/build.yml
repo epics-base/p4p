@@ -94,8 +94,8 @@ jobs:
             os: ubuntu-latest
             pyver: cp39-cp39
             piparch: manylinux2010_x86_64
-            numpy: numpy==2.0.1
-            cython: Cython==3.0.10
+            numpy: numpy==1.19.3
+            cython: Cython==0.29.23
 
           - name: linux 3.10 amd64
             os: ubuntu-latest
