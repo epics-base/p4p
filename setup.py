@@ -100,7 +100,7 @@ install_requires = [
     'ply', # for asLib
 ]
 
-if numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0b1':
+if hasattr(numpy.lib, "NumpyVersion") and numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0b1':
     install_requires += ['numpy >= 1.7', 'numpy < 3']
 else:
     # assume ABI forward compatibility as indicated by
