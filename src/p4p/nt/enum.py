@@ -67,8 +67,12 @@ class NTEnum(NTBase):
             V['value.choices'] = choices
 
         if isinstance(value, dict):
-            # assume dict of index and choices list
-            V.value = value
+            if value.keys() == set(['index', 'choices']):
+                # assume dict for Value.value (index and choices list)
+                V.value = value
+            else:
+                # assume dict for Value
+                V = Value(self.type, value)
             self._choices = V['value.choices']
         else:
             # index or string
