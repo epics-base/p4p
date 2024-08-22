@@ -27,7 +27,9 @@ with open('src/p4p/version.py', 'r') as F:
     package_version = str(lcl['version'])
     del lcl
 
-cxxflags = ['-std=c++11']
+cxxflags = []
+if get_config_var('CMPLR_CLASS') in ('gcc', 'clang'):
+    cxxflags += ['-std=c++11']
 ldflags = []
 import sys
 import platform
