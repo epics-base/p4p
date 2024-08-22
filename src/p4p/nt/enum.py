@@ -38,6 +38,8 @@ class ntenum(ntwrappercommon, int):
 class NTEnum(NTBase):
     """Describes a string selected from among a list of possible choices.  Stored internally as an integer
     """
+    Value = Value
+
     @staticmethod
     def buildType(extra=[], display=False, control=False, valueAlarm=False):
         F = [
@@ -61,23 +63,28 @@ class NTEnum(NTBase):
 
     def wrap(self, value, choices=None, **kws):
         """Pack python value into Value
-        """
-        V = self.type()
-        if choices is not None:
-            V['value.choices'] = choices
 
-        if isinstance(value, dict):
-            if value.keys() == set(['index', 'choices']):
-                # assume dict for Value.value (index and choices list)
-                V.value = value
-            else:
-                # assume dict for Value
-                V = Value(self.type, value)
-            self._choices = V['value.choices']
+        Accepts dict to explicitly initialize fields by name.
+        Any other type is assigned to the 'value' field via
+        the self.assign() method.
+        """
+        if isinstance(value, Value):
+            pass
+        elif isinstance(value, ntwrappercommon):
+            kws.setdefault('timestamp', value.timestamp)
+            value = value.raw
+        elif isinstance(value, dict):
+            value = self.Value(self.type, value)
         else:
             # index or string
+            V = self.type()
+            if choices is not None:
+                V['value.choices'] = choices
             self.assign(V, value)
-        return self._annotate(V, **kws)
+            value = V
+
+        self._choices = value['value.choices'] or self._choices
+        return self._annotate(value, **kws)
 
     def unwrap(self, value):
         """Unpack a Value into an augmented python type (selected from the 'value' field)
