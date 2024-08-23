@@ -24,9 +24,9 @@ def getargs():
     P.add_argument('prefix')
     P.add_argument('method')
     P.add_argument('args', nargs='*')
-    return P.parse_args()
+    return P, P.parse_args()
 
-args = getargs()
+P, args = getargs()
 
 logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
 

@@ -1,7 +1,6 @@
-"""Python reference counter statistics.
-"""
 
 from __future__ import print_function
+"""Python reference counter statistics."""
 
 import sys
 import gc
