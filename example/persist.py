@@ -3,13 +3,11 @@ Use a handler to automatically persist values to an SQLite3 file database.
 Any values persisted this way will be automatically restored when the 
 program is rerun.
 
-There are a number of caveats for this simple demo. 
-- The persist_handler will not work as expected if anything other than the 
-  value of a field is changed, e.g. if a Control field was added to an NTScalar
-  if would not be persisted correctly. This could be resolved by correctly 
-  merging the pv.current() and value appropriately.
-- Duplicate PVs are not supported. This would require more complicated helper
-  functions for setting up the SharedPVs.
+There are is an important caveat for this simple demo:
+The persist_handler will not work as expected if anything other than the 
+value of a field is changed, e.g. if a Control field was added to an NTScalar
+if would not be persisted correctly. This could be resolved by correctly 
+merging the pv.current() and value appropriately.
 """
 
 import json
@@ -113,11 +111,13 @@ cur.execute(
 )
 cur.close()
 
+duplicate_pv = setup_pv("demo:pv:int", "i", conn, default=12)
 pvs = {
     "demo:pv:randint": setup_pv("demo:pv:randint", "i", conn, default=-1),
-    "demo:pv:int": setup_pv("demo:pv:int", "i", conn, default=12),
+    "demo:pv:int": duplicate_pv,
     "demo:pv:float": setup_pv("demo:pv:float", "d", conn, default=9.99),
     "demo:pv:string": setup_pv("demo:pv:string", "s", conn, default="Hello!"),
+    "demo:pv:alias_int": duplicate_pv,  # It works except for reporting its restore
 }
 
 print(f"Starting server with the following PVs: {pvs.keys()}")
