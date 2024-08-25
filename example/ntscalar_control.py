@@ -101,7 +101,9 @@ class SimpleControl(Handler):
             return
         else:
             if op.value().raw.changed("control"):
-                errmsg = f"Unauthorised attempt to set Control by {op.account()}"
+                errmsg = (
+                    f"Unauthorised attempt to set Control by {op.account()}"
+                )
                 op.value().raw.mark("control", False)
 
         # Because we have not set use_handler_post=False in the post this
@@ -125,7 +127,7 @@ pv.post(
 )
 
 
-@pv.put
+@pv.on_put
 def handle(pv, op):
     pv.post(op.value())  # just store and update subscribers
     op.done()

@@ -14,7 +14,7 @@ from p4p.server.raw import Handler
 from p4p.server.thread import SharedPV
 
 
-class auditor(Handler):
+class Auditor(Handler):
     """Persist information to file so we can audit when the program is closed"""
 
     def open(self, value):
@@ -30,7 +30,7 @@ class auditor(Handler):
                 f.write(f"Auditing closed at {time.ctime()}; no changes made\n")
 
 
-class audited(Handler):
+class Audited(Handler):
     """Forward information about Put operations to the auditing PV"""
 
     def __init__(self, pv: SharedPV):
@@ -46,26 +46,25 @@ class audited(Handler):
 
 # Setup the PV that will make the audit information available.
 # Note that there is no put in its handler so it will be externally read-only
-auditor_pv = SharedPV(nt=NTScalar("s"), handler=auditor(), initial="")
+auditor_pv = SharedPV(nt=NTScalar("s"), handler=Auditor(), initial="")
 
 # Setup some PVs that will be audited and one that won't be
 # Note that the audited handler does have a put so these PVs can be changed externally
 pvs = {
     "demo:pv:auditor": auditor_pv,
     "demo:pv:audited_d": SharedPV(
-        nt=NTScalar("d"), handler=audited(auditor_pv), initial=9.99
+        nt=NTScalar("d"), handler=Audited(auditor_pv), initial=9.99
     ),
     "demo:pv:audited_i": SharedPV(
-        nt=NTScalar("i"), handler=audited(auditor_pv), initial=4
+        nt=NTScalar("i"), handler=Audited(auditor_pv), initial=4
     ),
     "demo:pv:audited_s": SharedPV(
-        nt=NTScalar("s"), handler=audited(auditor_pv), initial="Testing"
+        nt=NTScalar("s"), handler=Audited(auditor_pv), initial="Testing"
     ),
     "demo:pv:unaudted_i": SharedPV(nt=NTScalar("i"), initial=-1),
 }
-print(pvs.keys())
 
-server = None
+print(pvs.keys())
 try:
     Server.forever(providers=[pvs])
 except KeyboardInterrupt:
