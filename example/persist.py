@@ -1,7 +1,8 @@
 """
 Use a handler to automatically persist values to an SQLite3 file database.
 Any values persisted this way will be automatically restored when the
-program is rerun. The details of users who
+program is rerun. The details of users (account name and IP address) are
+recorded for puts.
 
 Try monitoring the PV `demo:pv:optime` then quit, wait, and restart the
 program while continuing to monitor the PV. Compare with the value of
@@ -13,8 +14,7 @@ There is an important caveat for this simple demo:
 The `PersistHandler` will not work as expected if anything other than the
 value of a field is changed, e.g. if a Control field was added to an NTScalar
 if would not be persisted correctly. This could be resolved by correctly
-merging the pv.current().raw and value.raw appropriately in the post()
-and put().
+merging the pv.current().raw and value.raw appropriately in the post().
 """
 
 import json
@@ -39,21 +39,19 @@ class PersistHandler(Handler):
         self._conn = conn
         self._pv_name = pv_name
 
-    def open(self, value, **kws):
+    def open(self, value, handler_open_restore=True):
         # If there is a value already in the database we always use that
         # instead of the supplied initial value, unless the
         # handler_open_restore flag indicates otherwise.
-        if not kws.pop("handler_open_restore", True):
+        if not handler_open_restore:
             return
 
-        res = self._conn.execute(
-            "SELECT data FROM pvs WHERE id=?", [self._pv_name]
-        )
+        # We could, in theory, re-apply authentication here if we queried for
+        # that information and then did something with it!
+        res = self._conn.execute("SELECT data FROM pvs WHERE id=?", [self._pv_name])
         query_val = res.fetchone()
 
         if query_val is not None:
-            # We could, in theory, re-apply authentication here based on the
-            # account and peer information.
             json_val = json.loads(query_val[0])
             print(f"Will restore to {self._pv_name} value: {json_val['value']}")
 
@@ -63,20 +61,46 @@ class PersistHandler(Handler):
             value["timeStamp.secondsPastEpoch"] = json_val["timeStamp"][
                 "secondsPastEpoch"
             ]
-            value["timeStamp.nanoseconds"] = json_val["timeStamp"][
-                "nanoseconds"
-            ]
+            value["timeStamp.nanoseconds"] = json_val["timeStamp"]["nanoseconds"]
         else:
+            # We are using an initial value so persist it
             self._upsert(value)
 
-    def _update_timestamp(self, value):
-        if not value.changed("timeStamp"):
+    def post(
+        self,
+        pv: SharedPV,
+        value: Value,
+        handler_post_upsert_account=None,
+        handler_post_upsert_peer=None,
+    ):
+        self._update_timestamp(value)
+
+        self._upsert(
+            value,
+            account=handler_post_upsert_account,
+            peer=handler_post_upsert_peer,
+        )
+
+    def put(self, pv: SharedPV, op: ServerOperation):
+        # The post does all the real work, we just add info only available
+        # from the ServerOperation
+        pv.post(
+            op.value(),
+            handler_post_upsert_account=op.account(),
+            handler_post_upsert_peer=op.peer(),
+        )
+        op.done()
+
+    def _update_timestamp(self, value) -> None:
+        if not value.changed("timeStamp") or (
+            value["timeStamp.nanoseconds"] == value["timeStamp.nanoseconds"] == 0
+        ):
             now = time.time()
             value["timeStamp.secondsPastEpoch"] = now // 1
             value["timeStamp.nanoseconds"] = int((now % 1) * 1e9)
 
     def _upsert(self, value, account=None, peer=None) -> None:
-        # Persist the data
+        # Persist the data; turn into JSON and write it to the DB
         val_json = json.dumps(value.todict())
 
         # Use UPSERT: https://sqlite.org/lang_upsert.html
@@ -95,26 +119,6 @@ class PersistHandler(Handler):
             },
         )
         conn.commit()
-
-    def post(self, pv: SharedPV, value: Value, **kwargs):
-        self._update_timestamp(value)
-
-        self._upsert(
-            value,
-            account=kwargs.pop("handler_post_upsert_account", None),
-            peer=kwargs.pop("handler_post_upsert_peer", None),
-        )
-
-    def put(self, pv: SharedPV, op: ServerOperation):
-        value = op.value().raw
-
-        # The post takes care of updating the timestamp
-        pv.post(
-            op.value(),
-            handler_post_upsert_account=op.account(),
-            handler_post_upsert_peer=op.peer(),
-        )
-        op.done()
 
 
 # Create an SQLite dayabase to function as our persistence store
@@ -138,7 +142,7 @@ pvs = {
         handler=PersistHandler("demo:pv:optime", conn),
         timestamp=time.time(),
         initial=0,
-        handler_open_restore=False,
+        handler_open_restore=False,  # Note that this option means it will always start at 0
     ),  # Uptime since most recent (re)start
     "demo:pv:int": duplicate_pv,
     "demo:pv:float": SharedPV(
@@ -154,12 +158,25 @@ pvs = {
     "demo:pv:alias_int": duplicate_pv,  # It works except for reporting its restore
 }
 
+
+# Make the uptime PV readonly; maybe we want to be able to update optime
+# after major system upgrades?
+uptime_pv = pvs["demo:pv:uptime"]
+
+
+@uptime_pv.on_put
+def read_only(pv: SharedPV, op: ServerOperation):
+    op.done(error="Read-only")
+    return
+
+
 print(f"Starting server with the following PVs: {pvs}")
 
 server = None
 try:
     server = Server(providers=[pvs])
     while True:
+        # Every second increment the values of uptime and optime
         time.sleep(1)
         increment_value = pvs["demo:pv:uptime"].current().raw["value"] + 1
         pvs["demo:pv:uptime"].post(increment_value)
