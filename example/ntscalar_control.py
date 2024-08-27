@@ -1,8 +1,30 @@
+"""
+A demonstration of using a handler to apply the Control field logic for an
+Normative Type Scalar (NTScalar).
+
+There is only one PV, but it's behaviour is complex:
+- try changing and checking the value, e.g.
+  `python -m p4p.client.cli put demo:pv=4` and
+  `python -m p4p.client.cli get demo:pv`
+Initially the maximum = 11, minimum = -1, and minimum step size = 2.
+Try varying the control settings, e.g.
+- `python -m p4p.client.cli put demo:pv='{"value":5, "control.limitHigh":4}'`
+  `python -m p4p.client.cli get demo:pv`
+Remove the comments at lines 166-169 and try again.
+
+This is also a demonstration of using the open(), put(), and post() callbacks
+to implement this functionality, and particularly how it naturally partitions
+the concerns of the three callback function:
+- open() - logic based only on the input Value,
+- post() - logic requiring comparison of cuurent and proposed Values
+- put() - authorisation
+"""
+
 from p4p.nt import NTScalar
 from p4p.server import Server
 from p4p.server.raw import Handler
 from p4p.server.thread import SharedPV
-from p4p.wrapper import Type, Value
+from p4p.wrapper import Value
 
 
 class SimpleControl(Handler):
@@ -11,7 +33,7 @@ class SimpleControl(Handler):
     Normative Type.
     """
 
-    def __init__(self, min_value=None, max_value=None, min_step=None):
+    def __init__(self):
         # The attentive reader may wonder why we are keeping track of state here
         # instead of relying on control.limitLow, control.limitHigh, and
         # control.minStep. There are three possible reasons a developer might
@@ -25,63 +47,78 @@ class SimpleControl(Handler):
         #   a Control field.
         # The disadvantage of this simple approach is that clients cannot
         # inspect the Control field values until they have been changed.
-        self._min_value = min_value  # Minimum value allowed
-        self._max_value = max_value  # Maximum value allowed
-        self._min_step = min_step  # Minimum change allowed
+        self._min_value = None  # Minimum value allowed
+        self._max_value = None  # Maximum value allowed
+        self._min_step = None  # Minimum change allowed
 
-    def open(self, value):
+    def open(self, value) -> bool:
         """
         This function manages all logic when we only need to consider the
         (proposed) future state of a PV
         """
-        # Check if the limitHigh has changed. If it has then we have to reevaluate
-        # the existing value. Note that for this to work with a post request we
-        # have to take the actions explained at Ref1
+        value_changed_by_limit = False
+
+        # Check if the limitHigh has changed. If it has then we have to
+        # reevaluate the existing value. Note that for this to work with a
+        # post() request we have to take the actions explained at Ref1
         if value.changed("control.limitHigh"):
             self._max_value = value["control.limitHigh"]
             if value["value"] > self._max_value:
                 value["value"] = self._max_value
+                value_changed_by_limit = True
 
         if value.changed("control.limitLow"):
             self._min_value = value["control.limitLow"]
             if value["value"] < self._min_value:
                 value["value"] = self._min_value
+                value_changed_by_limit = True
+
+        # This has to go in the open because it could be set in the initial value
+        if value.changed("control.minStep"):
+            self._min_step = value["control.minStep"]
 
         # If the value has changed we need to check it against the limits and
         # change it if any of the limits apply
         if value.changed("value"):
             if self._max_value and value["value"] > self._max_value:
                 value["value"] = self._max_value
-            if self._min_value and value["value"] < self._min_value:
+                value_changed_by_limit = True
+            elif self._min_value and value["value"] < self._min_value:
                 value["value"] = self._min_value
+                value_changed_by_limit = True
 
-    def post(self, pv, value):
+        return value_changed_by_limit
+
+    def post(self, pv: SharedPV, value: Value):
         """
         This function manages all logic when we need to know both the
         current and (proposed) future state of a PV
         """
-        # If the minStep has changed update this instance's minStemp value
-        if value.changed("control.minStep"):
-            self._min_change = value["control.minStep"]
-
         # [Ref1] This is where even our simple handler gets complex!
         # If the value["value"] has not been changed as part of the post()
         # operation then it will be set to a default value (i.e. 0) and
-        # marked unchanged.
-        current_value = pv.current().raw
-        value_changed = True  # TODO: Explain this
+        # marked unchanged. For the logic in open() to work if the control
+        # limits are changed we need to set the pv.current().raw value in
+        # this case.
         if not value.changed("value"):
-            value["value"] = current_value["value"]
+            value["value"] = pv.current().raw["value"]
             value.mark("value", False)
-            value_changed = False
 
-        # Apply the control limits before the check for minimum change as the
-        # value may be altered by the limits.
-        self.open(value)
-        if not value_changed and value.changed("value"):
+        # Apply the control limits before the check for minimum change because:
+        # - the self._min_step may be updated
+        # - the value["value"] may be altered by the limits
+        value_changed_by_limit = self.open(value)
+
+        # If the value["value"] wasn't changed by the put()/post() but was
+        # changed by the limits then we don't check the min_step but
+        # immediately return
+        if value_changed_by_limit:
             return
 
-        if abs(current_value["value"] - value["value"]) < self._min_step:
+        if (
+            self._min_step
+            and abs(pv.current().raw["value"] - value["value"]) < self._min_step
+        ):
             value.mark("value", False)
 
     def put(self, pv, op):
@@ -101,9 +138,7 @@ class SimpleControl(Handler):
             return
         else:
             if op.value().raw.changed("control"):
-                errmsg = (
-                    f"Unauthorised attempt to set Control by {op.account()}"
-                )
+                errmsg = f"Unauthorised attempt to set Control by {op.account()}"
                 op.value().raw.mark("control", False)
 
         # Because we have not set use_handler_post=False in the post this
@@ -113,31 +148,30 @@ class SimpleControl(Handler):
         op.done(error=errmsg)
 
 
-# Construct PV with control and structures
-# and then set the values of some of those values with a post
+# Construct a PV with Control fields and use a handler to apply the Normative
+# Type logic. Note that the Control logic is correctly applied even to the
+# initial value, based on the limits set in the rest of the initial value.
 pv = SharedPV(
     nt=NTScalar("d", control=True),
-    handler=SimpleControl(-1, 11, 2),
-    initial=12.0,  # Immediately limited to 11 due to handler on live above
+    handler=SimpleControl(),
+    initial={
+        "value": 12.0,
+        "control.limitHigh": 11,
+        "control.limitLow": -1,
+        "control.minStep": 2,
+    },  # Immediately limited to 11 due to handler
 )
-pv.post(
-    {
-        "control.limitHigh": 6,  # Value now limited to 6
-    }
-)
 
 
-@pv.on_put
-def handle(pv, op):
-    pv.post(op.value())  # just store and update subscribers
-    op.done()
+# Override the put in the handler so that we can perform puts for testing
+# @pv.on_put
+# def handle(pv, op):
+#     pv.post(op.value())  # just store and update subscribers
+#     op.done()
 
 
-print("demo:pv:name: ", pv)
-Server.forever(
-    providers=[
-        {
-            "demo:pv:name": pv,
-        }
-    ]
-)
+pvs = {
+    "demo:pv": pv,
+}
+print("PVs: ", pvs)
+Server.forever(providers=[pvs])
