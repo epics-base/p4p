@@ -4,13 +4,9 @@
 #include <p4p.h>
 #include <_p4p.h>
 
+// import handled by cython
 #define NO_IMPORT_ARRAY
-//#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
-
-#ifndef NPY_ARRAY_FORCECAST
-#  define NPY_ARRAY_FORCECAST (0)
-#endif
 
 namespace p4p {
 
@@ -159,7 +155,7 @@ PyObject* asPy(const Value& v, bool unpackstruct, bool unpackrecurse, PyObject* 
 
     PyRef pyarr(PyArray_New(&PyArray_Type, 1, &shape, ntype, nullptr,
                             const_cast<void*>(varr.data()), // should not actually be modifiable
-                            esize, NPY_CARRAY_RO, nullptr));
+                            esize, NPY_ARRAY_CARRAY_RO, nullptr));
 
 #ifdef PyArray_SetBaseObject
     PyArray_SetBaseObject((PyArrayObject*)pyarr.obj, holder.release());
@@ -530,7 +526,7 @@ void storePy(Value& v, PyObject* py, bool forceCast)
             }
 
             PyRef arr(PyArray_FromAny(py, PyArray_DescrFromType(ntype), 0, 0,
-                                      NPY_CARRAY_RO|NPY_ARRAY_FORCECAST, nullptr));
+                                      NPY_ARRAY_CARRAY_RO|NPY_ARRAY_FORCECAST, nullptr));
 
             if(PyArray_NDIM((PyArrayObject*)arr.obj)!=1)
                 throw std::logic_error("Only 1-d array can be assigned");
