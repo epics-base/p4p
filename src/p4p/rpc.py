@@ -252,27 +252,28 @@ class RPCProxyBase(object):
     scheme = None  # set to override automatic
 
 
-def _wrapMethod(K, V):
-    pv, req = V._call_PV, V._call_Request
+def _wrapMethod(name, meth):
+    pv, req = meth._call_PV, meth._call_Request
     if sys.version_info >= (3, 0):
-        S = inspect.getfullargspec(V)
+        S = inspect.getfullargspec(meth)
         keywords = S.varkw
     else:
-        S = inspect.getargspec(V)
+        S = inspect.getargspec(meth)
         keywords = S.keywords
+    defaults = S.defaults or [] # for getfullargspec().defaults can be None
 
     if S.varargs is not None or keywords is not None:
-        raise TypeError("vararg not supported for proxy method %s" % K)
+        raise TypeError("vararg not supported for proxy method %s" % name)
 
-    if len(S.args) != len(S.defaults):
-        raise TypeError("proxy method %s must specify types for all arguments" % K)
+    if len(S.args) != len(defaults):
+        raise TypeError("proxy method %s must specify types for all arguments" % name)
 
     try:
-        NT = NTURI(zip(S.args, S.defaults))
+        NT = NTURI(zip(S.args, defaults))
     except Exception as e:
-        raise TypeError("%s : failed to build method from %s, %s" % (e, S.args, S.defaults))
+        raise TypeError("%s : failed to build method from %s, %s" % (e, S.args, defaults))
 
-    @wraps(V)
+    @wraps(meth)
     def mcall(self, *args, **kws):
         pvname = pv % self.format
         try:

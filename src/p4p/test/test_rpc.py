@@ -22,6 +22,9 @@ class TestService(object):
     def add(self, lhs, rhs):
         return float(lhs) + float(rhs)
 
+    @rpc(NTScalar('d'))
+    def magicnum(self):
+        return 42
 
 class TestRPCFull(RefTestCase):
 
@@ -110,6 +113,13 @@ class TestRPCFull(RefTestCase):
             sum = ctxt.rpc(self.prefix + 'add', args)
             self.assertEqual(sum.value, 3.0)
 
+    def testMagic(self):
+        args = NTURI([
+        ]).wrap(self.prefix + 'magicnum', kws={
+        }, scheme='pva')
+        with Context(self.provider, useenv=False, conf=self.getconfig(), unwrap=False) as ctxt:
+            num = ctxt.rpc(self.prefix + 'magicnum', args)
+            self.assertEqual(num.value, 42)
 
 #class TestRPCProvider(TestRPCFull):
 #
@@ -142,12 +152,29 @@ class TestProxy(RefTestCase):
         def another(X='s', Y='i'):
             pass
 
+        @rpccall('%smagicnum')
+        def magicnum():
+            pass
+
     def setUp(self):
         super(TestProxy, self).setUp()
         ctxt = self.MockContext()
         self.proxy = self.MyProxy(myarg=3, context=ctxt, format='pv:')
         self.assertEqual(self.proxy.myarg, 3)
         self.assertIs(self.proxy.context, ctxt)
+
+    def test_call0(self):
+        args, kws = self.proxy.magicnum()
+
+        self.assertEqual(args[0], 'pv:magicnum')
+        self.assertListEqual(args[1].tolist(), [
+            ('scheme', u'fake'),
+            ('authority', u''),
+            ('path', u'pv:magicnum'),
+            ('query', [])
+        ])
+        self.assertEqual(len(args), 2)
+        self.assertDictEqual(kws, {'request': None, 'throw': True, 'timeout': 3.0})
 
     def test_call1(self):
         args, kws = self.proxy.bar(4, 'one')
