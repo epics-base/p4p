@@ -237,7 +237,8 @@ cdef class Provider(_p4p.Source):
             serv = <_p4p.Server?>ent
             guids.push_back(serv.serv.config().guid)
 
-        self.provider.get().upstream.ignoreServerGUIDs(guids)
+        with nogil:
+            self.provider.get().upstream.ignoreServerGUIDs(guids)
 
     def cachePeek(self):
         """Returns PV names in channel cache
@@ -247,7 +248,8 @@ cdef class Provider(_p4p.Source):
         cdef setxx[string] pvs
         cdef set ret
 
-        self.provider.get().cachePeek(pvs)
+        with nogil:
+            self.provider.get().cachePeek(pvs)
         ret = set()
         for name in pvs:
             ret.add(name)

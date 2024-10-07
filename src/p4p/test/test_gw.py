@@ -43,8 +43,8 @@ class TestTemplate(unittest.TestCase):
             content = F.read()
             self.assertRegex(content, '"statusprefix"')
 
-    def test_systemd(self):
-        with NamedTemporaryFile() as F:
+    def test_systemd_instance(self):
+        with NamedTemporaryFile(suffix='@blah.service') as F:
             try:
                 main(['--example-systemd', F.name])
             except SystemExit as e:
@@ -52,6 +52,19 @@ class TestTemplate(unittest.TestCase):
 
             F.seek(0)
             content = F.read()
+            self.assertRegex(content, '-m p4p.gw /etc/pvagw/blah.conf')
+            self.assertRegex(content, 'multi-user.target')
+
+    def test_systemd_template(self):
+        with NamedTemporaryFile(suffix='@.service') as F:
+            try:
+                main(['--example-systemd', F.name])
+            except SystemExit as e:
+                self.assertEqual(e.code, 0)
+
+            F.seek(0)
+            content = F.read()
+            self.assertRegex(content, '-m p4p.gw /etc/pvagw/%i.conf')
             self.assertRegex(content, 'multi-user.target')
 
 class TestGC(RefTestCase):
@@ -212,7 +225,7 @@ class TestLowLevel(RefTestCase):
         Q2 = Queue(maxsize=4)
 
         with self._ds_client.monitor('pv:ro', Q1.put, notify_disconnect=True):
-            
+
             self.assertIsInstance(Q1.get(timeout=self.timeout), Disconnected)
             self.assertEqual(42, Q1.get(timeout=self.timeout))
 
@@ -283,7 +296,7 @@ class TestHighLevel(RefTestCase):
         _log.debug("Exit setUp")
 
     def setUpGW(self, usconfig):
-        cfile = self._cfile = NamedTemporaryFile('w+')
+        cfile = self._cfile = NamedTemporaryFile(mode='w+')
         json.dump({
             'version':2,
             'clients':[{
@@ -461,7 +474,7 @@ class TestHighLevelChained(TestHighLevel):
 
     def setUpGW(self, usconfig):
         # First GW, connected to upstream server
-        cfile = self._cfile = NamedTemporaryFile('w+')
+        cfile = self._cfile = NamedTemporaryFile(mode='w+')
         json.dump({
             'version':2,
             'clients':[{
@@ -497,7 +510,7 @@ class TestHighLevelChained(TestHighLevel):
         gw1config = self._app1.servers[u'server1_0'].conf()
 
         # Second GW, connected to first
-        cfile = self._cfile = NamedTemporaryFile('w+')
+        cfile = self._cfile = NamedTemporaryFile(mode='w+')
         json.dump({
             'version':2,
             'clients':[{
@@ -622,7 +635,7 @@ class TestTestServer(RefTestCase):
         return self._log.read()
 
     def write(self, content):
-        F = NamedTemporaryFile('w+')
+        F = NamedTemporaryFile(mode='w+')
         self._files.append(F)
         F.write(content)
         F.flush()
