@@ -4,13 +4,9 @@
 #include <p4p.h>
 #include <_p4p.h>
 
+// import handled by cython
 #define NO_IMPORT_ARRAY
-//#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
-
-#ifndef NPY_ARRAY_FORCECAST
-#  define NPY_ARRAY_FORCECAST (0)
-#endif
 
 namespace p4p {
 
@@ -159,7 +155,7 @@ PyObject* asPy(const Value& v, bool unpackstruct, bool unpackrecurse, PyObject* 
 
     PyRef pyarr(PyArray_New(&PyArray_Type, 1, &shape, ntype, nullptr,
                             const_cast<void*>(varr.data()), // should not actually be modifiable
-                            esize, NPY_CARRAY_RO, nullptr));
+                            esize, NPY_ARRAY_CARRAY_RO, nullptr));
 
 #ifdef PyArray_SetBaseObject
     PyArray_SetBaseObject((PyArrayObject*)pyarr.obj, holder.release());
@@ -236,7 +232,7 @@ Value inferPy(PyObject* py)
         else if(PyList_Check(py))
             code = TypeCode::StringA;
         else if(PyArray_Check(py)) {
-            switch(PyArray_TYPE(py)) {
+            switch(PyArray_TYPE((PyArrayObject*)py)) {
 #define CASE(NTYPE, PTYPE) case NTYPE: code = TypeCode::PTYPE; break
             CASE(NPY_BOOL, BoolA); // bool stored as one byte
             CASE(NPY_INT8, Int8A);
@@ -530,14 +526,14 @@ void storePy(Value& v, PyObject* py, bool forceCast)
             }
 
             PyRef arr(PyArray_FromAny(py, PyArray_DescrFromType(ntype), 0, 0,
-                                      NPY_CARRAY_RO|NPY_ARRAY_FORCECAST, nullptr));
+                                      NPY_ARRAY_CARRAY_RO|NPY_ARRAY_FORCECAST, nullptr));
 
-            if(PyArray_NDIM(arr.obj)!=1)
+            if(PyArray_NDIM((PyArrayObject*)arr.obj)!=1)
                 throw std::logic_error("Only 1-d array can be assigned");
 
-            auto dest(allocArray(v.type().arrayType(), PyArray_DIM(arr.obj, 0)));
+            auto dest(allocArray(v.type().arrayType(), PyArray_DIM((PyArrayObject*)arr.obj, 0)));
 
-            memcpy(dest.data(), PyArray_DATA(arr.obj), PyArray_NBYTES(arr.obj));
+            memcpy(dest.data(), PyArray_DATA((PyArrayObject*)arr.obj), PyArray_NBYTES((PyArrayObject*)arr.obj));
 
             v = dest.freeze();
             return;

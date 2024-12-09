@@ -33,14 +33,14 @@ except ImportError:
 incdirs = [get_python_inc()]
 libdir = get_config_var('LIBDIR') or ''
 
-try:
-    from numpy.distutils.misc_util import get_numpy_include_dirs
-except ImportError:
-    def get_numpy_include_dirs():
-        from numpy import get_include
-        return [get_include()]
 
-incdirs = get_numpy_include_dirs()+incdirs
+def get_numpy_include_dirs():
+    from numpy import get_include
+
+    return [get_include()]
+
+
+incdirs = get_numpy_include_dirs() + incdirs
 
 print('TARGET_CFLAGS +=',get_config_var('BASECFLAGS'), file=out)
 print('TARGET_CXXFLAGS +=',get_config_var('BASECFLAGS'), file=out)
