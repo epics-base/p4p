@@ -184,9 +184,7 @@ asyncio or cothread
 
 .. class:: SharedPV
 
-    Same arguments as :py:class:`thread.SharedPV` except that queue= is replaced with loop= .
-
-    :param loop: An asyncio event loop, or None to use the default.
+    Same arguments as :py:class:`thread.SharedPV` except that ``queue=`` is removed.
 
 .. currentmodule:: p4p.server.cothread
 
