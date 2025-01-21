@@ -452,7 +452,7 @@ jobs:
         if: true && !matrix.base
         uses: actions/upload-artifact@v4
         with:
-          name: p4p
+          name: "p4p ${{ matrix.name }}"
           path: dist/*
 
       - name: Check wheels
