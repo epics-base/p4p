@@ -74,7 +74,14 @@ class NTEnum(NTBase):
             kws.setdefault('timestamp', value.timestamp)
             value = value.raw
         elif isinstance(value, dict):
-            value = self.Value(self.type, value)
+            # if index, choices not in value.keys(), then
+            # use value dict to initalize fields by name
+            if {'index', 'choices'}.isdisjoint(value):
+                value = self.Value(self.type, value)
+            # if value = {'index': ..., 'choices': ...}, then
+            # assign these to value.index, value.choices
+            else:
+                value = self.Value(self.type, {'value': value})
         else:
             # index or string
             V = self.type()
