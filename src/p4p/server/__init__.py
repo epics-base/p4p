@@ -205,8 +205,9 @@ class DynamicProvider(_DynamicProvider):
                 def testChannel(self, name): # return True, False, or DynamicProvider.NotYet
                     return name=="blah"
                 def makeChannel(self, name, peer):
-                    assert name=="blah"
-                    return self.pv
+                    if name=="blah":
+                        return self.pv
+                    # return None falls through to next source
             provider = DynamicProvider("arbitrary", DynHandler())
             server = Server(providers=[provider])
     """
