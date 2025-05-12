@@ -119,12 +119,12 @@ setup(
     author='Michael Davidsaver',
     author_email='mdavidsaver@gmail.com',
     license='BSD',
+    license_files=["LICENSE"],
     classifiers = [
         'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: Implementation :: CPython',
-        'License :: OSI Approved :: BSD License',
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries',
