@@ -119,6 +119,14 @@ jobs:
             cython: Cython==3.0.10
             skip_cothread: yes
 
+          - name: linux 3.13 amd64
+            os: ubuntu-latest
+            pyver: cp313-cp313
+            piparch: manylinux2014_x86_64
+            numpy: numpy==2.0.1
+            cython: Cython==3.0.10
+            skip_cothread: yes
+
           # Linux py builds x64
           # TODO: manylinux1 and 2014 are EOL, even more reason to remove these supported versions
           - name: linux 2.7 i686
@@ -237,6 +245,14 @@ jobs:
             cython: Cython==3.0.10
             skip_cothread: yes
 
+          - name: osx 3.13 arm64
+            os: macos-latest
+            python: "3.13"
+            piparch: macosx_11_0_universal2
+            numpy: numpy==2.0.1
+            cython: Cython==3.0.10
+            skip_cothread: yes
+
           # Windows py builds
 
           ## missing Microsoft Visual C++ 9.0
@@ -303,6 +319,14 @@ jobs:
           - name: win64 3.12
             os: windows-latest
             python: "3.12"
+            piparch: win_amd64
+            numpy: numpy==1.26.0
+            cython: Cython==3.0.10
+            skip_cothread: yes
+
+          - name: win64 3.13
+            os: windows-latest
+            python: "3.13"
             piparch: win_amd64
             numpy: numpy==1.26.0
             cython: Cython==3.0.10
