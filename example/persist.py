@@ -30,9 +30,11 @@ from p4p.server.thread import SharedPV
 
 class PersistHandler(Handler):
     """
-    A handler that will allow simple persistence of values and timestamps
-    across retarts. It requires a post handler in order to persist values
-    set within the program.
+    A handler that will allow simple persistence of values and timestamps using
+    SQLite3 across retarts.
+
+    It requires the open handler in order to restore values from a previous run.
+    It requires a post handler in order to persist values set within the program.
     """
 
     def __init__(self, pv_name: str, conn: sqlite3.Connection, open_restore=True):
@@ -40,10 +42,15 @@ class PersistHandler(Handler):
         self._pv_name = pv_name
         self._open_restore = open_restore
 
-    def open(self, value, **kws):
+    def open(self, value: Value, **_kws):
+        """
+        Restore values from the previous run, if possible.
+        If there isn't a previous value then we persist this initial value.
+        """
+
         # If there is a value already in the database we always use that
         # instead of the supplied initial value, unless the
-        # handler_open_restore flag indicates otherwise.
+        # _open_restore flag indicates otherwise.
         if not self._open_restore:
             return
 
@@ -59,6 +66,7 @@ class PersistHandler(Handler):
             # Override initial value
             value["value"] = json_val["value"]
 
+            # Override current timestamp (if any) with time the new value was set
             value["timeStamp.secondsPastEpoch"] = json_val["timeStamp"][
                 "secondsPastEpoch"
             ]
@@ -67,29 +75,27 @@ class PersistHandler(Handler):
             # We are using an initial value so persist it
             self._upsert(value)
 
-    def post(
-        self,
-        pv: SharedPV,
-        value: Value,
-    ):
+    def post(self, pv: SharedPV, value: Value, **_kws):
+        """Update timestamp of the PV and store its new value."""
         self._update_timestamp(value)
 
-        self._upsert(
-            value,
-        )
+        self._upsert(value)
 
     def put(self, pv: SharedPV, op: ServerOperation):
-        # The post does all the real work, we just add info only available
-        # from the ServerOperation
+        """
+        Update timestamp of the PV and store its new value. Unlike the post()
+        we include the account and peer update in the data stored.
+        """
+
         self._update_timestamp(op.value())
 
-        self._upsert(
-            op.value(), op.account(), op.peer()
-        )
+        self._upsert(op.value(), op.account(), op.peer())
 
         op.done()
 
     def _update_timestamp(self, value) -> None:
+        """Update the timestamp of the PV to the current time."""
+
         if not value.changed("timeStamp") or (
             value["timeStamp.nanoseconds"] == value["timeStamp.nanoseconds"] == 0
         ):
@@ -102,7 +108,7 @@ class PersistHandler(Handler):
         val_json = json.dumps(value.todict())
 
         # Use UPSERT: https://sqlite.org/lang_upsert.html
-        conn.execute(
+        self._conn.execute(
             """
             INSERT INTO pvs (id, data, account, peer) 
                         VALUES (:name, :json_data, :account, :peer)
@@ -116,72 +122,84 @@ class PersistHandler(Handler):
                 "peer": peer,
             },
         )
-        conn.commit()
+        self._conn.commit()
 
 
-# Create an SQLite dayabase to function as our persistence store
-conn = sqlite3.connect("persist_pvs.db", check_same_thread=False)
-#conn.execute("DROP TABLE IF EXISTS pvs")
-conn.execute(
-    "CREATE TABLE IF NOT EXISTS pvs (id VARCHAR(255), data JSON, account VARCHAR(30), peer VARCHAR(55), PRIMARY KEY (id));"
-)  # IPv6 addresses can be long and will contain port number as well!
+def main() -> None:
+    """
+    Create SQLite3 database and a set of PVs to demonstrate persistance
+    using a p4p Handler.
+    """
 
-duplicate_pv = SharedPV(
-    nt=NTScalar("i"), handler=PersistHandler("demo:pv:int", conn), initial=12
-)
-pvs = {
-    "demo:pv:optime": SharedPV(
-        nt=NTScalar("i"),
-        handler=PersistHandler("demo:pv:optime", conn),
-        initial=0,
-    ),  # Operational time; total time running
-    "demo:pv:uptime": SharedPV(
-        nt=NTScalar("i"),
-        handler=PersistHandler("demo:pv:uptime", conn, open_restore=False),
-        timestamp=time.time(),
-        initial=0,
-    ),  # Uptime since most recent (re)start
-    "demo:pv:int": duplicate_pv,
-    "demo:pv:float": SharedPV(
-        nt=NTScalar("d"),
-        handler=PersistHandler("demo:pv:float", conn),
-        initial=9.99,
-    ),
-    "demo:pv:string": SharedPV(
-        nt=NTScalar("s"),
-        handler=PersistHandler("demo:pv:string", conn),
-        initial="Hello!",
-    ),
-    "demo:pv:alias_int": duplicate_pv,  # It works except for reporting its restore
-}
+    # Create an SQLite dayabase to function as our persistence store
+    conn = sqlite3.connect("persist_pvs.db", check_same_thread=False)
+    # conn.execute("DROP TABLE IF EXISTS pvs")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS pvs (id VARCHAR(255), data JSON, account VARCHAR(30), peer VARCHAR(55), PRIMARY KEY (id));"
+    )  # IPv6 addresses can be long and will contain port number as well!
+
+    # Create the example PVs.
+    # Note that we switch off restores for `demo:pv:uptime`. If we simply
+    # didn't use the PersistHandler the timestamp of the PV would not be
+    # updated.
+    duplicate_pv = SharedPV(
+        nt=NTScalar("i"), handler=PersistHandler("demo:pv:int", conn), initial=12
+    )
+    pvs = {
+        "demo:pv:optime": SharedPV(
+            nt=NTScalar("i"),
+            handler=PersistHandler("demo:pv:optime", conn),
+            initial=0,
+        ),  # Operational time; total time running
+        "demo:pv:uptime": SharedPV(
+            nt=NTScalar("i"),
+            handler=PersistHandler("demo:pv:uptime", conn, open_restore=False),
+            timestamp=time.time(),
+            initial=0,
+        ),  # Uptime since most recent (re)start
+        "demo:pv:int": duplicate_pv,
+        "demo:pv:float": SharedPV(
+            nt=NTScalar("d"),
+            handler=PersistHandler("demo:pv:float", conn),
+            initial=9.99,
+        ),
+        "demo:pv:string": SharedPV(
+            nt=NTScalar("s"),
+            handler=PersistHandler("demo:pv:string", conn),
+            initial="Hello!",
+        ),
+        "demo:pv:alias_int": duplicate_pv,  # It works except for reporting its restore
+    }
+
+    # Make the uptime PV readonly; maybe we want to be able to update optime
+    # after major system upgrades?
+    uptime_pv = pvs["demo:pv:uptime"]
+
+    @uptime_pv.put
+    def read_only(_pv: SharedPV, op: ServerOperation):
+        """Don't allow put operations on this PV."""
+
+        op.done(error="Read-only")
+
+    print(f"Starting server with the following PVs: {pvs}")
+
+    server = None
+    try:
+        server = Server(providers=[pvs])
+        while True:
+            # Every second increment the values of uptime and optime
+            time.sleep(1)
+            increment_value = pvs["demo:pv:uptime"].current().raw["value"] + 1
+            pvs["demo:pv:uptime"].post(increment_value)
+            increment_value = pvs["demo:pv:optime"].current().raw["value"] + 1
+            pvs["demo:pv:optime"].post(increment_value)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if server:
+            server.stop()
+        conn.close()
 
 
-# Make the uptime PV readonly; maybe we want to be able to update optime
-# after major system upgrades?
-uptime_pv = pvs["demo:pv:uptime"]
-
-
-@uptime_pv.put
-def read_only(pv: SharedPV, op: ServerOperation):
-    op.done(error="Read-only")
-    return
-
-
-print(f"Starting server with the following PVs: {pvs}")
-
-server = None
-try:
-    server = Server(providers=[pvs])
-    while True:
-        # Every second increment the values of uptime and optime
-        time.sleep(1)
-        increment_value = pvs["demo:pv:uptime"].current().raw["value"] + 1
-        pvs["demo:pv:uptime"].post(increment_value)
-        increment_value = pvs["demo:pv:optime"].current().raw["value"] + 1
-        pvs["demo:pv:optime"].post(increment_value)
-except KeyboardInterrupt:
-    pass
-finally:
-    if server:
-        server.stop()
-    conn.close()
+if __name__ == "__main__":
+    main()
