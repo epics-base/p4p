@@ -39,7 +39,7 @@ class Handler(object):
 
     Use of this as a base class is optional.
     """
-    def open(self, value, **kws):
+    def open(self, value):
         """
         Called each time an Open operation is performed on this Channel
 
@@ -57,7 +57,7 @@ class Handler(object):
         """
         op.done(error='Not supported')
 
-    def post(self, pv, value, **kws):
+    def post(self, pv, value):
         """
         Called each time a client issues a post
         operation on this Channel.
@@ -95,7 +95,7 @@ class Handler(object):
         pass
 
 
-    def close(self):
+    def close(self, pv):
         """
         Called when the Channel is closed.
 
@@ -192,7 +192,7 @@ class SharedPV(_SharedPV):
         except AttributeError:
             pass
         else:
-            open_fn(V, **kws)
+            open_fn(V)
 
         _SharedPV.open(self, V)
 
@@ -218,7 +218,7 @@ class SharedPV(_SharedPV):
         except AttributeError:
             pass
         else:
-            post_fn(self, V, **kws)
+            post_fn(self, V)
 
         _SharedPV.post(self, V)
 
@@ -273,10 +273,10 @@ class SharedPV(_SharedPV):
             self._pv = pv  # this creates a reference cycle, which should be collectable since SharedPV supports GC
             self._real = real
 
-        def open(self, value, **kws):
+        def open(self, value):
             _log.debug('OPEN %s %s', self._pv, value)
             try:
-                self._pv._exec(None, self._real.open, value, **kws)
+                self._pv._exec(None, self._real.open, value)
             except AttributeError:
                 pass
 
@@ -311,14 +311,14 @@ class SharedPV(_SharedPV):
             except AttributeError:
                 op.done(error="RPC not supported")
 
-        def post(self, value, **kws):
+        def post(self, value):
             _log.debug('POST %s %s', self._pv, value)
             try:
-                self._pv._exec(None, self._real.post, self._pv, value, **kws)
+                self._pv._exec(None, self._real.post, self._pv, value)
             except AttributeError:
                 pass
 
-        def close(self, pv):
+        def close(self):
             _log.debug('CLOSE %s', self._pv)
             try:
                 self._pv._exec(None, self._real.close, self._pv)
