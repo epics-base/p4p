@@ -36,12 +36,12 @@ from p4p.server.thread import SharedPV
 class Auditor(Handler):
     """Persist information to file so we can audit when the program is closed"""
 
-    def open(self, value: Value, **_kws):
+    def open(self, value: Value):
         """Record the time the auditing PV was opened."""
         with open("audit.log", mode="a+", encoding="utf8") as f:
             f.write(f"Auditing opened at {time.ctime()}\n")
 
-    def post(self, pv, value: Value, **_kws):
+    def post(self, pv, value: Value):
         """Record the time a change was to the auditing PV, and the change made."""
         with open("audit.log", mode="a+", encoding="utf8") as f:
             f.write(f"Auditing updated at {time.ctime()}; {value['value']}\n")

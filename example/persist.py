@@ -45,7 +45,7 @@ class PersistHandler(Handler):
         self._pv_name = pv_name
         self._open_restore = open_restore
 
-    def open(self, value: Value, **_kws):
+    def open(self, value: Value):
         """
         Restore values from the previous run, if possible.
         If there isn't a previous value then we persist this initial value.
@@ -78,7 +78,7 @@ class PersistHandler(Handler):
             # We are using an initial value so persist it
             self._upsert(value)
 
-    def post(self, pv: SharedPV, value: Value, **_kws):
+    def post(self, pv: SharedPV, value: Value):
         """Update timestamp of the PV and store its new value."""
         self._update_timestamp(value)
 
@@ -89,10 +89,7 @@ class PersistHandler(Handler):
         Update timestamp of the PV and store its new value. Unlike the post()
         we include the account and peer update in the data stored.
         """
-
-        self._update_timestamp(op.value())
-
-        self._upsert(op.value(), op.account(), op.peer())
+        pv.post(op.value()) # timestamp and upsert handled by post() above
 
         op.done()
 
