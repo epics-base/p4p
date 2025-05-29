@@ -93,7 +93,10 @@ class PersistHandler(Handler):
         Update timestamp of the PV and store its new value. Unlike the post()
         we include the account and peer update in the data stored.
         """
-        pv.post(op.value()) # timestamp and upsert handled by post() above
+        value = op.value().raw
+
+        self._update_timestamp(value)
+        self._upsert(value, op.account(), op.peer())
 
         op.done()
 
