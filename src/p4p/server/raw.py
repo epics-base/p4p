@@ -95,7 +95,7 @@ class Handler(object):
         pass
 
 
-    def close(self, pv):
+    def close(self):
         """
         Called when the Channel is closed.
 
@@ -188,9 +188,11 @@ class SharedPV(_SharedPV):
         # Guard goes here because we can have handlers that don't inherit from 
         # the Handler base class
         try:
-            self._handler.open(V, **kws)
-        except AttributeError as err:
+            open_fn = self._handler.open
+        except AttributeError:
             pass
+        else:
+            open_fn(V, **kws)
 
         _SharedPV.open(self, V)
 
@@ -212,28 +214,30 @@ class SharedPV(_SharedPV):
         # Guard goes here because we can have handlers that don't inherit from 
         # the Handler base class
         try:
-            self._handler.post(self, V, **kws)
+            post_fn = self._handler.post
         except AttributeError:
             pass
+        else:
+            post_fn(self, V, **kws)
 
         _SharedPV.post(self, V)
 
-    def close(self, destroy=False, sync=False, timeout=None):
+    def close(self, destroy=False):
         """Close PV, disconnecting any clients.
 
         :param bool destroy: Indicate "permanent" closure.  Current clients will not see subsequent open().
-        :param bool sync: When block until any pending onLastDisconnect() is delivered (timeout applies).
-        :param float timeout: Applies only when sync=True.  None for no timeout, otherwise a non-negative floating point value.
 
         close() with destory=True or sync=True will not prevent clients from re-connecting.
         New clients may prevent sync=True from succeeding.
         Prevent reconnection by __first__ stopping the Server, removing with :py:meth:`StaticProvider.remove()`,
         or preventing a :py:class:`DynamicProvider` from making new channels to this SharedPV.
         """
-        try:  
-            self._handler.close(self)
+        try:
+            close_fn = self._handler.close
         except AttributeError:
             pass
+        else:
+            close_fn(self)
 
         _SharedPV.close(self)
 

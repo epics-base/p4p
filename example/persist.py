@@ -4,6 +4,9 @@ Any values persisted this way will be automatically restored when the
 program is rerun. The details of users (account name and IP address) are
 recorded for puts.
 
+NOTE: This is intended as an example only. It has not been tested for
+      performance, reliability, or robustness.
+
 Try monitoring the PV `demo:pv:optime` then quit, wait, and restart the
 program while continuing to monitor the PV. Compare with the value of
 `demo:pv:uptime` which resets on each program start. Try setting the value of
