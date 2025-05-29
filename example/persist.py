@@ -59,12 +59,16 @@ class PersistHandler(Handler):
 
         # We could, in theory, re-apply authentication here if we queried for
         # that information and then did something with it!
-        res = self._conn.execute("SELECT data FROM pvs WHERE id=?", [self._pv_name])
+        res = self._conn.execute("SELECT * FROM pvs WHERE id=?", [self._pv_name])
         query_val = res.fetchone()
 
         if query_val is not None:
-            json_val = json.loads(query_val[0])
-            print(f"Will restore to {self._pv_name} value: {json_val['value']}")
+            json_val = json.loads(query_val[1])
+
+            # Report on restored values and setter (reports None if not known)
+            print(
+                f"Will restore to {self._pv_name} value: {json_val['value']}, set by {query_val[2]}"
+            )
 
             # Override initial value
             value["value"] = json_val["value"]
@@ -93,7 +97,7 @@ class PersistHandler(Handler):
 
         op.done()
 
-    def _update_timestamp(self, value) -> None:
+    def _update_timestamp(self, value: Value) -> None:
         """Update the timestamp of the PV to the current time."""
 
         if not value.changed("timeStamp") or (
@@ -103,7 +107,9 @@ class PersistHandler(Handler):
             value["timeStamp.secondsPastEpoch"] = now // 1
             value["timeStamp.nanoseconds"] = int((now % 1) * 1e9)
 
-    def _upsert(self, value, account=None, peer=None) -> None:
+    def _upsert(
+        self, value: Value, account: str | None = None, peer: str | None = None
+    ) -> None:
         # Persist the data; turn into JSON and write it to the DB
         val_json = json.dumps(value.todict())
 
@@ -135,7 +141,16 @@ def main() -> None:
     conn = sqlite3.connect("persist_pvs.db", check_same_thread=False)
     # conn.execute("DROP TABLE IF EXISTS pvs")
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS pvs (id VARCHAR(255), data JSON, account VARCHAR(30), peer VARCHAR(55), PRIMARY KEY (id));"
+        """
+        CREATE TABLE IF NOT EXISTS pvs 
+           (id VARCHAR(255), 
+            data JSON, 
+            account VARCHAR(30), 
+            peer VARCHAR(55), 
+            PRIMARY KEY (id)
+           )
+        ;
+        """
     )  # IPv6 addresses can be long and will contain port number as well!
 
     # Create the example PVs.
