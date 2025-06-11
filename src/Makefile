@@ -7,6 +7,26 @@ include $(TOP)/configure/CONFIG_PY
 # return c++ types.
 USR_CPPFLAGS += -D__PYX_EXTERN_C=extern
 
+USR_INCLUDES += -I$(OPENSSL_INCLUDE)
+
+# ======================================================
+# PATH TO "NON EPICS" EXTERNAL PACKAGES: USER LIBRARIES
+# ======================================================
+ssl_DIR = $(OPENSSL_LIB)
+crypto_DIR = $(OPENSSL_LIB)
+# ======================================================
+
+# ======================================================
+# LINK "NON EPICS" EXTERNAL PACKAGE LIBRARIES Statically
+# ======================================================
+#USR_LIBS += ssl crypto
+
+# ========================================================
+# LINK "NON EPICS" EXTERNAL PACKAGE LIBRARIES Dynamically
+# ========================================================
+LIB_SYS_LIBS += ssl crypto event event_openssl event_pthreads
+# =======================================================
+
 # place .so in subdirectory
 INSTALL_SHRLIB = $(PY_INSTALL_DIR)/p4p
 
