@@ -9,28 +9,22 @@ USR_CPPFLAGS += -D__PYX_EXTERN_C=extern
 
 
 
-ifeq ($PVXS_WITH_TLS),YES)
-USR_INCLUDES += -I$(OPENSSL_INCLUDE)
+ifeq ($(PVXS_WITH_TLS),YES)
+     USR_INCLUDES += -I$(OPENSSL_INCLUDE)
 
-# ======================================================
-# PATH TO "NON EPICS" EXTERNAL PACKAGES: USER LIBRARIES
-# ======================================================
-ssl_DIR = $(OPENSSL_LIB)
-crypto_DIR = $(OPENSSL_LIB)
-# ======================================================
+    # ======================================================
+    # PATH TO "NON EPICS" EXTERNAL PACKAGES: USER LIBRARIES
+    # ======================================================
+    ssl_DIR = $(OPENSSL_LIB)
+    crypto_DIR = $(OPENSSL_LIB)
+   # ======================================================
 
-# ======================================================
-# LINK "NON EPICS" EXTERNAL PACKAGE LIBRARIES Statically
-# ======================================================
-#USR_LIBS += ssl crypto
-
-# ========================================================
-# LINK "NON EPICS" EXTERNAL PACKAGE LIBRARIES Dynamically
-# ========================================================
-LIB_SYS_LIBS += ssl crypto event event_openssl event_pthreads
-# =======================================================
-endif    # PVXS_WITH_TLS 
-
+   # ========================================================
+   # LINK "NON EPICS" EXTERNAL PACKAGE LIBRARIES Dynamically
+   # ========================================================
+   LIB_SYS_LIBS += ssl crypto event event_openssl event_pthreads
+   # =======================================================
+endif
 
 # place .so in subdirectory
 INSTALL_SHRLIB = $(PY_INSTALL_DIR)/p4p
