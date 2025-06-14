@@ -32,8 +32,12 @@ CROSS_COMPILER_TARGET_ARCHS =
 #   take effect.
 #IOCS_APPL_TOP = </IOC/path/to/application/top>
 
-# Uncomment the appropriate line or include in your private $(TOP)/../CONFIG_SITE.local
-# PVXS_WITH_TLS = YES
+# ======================================================
+# To enable TLS uncomment the appropriate line or 
+# include in your private $(TOP)/../CONFIG_SITE.local
+# ======================================================
+# USR_CPPFLAGS += -DPVXS_ENABLE_OPENSSL
+# P4P_WITH_TLS = YES
 
 -include $(TOP)/configure/CONFIG_SITE.local
 
