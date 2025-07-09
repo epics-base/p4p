@@ -118,7 +118,6 @@ setup(
     url='https://epics-base.github.io/p4p',
     author='Michael Davidsaver',
     author_email='mdavidsaver@gmail.com',
-    license.file = "LICENSE"
     classifiers = [
         'Development Status :: 5 - Production/Stable',
         'Programming Language :: Python :: 2.7',
