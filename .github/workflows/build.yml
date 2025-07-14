@@ -245,13 +245,14 @@ jobs:
             cython: Cython==3.0.10
             skip_cothread: yes
 
-          - name: osx 3.13 arm64
-            os: macos-latest
-            python: "3.13"
-            piparch: macosx_11_0_universal2
-            numpy: numpy==2.1.0
-            cython: Cython==3.0.10
-            skip_cothread: yes
+          # Blocked on issue #179 - crash when running tests
+          # - name: osx 3.13 arm64
+          #   os: macos-latest
+          #   python: "3.13"
+          #   piparch: macosx_11_0_universal2
+          #   numpy: numpy==2.3.1
+          #   cython: Cython==3.0.10
+          #   skip_cothread: yes
 
           # Windows py builds
 
