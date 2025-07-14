@@ -256,19 +256,6 @@ jobs:
 
           # Windows py builds
 
-          ## missing Microsoft Visual C++ 9.0
-          #- os: windows-latest
-          #  python: "3.12"
-          #  piparch: win_amd64
-
-          - name: win64 3.5
-            os: windows-2019
-            python: "3.5"
-            piparch: win_amd64
-            numpy: numpy==1.12.1
-            cython: Cython==0.29.2
-            skip_cothread: yes
-
           - name: win64 3.6
             os: windows-latest
             python: "3.6"
