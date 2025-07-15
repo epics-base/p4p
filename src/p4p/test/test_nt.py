@@ -267,18 +267,41 @@ class TestEnum(RefTestCase):
         self.assertEqual(V.a.value.index, 1)
         self.assertEqual(V.b.value.index, 0)
 
-    def testWrap(self):
+    def testDictionaryOfValueWrap(self):
         W = nt.NTEnum()
         V = W.wrap({'index':1, 'choices':['X','Y']})
 
         self.assertEqual(V.value.index, 1)
         self.assertEqual(V.value.choices, ['X','Y'])
 
+    def testDictionaryWrap(self):
+        W = nt.NTEnum()
+        V = W.wrap({'value.index': 0,
+                    'value.choices': ['X','Y'],
+                    'alarm.severity': 1})
+
+        self.assertEqual(V.value.index, 0)
+        self.assertEqual(V.value.choices, ['X','Y'])
+        self.assertEqual(V.alarm.severity, 1)
+
+    def testWrap(self):
         W = nt.NTEnum()
         V = W.wrap(0)
 
         self.assertEqual(V.value.index, 0)
         self.assertEqual(V.value.choices, [])
+        self.assertTrue(V.changed('value'))
+
+        V = W.wrap(1, choices=['X', 'Y'])
+
+        self.assertEqual(V.value.index, 1)
+        self.assertEqual(V.value.choices, ['X', 'Y'])
+        self.assertTrue(V.changed('value'))
+
+        V = W.wrap('X')
+
+        self.assertEqual(V.value.index, 0)
+        self.assertTrue(V.changed('value.index'))
 
     def testAssign(self):
         W = nt.NTEnum()
