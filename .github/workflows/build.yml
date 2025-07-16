@@ -94,7 +94,7 @@ jobs:
             os: ubuntu-latest
             pyver: cp39-cp39
             piparch: manylinux2010_x86_64
-            numpy: numpy==1.19.3
+            numpy: numpy==1.21.6 # Highest supported on this piparch
             cython: Cython==0.29.23
 
           - name: linux 3.10 amd64
@@ -108,14 +108,14 @@ jobs:
             os: ubuntu-latest
             pyver: cp311-cp311
             piparch: manylinux2014_x86_64
-            numpy: numpy==2.0.1
+            numpy: numpy==2.2.6 # Highest supported on this piparch
             cython: Cython==3.0.10
 
           - name: linux 3.12 amd64
             os: ubuntu-latest
             pyver: cp312-cp312
             piparch: manylinux2014_x86_64
-            numpy: numpy==2.0.1
+            numpy: numpy==2.2.6 # Highest supported on this piparch
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -123,7 +123,7 @@ jobs:
             os: ubuntu-latest
             pyver: cp313-cp313
             piparch: manylinux2014_x86_64
-            numpy: numpy==2.1.0
+            numpy: numpy==2.2.6 # Highest supported on this piparch
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -284,16 +284,16 @@ jobs:
             os: windows-latest
             python: "3.9"
             piparch: win_amd64
-            numpy: numpy==1.19.5
-            cython: Cython==0.29.23
+            numpy: numpy==2.0.2
+            cython: Cython==3.0.10
             skip_cothread: yes
 
           - name: win64 3.10
             os: windows-latest
             python: "3.10"
             piparch: win_amd64
-            numpy: numpy==1.21.3
-            cython: Cython==0.29.23
+            numpy: numpy==2.2.6
+            cython: Cython==3.0.10
             skip_cothread: yes
 
           - name: win64 3.11
