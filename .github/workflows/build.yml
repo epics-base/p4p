@@ -284,8 +284,8 @@ jobs:
             os: windows-latest
             python: "3.9"
             piparch: win_amd64
-            numpy: numpy==2.0.2
-            cython: Cython==3.0.10
+            numpy: numpy==1.19.5
+            cython: Cython==0.29.23
             skip_cothread: yes
 
           - name: win64 3.10
