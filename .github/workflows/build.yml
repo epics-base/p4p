@@ -225,7 +225,7 @@ jobs:
             os: macos-latest
             python: "3.10"
             piparch: macosx_11_0_universal2
-            numpy: numpy==2.0.1
+            numpy: numpy==2.2.6
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -233,7 +233,7 @@ jobs:
             os: macos-latest
             python: "3.11"
             piparch: macosx_11_0_universal2
-            numpy: numpy==2.0.1
+            numpy: numpy==2.3.1
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -241,7 +241,7 @@ jobs:
             os: macos-latest
             python: "3.12"
             piparch: macosx_11_0_universal2
-            numpy: numpy==2.0.1
+            numpy: numpy==2.3.1
             cython: Cython==3.0.10
             skip_cothread: yes
 
