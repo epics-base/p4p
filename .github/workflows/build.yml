@@ -94,7 +94,7 @@ jobs:
             os: ubuntu-latest
             pyver: cp39-cp39
             piparch: manylinux2010_x86_64
-            numpy: numpy==1.19.3
+            numpy: numpy==1.21.6 # Highest supported on this piparch
             cython: Cython==0.29.23
 
           - name: linux 3.10 amd64
@@ -108,14 +108,22 @@ jobs:
             os: ubuntu-latest
             pyver: cp311-cp311
             piparch: manylinux2014_x86_64
-            numpy: numpy==2.0.1
+            numpy: numpy==2.2.6 # Highest supported on this piparch
             cython: Cython==3.0.10
 
           - name: linux 3.12 amd64
             os: ubuntu-latest
             pyver: cp312-cp312
             piparch: manylinux2014_x86_64
-            numpy: numpy==2.0.1
+            numpy: numpy==2.2.6 # Highest supported on this piparch
+            cython: Cython==3.0.10
+            skip_cothread: yes
+
+          - name: linux 3.13 amd64
+            os: ubuntu-latest
+            pyver: cp313-cp313
+            piparch: manylinux2014_x86_64
+            numpy: numpy==2.2.6 # Highest supported on this piparch
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -217,7 +225,7 @@ jobs:
             os: macos-latest
             python: "3.10"
             piparch: macosx_11_0_universal2
-            numpy: numpy==2.0.1
+            numpy: numpy==2.2.6
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -225,7 +233,7 @@ jobs:
             os: macos-latest
             python: "3.11"
             piparch: macosx_11_0_universal2
-            numpy: numpy==2.0.1
+            numpy: numpy==2.3.1
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -233,24 +241,20 @@ jobs:
             os: macos-latest
             python: "3.12"
             piparch: macosx_11_0_universal2
-            numpy: numpy==2.0.1
+            numpy: numpy==2.3.1
             cython: Cython==3.0.10
             skip_cothread: yes
 
+          # Blocked on issue #179 - crash when running tests
+          # - name: osx 3.13 arm64
+          #   os: macos-latest
+          #   python: "3.13"
+          #   piparch: macosx_11_0_universal2
+          #   numpy: numpy==2.3.1
+          #   cython: Cython==3.0.10
+          #   skip_cothread: yes
+
           # Windows py builds
-
-          ## missing Microsoft Visual C++ 9.0
-          #- os: windows-latest
-          #  python: "3.12"
-          #  piparch: win_amd64
-
-          - name: win64 3.5
-            os: windows-2019
-            python: "3.5"
-            piparch: win_amd64
-            numpy: numpy==1.12.1
-            cython: Cython==0.29.2
-            skip_cothread: yes
 
           - name: win64 3.6
             os: windows-latest
@@ -288,15 +292,15 @@ jobs:
             os: windows-latest
             python: "3.10"
             piparch: win_amd64
-            numpy: numpy==1.21.3
-            cython: Cython==0.29.23
+            numpy: numpy==2.2.6
+            cython: Cython==3.0.10
             skip_cothread: yes
 
           - name: win64 3.11
             os: windows-latest
             python: "3.11"
             piparch: win_amd64
-            numpy: numpy==1.23.2
+            numpy: numpy==2.3.1
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -304,7 +308,15 @@ jobs:
             os: windows-latest
             python: "3.12"
             piparch: win_amd64
-            numpy: numpy==1.26.0
+            numpy: numpy==2.3.1
+            cython: Cython==3.0.10
+            skip_cothread: yes
+
+          - name: win64 3.13
+            os: windows-latest
+            python: "3.13"
+            piparch: win_amd64
+            numpy: numpy==2.3.1
             cython: Cython==3.0.10
             skip_cothread: yes
 
@@ -332,7 +344,7 @@ jobs:
       - name: Install Twine
         if: true && !matrix.base
         run: |
-          python -m pip install twine
+          python -m pip install "twine<=6.0.1"
           python -m twine -h
           python ./gha-set-pre.py
 
@@ -452,7 +464,7 @@ jobs:
         if: true && !matrix.base
         uses: actions/upload-artifact@v4
         with:
-          name: p4p
+          name: "p4p ${{ matrix.name }}"
           path: dist/*
 
       - name: Check wheels
