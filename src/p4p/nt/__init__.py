@@ -10,7 +10,7 @@ except ImportError:
 from collections import OrderedDict
 from ..wrapper import Type, Value
 from .common import timeStamp, alarm, NTBase
-from .scalar import NTScalar
+from .scalar import NTScalar, ntwrappercommon, _metaHelper
 from .ndarray import NTNDArray
 from .enum import NTEnum
 
@@ -147,23 +147,26 @@ class NTTable(NTBase):
     Value = Value
 
     @staticmethod
-    def buildType(columns=[], extra=[]):
+    def buildType(columns=[], extra=[], display=False, control=False, valueAlarm=False):
         """Build a table
 
         :param list columns: List of column names and types. eg [('colA', 'd')]
         :param list extra: A list of tuples describing additional non-standard fields
         :returns: A :py:class:`Type`
         """
-        return Type(id="epics:nt/NTTable:1.0",
-                    spec=[
-                    ('labels', 'as'),
-                    ('value', ('S', None, columns)),
-                    ('descriptor', 's'),
-                    ('alarm', alarm),
-                    ('timeStamp', timeStamp),
-                    ] + extra)
+        F = [
+            ('labels', 'as'),
+            ('value', ('S', None, columns)),
+            ('descriptor', 's'),
+            ('alarm', alarm),
+            ('timeStamp', timeStamp),
+        ]
+        # TODO: different metadata options
+        _metaHelper(F, 'i', display=display, control=control, valueAlarm=valueAlarm)
+        F.extend(extra)
+        return Type(id="epics:nt/NTTable:1.0", spec=F)
 
-    def __init__(self, columns=[], extra=[]):
+    def __init__(self, columns=[], **kws):
         self.labels = []
         C = []
         for col, type in columns:
@@ -171,7 +174,7 @@ class NTTable(NTBase):
                 raise ValueError("NTTable column types may not be array")
             C.append((col, 'a' + type))
             self.labels.append(col)
-        self.type = self.buildType(C, extra=extra)
+        self.type = self.buildType(C, **kws)
 
     def wrap(self, values, **kws):
         """Pack an iterable of dict into a Value
@@ -184,11 +187,15 @@ class NTTable(NTBase):
         """
         if isinstance(values, Value):
             return values
-        else:
-            cols = dict([(L, []) for L in self.labels])
+        elif isinstance(values, list) or isinstance(values, dict):
             try:
+                cols = dict([(L, []) for L in self.labels])
+                if isinstance(values, list):
+                    update = values
+                else:
+                    update = values['value']
                 # unzip list of dict
-                for V in values:
+                for V in update:
                     for L in self.labels:
                         try:
                             cols[L].append(V[L])
@@ -199,40 +206,56 @@ class NTTable(NTBase):
                     V = cols[L]
                     if len(V) == 0:
                         del cols[L]
-
                 try:
-                    values = self.Value(self.type, {
+                    update = self.Value(self.type, {
                         'labels': self.labels,
                         'value': cols,
                     })
                 except:
                     _log.error("Failed to encode '%s' with %s", cols, self.labels)
                     raise
+                if isinstance(values, list):
+                    values = update
+                else:
+                    for key, val in values.items():
+                        if key != 'value' and key != 'labels':
+                            update[key] = val
+                    try:
+                        values = self.Value(self.type, update)
+                    except:
+                        _log.error("Failed to encode '%s' with %s", self.type, update)
+                        raise
             except:
                 _log.exception("Failed to wrap: %s", values)
                 raise
+        else:
+            # index or string
+            V = self.type()
+            values = V
         return self._annotate(values, **kws)
 
-    @staticmethod
-    def unwrap(value):
+    def unwrap(self, value):
         """Iterate an NTTable
 
         :returns: An iterator yielding an OrderedDict for each column
         """
-        ret = []
 
-        # build lists of column names, and value
-        lbl, cols = [], []
-        for cname, cval in value.value.items():
-            lbl.append(cname)
-            cols.append(cval)
+        if not (set(value) - {'labels', 'value'}):
+            ret = []
 
-        # zip together column arrays to iterate over rows
-        for rval in izip(*cols):
-            # zip together column names and row values
-            ret.append(OrderedDict(zip(lbl, rval)))
+            # build lists of column names, and value
+            lbl, cols = [], []
+            for cname, cval in value.value.items():
+                lbl.append(cname)
+                cols.append(cval)
 
-        return ret
+            # zip together column arrays to iterate over rows
+            for rval in izip(*cols):
+                # zip together column names and row values
+                ret.append(OrderedDict(zip(lbl, rval)))
+            return ret
+        else:
+            return ntwrappercommon._store(self, value)
 
 class NTURI(object):
 
