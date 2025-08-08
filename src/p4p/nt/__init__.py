@@ -167,6 +167,7 @@ class NTTable(NTBase):
         return Type(id="epics:nt/NTTable:1.0", spec=F)
 
     def __init__(self, columns=[], **kws):
+        self.unwrap = self._instance_unwrap
         self.labels = []
         C = []
         for col, type in columns:
@@ -206,6 +207,7 @@ class NTTable(NTBase):
                     V = cols[L]
                     if len(V) == 0:
                         del cols[L]
+
                 try:
                     update = self.Value(self.type, {
                         'labels': self.labels,
@@ -234,28 +236,33 @@ class NTTable(NTBase):
             values = V
         return self._annotate(values, **kws)
 
-    def unwrap(self, value):
+    def _instance_unwrap(self, value):
+        """Unwrap an NTTable into a Value
+
+        :returns: NTTable Value object
+        """
+        return ntwrappercommon._store(self, value)
+
+    @staticmethod
+    def unwrap(value):
         """Iterate an NTTable
 
         :returns: An iterator yielding an OrderedDict for each column
         """
+        ret = []
 
-        if not (set(value) - {'labels', 'value'}):
-            ret = []
+        # build lists of column names, and value
+        lbl, cols = [], []
+        for cname, cval in value.value.items():
+            lbl.append(cname)
+            cols.append(cval)
 
-            # build lists of column names, and value
-            lbl, cols = [], []
-            for cname, cval in value.value.items():
-                lbl.append(cname)
-                cols.append(cval)
+        # zip together column arrays to iterate over rows
+        for rval in izip(*cols):
+            # zip together column names and row values
+            ret.append(OrderedDict(zip(lbl, rval)))
 
-            # zip together column arrays to iterate over rows
-            for rval in izip(*cols):
-                # zip together column names and row values
-                ret.append(OrderedDict(zip(lbl, rval)))
-            return ret
-        else:
-            return ntwrappercommon._store(self, value)
+        return ret
 
 class NTURI(object):
 

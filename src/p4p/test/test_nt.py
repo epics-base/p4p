@@ -132,7 +132,7 @@ class TestScalar(RefTestCase):
 
 class TestTable(RefTestCase):
 
-    def test_wrap(self):
+    def test_dict_of_values_wrap(self):
         NT = nt.NTTable(columns=[
             ('a', 'i'),
             ('b', 's'),
@@ -145,7 +145,21 @@ class TestTable(RefTestCase):
         assert_aequal(V.value.a, [5, 6])
         self.assertEqual(V.value.b, ['one', 'two'])
 
-    def test_unwrap(self):
+    def test_dict_wrap(self):
+        NT = nt.NTTable(columns=[
+            ('a', 'i'),
+            ('b', 's'),
+        ])
+        V = NT.wrap({'value' : [
+                        {'a': 5, 'b': 'one'},
+                        {'a': 6, 'b': 'two'},
+                    ]})
+
+        assert_aequal(V.value.a, [5, 6])
+        self.assertEqual(V.value.b, ['one', 'two'])
+
+
+    def test_dict_of_values_unwrap(self):
         T = nt.NTTable.buildType(columns=[
             ('a', 'ai'),
             ('b', 'as'),
@@ -165,6 +179,26 @@ class TestTable(RefTestCase):
             OrderedDict([('a', 6), ('b', u'two')]),
         ])
 
+    def test_dict_unwrap(self):
+        NT = nt.NTTable(columns=[
+            ('a', 'i'),
+            ('b', 's'),
+        ])
+        T = nt.NTTable.buildType(columns=[
+            ('a', 'ai'),
+            ('b', 'as'),
+        ])
+        V = Value(T, {
+            'labels': ['a', 'b'],
+            'value': {
+                'a': [5, 6],
+                'b': ['one', 'two'],
+            },
+        })
+
+        P = NT.unwrap(V)
+
+        self.assertEqual(P, nt.ntwrappercommon._store(NT, V))
 
 class TestURI(RefTestCase):
 
