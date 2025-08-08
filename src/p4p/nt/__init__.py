@@ -187,7 +187,7 @@ class NTTable(NTBase):
         """
         if isinstance(values, Value):
             return values
-        elif isinstance(values, list) or isinstance(values, dict):
+        elif isinstance(values, (list, dict)):
             try:
                 cols = dict([(L, []) for L in self.labels])
                 if isinstance(values, list):
@@ -206,23 +206,17 @@ class NTTable(NTBase):
                     V = cols[L]
                     if len(V) == 0:
                         del cols[L]
-
-                try:
-                    update = self.Value(self.type, {
-                        'labels': self.labels,
-                        'value': cols,
-                    })
-                except:
-                    _log.error("Failed to encode '%s' with %s", cols, self.labels)
-                    raise
+                update = {'labels': self.labels, 'value': cols}
                 if isinstance(values, list):
-                    values = update
-                else:
-                    for key, val in values.items():
-                        if key != 'value' and key != 'labels':
-                            update[key] = val
                     try:
                         values = self.Value(self.type, update)
+                    except:
+                        _log.error("Failed to encode '%s' with %s", cols, self.labels)
+                        raise
+                else:
+                    try:
+                        values.update(update)
+                        values = self.Value(self.type, values)
                     except:
                         _log.error("Failed to encode '%s' with %s", self.type, update)
                         raise
