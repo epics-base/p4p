@@ -167,7 +167,6 @@ class NTTable(NTBase):
         return Type(id="epics:nt/NTTable:1.0", spec=F)
 
     def __init__(self, columns=[], **kws):
-        self.unwrap = self._instance_unwrap
         self.labels = []
         C = []
         for col, type in columns:
@@ -236,33 +235,13 @@ class NTTable(NTBase):
             values = V
         return self._annotate(values, **kws)
 
-    def _instance_unwrap(self, value):
-        """Unwrap an NTTable into a Value
+    def unwrap(self, value):
+        """Unwrap an NTTable into ntwrappercommon
 
-        :returns: NTTable Value object
+        :returns: ntwrappercommon object
         """
         return ntwrappercommon._store(self, value)
 
-    @staticmethod
-    def unwrap(value):
-        """Iterate an NTTable
-
-        :returns: An iterator yielding an OrderedDict for each column
-        """
-        ret = []
-
-        # build lists of column names, and value
-        lbl, cols = [], []
-        for cname, cval in value.value.items():
-            lbl.append(cname)
-            cols.append(cval)
-
-        # zip together column arrays to iterate over rows
-        for rval in izip(*cols):
-            # zip together column names and row values
-            ret.append(OrderedDict(zip(lbl, rval)))
-
-        return ret
 
 class NTURI(object):
 

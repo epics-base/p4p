@@ -158,32 +158,8 @@ class TestTable(RefTestCase):
         assert_aequal(V.value.a, [5, 6])
         self.assertEqual(V.value.b, ['one', 'two'])
 
-
-    def test_dict_of_values_unwrap(self):
-        T = nt.NTTable.buildType(columns=[
-            ('a', 'ai'),
-            ('b', 'as'),
-        ])
-        V = Value(T, {
-            'labels': ['a', 'b'],
-            'value': {
-                'a': [5, 6],
-                'b': ['one', 'two'],
-            },
-        })
-
-        P = list(nt.NTTable.unwrap(V))
-
-        self.assertListEqual(P, [
-            OrderedDict([('a', 5), ('b', u'one')]),
-            OrderedDict([('a', 6), ('b', u'two')]),
-        ])
-
-    def test_dict_unwrap(self):
-        NT = nt.NTTable(columns=[
-            ('a', 'i'),
-            ('b', 's'),
-        ])
+    def test_unwrap(self):
+        NT = nt.NTTable()
         T = nt.NTTable.buildType(columns=[
             ('a', 'ai'),
             ('b', 'as'),
@@ -197,7 +173,6 @@ class TestTable(RefTestCase):
         })
 
         P = NT.unwrap(V)
-
         self.assertEqual(P, nt.ntwrappercommon._store(NT, V))
 
 class TestURI(RefTestCase):
