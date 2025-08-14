@@ -188,41 +188,29 @@ class NTTable(NTBase):
         if isinstance(values, Value):
             return values
         elif isinstance(values, (list, dict)):
-            try:
-                cols = dict([(L, []) for L in self.labels])
-                if isinstance(values, list):
-                    update = values
-                else:
-                    update = values['value']
-                # unzip list of dict
-                for V in update:
-                    for L in self.labels:
-                        try:
-                            cols[L].append(V[L])
-                        except (IndexError, KeyError):
-                            pass
-                # allow omit empty columns
+            cols = dict([(L, []) for L in self.labels])
+            if isinstance(values, list):
+                update = values
+            else:
+                update = values['value']
+            # unzip list of dict
+            for V in update:
                 for L in self.labels:
-                    V = cols[L]
-                    if len(V) == 0:
-                        del cols[L]
-                update = {'labels': self.labels, 'value': cols}
-                if isinstance(values, list):
                     try:
-                        values = self.Value(self.type, update)
-                    except:
-                        _log.error("Failed to encode '%s' with %s", cols, self.labels)
-                        raise
-                else:
-                    try:
-                        values.update(update)
-                        values = self.Value(self.type, values)
-                    except:
-                        _log.error("Failed to encode '%s' with %s", self.type, update)
-                        raise
-            except:
-                _log.exception("Failed to wrap: %s", values)
-                raise
+                        cols[L].append(V[L])
+                    except (IndexError, KeyError):
+                        pass
+            # allow omit empty columns
+            for L in self.labels:
+                V = cols[L]
+                if len(V) == 0:
+                    del cols[L]
+            update = {'labels': self.labels, 'value': cols}
+            if isinstance(values, list):
+                values = self.Value(self.type, update)
+            else:
+                values.update(update)
+                values = self.Value(self.type, values)
         else:
             # index or string
             V = self.type()
