@@ -17,7 +17,7 @@ except ImportError:
 from ..wrapper import Value, Type
 from ..client.thread import Context, Disconnected, TimeoutError, RemoteError
 from ..server import Server, StaticProvider
-from ..server.thread import SharedPV, _defaultWorkQueue
+from ..server.thread import Handler, SharedPV, _defaultWorkQueue
 from ..util import WorkQueue
 from ..nt import NTScalar, NTURI
 from .utils import RefTestCase
@@ -420,3 +420,55 @@ class TestFirstLast(RefTestCase):
 
                 _log.debug('CLOSE')
                 self.assertFalse(self.H.conn)
+
+class TestHandlerOpenPostClose(RefTestCase):
+    """
+    Test Handler open(), post() and close() functions called correctly by SharedPV. Note that:
+    - TestRPC, TestFirstLast already test onFirstConnect() and onLastDisconnect().
+    - TestGPM, TestPVRequestMask already test put().
+    - TestRPC, TestRPC2 already test rpc().
+    """
+
+    class TestHandler(Handler):
+        def __init__(self):
+            self.last_op = "init"
+
+        def open(self, value):
+            self.last_op = "open"
+            value["value"] = 17
+
+        def post(self, pv, value):
+            self.last_op = "post"
+            value["value"] = value["value"] * 2
+
+        def close(self, pv):
+            self.last_op = "close"
+
+    def setUp(self):
+        super(TestHandlerOpenPostClose, self).setUp()
+        self.handler = self.TestHandler()
+        self.pv = SharedPV(handler=self.handler, nt=NTScalar('d'))
+
+    def test_open(self):
+        # Setup sets the initial value to 5, but the Handler open() overrides
+        self.pv.open(5)
+        self.assertEqual(self.handler.last_op, "open")
+        self.assertEqual(self.pv.current(), 17.0)
+
+    def test_post(self):
+        self.pv.open(5)
+        self.pv.post(13.0)
+        self.assertEqual(self.handler.last_op, "post")
+        self.assertEqual(self.pv.current(), 26.0)
+
+    def test_close(self):
+        self.pv.open(5)
+        self.pv.close(sync=True)
+        self.assertEqual(self.handler.last_op, "close")
+
+    def tearDown(self):
+        self.pv.close(sync=True)
+        self.traceme(self.pv)
+        del self.pv
+ 
+        super(TestHandlerOpenPostClose, self).tearDown()
