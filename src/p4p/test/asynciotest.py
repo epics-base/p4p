@@ -23,7 +23,12 @@ __all__ = (
 )
 
 # we should never implicitly use the default loop.
-asyncio.get_event_loop().close()
+try:
+    loop = asyncio.get_event_loop()
+except RuntimeError:
+    pass  # no default loop exists (Python>=3.14)
+else:
+    loop.close()
 
 class AsyncMeta(type):
     """Automatically wrap and "async def test*():" methods for dispatch to self.loop
