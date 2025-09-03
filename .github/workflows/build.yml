@@ -1,492 +1,302 @@
-name: P4P
+name: Python
 
 on: [push, pull_request, workflow_dispatch]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  build:
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
-    env:
-      # used by .ci/build-deps.sh for Make builds
-      BRBASE: ${{ matrix.base }}
-      BRPVXS: ${{ matrix.pvxs }}
+  manylinux:
+    name: py${{ matrix.py }} ${{ matrix.ml }}
+
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Linux Makefile builds
-          - name: Make Linux py3.x e7.0
-            os: ubuntu-latest
-            python: "3.x"
-            base: "7.0"
-            pvxs: "master"
-            profile: latest
-            skip_cothread: yes
+        # see compat matrix: https://github.com/pypa/manylinux
 
-          - name: Make Linux py3.x e3.15
-            os: ubuntu-latest
-            python: "3.x"
-            base: "3.15"
-            pvxs: "master"
-            profile: latest
-            skip_cothread: yes
+        - ml: manylinux1_x86_64
+          py: cp27-cp27m
+          cy: "Cython<3.0"
+          numpy: numpy==1.8.2
+          skip: true
 
-          - name: Make Linux py3.x e3.14
-            # https://github.com/epics-base/epics-base/issues/330
-            os: ubuntu-latest
-            python: "3.x"
-            base: "3.14"
-            pvxs: "master"
-            profile: latest
-            skip_cothread: yes
+        - ml: manylinux2014_x86_64
+          py: cp38-cp38
+          cy: "Cython<3.1"
+          numpy: numpy==1.17.3
 
-          # Check build from .tar
-          - name: Source
-            os: ubuntu-latest
-            python: "3.12"
-            source: true
+        - ml: manylinux2014_x86_64
+          py: cp39-cp39
+          numpy: numpy==1.21.6 # Highest supported on this piparch
 
-          # Linux py builds x64
-          # TODO: manylinux1 and 2014 are EOL, even more reason to remove these supported versions
-          - name: linux 2.7 amd64
-            os: ubuntu-latest
-            pyver: cp27-cp27m
-            piparch: manylinux1_x86_64
-            numpy: numpy==1.8.2
-            cython: Cython==0.29.2
+        - ml: manylinux2014_x86_64
+          py: cp310-cp310
+          numpy: numpy==2.0.1
 
-          - name: linux 2.7u amd64
-            os: ubuntu-latest
-            pyver: cp27-cp27mu
-            piparch: manylinux1_x86_64
-            numpy: numpy==1.8.2
-            cython: Cython==0.29.2
+        - ml: manylinux2014_x86_64
+          py: cp311-cp311
+          numpy: numpy==2.2.6 # Highest supported on this piparch
 
-          - name: linux 3.5 amd64
-            os: ubuntu-latest
-            pyver: cp35-cp35m
-            piparch: manylinux1_x86_64
-            numpy: numpy==1.12.1
-            cython: Cython==0.29.2
+        - ml: manylinux2014_x86_64
+          py: cp312-cp312
+          numpy: numpy==2.2.6 # Highest supported on this piparch
 
-          - name: linux 3.6 amd64
-            os: ubuntu-latest
-            pyver: cp36-cp36m
-            piparch: manylinux1_x86_64
-            numpy: numpy==1.12.1
-            cython: Cython==0.29.2
+        - ml: manylinux2014_x86_64
+          py: cp313-cp313
+          numpy: numpy==2.2.6 # Highest supported on this piparch
 
-          - name: linux 3.7 amd64
-            os: ubuntu-latest
-            pyver: cp37-cp37m
-            piparch: manylinux1_x86_64
-            numpy: numpy==1.16.2
-            cython: Cython==0.29.2
+        - ml: manylinux2014_x86_64
+          py: cp313-cp313t
+          numpy: numpy==2.2.6 # Highest supported on this piparch
 
-          - name: linux 3.8 amd64
-            os: ubuntu-latest
-            pyver: cp38-cp38
-            piparch: manylinux1_x86_64
-            numpy: numpy==1.17.3
-            cython: Cython==0.29.14
+        - ml: manylinux_2_28_x86_64
+          py: cp314-cp314
+          numpy: numpy==2.3.5
 
-          - name: linux 3.9 amd64
-            os: ubuntu-latest
-            pyver: cp39-cp39
-            piparch: manylinux2010_x86_64
-            numpy: numpy==1.21.6 # Highest supported on this piparch
-            cython: Cython==0.29.23
-
-          - name: linux 3.10 amd64
-            os: ubuntu-latest
-            pyver: cp310-cp310
-            piparch: manylinux2014_x86_64
-            numpy: numpy==2.0.1
-            cython: Cython==3.0.10
-
-          - name: linux 3.11 amd64
-            os: ubuntu-latest
-            pyver: cp311-cp311
-            piparch: manylinux2014_x86_64
-            numpy: numpy==2.2.6 # Highest supported on this piparch
-            cython: Cython==3.0.10
-
-          - name: linux 3.12 amd64
-            os: ubuntu-latest
-            pyver: cp312-cp312
-            piparch: manylinux2014_x86_64
-            numpy: numpy==2.2.6 # Highest supported on this piparch
-            cython: Cython==3.0.10
-            skip_cothread: yes
-
-          - name: linux 3.13 amd64
-            os: ubuntu-latest
-            pyver: cp313-cp313
-            piparch: manylinux2014_x86_64
-            numpy: numpy==2.2.6 # Highest supported on this piparch
-            cython: Cython==3.0.10
-            skip_cothread: yes
-
-          # Linux py builds x64
-          # TODO: manylinux1 and 2014 are EOL, even more reason to remove these supported versions
-          - name: linux 2.7 i686
-            os: ubuntu-latest
-            pyver: cp27-cp27m
-            piparch: manylinux1_i686
-            numpy: numpy==1.11.1
-            cython: Cython==0.29.2
-            pre: linux32
-
-          - name: linux 2.7u i686
-            os: ubuntu-latest
-            pyver: cp27-cp27mu
-            piparch: manylinux1_i686
-            numpy: numpy==1.11.1
-            cython: Cython==0.29.2
-            pre: linux32
-
-          - name: linux 3.5 i686
-            os: ubuntu-latest
-            pyver: cp35-cp35m
-            piparch: manylinux1_i686
-            numpy: numpy==1.12.1
-            cython: Cython==0.29.2
-            pre: linux32
-
-          - name: linux 3.6 i686
-            os: ubuntu-latest
-            pyver: cp36-cp36m
-            piparch: manylinux1_i686
-            numpy: numpy==1.12.1
-            cython: Cython==0.29.2
-            pre: linux32
-
-          - name: linux 3.7 i686
-            os: ubuntu-latest
-            pyver: cp37-cp37m
-            piparch: manylinux1_i686
-            numpy: numpy==1.16.2
-            cython: Cython==0.29.2
-            pre: linux32
-            skip_cothread: yes
-
-          - name: linux 3.8 i686
-            os: ubuntu-latest
-            pyver: cp38-cp38
-            piparch: manylinux1_i686
-            numpy: numpy==1.19.5
-            cython: Cython==0.29.14
-            pre: linux32
-            skip_cothread: yes
-
-          - name: linux 3.9 i686
-            os: ubuntu-latest
-            pyver: cp39-cp39
-            piparch: manylinux2010_i686
-            numpy: numpy==1.19.5
-            cython: Cython==0.29.23
-            pre: linux32
-            skip_cothread: yes
-
-          # numpy i386 wheels not built >= 3.10
-
-          # OSX py builds
-          - name: osx 3.6 intel
-            os: macos-13
-            python: "3.6"
-            piparch: macosx_10_9_intel
-            numpy: numpy==1.11.3
-            cython: Cython==0.29.2
-
-          - name: osx 3.7 intel
-            os: macos-13
-            python: "3.7"
-            piparch: macosx_10_9_intel
-            numpy: numpy==1.16.2
-            cython: Cython==0.29.2
-
-          - name: osx 3.8 arm64
-            os: macos-latest
-            python: "3.8"
-            piparch: macosx_11_0_universal2
-            numpy: numpy==1.24.4
-            cython: Cython==0.29.15
-            skip_cothread: yes
-
-          - name: osx 3.9 arm64
-            os: macos-latest
-            python: "3.9"
-            piparch: macosx_11_0_universal2
-            numpy: numpy==2.0.1
-            cython: Cython==3.0.10
-            skip_cothread: yes
-
-          - name: osx 3.10 arm64
-            os: macos-latest
-            python: "3.10"
-            piparch: macosx_11_0_universal2
-            numpy: numpy==2.2.6
-            cython: Cython==3.0.10
-            skip_cothread: yes
-
-          - name: osx 3.11 arm64
-            os: macos-latest
-            python: "3.11"
-            piparch: macosx_11_0_universal2
-            numpy: numpy==2.3.1
-            cython: Cython==3.0.10
-            skip_cothread: yes
-
-          - name: osx 3.12 arm64
-            os: macos-latest
-            python: "3.12"
-            piparch: macosx_11_0_universal2
-            numpy: numpy==2.3.1
-            cython: Cython==3.0.10
-            skip_cothread: yes
-
-          # Blocked on issue #179 - crash when running tests
-          # - name: osx 3.13 arm64
-          #   os: macos-latest
-          #   python: "3.13"
-          #   piparch: macosx_11_0_universal2
-          #   numpy: numpy==2.3.1
-          #   cython: Cython==3.0.10
-          #   skip_cothread: yes
-
-          # Windows py builds
-
-          - name: win64 3.6
-            os: windows-latest
-            python: "3.6"
-            piparch: win_amd64
-            numpy: numpy==1.12.1
-            cython: Cython==0.29.2
-            skip_cothread: yes
-
-          - name: win64 3.7
-            os: windows-latest
-            python: "3.7"
-            piparch: win_amd64
-            numpy: numpy==1.16.2
-            cython: Cython==0.29.2
-            skip_cothread: yes
-
-          - name: win64 3.8
-            os: windows-latest
-            python: "3.8"
-            piparch: win_amd64
-            numpy: numpy==1.19.5
-            cython: Cython==0.29.14
-            skip_cothread: yes
-
-          - name: win64 3.9
-            os: windows-latest
-            python: "3.9"
-            piparch: win_amd64
-            numpy: numpy==1.19.5
-            cython: Cython==0.29.23
-            skip_cothread: yes
-
-          - name: win64 3.10
-            os: windows-latest
-            python: "3.10"
-            piparch: win_amd64
-            numpy: numpy==2.2.6
-            cython: Cython==3.0.10
-            skip_cothread: yes
-
-          - name: win64 3.11
-            os: windows-latest
-            python: "3.11"
-            piparch: win_amd64
-            numpy: numpy==2.3.1
-            cython: Cython==3.0.10
-            skip_cothread: yes
-
-          - name: win64 3.12
-            os: windows-latest
-            python: "3.12"
-            piparch: win_amd64
-            numpy: numpy==2.3.1
-            cython: Cython==3.0.10
-            skip_cothread: yes
-
-          - name: win64 3.13
-            os: windows-latest
-            python: "3.13"
-            piparch: win_amd64
-            numpy: numpy==2.3.1
-            cython: Cython==3.0.10
-            skip_cothread: yes
+        - ml: manylinux_2_28_x86_64
+          py: cp314-cp314t
+          numpy: numpy==2.3.5
+          src: true
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
-          submodules: recursive
-
-      - name: Setup native python
-        if: matrix.python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-          #architecture: x64
-
-      # TLS 1.0 and 1.1 support was removed from pypi so the cached pip won't work
-      - name: Python 3.5 Fix
-        if: ${{ matrix.python == '3.5' }}
-        run: |
-          curl https://bootstrap.pypa.io/pip/3.5/get-pip.py | python
+            submodules: recursive
 
       - name: Automatic core dumper analysis
         uses: mdavidsaver/ci-core-dumper@master
 
-      - name: Install Twine
-        if: true && !matrix.base
+      - name: Detect pre-release
+        run: python ./gha-set-pre.py
+
+      - name: Build
         run: |
-          python -m pip install "twine<=6.0.1"
-          python -m twine -h
-          python ./gha-set-pre.py
+            # emit script to be executed in container.
+            cat <<EOF > runit.sh
+            #!/bin/sh
+            set -e -x
+            ls /opt/python/
+            /opt/python/${{ matrix.py }}/bin/python --version
 
-      - name: Native Prep/Info
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install setuptools wheel twine
-          which python
-          python --version
-          python -m pip --version
-          python -m twine -h
-          python ./gha-set-pre.py
+            yum -y install gdb || dnf -y install gdb || (apt update && apt -y install gdb)
 
-      - name: apt-get install
-        if: runner.os=='Linux' && matrix.base
-        run: |
-          sudo apt-get update
-          sudo apt-get -y install libreadline6-dev libncurses5-dev perl
+            export PATH="/opt/python/${{ matrix.py }}/bin:\$PATH"
+            export SETUPTOOLS_DSO_PLAT_NAME="${{ matrix.ml }}"
 
-      - name: Native Deps
-        if: true && !matrix.pyver
-        shell: bash
-        run: |
-          if [ "${{ matrix.profile }}" ]
-          then
-            python -m pip install --only-binary numpy,numpy,Cython -r requirements-${{ matrix.profile }}.txt
-          else
-            python -m pip install --only-binary numpy,numpy,Cython nose2 ply ${{ matrix.numpy }} ${{ matrix.cython }}
-          fi
-          if [ "${{ matrix.skip_cothread }}" != "yes" ]
-          then
-            python -m pip install cothread
-          fi
+            cd /io
 
-      - name: PY Source
-        shell: bash
-        run: |
-          echo "PRE=$PRE"
-          python -m pip install setuptools wheel nose2
-          python -m pip install --only-binary numpy $PRE setuptools-dso epicscorelibs pvxslibs
-          python setup.py sdist --formats=gztar
-          ls dist/*
+            pip install -U pip
+            # pre-download for later steps
+            pip download $PRE -d output \
+                --only-binary numpy,Cython \
+                "${{ matrix.cy || 'Cython' }}" \
+                "${{ matrix.numpy || 'numpy' }}" \
+                setuptools_dso pvxslibs wheel ply nose2
 
-      - name: Native Make build
-        if: matrix.base
-        run: |
-          ./.ci/build-deps.sh -j2
-          make PYTHON=`which python` -j2
-          python -m ci_core_dumper exec make PYTHON=`which python` nose
+            # create source tar
+            pip install $PRE --no-index -f ./output setuptools_dso numpy Cython pvxslibs
+            python setup.py sdist -d ./output
+            ls -lh output
 
-      - name: PEP517 Build
-        if: matrix.python && !matrix.base && matrix.source
-        run: |
-          python -m pip wheel -v -w dist $PRE dist/*.tar.*
+            # build wheel from source tar
+            pip wheel $PRE -w ./output --no-index -f ./output p4p
+            ls -lh output
 
-      - name: Native PY build
-        if: matrix.python && !matrix.base && !matrix.source
-        shell: bash
-        run: |
-          python -m pip wheel -v -w dist --no-index --no-deps \
-           --no-build-isolation --no-use-pep517 \
-           --build-option --plat-name=${{ matrix.piparch }} \
-           $PRE \
-           dist/*.tar.*
+            # install wheel for testing
+            pip install $PRE --no-index -f ./output p4p nose2
 
-          cd dist
-          python -m pip install p4p*.whl
-          python -m ci_core_dumper exec python -m nose2 -v p4p
+            # switch away from root when running test to avoid inclusion in PYTHONPATH
+            cd output
+            python -m nose2 -v p4p
 
-      - name: Docker PY build
-        if: matrix.pyver && !matrix.base && !matrix.source
-        run: |
-          # can't use GHA native docker support since GHA magic binaries need .so absent from old manylinux images :(
-          cat <<EOF > runit.sh
-          #!/bin/sh
-          set -e -x
-          cd /io
-          [ -d dist ]
-          ls dist/*
-          export PATH="/opt/python/${{ matrix.pyver }}/bin:\$PATH"
-          which python
-          python -m pip install -U pip
-          python -m pip install setuptools wheel nose2
-          python -m pip install --only-binary numpy $PRE setuptools-dso epicscorelibs pvxslibs
-          if [ "${{ matrix.profile }}" ]
-          then
-            python -m pip install --only-binary numpy,numpy,Cython -r requirements-${{ matrix.profile }}.txt
-          else
-            python -m pip install --only-binary numpy,numpy,Cython nose2 ply ${{ matrix.numpy }} ${{ matrix.cython }}
-          fi
-          if [ "${{ matrix.skip_cothread }}" != "yes" ]
-          then
-            python -m pip install cothread
-          fi
+            EOF
+            # end of script.  Now execute in container
 
-          python -m pip wheel -v -w dist --no-index --no-deps \
-           --no-build-isolation --no-use-pep517 \
-           --build-option --plat-name=${{ matrix.piparch }} \
-           $PRE \
-           dist/*.tar.*
+            chmod +x runit.sh
+            mkdir output
+            podman run --rm \
+                -v `pwd`:/io \
+                quay.io/pypa/${{ matrix.ml }} \
+                /io/runit.sh
 
-          cd dist
-          python -m pip install --only-binary numpy p4p*.whl
-          python -m nose2 -v p4p
+      - name: Result
+        run: ls -lhtr output
 
-          EOF
-          cat runit.sh
-          chmod +x runit.sh
-          docker pull quay.io/pypa/${{ matrix.piparch }}
-          docker run --rm -v `pwd`:/io quay.io/pypa/${{ matrix.piparch }} ${{ matrix.pre }} /io/runit.sh
-
-      - name: List Artifacts
-        if: true && !matrix.base
-        run: ls dist/*
-
-      - name: Save Artifacts
-        if: true && !matrix.base
-        uses: actions/upload-artifact@v4
+      - name: Save wheels
+        if: ${{ ! matrix.skip }}
+        uses: actions/upload-artifact@v6
         with:
-          name: "p4p ${{ matrix.name }}"
-          path: dist/*
+          retention-days: 1
+          name: whl-${{ matrix.py }}-${{ matrix.ml }}
+          path: output/p4p*.whl
 
-      - name: Check wheels
-        if: ${{ !matrix.base && !matrix.source }}
-        run: python -m twine check dist/p4p*.whl
+      - name: Save source
+        if: ${{ matrix.src }}
+        uses: actions/upload-artifact@v6
+        with:
+          retention-days: 1
+          name: whl-source
+          path: output/p4p*.gz
 
-      - name: Check source
-        if: ${{ matrix.source && !matrix.base }}
-        run: python -m twine check dist/p4p*.tar.*
+  native:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            py: "3.8"
+            cy: "Cython<3.1"
+            numpy: numpy==1.19.5
+            arch: win_amd64
+
+          # windows + 3.9 omitted due to numpy bug "invalid preprocessor command 'warning'"
+
+          - os: windows-latest
+            py: "3.10"
+            numpy: numpy==2.2.6
+            arch: win_amd64
+
+          - os: windows-latest
+            py: "3.11"
+            numpy: numpy==2.3.1
+            arch: win_amd64
+
+          - os: windows-latest
+            py: "3.12"
+            numpy: numpy==2.3.1
+            arch: win_amd64
+
+          - os: windows-latest
+            py: "3.13"
+            numpy: numpy==2.3.1
+            arch: win_amd64
+
+          - os: windows-latest
+            py: "3.14"
+            numpy: numpy==2.3.5
+            arch: win_amd64
+
+          - os: macos-latest
+            py: "3.8"
+            cy: "Cython<3.1"
+            numpy: numpy==1.24.4
+            arch: macosx_11_0_universal2
+
+          - os: macos-latest
+            py: "3.9"
+            numpy: numpy==2.0.1
+            arch: macosx_11_0_universal2
+
+          - os: macos-latest
+            py: "3.10"
+            numpy: numpy==2.2.6
+            arch: macosx_11_0_universal2
+
+          - os: macos-latest
+            py: "3.11"
+            numpy: numpy==2.3.1
+            arch: macosx_11_0_universal2
+
+          - os: macos-latest
+            py: "3.12"
+            numpy: numpy==2.3.1
+            arch: macosx_11_0_universal2
+
+          - os: macos-latest
+            py: "3.13"
+            numpy: numpy==2.3.1
+            arch: macosx_11_0_universal2
+
+          - os: macos-latest
+            py: "3.14"
+            numpy: numpy==2.3.5
+            arch: macosx_11_0_universal2
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+            submodules: recursive
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.py }}
+
+      - name: Prepare
+        run: python -m pip install -U pip virtualenv
+
+      - name: PIP Debug
+        run: pip debug -v
+
+      - name: Detect pre-release
+        run: python ./gha-set-pre.py
+
+      - name: Build
+        run: |
+            set -x -e
+            python -m pip install -U pip
+            pip download $PRE -d output \
+                --only-binary numpy,Cython \
+                "${{ matrix.cy || 'Cython' }}" \
+                "${{ matrix.numpy || 'numpy' }}" \
+                setuptools_dso pvxslibs wheel ply nose2
+
+            export SETUPTOOLS_DSO_PLAT_NAME=${{ matrix.arch }}
+
+            pip install $PRE --no-index -f ./output setuptools_dso numpy Cython pvxslibs
+            python setup.py sdist -d ./output
+            ls -lh output
+
+            # build wheel from source tar
+            pip wheel $PRE -w ./output --no-index -f ./output p4p
+            ls -lh output
+
+            # install wheel for testing
+            pip install $PRE --no-index -f ./output p4p nose2
+
+            # switch away from root when running test to avoid inclusion in PYTHONPATH
+            cd output
+            python -m nose2 -v p4p
+
+      - run: ls -lhtr output
+
+      - name: Save wheels
+        if: ${{ ! matrix.skip }}
+        uses: actions/upload-artifact@v6
+        with:
+          retention-days: 1
+          name: whl-${{ matrix.py }}-${{ matrix.os }}
+          path: output/p4p*.whl
+
+  combine:
+    runs-on: ubuntu-latest
+    needs: [manylinux, native]
+    steps:
+      - name: Download
+        uses: actions/download-artifact@v7
+        with:
+            merge-multiple: true
+
+      - run: ls -lhtr
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: 3.11
+
+      - name: Setup
+        run: |
+          pip install -U pip twine
+          python -m twine -h
+
+      - name: Check
+        run: twine check p4p*.gz p4p*.whl
 
       - name: Upload wheels
-        if: github.event_name=='push' && github.repository=='epics-base/p4p' && github.ref=='refs/heads/master' && !matrix.base && !matrix.source
+        if: env.TWINE_USERNAME && github.event_name=='push' && github.ref=='refs/heads/master'
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          python -m twine upload --skip-existing dist/p4p*.whl
-
-      - name: Upload source
-        if: github.event_name=='push' && github.repository=='epics-base/p4p' && github.ref=='refs/heads/master' && matrix.source && !matrix.base
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          python -m twine upload --skip-existing dist/p4p*.tar.*
+        run: twine upload --skip-existing p4p*.gz p4p*.whl
