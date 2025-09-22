@@ -176,6 +176,22 @@ struct PyLock
     ~PyLock() { PyGILState_Release(state); }
 };
 
+// HACK!!!!!
+inline
+std::string assembleCred(const server::ClientCredentials& cred) {
+    const auto& method = cred.method;
+    if(method=="ca") {
+        auto sep = cred.account.find_last_of('/');
+        if(sep==cred.account.npos) {
+            return cred.account;
+        } else {
+            return cred.account.substr(sep+1);
+        }
+    } else {
+        return method + "/" + cred.account;
+    }
+}
+
 TypeDef startPrototype(const std::string& id, const Value& base);
 void appendPrototype(TypeDef& def, PyObject* spec);
 PyObject* asPySpec(const Value& v, bool fakearray=false);
