@@ -437,7 +437,7 @@ class GWHandler(object):
         if not user:
             user = op.account()
             if not roles:
-                roles = op.roles()
+                roles = list(op.roles())
         peer = peer or op.peer().split(':')[0]
         _log.debug("asTest %s %s %s", user, roles, peer)
 
