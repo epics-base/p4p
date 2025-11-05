@@ -608,13 +608,15 @@ cdef class ClientProvider:
         cdef server.Config_defs_t defs
 
         if useenv:
-            cconf.applyEnv()
+            with nogil:
+                cconf.applyEnv()
 
         if conf is not None:
             for K,V in conf.items():
                 defs[K.encode()] = V.encode()
 
-            cconf.applyDefs(defs)
+            with nogil:
+                cconf.applyDefs(defs)
 
         with nogil:
             self.ctxt = cconf.build()
