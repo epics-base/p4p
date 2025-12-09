@@ -26,7 +26,9 @@ else:
     out = open(sys.argv[1], 'w')
 
 try:
-    from sysconfig import get_config_var, get_python_inc
+    from sysconfig import get_config_var, get_path
+    def get_python_inc():
+        return get_path('include')
 except ImportError:
     from distutils.sysconfig import get_config_var, get_python_inc
 
