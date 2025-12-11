@@ -42,7 +42,7 @@ cdef extern from "<p4p.h>" namespace "p4p":
     object tostr(const data.Value& v, size_t limit, bool showval) except+
 
     # pvxs_sharedpv.cpp
-    string toString(const server.Server& serv, int detail) nogil except+
+    string toString(const server.Server& serv, int detail) except+ nogil
     void attachHandler(sharedpv.SharedPV& pv, object handler) except+
     void detachHandler(sharedpv.SharedPV& pv) except+
     void attachCleanup(const shared_ptr[source.ExecOp]& op, object handler) except+
