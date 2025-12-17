@@ -2,8 +2,6 @@ include pyproject.toml
 include README.md
 include src/*.h
 include src/*.cpp
-include src/p4p/*.h
-include src/p4p/*.cpp
 include src/p4p/*.pyx
 include src/p4p/*.pxd
 include src/p4p/pvxs/*.pxd
