@@ -1,0 +1,126 @@
+name: Makefile
+
+on: [push, pull_request, workflow_dispatch]
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  SETUP_PATH: .ci-local:.ci
+
+jobs:
+  make:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-latest
+          cmp: gcc
+          base: "7.0"
+          py: "3.8"
+
+        - os: ubuntu-latest
+          cmp: gcc
+          base: "7.0"
+          py: "3.x"
+
+        - os: windows-latest
+          cmp: vs2022
+          base: "7.0"
+          py: "3.8"
+
+        - os: windows-latest
+          cmp: vs2022
+          base: "7.0"
+          py: "3.x"
+
+        - os: macos-latest
+          cmp: clang
+          base: "7.0"
+          py: "3.8"
+
+        - os: macos-latest
+          cmp: clang
+          base: "7.0"
+          py: "3.x"
+
+    env:
+      MODULES: "pvxs"
+      BASE: ${{ matrix.base }}
+      BASE_RECURSIVE: NO
+      PVXS: master
+      PVXS_REPOOWNER: epics-base
+      CMP: ${{ matrix.cmp }}
+      BCFG: default
+      TEST: ${{ matrix.test }}
+      EXTRA: ${{ matrix.extra }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+            submodules: recursive
+
+      - name: Automatic core dumper analysis
+        uses: mdavidsaver/ci-core-dumper@ci
+
+      - name: "apt-get install"
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install libreadline-dev g++-mingw-w64-x86-64 cmake gdb qemu-system-x86 libevent-dev
+
+      - name: "brew libevent"
+        if: runner.os == 'macOS'
+        run: |
+          brew install libevent
+          echo "LIBEVENT=$(brew --prefix)" >> "$GITHUB_ENV"
+
+      - name: "vcpkg cache"
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: c:/vcpkg-cache
+          key: ${{ runner.os }}-vcpkg
+
+      - name: "vcpkg build"
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          install -d c:/vcpkg-cache
+          vcpkg install --binarysource="clear;files,c:/vcpkg-cache,readwrite" "libevent"
+          ls C:/vcpkg/installed/x64-windows
+          echo "LIBEVENT=C:/vcpkg/installed/x64-windows" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.py }}
+
+      - name: Inspect
+        shell: bash
+        run: find "$Python_ROOT_DIR"
+
+      - name: get_config_vars
+        run: python -c 'import sysconfig, pprint; pprint.pprint(sysconfig.get_config_vars())'
+
+      - name: Prepare and compile dependencies
+        run: python .ci/cue.py prepare
+
+      - name: Py Deps
+        run: |
+          pip install -U pip
+          pip install Cython numpy ply nose2
+
+      - name: Build main module
+        run: python .ci/cue.py build
+
+      - name: List
+        shell: bash
+        run: find python* -type f
+
+      - name: Test
+        # "make nose" not yet working on Windows.
+        if: runner.os != 'Windows'
+        run: python .ci/cue.py build nose
