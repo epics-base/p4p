@@ -13,7 +13,6 @@ PY_LIBDIRS := /path ...
 from __future__ import print_function
 
 import sys
-import errno
 import os
 
 if len(sys.argv)<2:
@@ -32,8 +31,16 @@ try:
 except ImportError:
     from distutils.sysconfig import get_config_var, get_python_inc
 
+def gcv(name, *dflt):
+    v = get_config_var(name)
+    if v is None:
+        if len(dflt):
+            return dflt[0]
+        raise KeyError(name)
+    return v
+
 incdirs = [get_python_inc()]
-libdir = get_config_var('LIBDIR') or ''
+libdir = gcv('LIBDIR', '') or gcv('prefix') + '/libs'
 
 
 def get_numpy_include_dirs():
@@ -44,14 +51,15 @@ def get_numpy_include_dirs():
 
 incdirs = get_numpy_include_dirs() + incdirs
 
-print('TARGET_CFLAGS +=',get_config_var('BASECFLAGS'), file=out)
-print('TARGET_CXXFLAGS +=',get_config_var('BASECFLAGS'), file=out)
+target_flags = gcv('BASECFLAGS', '')
+print('TARGET_CFLAGS +=',target_flags, file=out)
+print('TARGET_CXXFLAGS +=',target_flags, file=out)
 
-print('PY_VER :=',get_config_var('VERSION'), file=out)
-ldver = get_config_var('LDVERSION')
+print('PY_VER :=',gcv('VERSION'), file=out)
+ldver = gcv('LDVERSION', None)
 if ldver is None:
-    ldver = get_config_var('VERSION')
-    if get_config_var('Py_DEBUG'):
+    ldver = gcv('VERSION')
+    if gcv('Py_DEBUG', ''):
         ldver = ldver+'_d'
 print('PY_LD_VER :=',ldver, file=out)
 print('PY_INCDIRS :=',' '.join(incdirs), file=out)
