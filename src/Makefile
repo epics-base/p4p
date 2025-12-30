@@ -132,12 +132,12 @@ pvxs_client$(OBJ): _p4p.h
 
 ifneq (,$(T_A))
 nose.%:
-	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" $(PYTHON) -m nose2 -v $* $(NOSEFLAGS)
+	cd "$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" && $(PYTHON) -m nose2 -v $* $(NOSEFLAGS)
 
 # bounce back down to the sphinx generated Makefile
 # aren't Makefiles fun...
 sphinx:
-	PYTHONPATH="${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" $(MAKE) -C $(TOP)/documentation html
+	cd "$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" && $(MAKE) -C $(TOP)/documentation html
 
 sh:
 	echo "export PYTHONPATH=\$${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" $(if $(OUTPUT),> $(OUTPUT))
