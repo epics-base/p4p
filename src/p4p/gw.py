@@ -521,6 +521,7 @@ class App(object):
 
     def __init__(self, args):
         _log.info( '*** Gateway STARTS now using "%s".'%args.config)
+        conf_dir = os.path.abspath(os.path.dirname(args.config))
         args._all_config_files = [args.config]
         with open(args.config, 'r') as F:
             jconf = F.read()
@@ -556,6 +557,8 @@ class App(object):
                 client_conf['EPICS_PVA_BROADCAST_PORT'] = str(jcli['bcastport'])
             if 'serverport' in jcli:
                 client_conf['EPICS_PVA_SERVER_PORT'] = str(jcli['serverport'])
+            if 'tls_keychain' in jcli:
+                client_conf['EPICS_PVA_TLS_KEYCHAIN'] = os.path.join(conf_dir, str(jcli['tls_keychain']))
             for k,v in jcli.items(): # pass through
                 if k.startswith('EPICS_PVA_'):
                     client_conf[k] = v
@@ -629,6 +632,8 @@ class App(object):
                 server_conf['EPICS_PVAS_BROADCAST_PORT'] = str(jsrv['bcastport'])
             if 'serverport' in jsrv:
                 server_conf['EPICS_PVAS_SERVER_PORT'] = str(jsrv['serverport'])
+            if 'tls_keychain' in jsrv:
+                server_conf['EPICS_PVAS_TLS_KEYCHAIN'] = os.path.join(conf_dir, str(jsrv['tls_keychain']))
             for k,v in jsrv.items(): # pass through
                 if k.startswith('EPICS_PVA'):
                     server_conf[k] = v
