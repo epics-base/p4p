@@ -154,6 +154,7 @@ jobs:
             arch: win_amd64
 
           # windows + 3.9 omitted due to numpy bug "invalid preprocessor command 'warning'"
+          # https://github.com/numpy/numpy/issues/27224
 
           - os: windows-latest
             py: "3.10"
