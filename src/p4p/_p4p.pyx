@@ -551,6 +551,13 @@ cdef class ClientOperation:
         if cancelled:
             self.handler(1, "", None)
 
+    @property
+    def name(self):
+        if <bool>self.op:
+            return self.op.get().name()
+        return "Dead ClientOperation"
+
+
 # can't tp_clear as we have no way to replace Subscription handler (cancel?)
 @cython.no_gc_clear
 cdef class ClientMonitor:
