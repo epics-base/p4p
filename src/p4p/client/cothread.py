@@ -83,7 +83,7 @@ class Context(raw.Context):
         try:
             ret = done.Wait(timeout)
         except cothread.Timedout:
-            ret = TimeoutError()
+            ret = TimeoutError(name)
             if throw:
                 raise ret
         finally:
@@ -159,7 +159,7 @@ class Context(raw.Context):
         try:
             ret = done.Wait(timeout)
         except cothread.Timedout:
-            ret = TimeoutError()
+            ret = TimeoutError(name)
             if throw:
                 raise ret
         finally:
@@ -201,7 +201,7 @@ class Context(raw.Context):
             try:
                 ret = done.Wait(timeout)
             except cothread.Timedout:
-                ret = TimeoutError()
+                ret = TimeoutError(name)
             if throw and isinstance(ret, Exception):
                 raise ret
         finally:
