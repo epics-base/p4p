@@ -5,7 +5,7 @@ Set some python derived Makefile variables.
 Emits something like the following
 
 PY_OK := YES  # indicates success of this script
-PY_VER := 2.6
+PY_VER := 3.8
 PY_INCDIRS := /path ...
 PY_LIBDIRS := /path ...
 """
@@ -24,12 +24,7 @@ else:
         pass
     out = open(sys.argv[1], 'w')
 
-try:
-    from sysconfig import get_config_var, get_path
-    def get_python_inc():
-        return get_path('include')
-except ImportError:
-    from distutils.sysconfig import get_config_var, get_python_inc
+from sysconfig import get_config_var, get_path
 
 def gcv(name, *dflt):
     v = get_config_var(name)
@@ -39,7 +34,7 @@ def gcv(name, *dflt):
         raise KeyError(name)
     return v
 
-incdirs = [get_python_inc()]
+incdirs = [get_path('include')]
 libdir = gcv('LIBDIR', '') or gcv('prefix') + '/libs'
 
 
@@ -64,20 +59,6 @@ if ldver is None:
 print('PY_LD_VER :=',ldver, file=out)
 print('PY_INCDIRS :=',' '.join(incdirs), file=out)
 print('PY_LIBDIRS :=',libdir, file=out)
-
-try:
-    import asyncio
-except ImportError:
-    print('HAVE_ASYNCIO := NO', file=out)
-else:
-    print('HAVE_ASYNCIO := YES', file=out)
-
-try:
-    import cothread
-except ImportError:
-    print('HAVE_COTHREAD := NO', file=out)
-else:
-    print('HAVE_COTHREAD := YES', file=out)
 
 print('PY_OK := YES', file=out)
 

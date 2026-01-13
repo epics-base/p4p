@@ -9,10 +9,7 @@ import gc
 import inspect
 import threading
 
-try:
-    from Queue import Queue, Full, Empty
-except ImportError:
-    from queue import Queue, Full, Empty
+from queue import Queue, Full, Empty
 
 from ..wrapper import Value, Type
 from ..client.thread import Context, Disconnected, TimeoutError, RemoteError

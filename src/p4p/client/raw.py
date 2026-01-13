@@ -7,10 +7,7 @@ _log = logging.getLogger(__name__)
 import warnings
 import sys
 
-try:
-    from Queue import Queue, Full, Empty
-except ImportError:
-    from queue import Queue, Full, Empty
+from queue import Queue, Full, Empty
 
 from .. import _p4p
 from .._p4p import Cancelled, Disconnected, Finished, RemoteError

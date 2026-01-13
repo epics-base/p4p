@@ -7,24 +7,19 @@ _log = logging.getLogger(__name__)
 import sys
 import time
 import json
-try:
-    from itertools import izip
-except ImportError:
-    izip = zip
-
 import logging
-_log = logging.getLogger(__name__)
 
 from .. import nt
 from .. import set_debug
 from . import thread
 
+_log = logging.getLogger(__name__)
 
 def op_get(ctxt, args):
     requests = [args.request] * len(args.names)
     results = ctxt.get(args.names, requests, timeout=args.timeout, throw=False)
     ret = 0
-    for name, val in izip(args.names, results):
+    for name, val in zip(args.names, results):
         if isinstance(val, Exception):
             ret = 1
             print(name, 'Error:', val)

@@ -1,12 +1,5 @@
 
 import logging
-_log = logging.getLogger(__name__)
-
-try:
-    from itertools import izip
-except ImportError:
-    izip = zip
-
 from collections import OrderedDict
 from ..wrapper import Type, Value
 from .common import timeStamp, alarm, NTBase
@@ -22,6 +15,8 @@ __all__ = [
     'NTNDArray',
     'defaultNT',
 ]
+
+_log = logging.getLogger(__name__)
 
 _default_nt = {
     "epics:nt/NTScalar:1.0": NTScalar,
@@ -228,7 +223,7 @@ class NTTable(NTBase):
             cols.append(cval)
 
         # zip together column arrays to iterate over rows
-        for rval in izip(*cols):
+        for rval in zip(*cols):
             # zip together column names and row values
             ret.append(OrderedDict(zip(lbl, rval)))
 
