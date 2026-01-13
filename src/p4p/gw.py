@@ -238,21 +238,18 @@ class GWStats(object):
 
         self._pvs['StatsTime'] = self.statsTime = SharedPV(nt=NTScalar('d'), initial=0.0)
 
-        # faulthandler.dump_traceback() added w/ py 3.3
-        # however, file= arg. added w/ 3.5
-        if sys.version_info>=(3,5):
-            self._pvs['threads'] = stackstrace = SharedPV(nt=NTScalar('s'), initial='RPC only')
-            @stackstrace.rpc
-            def showStacks(pv, op):
-                import faulthandler
-                from tempfile import TemporaryFile
-                with TemporaryFile('r+') as F:
-                    faulthandler.dump_traceback(file=F)
-                    F.seek(0)
-                    V = pv.current().raw
-                    V.unmark()
-                    V['value'] = F.read()
-                    op.done(V)
+        self._pvs['threads'] = stackstrace = SharedPV(nt=NTScalar('s'), initial='RPC only')
+        @stackstrace.rpc
+        def showStacks(pv, op):
+            import faulthandler
+            from tempfile import TemporaryFile
+            with TemporaryFile('r+') as F:
+                faulthandler.dump_traceback(file=F)
+                F.seek(0)
+                V = pv.current().raw
+                V.unmark()
+                V['value'] = F.read()
+                op.done(V)
 
         # PVs for bandwidth usage statistics.
         # 2x tables: us, ds
