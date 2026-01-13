@@ -254,12 +254,8 @@ class RPCProxyBase(object):
 
 def _wrapMethod(name, meth):
     pv, req = meth._call_PV, meth._call_Request
-    if sys.version_info >= (3, 0):
-        S = inspect.getfullargspec(meth)
-        keywords = S.varkw
-    else:
-        S = inspect.getargspec(meth)
-        keywords = S.keywords
+    S = inspect.getfullargspec(meth)
+    keywords = S.varkw
     defaults = S.defaults or [] # for getfullargspec().defaults can be None
 
     if S.varargs is not None or keywords is not None:

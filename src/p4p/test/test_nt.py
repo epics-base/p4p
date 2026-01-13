@@ -244,14 +244,13 @@ class TestEnum(RefTestCase):
 
         self.assertEqual(V.value.index, 42)
 
-        if sys.version_info >= (3, 0):
-            V.value.choices = []
+        V.value.choices = []
 
-            def fn():
-                V.value = '1'
-            self.assertWarns(UserWarning, fn)  # warns of empty choices
+        def fn():
+            V.value = '1'
+        self.assertWarns(UserWarning, fn)  # warns of empty choices
 
-            self.assertEqual(V.value.index, 1)
+        self.assertEqual(V.value.index, 1)
 
     def testSubStore(self):
         V = Value(Type([

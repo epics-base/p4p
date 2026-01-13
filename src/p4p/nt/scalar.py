@@ -263,9 +263,3 @@ class NTScalar(NTBase):
         """Store python value in Value
         """
         V.value = py
-
-if sys.version_info < (3, 0):
-    class ntlong(ntwrappercommon, long):
-        pass
-
-    NTScalar.typeMap[long] = ntlong
