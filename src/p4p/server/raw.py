@@ -19,7 +19,7 @@ class ServOpWrap(object):
         V = self._op.value()
         try:
             return self._unwrap(V)
-        except: # py3 will chain automatically, py2 won't
+        except:
             raise ValueError("Unable to unwrap %r with %r"%(V, self._unwrap))
 
     def done(self, value=None, error=None):

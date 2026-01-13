@@ -368,7 +368,6 @@ These values are aggregated from all defined internal gateway Servers and Client
   May be useful for detecting resource leaks while troubleshooting.
 
 **<statusprefix>threads**
-  Available when running with python >= 3.5.
   An RPC call which returns a text description of all python threads.
 
 .. note::
