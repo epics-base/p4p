@@ -121,10 +121,8 @@ setup(
     license='BSD',
     classifiers = [
         'Development Status :: 5 - Production/Stable',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: Implementation :: CPython',
-        'License :: OSI Approved :: BSD License',
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries',
@@ -134,7 +132,7 @@ setup(
         'Operating System :: Microsoft :: Windows',
     ],
     keywords='epics scada',
-    python_requires='>=2.7',
+    python_requires='>=3.8',
 
     packages=[
         'p4p',

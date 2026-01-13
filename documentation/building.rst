@@ -20,8 +20,8 @@ Dependencies
 ------------
 
 Python packages:
-
-* numpy >=1.6
+* Python >= 3.8
+* numpy >=1.7
 * Cython >=0.29.32
 * nose2 (Optional, recommended to run unittests)
 * ply (Optional for core module, required for `gwpage`)
