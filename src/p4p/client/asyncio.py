@@ -21,23 +21,7 @@ __all__ = [
     'timesout',
 ]
 
-if hasattr(asyncio, 'get_running_loop'): # py >=3.7
-    from asyncio import get_running_loop, create_task, all_tasks
-else:
-    from asyncio import _get_running_loop
-    from asyncio.tasks import Task
-
-    def get_running_loop():
-        ret = _get_running_loop()
-        if ret is None:
-            raise RuntimeError('Thread has no running event loop')
-        return ret
-
-    def create_task(coro, *, name=None):
-        return get_running_loop().create_task(coro)
-
-    def all_tasks():
-        return Task.all_tasks(loop=get_running_loop())
+from asyncio import get_running_loop, create_task, all_tasks
 
 def timesout(deftimeout=5.0):
     """Decorate a coroutine to implement an overall timeout.

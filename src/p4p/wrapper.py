@@ -62,7 +62,7 @@ class Type(_p4p._Type):
     Code Type
     ==== =======
     ?    bool
-    s    unicode
+    s    str
     b    s8
     B    u8
     h    s16

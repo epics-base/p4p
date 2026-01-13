@@ -103,7 +103,7 @@ install_requires = [
 ]
 
 if hasattr(numpy.lib, "NumpyVersion") and numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0b1':
-    install_requires += ['numpy >= 1.7', 'numpy < 3']
+    install_requires += ['numpy >= 1.15', 'numpy < 3']
 else:
     # assume ABI forward compatibility as indicated by
     # https://github.com/numpy/numpy/blob/master/numpy/core/setup_common.py#L28
@@ -121,10 +121,8 @@ setup(
     license='BSD',
     classifiers = [
         'Development Status :: 5 - Production/Stable',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: Implementation :: CPython',
-        'License :: OSI Approved :: BSD License',
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries',
@@ -134,7 +132,7 @@ setup(
         'Operating System :: Microsoft :: Windows',
     ],
     keywords='epics scada',
-    python_requires='>=2.7',
+    python_requires='>=3.8',
 
     packages=[
         'p4p',

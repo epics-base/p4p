@@ -3,20 +3,11 @@ from __future__ import print_function
 
 import logging
 import sys
-_log = logging.getLogger(__name__)
-
-try:
-    from itertools import izip
-except ImportError:
-    izip = zip
 from functools import partial
 import json
 import threading
 
-try:
-    from Queue import Queue, Full, Empty
-except ImportError:
-    from queue import Queue, Full, Empty
+from queue import Queue, Full, Empty
 
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished
@@ -35,16 +26,9 @@ __all__ = [
     'TimeoutError',
 ]
 
-if sys.version_info >= (3, 0):
-    unicode = str
-    TimeoutError = TimeoutError
+_log = logging.getLogger(__name__)
 
-else:
-    class TimeoutError(RuntimeError):
-        "Local timeout has expired"
-        def __init__(self):
-            RuntimeError.__init__(self, 'Timeout')
-
+TimeoutError = TimeoutError
 
 class Subscription(object):
     """An active subscription.
@@ -229,7 +213,7 @@ class Context(raw.Context):
         >>> A, B = ctxt.get(['pv:1', 'pv:2'])
         >>>
         """
-        singlepv = isinstance(name, (bytes, unicode))
+        singlepv = isinstance(name, (bytes, str))
         if singlepv:
             name = [name]
             request = [request]
@@ -247,7 +231,7 @@ class Context(raw.Context):
         raw_get = super(Context, self).get
 
         try:
-            for i, (N, req) in enumerate(izip(name, request)):
+            for i, (N, req) in enumerate(zip(name, request)):
                 def cb(value, i=i):
                     try:
                         if not isinstance(value, Cancelled):
@@ -314,7 +298,7 @@ class Context(raw.Context):
         Unless the provided value is a dict, it is assumed to be a plain value
         and an attempt is made to store it in '.value' field.
         """
-        singlepv = isinstance(name, (bytes, unicode))
+        singlepv = isinstance(name, (bytes, str))
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:
@@ -341,8 +325,8 @@ class Context(raw.Context):
         raw_put = super(Context, self).put
 
         try:
-            for i, (n, value, req) in enumerate(izip(name, values, request)):
-                if isinstance(value, (bytes, unicode)) and value[:1] == '{':
+            for i, (n, value, req) in enumerate(zip(name, values, request)):
+                if isinstance(value, (bytes, str)) and value[:1] == '{':
                     try:
                         value = json.loads(value)
                     except ValueError:

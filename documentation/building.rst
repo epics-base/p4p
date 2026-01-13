@@ -8,33 +8,21 @@ Release tars available from https://github.com/epics-base/p4p/releases
 
 The P4P modules requires:
 
-* Python 2.7 or >=3.5 (>=3.6 for asyncio support)
-* numpy >=1.6
-* Cython >=0.25.2
+* Python >=3.8.
+* numpy >=1.7
+* Cython >=3.0.0a1
 * nose2 (Optional, recommended to run unittests)
 
 and...
 
-Current (>= 4.0)
-
 * EPICS Base >= 3.14.12
 * PVXS >= 0.2.0
-
-Prior to 4.0
-
-* EPICS >= 7.0.2
-
-or
-
-* EPICS Base >= 3.14.12
-* pvDataCPP >=7.1.0
-* pvAccessCPP >=6.1.0
 
 P4P can be built and installed in one of two ways.
 As a python package, preferably managed by PIP.
 As an EPICS module.
 
-Optional
+Optional Dependencies:
 
 * `cothread <https://github.com/dls-controls/cothread>`_ needed by `p4p.client.cothread.Context`.
 * `qtpy <https://github.com/spyder-ide/qtpy>`_ needed for `p4p.client.Qt.Context`.
@@ -80,7 +68,7 @@ Then prepare the virtualenv env with. ::
     tar -xaf p4p-env-*.tar.gz
     python virtualenv.py --never-download env
     . env/bin/activate
-    pip install --no-index -f virtualenv_support p4p
+    pip install --no-index -f ./virtualenv_support p4p
     python -m nose2 p4p   # Optional: runs automatic tests
 
 Utilities to automate this process include https://pypi.org/project/pyutilib.virtualenv/
@@ -173,4 +161,4 @@ To run the unittests: ::
 For testing purposes several simple command line client tools are provided.
 For further information run: ::
 
-   PYTHONPATH=$PWD/python2.7/linux-x86_64 python -m p4p.client.cli -h
+   PYTHONPATH=$PWD/python3.8/linux-x86_64 python -m p4p.client.cli -h

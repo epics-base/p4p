@@ -23,9 +23,6 @@ __all__ = [
     'RemoteError',
 ]
 
-if sys.version_info >= (3, 0):
-    unicode = str
-
 def cb2event(done, value):
     if isinstance(value, Cancelled):
         pass # can ignore cothreads can't be preempted
@@ -56,7 +53,7 @@ class Context(raw.Context):
         >>> A, B = ctxt.get(['pv:1', 'pv:2'])
         >>>
         """
-        singlepv = isinstance(name, (bytes, unicode))
+        singlepv = isinstance(name, (bytes, str))
         if singlepv:
             return self._get_one(name, request=request, timeout=timeout, throw=throw)
 
@@ -124,7 +121,7 @@ class Context(raw.Context):
         Unless the provided value is a dict, it is assumed to be a plain value
         and an attempt is made to store it in '.value' field.
         """
-        singlepv = isinstance(name, (bytes, unicode))
+        singlepv = isinstance(name, (bytes, str))
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:

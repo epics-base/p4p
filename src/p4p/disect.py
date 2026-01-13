@@ -7,10 +7,6 @@ import gc
 import inspect
 import time
 from glob import fnmatch
-try:
-    from types import InstanceType
-except ImportError:  # py3
-    InstanceType = None
 
 
 class StatsDelta(object):
@@ -89,9 +85,6 @@ def gcstats():
         if K is StatsDelta:
             continue  # avoid counting ourselves
 
-        elif K is InstanceType:  # instance of an old-style class
-            K = getattr(obj, '__class__', K)
-
         # Track types as strings to avoid holding references
         K = str(K)
 
@@ -116,9 +109,6 @@ def gcfind(name):
         K = type(obj)
         if K is gcfind:
             continue  # avoid counting ourselves
-
-        if K is InstanceType:  # instance of an old-style class
-            K = getattr(obj, '__class__', K)
 
         if fnmatch(str(K), name):
             found.append(obj)

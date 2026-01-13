@@ -17,12 +17,6 @@ jobs:
         include:
         # see compat matrix: https://github.com/pypa/manylinux
 
-        - ml: manylinux1_x86_64
-          py: cp27-cp27m
-          cy: "Cython<3.0"
-          numpy: numpy==1.8.2
-          skip: true
-
         - ml: manylinux2014_x86_64
           py: cp38-cp38
           cy: "Cython<3.1"
