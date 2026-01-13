@@ -3,20 +3,11 @@ from __future__ import print_function
 
 import logging
 import sys
-_log = logging.getLogger(__name__)
-
-try:
-    from itertools import izip
-except ImportError:
-    izip = zip
 from functools import partial
 import json
 import threading
 
-try:
-    from Queue import Queue, Full, Empty
-except ImportError:
-    from queue import Queue, Full, Empty
+from queue import Queue, Full, Empty
 
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished
@@ -34,6 +25,8 @@ __all__ = [
     'RemoteError',
     'TimeoutError',
 ]
+
+_log = logging.getLogger(__name__)
 
 TimeoutError = TimeoutError
 
@@ -238,7 +231,7 @@ class Context(raw.Context):
         raw_get = super(Context, self).get
 
         try:
-            for i, (N, req) in enumerate(izip(name, request)):
+            for i, (N, req) in enumerate(zip(name, request)):
                 def cb(value, i=i):
                     try:
                         if not isinstance(value, Cancelled):
@@ -332,7 +325,7 @@ class Context(raw.Context):
         raw_put = super(Context, self).put
 
         try:
-            for i, (n, value, req) in enumerate(izip(name, values, request)):
+            for i, (n, value, req) in enumerate(zip(name, values, request)):
                 if isinstance(value, (bytes, str)) and value[:1] == '{':
                     try:
                         value = json.loads(value)

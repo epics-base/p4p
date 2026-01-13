@@ -7,17 +7,10 @@ import json
 import weakref
 import threading
 
-try: # 2.7
-    from Queue import Queue, Full, Empty
-    from time import time as monotonic
-except ImportError: # 3.x
-    from queue import Queue, Full, Empty
-    from time import monotonic
+from queue import Queue, Full, Empty
+from time import monotonic
 
-try:
-    from io import StringIO
-except ImportError:
-    from cString import StringIO
+from io import StringIO
 
 from .utils import RefTestCase, RegularNamedTemporaryFile as NamedTemporaryFile
 from ..server import Server, StaticProvider

@@ -4,10 +4,7 @@ _log = logging.getLogger(__name__)
 
 from functools import partial
 
-try:
-    from Queue import Queue, Full, Empty
-except ImportError:
-    from queue import Queue, Full, Empty
+from queue import Queue, Full, Empty
 from threading import Thread, Event
 
 __all__ = [
