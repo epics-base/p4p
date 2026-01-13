@@ -11,7 +11,7 @@ from ..client.asyncio import get_running_loop, create_task, all_tasks
 
 __all__ = (
     'SharedPV',
-        'Handler',
+    'Handler',
 )
 
 _log = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ def _handle(pv, op, M, args): # callback in asyncio loop
 
 class SharedPV(_SharedPV):
 
-    def __init__(self, handler=None, **kws):
+    def __init__(self, handler: Handler=None, **kws):
         self.loop = get_running_loop()
         _SharedPV.__init__(self, handler=handler, **kws)
         self._disconnected = asyncio.Event()

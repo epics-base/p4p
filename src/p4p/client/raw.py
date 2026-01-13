@@ -4,11 +4,6 @@ from __future__ import print_function
 import logging
 _log = logging.getLogger(__name__)
 
-import warnings
-import sys
-
-from queue import Queue, Full, Empty
-
 from .. import _p4p
 from .._p4p import Cancelled, Disconnected, Finished, RemoteError
 
@@ -19,6 +14,9 @@ __all__ = (
     'Subscription',
     'Context',
     'RemoteError',
+    'Disconnected',
+    'Cancelled',
+    'Finished',
 )
 
 

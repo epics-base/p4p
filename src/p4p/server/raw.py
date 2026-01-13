@@ -2,7 +2,7 @@
 import logging
 _log = logging.getLogger(__name__)
 
-from .._p4p import SharedPV as _SharedPV
+from .._p4p import SharedPV as _SharedPV, ServerOperation
 
 __all__ = (
     'SharedPV',
@@ -40,7 +40,7 @@ class Handler(object):
     Use of this as a base class is optional.
     """
 
-    def put(self, pv, op):
+    def put(self, pv:'SharedPV', op: ServerOperation):
         """
         Called each time a client issues a Put
         operation on this Channel.
@@ -50,7 +50,7 @@ class Handler(object):
         """
         op.done(error='Not supported')
 
-    def rpc(self, pv, op):
+    def rpc(self, pv:'SharedPV', op: ServerOperation):
         """
         Called each time a client issues a Remote Procedure Call
         operation on this Channel.
@@ -60,7 +60,7 @@ class Handler(object):
         """
         op.done(error='Not supported')
 
-    def onFirstConnect(self, pv):
+    def onFirstConnect(self, pv:'SharedPV'):
         """
         Called when the first Client channel is created.
 
@@ -68,7 +68,7 @@ class Handler(object):
         """
         pass
 
-    def onLastDisconnect(self, pv):
+    def onLastDisconnect(self, pv:'SharedPV'):
         """
         Called when the last Client channel is closed.
 

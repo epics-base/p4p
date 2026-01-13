@@ -5,7 +5,7 @@ _log = logging.getLogger(__name__)
 from functools import partial
 from threading import Event
 
-from ..util import _defaultWorkQueue
+from ..util import _defaultWorkQueue, WorkQueue
 from .raw import SharedPV as _SharedPV, Handler
 from ..client.raw import RemoteError
 
@@ -72,7 +72,7 @@ class SharedPV(_SharedPV):
 
     """
 
-    def __init__(self, queue=None, **kws):
+    def __init__(self, queue:WorkQueue=None, **kws):
         _SharedPV.__init__(self, **kws)
         self._queue = queue or _defaultWorkQueue()
         self._disconnected = Event()

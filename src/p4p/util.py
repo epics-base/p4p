@@ -3,6 +3,7 @@ import logging
 _log = logging.getLogger(__name__)
 
 from functools import partial
+from typing import Callable
 
 from queue import Queue, Full, Empty
 from threading import Thread, Event
@@ -21,10 +22,10 @@ class WorkQueue(object):
     def __init__(self, maxsize=5):
         self._Q = Queue(maxsize=maxsize)
 
-    def push(self, callable):
+    def push(self, callable: Callable[[], None]):
         self._Q.put_nowait(callable)  # throws Queue.Full
 
-    def push_wait(self, callable):
+    def push_wait(self, callable: Callable[[], None]):
         self._Q.put(callable)
 
     def interrupt(self):

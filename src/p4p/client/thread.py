@@ -2,12 +2,11 @@
 from __future__ import print_function
 
 import logging
-import sys
 from functools import partial
 import json
 import threading
 
-from queue import Queue, Full, Empty
+from queue import Queue, Empty
 
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished

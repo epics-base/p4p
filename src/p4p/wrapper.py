@@ -88,10 +88,10 @@ class Type(_p4p._Type):
         for k in self.keys():
             yield k
 
-    def items(self):
+    def items(self) -> [(str, 'Type')]:
         return [(k, self[k]) for k in self.keys()]
 
-    def values(self):
+    def values(self) -> ['Type']:
         return [self[k] for k in self.keys()]
 
     def __repr__(self):
@@ -146,7 +146,7 @@ class Value(_p4p._Value):
     def __iter__(self):
         return iter(self.type())
 
-    def changed(self, *fields):
+    def changed(self, *fields) -> bool:
         """changed(*fields) -> bool
         Test if one or more named fields have changed.
 
@@ -159,7 +159,7 @@ class Value(_p4p._Value):
                 return True
         return False
 
-    def changedSet(self, expand=False, parents=False):
+    def changedSet(self, expand=False, parents=False) -> {str}:
         """changedSet(expand=False, parents=False) -> set
         :param bool expand: Whether to expand when entire sub-structures are marked as changed.
                             If True, then sub-structures are expanded and only leaf fields will be included.

@@ -6,7 +6,6 @@ from qtpy.QtCore import QObject, QCoreApplication, Signal, QEvent
 from . import raw
 from .raw import Disconnected, RemoteError, Cancelled, Finished
 from ..wrapper import Value, Type
-from .._p4p import ClientProvider
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                     logLevelInfo, logLevelWarn, logLevelError,
                     logLevelFatal, logLevelOff)
@@ -46,7 +45,7 @@ class Operation(QObject):
     # receives a Value or an Exception
     result = Signal(object)
 
-    def __init__(self, parent, timeout):
+    def __init__(self, parent: QObject, timeout: float):
         QObject.__init__(self, parent)
         self._active = self.startTimer(ceil(timeout*1000))
 
@@ -54,7 +53,7 @@ class Operation(QObject):
         self._op.close()
 
     @exceptionGuard
-    def timerEvent(self, evt):
+    def timerEvent(self, evt: QEvent):
         if self._result is None:
             self._result = TimeoutError(self._op.name if self._op else 'Timeout')
             self.result.emit(self._result)
@@ -64,7 +63,7 @@ class Operation(QObject):
         QCoreApplication.postEvent(self, CBEvent(value))
 
     @exceptionGuard
-    def customEvent(self, evt):
+    def customEvent(self, evt: CBEvent):
         if self._active is not None:
             self.killTimer(self._active)
             self._active = None
@@ -110,7 +109,7 @@ class MCache(QObject):
         QCoreApplication.postEvent(self, CBEvent(None))
 
     @exceptionGuard
-    def customEvent(self, evt):
+    def customEvent(self, evt: CBEvent):
         E = evt.result
         _log.debug('event2 %s %s', self.name, E)
         # E will be one of:
@@ -130,7 +129,7 @@ class MCache(QObject):
             self.update.connect(E)
 
     @exceptionGuard
-    def timerEvent(self, evt):
+    def timerEvent(self, evt: QEvent):
         V = self._op.pop()
         _log.debug('tick %s %s', self.name, V)
 
@@ -155,7 +154,7 @@ class Context(raw.Context):
     :param dict unwrap: Legacy :ref:`unwrap`.
     :param parent QObject: Parent for QObjects created through this Context.
     """
-    def __init__(self, provider, parent=None, **kws):
+    def __init__(self, provider: str, parent: QObject=None, **kws):
         super(Context, self).__init__(provider, **kws)
         self._parent = QObject(parent)
 
@@ -175,7 +174,7 @@ class Context(raw.Context):
     # get() omitted (why would a gui want to do this?)
 
     def put(self, name, value, slot=None, request=None, timeout=5.0,
-            process=None, wait=None, get=True):
+            process=None, wait=None, get=True) -> Operation:
         """Write a new value to a single PV.
 
         Returns an Operation instance which will emit either a success and error signal.
@@ -216,7 +215,7 @@ class Context(raw.Context):
 
         return op
 
-    def rpc(self, name, value, slot, request=None, timeout=5.0, throw=True):
+    def rpc(self, name, value, slot, request=None, timeout=5.0, throw=True) -> Operation:
         """Perform a Remote Procedure Call (RPC) operation
 
         Returns an Operation instance which will emit either a success and error signal to the provided slot.
@@ -240,7 +239,7 @@ class Context(raw.Context):
         op._op = super(Context, self).rpc(name, op._resultcb, value, request=request)
         return op
 
-    def monitor(self, name, slot, request=None, limitHz=10.0):
+    def monitor(self, name, slot, request=None, limitHz=10.0) -> MCache:
         """Request subscription to named PV
 
         Request notification to the provided slot when a PV is updated.

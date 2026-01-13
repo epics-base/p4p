@@ -1,5 +1,4 @@
 import logging
-import sys
 import atexit
 
 try:
@@ -24,6 +23,9 @@ _log = logging.getLogger(__name__)
 __all__ = (
     'Value',
     'Type',
+    'version',
+    'pvxsVersion',
+    'listRefs',
 )
 
 _lvls = {

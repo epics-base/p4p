@@ -10,7 +10,7 @@ from .nt import NTURI
 from .client.raw import RemoteError
 from .server import DynamicProvider
 from .server.raw import SharedPV
-from .util import ThreadedWorkQueue, WorkQueue, Full, Empty
+from .util import ThreadedWorkQueue, WorkQueue, Full
 
 __all__ = [
     'rpc',
