@@ -69,11 +69,6 @@ void appendMembers(std::vector<Member>& members, PyObject* spec)
 
             members.push_back(TypeDef(prototype).as(key));
 
-#if PY_MAJOR_VERSION < 3
-        } else if(PyBytes_Check(val)) {
-            const char *spec = PyBytes_AsString(val);
-            members.push_back(plainMember(key, spec));
-#endif
         } else if(PyUnicode_Check(val)) {
             PyRef str(PyUnicode_AsASCIIString(val));
             const char *spec = PyBytes_AsString(str.obj);

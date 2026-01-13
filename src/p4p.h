@@ -20,24 +20,11 @@
 
 #include <Python.h>
 
-#if PY_MAJOR_VERSION < 3
-// quiet some warnings about implicit const char* -> char* cast
-// for API functions.  These are corrected in py >= 3.x
-#ifndef PyObject_CallFunction
-#  define PyObject_CallFunction(O, FMT, ...) PyObject_CallFunction(O, (char*)(FMT), ##__VA_ARGS__)
-#  define PyObject_CallMethod(O, METH, FMT, ...) PyObject_CallMethod(O, (char*)(METH), (char*)(FMT), ##__VA_ARGS__)
-#endif
-#endif
-
 // handle -fvisibility=default
 // effects generated _p4p.cpp
 #if __GNUC__ >= 4
 #  undef PyMODINIT_FUNC
-#  if PY_MAJOR_VERSION < 3
-#    define PyMODINIT_FUNC extern "C" __attribute__ ((visibility("default"))) void
-#  else
-#    define PyMODINIT_FUNC extern "C" __attribute__ ((visibility("default"))) PyObject*
-#  endif
+#  define PyMODINIT_FUNC extern "C" __attribute__ ((visibility("default"))) PyObject*
 #endif
 
 // this file must be included from all code using numpy APIs

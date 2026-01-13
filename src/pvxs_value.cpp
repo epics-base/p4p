@@ -44,11 +44,6 @@ PyObject* asPy(const Value& v, bool unpackstruct, bool unpackrecurse, PyObject* 
     case StoreType::Real:
         return PyFloat_FromDouble(v.as<double>());
     case StoreType::Integer:
-#if PY_MAJOR_VERSION < 3
-        if(v.type()!=TypeCode::Int64) {
-            return PyInt_FromLong(v.as<int32_t>());
-        }
-#endif
         return PyLong_FromLongLong(v.as<int64_t>());
     case StoreType::UInteger:
         return PyLong_FromUnsignedLongLong(v.as<uint64_t>());
@@ -219,10 +214,6 @@ Value inferPy(PyObject* py)
         TypeCode code = TypeCode::Null;
         if(PyBool_Check(py))
             code = TypeCode::Bool;
-#if PY_MAJOR_VERSION < 3
-        else if(PyInt_Check(py))
-            code = TypeCode::Int32;
-#endif
         else if(PyLong_Check(py))
             code = TypeCode::Int64;
         else if(PyFloat_Check(py))
@@ -287,10 +278,6 @@ void storePy(Value& v, PyObject* py, bool forceCast)
         if(PyBool_Check(py)) {
             v.from<bool>(py==Py_True);
 
-#if PY_MAJOR_VERSION < 3
-        } else if(PyInt_Check(py)) {
-            v.from<int64_t>(PyInt_AsLong(py));
-#endif
         } else if(PyLong_Check(py) || PyArray_IsScalar(py, Integer)) {
             int oflow = 0;
             long long temp = PyLong_AsLongLongAndOverflow(py, &oflow);
