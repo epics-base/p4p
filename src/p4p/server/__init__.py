@@ -15,9 +15,6 @@ from .._p4p import (Server as _Server,
                     ServerOperation,
                     )
 
-if sys.version_info >= (3, 0):
-    unicode = str
-
 _log = logging.getLogger(__name__)
 
 __all__ = (
@@ -74,7 +71,7 @@ class Server(object):
     def __init__(self, providers, isolate=False, **kws):
         self.__keep_alive = [] # ick...
 
-        if isinstance(providers, (bytes, unicode)):
+        if isinstance(providers, (bytes, str)):
             providers = providers.split() # split on space
             warnings.warn("Server providers list should be a list", DeprecationWarning)
 
@@ -87,7 +84,7 @@ class Server(object):
             else:
                 order = 0
 
-            if isinstance(provider, (bytes, unicode)):
+            if isinstance(provider, (bytes, str)):
                 if not re.match(r'^[^ \t\n\r]+$', provider):
                     raise ValueError("Invalid provider name: '%s'"%provider)
                 Ps.append((provider, order))

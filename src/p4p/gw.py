@@ -24,9 +24,6 @@ from .asLib import Engine, ACFError
 from .asLib.pvlist import PVList
 from .test.utils import RegularNamedTemporaryFile as NamedTemporaryFile
 
-if sys.version_info >= (3, 0):
-    unicode = str
-
 _log = logging.getLogger(__name__)
 _log_audit = logging.getLogger(__name__+'.audit')
 

@@ -18,9 +18,6 @@ from .._p4p import Cancelled, Disconnected, Finished, RemoteError
 from ..wrapper import Value, Type
 from ..nt import buildNT
 
-if sys.version_info >= (3, 0):
-    unicode = str
-
 __all__ = (
     'Subscription',
     'Context',
@@ -40,10 +37,7 @@ def unwrapHandler(handler, nt):
                 handler(Cancelled())
             elif code == 2: # exception during builder callback
                 A, B, C = val
-                if unicode is str:
-                    E = A(B).with_traceback(C) # py 3
-                else:
-                    E = A(B) # py 2 (bye bye traceback...)
+                E = A(B).with_traceback(C)
                 handler(E)
             else:
                 if val is not None:
@@ -127,9 +121,8 @@ class Subscription(_p4p.ClientMonitor):
     def __exit__(self, A, B, C):
         self.close()
 
-    if unicode is str:
-        def __del__(self):
-            self.close()
+    def __del__(self):
+        self.close()
 
 class Context(object):
 
@@ -268,11 +261,9 @@ def _cleanup_contexts():
         ctxt.close()
 
 class _ClientOperation(_p4p.ClientOperation):
-    if unicode is str:
-        def __del__(self):
-            self.close()
+    def __del__(self):
+        self.close()
 
 class _ClientProvider(_p4p.ClientProvider):
-    if unicode is str:
-        def __del__(self):
-            self.close()
+    def __del__(self):
+        self.close()

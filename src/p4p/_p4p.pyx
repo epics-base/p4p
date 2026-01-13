@@ -118,7 +118,7 @@ cdef lookupMember(data.Value* dest, const data.Value& top, key, int err):
         if key is None:
             dest[0] = top
             return
-        elif isinstance(key, unicode):
+        elif isinstance(key, str):
             ckey = key.encode()
         else:
             ckey = key
