@@ -91,7 +91,7 @@ Type specifier codes:
 Code Type
 ==== =======
 ?    bool
-s    unicode
+s    str
 b    s8
 B    u8
 h    s16
@@ -175,7 +175,7 @@ Value         Stores a structure
 int           signed 32-bit  (python 2.x only)
 long          signed 64-bit
 float         64-bit floating
-bytes|unicode string
+bytes|str     string
 ndarray       array of integer or floating
 ============= ================================
 

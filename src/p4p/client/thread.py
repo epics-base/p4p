@@ -35,16 +35,7 @@ __all__ = [
     'TimeoutError',
 ]
 
-if sys.version_info >= (3, 0):
-    unicode = str
-    TimeoutError = TimeoutError
-
-else:
-    class TimeoutError(RuntimeError):
-        "Local timeout has expired"
-        def __init__(self):
-            RuntimeError.__init__(self, 'Timeout')
-
+TimeoutError = TimeoutError
 
 class Subscription(object):
     """An active subscription.
@@ -229,7 +220,7 @@ class Context(raw.Context):
         >>> A, B = ctxt.get(['pv:1', 'pv:2'])
         >>>
         """
-        singlepv = isinstance(name, (bytes, unicode))
+        singlepv = isinstance(name, (bytes, str))
         if singlepv:
             name = [name]
             request = [request]
@@ -314,7 +305,7 @@ class Context(raw.Context):
         Unless the provided value is a dict, it is assumed to be a plain value
         and an attempt is made to store it in '.value' field.
         """
-        singlepv = isinstance(name, (bytes, unicode))
+        singlepv = isinstance(name, (bytes, str))
         if request and (process or wait is not None):
             raise ValueError("request= is mutually exclusive to process= or wait=")
         elif process or wait is not None:
@@ -342,7 +333,7 @@ class Context(raw.Context):
 
         try:
             for i, (n, value, req) in enumerate(izip(name, values, request)):
-                if isinstance(value, (bytes, unicode)) and value[:1] == '{':
+                if isinstance(value, (bytes, str)) and value[:1] == '{':
                     try:
                         value = json.loads(value)
                     except ValueError:

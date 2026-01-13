@@ -8,9 +8,6 @@ from ..wrapper import Type, Value
 from .common import alarm, timeStamp, NTBase
 from .scalar import _metaHelper, ntwrappercommon
 
-if sys.version_info >= (3, 0):
-    unicode = str
-
 class ntenum(ntwrappercommon, int):
     """
 
@@ -110,7 +107,7 @@ class NTEnum(NTBase):
     def assign(self, V, py):
         """Store python value in Value
         """
-        if isinstance(py, (bytes, unicode)):
+        if isinstance(py, (bytes, str)):
             for i,C in enumerate(V['value.choices'] or self._choices):
                 if py==C:
                     V['value.index'] = i

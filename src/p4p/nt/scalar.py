@@ -6,10 +6,6 @@ import numpy
 from ..wrapper import Type, Value
 from .common import alarm, timeStamp, NTBase
 
-if sys.version_info >= (3, 0):
-    unicode = str
-
-
 class ntwrappercommon(object):
     raw = timestamp = None
 
@@ -70,7 +66,7 @@ class ntbool(ntwrappercommon, int):
         return bool(self).__repr__().lower()
 
 
-class ntstr(ntwrappercommon, unicode):
+class ntstr(ntwrappercommon, str):
     """
     Augmented string with additional attributes
 
@@ -243,7 +239,7 @@ class NTScalar(NTBase):
         bool: ntbool,
         int: ntint,
         float: ntfloat,
-        unicode: ntstr,
+        str: ntstr,
         numpy.ndarray: ntnumericarray.build,
         list: ntstringarray,
     }

@@ -167,7 +167,7 @@ cdef class Provider(_p4p.Source):
         self.BanPV = GWSearchBanPV
         self.BanHostPV = GWSearchBanHostPV
 
-    def __init__(self, unicode name, object client, object handler):
+    def __init__(self, str name, object client, object handler):
         cdef _p4p.ClientProvider prov = client._ctxt
         cdef string cname = name.encode('utf-8')
         self.name = cname
