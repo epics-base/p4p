@@ -30,8 +30,8 @@
 // this file must be included from all code using numpy APIs
 // include cython generated code.
 // minimum supported numpy version...
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#define NPY_TARGET_VERSION NPY_1_7_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_15_API_VERSION
+#define NPY_TARGET_VERSION NPY_1_15_API_VERSION
 
 namespace p4p {
 

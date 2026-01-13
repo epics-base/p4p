@@ -103,7 +103,7 @@ install_requires = [
 ]
 
 if hasattr(numpy.lib, "NumpyVersion") and numpy.lib.NumpyVersion(numpy.__version__) >= '2.0.0b1':
-    install_requires += ['numpy >= 1.7', 'numpy < 3']
+    install_requires += ['numpy >= 1.15', 'numpy < 3']
 else:
     # assume ABI forward compatibility as indicated by
     # https://github.com/numpy/numpy/blob/master/numpy/core/setup_common.py#L28
