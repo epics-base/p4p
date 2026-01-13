@@ -3,14 +3,6 @@ import time
 from datetime import datetime
 from ..wrapper import Type
 
-if hasattr(datetime, 'timestamp'):
-    _dt2posix = datetime.timestamp
-
-else: # py 2.x
-    from calendar import timegm as _timegm
-    def _dt2posix(dt):
-        return _timegm(dt.timetuple()) * dt.microsecond*1e-6
-
 # common sub-structs
 timeStamp = Type(id='time_t', spec=[
     ('secondsPastEpoch', 'l'),
@@ -66,7 +58,7 @@ class NTBase(object):
         if timestamp is not None:
             # timestamp may be: datetime, seconds as float or int, or tuple of (sec, ns)
             if isinstance(timestamp, datetime):
-                timestamp = _dt2posix(timestamp)
+                timestamp = timestamp.timestamp()
 
             if isinstance(timestamp, (int, float)):
                 sec, ns = divmod(timestamp, 1.0)
