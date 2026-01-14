@@ -55,11 +55,13 @@ jobs:
         - ml: manylinux_2_28_x86_64
           py: cp314-cp314
           numpy: numpy==2.3.5
+          skip_cothread: true
 
         - ml: manylinux_2_28_x86_64
           py: cp314-cp314t
           numpy: numpy==2.3.5
           src: true
+          skip_cothread: true
 
     steps:
       - uses: actions/checkout@v6
@@ -94,7 +96,8 @@ jobs:
                 --only-binary numpy,Cython \
                 "${{ matrix.cy || 'Cython' }}" \
                 "${{ matrix.numpy || 'numpy' }}" \
-                setuptools_dso pvxslibs wheel ply nose2
+                setuptools_dso pvxslibs wheel ply nose2 \
+                cothread setuptools_scm
 
             # create source tar
             pip install $PRE --no-index -f ./output setuptools_dso numpy Cython pvxslibs
@@ -106,7 +109,7 @@ jobs:
             ls -lh output
 
             # install wheel for testing
-            pip install $PRE --no-index -f ./output p4p nose2
+            pip install $PRE --no-index -f ./output nose2 ${{ matrix.skip_cothread && 'p4p' || 'p4p cothread' }}
 
             # switch away from root when running test to avoid inclusion in PYTHONPATH
             cd output

@@ -21,6 +21,7 @@ jobs:
           cmp: gcc
           base: "7.0"
           py: "3.8"
+          cothread: cothread
 
         - os: ubuntu-latest
           cmp: gcc
@@ -70,7 +71,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get -y install libreadline-dev g++-mingw-w64-x86-64 cmake gdb qemu-system-x86 libevent-dev
+          sudo apt-get -y install libreadline-dev cmake gdb libevent-dev
 
       - name: "brew libevent"
         if: runner.os == 'macOS'
@@ -111,7 +112,8 @@ jobs:
       - name: Py Deps
         run: |
           pip install -U pip
-          pip install Cython numpy ply nose2
+          pip install Cython numpy ply nose2 qtpy PyQt5 ${{ matrix.cothread }}
+          python -c 'from qtpy.QtCore import QObject, QCoreApplication'
 
       - name: Build main module
         run: python .ci/cue.py build
