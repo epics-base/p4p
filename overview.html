@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Overview &#8212; P4P 4.2.2 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <script src="_static/documentation_options.js?v=432e6325"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Building" href="building.html" />
+    <link rel="prev" title="Quick Start" href="starting.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h1>
+<section id="what-is-epics">
+<h2>What is EPICS?<a class="headerlink" href="#what-is-epics" title="Link to this heading">¶</a></h2>
+<p>See <a class="reference external" href="https://epics.anl.gov/">https://epics.anl.gov/</a></p>
+</section>
+<section id="what-is-pvaccess">
+<span id="overviewpva"></span><h2>What is PVAccess?<a class="headerlink" href="#what-is-pvaccess" title="Link to this heading">¶</a></h2>
+<p>The PVAccess network protocol is a hybrid supporting request/response,
+and publish/subscribe operations.</p>
+<p>PVA is closely related to the Channel Access (CA) protocol,
+which may work along side, and is intended to supersede.</p>
+<p>Four protocol operations are supported through the P4P wrapper.</p>
+<ul class="simple">
+<li><p>Get - Fetch the present value of a PV.</p></li>
+<li><p>Put - Change the value of a PV.</p></li>
+<li><p>Monitor - Subscribe to changes in the value of a PV.</p></li>
+<li><p>RPC - A remote method call.</p></li>
+</ul>
+<p>Get, Put, Monitor, and RPC are to the PVA protocol what GET, PUT, POST are to the HTTP protocol.</p>
+</section>
+<section id="what-is-a-pv">
+<h2>What is a PV?<a class="headerlink" href="#what-is-a-pv" title="Link to this heading">¶</a></h2>
+<p>In the EPICS world a Process Variable (PV) refers to the idea of
+a globally addressed data structure.  An EPICS control system is
+composed of many PVs (in the millions for large facilities).  The present value of
+a PV is modified by a combination of remote operations via CA
+and/or PVA, and via local processing (eg. values read from local
+hardware).</p>
+<p>A common example of a PV is a measurement value, for example
+a temperature measured by a particular sensor.</p>
+<p>Another example would be an electro-mechanical relay, which may be opened or closed.</p>
+<p>In this case a Get operation would poll the current open/closed state of the relay.
+A Monitor operation (subscription) would receive notification when the relay state changes.
+A Put operation would be used to command the relay to open or close, or perhaps toggle (the precise meaning of a Put is context dependent).</p>
+<p>So the Get, Put, and Monitor operation on a given PV are conventionally operating on a common data structure.
+The RPC operation is more arbitrary, and need not have any relationship with a common data structure (eg. the open/closed state of the relay.)</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In the context of the PVA or CA protocols, a <strong>“PV name”</strong> is an address string which uniquely identifies a Process Variable.
+All PVA network operations begin with a “PV name” string.</p>
+</div>
+<p>A “PV name” string is to the PVA and CA protocols what a URL is to the HTTP protocol.
+The main difference being that while a URL is hierarchical, having a hostname and path string,
+a PV name is not.  The namespace of PV names is by default all local IP subnets (broadcast domains).
+This can be made more complicated though the specifics of client/server network configuration.</p>
+<p>The P4P module provides the ability to run PVA clients (<a class="reference internal" href="client.html#clientapi"><span class="std std-ref">Client API</span></a>) and/or servers (<a class="reference internal" href="server.html#serverapi"><span class="std std-ref">Server API</span></a>).
+Additional convenience APIs are provided when using the RPC network operation (<a class="reference internal" href="rpc.html#rpcapi"><span class="std std-ref">RPC Server Helpers</span></a>).</p>
+</section>
+<section id="what-is-a-value">
+<h2>What is a Value?<a class="headerlink" href="#what-is-a-value" title="Link to this heading">¶</a></h2>
+<p>P4P represents the data which goes into, and results from, PVA network operations
+with the <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">Value</span></code></a> class which represents a strongly typed data structure.
+See <a class="reference internal" href="values.html#valueapi"><span class="std std-ref">Working with Value and Type</span></a> for details.</p>
+<p>A set of standardized data structure definitions, and utilities is provided as the <a class="reference internal" href="nt.html#ntapi"><span class="std std-ref">Common Types</span></a> API.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">P4P</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="starting.html">Quick Start</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#what-is-epics">What is EPICS?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-is-pvaccess">What is PVAccess?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-is-a-pv">What is a PV?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-is-a-value">What is a Value?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building</a></li>
+<li class="toctree-l1"><a class="reference internal" href="client.html">Client API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nt.html">Common Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="values.html">Working with Value and Type</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rpc.html">RPC Server Helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="internal.html">Internal API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gw.html">PVA Gateway</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="starting.html" title="previous chapter">Quick Start</a></li>
+      <li>Next: <a href="building.html" title="next chapter">Building</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Michael Davidsaver.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/overview.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

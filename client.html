@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Client API &#8212; P4P 4.2.2 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <script src="_static/documentation_options.js?v=432e6325"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Common Types" href="nt.html" />
+    <link rel="prev" title="Building" href="building.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="client-api">
+<span id="clientapi"></span><h1>Client API<a class="headerlink" href="#client-api" title="Link to this heading">¶</a></h1>
+<p>This module provides <a class="reference internal" href="#p4p.client.thread.Context" title="p4p.client.thread.Context"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a> for use in interactive and/or multi-threaded environment.
+Most methods will block the calling thread until a return is available, or an error occurs.</p>
+<p>Alternatives to <a class="reference internal" href="#p4p.client.thread.Context" title="p4p.client.thread.Context"><code class="xref any py py-class docutils literal notranslate"><span class="pre">p4p.client.thread.Context</span></code></a> are provided
+<code class="xref any docutils literal notranslate"><span class="pre">p4p.client.cothread.Context</span></code>,
+<code class="xref any docutils literal notranslate"><span class="pre">p4p.client.asyncio.Context</span></code>,
+and <code class="xref any docutils literal notranslate"><span class="pre">p4p.client.Qt.Context</span></code>.
+These differ in how blocking for I/O operation is performed,
+and the environment in which Monitor callbacks are run.</p>
+<p>Note that <code class="xref any docutils literal notranslate"><span class="pre">p4p.client.Qt.Context</span></code> behaves differently from the others in some respects.
+This is described in <a class="reference internal" href="#qtclient">qtclient</a>.</p>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
+<p>Start by creating a client <a class="reference internal" href="#p4p.client.thread.Context" title="p4p.client.thread.Context"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">p4p.client.thread</span> <span class="kn">import</span> <span class="n">Context</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Context</span><span class="o">.</span><span class="n">providers</span><span class="p">()</span>
+<span class="go">[&#39;pva&#39;, ....]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="s1">&#39;pva&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The default network configuration taken from the process environment
+may be overridden by passing ‘conf=’ to the <a class="reference internal" href="#p4p.client.thread.Context" title="p4p.client.thread.Context"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Context</span></code></a> class constructor.</p>
+</div>
+<p>See <a class="reference internal" href="overview.html#overviewpva"><span class="std std-ref">What is PVAccess?</span></a> for background on PVAccess protocol.</p>
+<section id="get-put">
+<h3>Get/Put<a class="headerlink" href="#get-put" title="Link to this heading">¶</a></h3>
+<p>Get and Put operations can be performed on single PVs or a list of PVs.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">V</span> <span class="o">=</span> <span class="n">ctxt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pv:name&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">A</span><span class="p">,</span> <span class="n">B</span> <span class="o">=</span> <span class="n">ctxt</span><span class="o">.</span><span class="n">get</span><span class="p">([</span><span class="s1">&#39;pv:1&#39;</span><span class="p">,</span> <span class="s1">&#39;pv:2&#39;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s1">&#39;pv:name&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s1">&#39;pv:name&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">})</span> <span class="c1"># equivalent to previous</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s1">&#39;pv:name&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;field_1.value&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;field_2.value&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">})</span> <span class="c1"># put to multiple fields</span>
+</pre></div>
+</div>
+<p>By default the values returned by <a class="reference internal" href="#p4p.client.thread.Context.get" title="p4p.client.thread.Context.get"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Context.get()</span></code></a> are subject to <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a>.</p>
+</section>
+<section id="monitor">
+<h3>Monitor<a class="headerlink" href="#monitor" title="Link to this heading">¶</a></h3>
+<p>Unlike get/put/rpc, the <a class="reference internal" href="#p4p.client.thread.Context.monitor" title="p4p.client.thread.Context.monitor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Context.monitor()</span></code></a> method does not block.
+Instead it accepts a callback function which is called with each
+new <code class="xref py py-class docutils literal notranslate"><span class="pre">Value</span></code>, or <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">cb</span><span class="p">(</span><span class="n">V</span><span class="p">):</span>
+       <span class="nb">print</span> <span class="s1">&#39;New value&#39;</span><span class="p">,</span> <span class="n">V</span>
+<span class="n">sub</span> <span class="o">=</span> <span class="n">ctxt</span><span class="o">.</span><span class="n">monitor</span><span class="p">(</span><span class="s1">&#39;pv:name&#39;</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span>
+<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="c1"># arbitrary wait</span>
+<span class="n">sub</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The monitor method returns a <a class="reference internal" href="#p4p.client.thread.Subscription" title="p4p.client.thread.Subscription"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subscription</span></code></a> which has a close method
+to end the subscription.</p>
+<p>By default the values passed to monitor callbacks are subject to <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a>.</p>
+<p><a class="reference internal" href="#p4p.client.thread.Context" title="p4p.client.thread.Context"><code class="xref any py py-class docutils literal notranslate"><span class="pre">p4p.client.thread.Context</span></code></a> Runs callbacks in a worker thread pool.</p>
+<p><code class="xref any docutils literal notranslate"><span class="pre">p4p.client.cothread.Context</span></code> Runs callbacks in a per-subscription cothread.</p>
+<p><code class="xref any docutils literal notranslate"><span class="pre">p4p.client.asyncio.Context</span></code> Runs callbacks in a per-subscription coroutine.</p>
+<p>In all cases it is safe for a callback to block/yield.
+Subsequent updates for a <a class="reference internal" href="#p4p.client.thread.Subscription" title="p4p.client.thread.Subscription"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Subscription</span></code></a> will not be delivered until the current callback has completed.
+However, updates for other Subscriptions may be delivered.</p>
+</section>
+<section id="rpc">
+<h3>RPC<a class="headerlink" href="#rpc" title="Link to this heading">¶</a></h3>
+<p>See <a class="reference internal" href="rpc.html#rpcapi"><span class="std std-ref">RPC Server Helpers</span></a>.</p>
+</section>
+</section>
+<section id="module-p4p.client.thread">
+<span id="api-reference"></span><h2>API Reference<a class="headerlink" href="#module-p4p.client.thread" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.client.thread.Context">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.thread.</span></span><span class="sig-name descname"><span class="pre">Context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">useenv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/thread.html#Context"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Context" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>provider</strong> (<em>str</em>) – A Provider name.  Try “pva” or run <a class="reference internal" href="#p4p.client.thread.Context.providers" title="p4p.client.thread.Context.providers"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Context.providers()</span></code></a> for a complete list.</p></li>
+<li><p><strong>conf</strong> (<em>dict</em>) – Configuration to pass to provider.  Depends on provider selected.</p></li>
+<li><p><strong>useenv</strong> (<em>bool</em>) – Allow the provider to use configuration from the process environment.</p></li>
+<li><p><strong>workers</strong> (<em>int</em>) – Size of thread pool in which monitor callbacks are run.  Default is 4</p></li>
+<li><p><strong>maxsize</strong> (<em>int</em>) – Size of internal work queue used for monitor callbacks.  Default is unlimited</p></li>
+<li><p><strong>nt</strong> (<em>dict</em>) – Controls <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a>.  None uses defaults.  Set False to disable</p></li>
+<li><p><strong>unwrap</strong> (<em>dict</em>) – Legacy <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a>.</p></li>
+<li><p><strong>queue</strong> (<a class="reference internal" href="rpc.html#p4p.rpc.WorkQueue" title="p4p.rpc.WorkQueue"><em>WorkQueue</em></a>) – A work queue through which monitor callbacks are dispatched.</p></li>
+</ul>
+</dd>
+</dl>
+<p>The methods of this Context will block the calling thread until completion or timeout</p>
+<p>The meaning, and allowed keys, of the configuration dictionary depend on the provider.
+conf= will override values taken from the process environment.  Pass useenv=False to
+ensure that environment variables are completely ignored.</p>
+<p>The “pva” provider understands the following keys:</p>
+<ul class="simple">
+<li><p>EPICS_PVA_ADDR_LIST</p></li>
+<li><p>EPICS_PVA_AUTO_ADDR_LIST</p></li>
+<li><p>EPICS_PVA_SERVER_PORT</p></li>
+<li><p>EPICS_PVA_BROADCAST_PORT</p></li>
+</ul>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p.client.thread.Context.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#p4p.client.thread.Context.name" title="Link to this definition">¶</a></dt>
+<dd><p>Provider name string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.thread.Context.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/thread.html#Context.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Context.close" title="Link to this definition">¶</a></dt>
+<dd><p>Force close all Channels and cancel all Operations</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.thread.Context.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">throw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/thread.html#Context.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Context.get" title="Link to this definition">¶</a></dt>
+<dd><p>Fetch current value of some number of PVs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – A single name string or list of name strings</p></li>
+<li><p><strong>request</strong> – A <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a> or string to qualify this request, or None to use a default.</p></li>
+<li><p><strong>timeout</strong> (<em>float</em>) – Operation timeout in seconds</p></li>
+<li><p><strong>throw</strong> (<em>bool</em>) – When true, operation error throws an exception.  If False then the Exception is returned instead of the Value</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A p4p.Value or Exception, or list of same.  Subject to <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a>.</p>
+</dd>
+</dl>
+<p>When invoked with a single name then returns is a single value.
+When invoked with a list of name, then returns a list of values</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="s1">&#39;pva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">V</span> <span class="o">=</span> <span class="n">ctxt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pv:name&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">A</span><span class="p">,</span> <span class="n">B</span> <span class="o">=</span> <span class="n">ctxt</span><span class="o">.</span><span class="n">get</span><span class="p">([</span><span class="s1">&#39;pv:1&#39;</span><span class="p">,</span> <span class="s1">&#39;pv:2&#39;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.thread.Context.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">throw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">process</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wait</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/thread.html#Context.put"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Context.put" title="Link to this definition">¶</a></dt>
+<dd><p>Write a new value of some number of PVs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – A single name string or list of name strings</p></li>
+<li><p><strong>values</strong> – A single value, a list of values, a dict, a <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Value</span></code></a>.  May be modified by the constructor nt= argument.</p></li>
+<li><p><strong>request</strong> – A <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a> or string to qualify this request, or None to use a default.</p></li>
+<li><p><strong>timeout</strong> (<em>float</em>) – Operation timeout in seconds</p></li>
+<li><p><strong>throw</strong> (<em>bool</em>) – When true, operation error throws an exception.
+If False then the Exception is returned instead of the Value</p></li>
+<li><p><strong>process</strong> (<em>str</em>) – Control remote processing.  May be ‘true’, ‘false’, ‘passive’, or None.</p></li>
+<li><p><strong>wait</strong> (<em>bool</em>) – Wait for all server processing to complete.</p></li>
+<li><p><strong>get</strong> (<em>bool</em>) – Whether to do a Get before the Put.  If True then the value passed to the builder callable
+will be initialized with recent PV values.  eg. use this with NTEnum to find the enumeration list.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A None or Exception, or list of same</p>
+</dd>
+</dl>
+<p>When invoked with a single name then returns is a single value.
+When invoked with a list of name, then returns a list of values</p>
+<p>If ‘wait’ or ‘process’ is specified, then ‘request’ must be omitted or None.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="s1">&#39;pva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s1">&#39;pv:name&#39;</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span><span class="o">.</span><span class="n">put</span><span class="p">([</span><span class="s1">&#39;pv:1&#39;</span><span class="p">,</span> <span class="s1">&#39;pv:2&#39;</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s1">&#39;pv:name&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt;</span>
+</pre></div>
+</div>
+<p>The provided value(s) will be automatically coerced to the target type.
+If this is not possible then an Exception is raised/returned.</p>
+<p>Unless the provided value is a dict, it is assumed to be a plain value
+and an attempt is made to store it in ‘.value’ field.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.thread.Context.monitor">
+<span class="sig-name descname"><span class="pre">monitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cb</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">notify_disconnect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/thread.html#Context.monitor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Context.monitor" title="Link to this definition">¶</a></dt>
+<dd><p>Create a subscription.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – PV name string</p></li>
+<li><p><strong>cb</strong> (<em>callable</em>) – Processing callback</p></li>
+<li><p><strong>request</strong> – A <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a> or string to qualify this request, or None to use a default.</p></li>
+<li><p><strong>notify_disconnect</strong> (<em>bool</em>) – In additional to Values, the callback may also be call with instances of Exception.
+Specifically: Disconnected , RemoteError, or Cancelled</p></li>
+<li><p><strong>queue</strong> (<a class="reference internal" href="rpc.html#p4p.rpc.WorkQueue" title="p4p.rpc.WorkQueue"><em>WorkQueue</em></a>) – A work queue through which monitor callbacks are dispatched.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a <a class="reference internal" href="#p4p.client.thread.Subscription" title="p4p.client.thread.Subscription"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subscription</span></code></a> instance</p>
+</dd>
+</dl>
+<p>The callable will be invoked with one argument which is either.</p>
+<ul class="simple">
+<li><p>A p4p.Value (Subject to <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a>)</p></li>
+<li><p>A sub-class of Exception (Disconnected , RemoteError, or Cancelled)</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.thread.Context.rpc">
+<span class="sig-name descname"><span class="pre">rpc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">throw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/thread.html#Context.rpc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Context.rpc" title="Link to this definition">¶</a></dt>
+<dd><p>Perform a Remote Procedure Call (RPC) operation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – PV name string</p></li>
+<li><p><strong>value</strong> (<a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><em>Value</em></a>) – Arguments.  Must be Value instance</p></li>
+<li><p><strong>request</strong> – A <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a> or string to qualify this request, or None to use a default.</p></li>
+<li><p><strong>timeout</strong> (<em>float</em>) – Operation timeout in seconds</p></li>
+<li><p><strong>throw</strong> (<em>bool</em>) – When true, operation error throws an exception.
+If False then the Exception is returned instead of the Value</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Value or Exception.  Subject to <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a>.</p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="s1">&#39;pva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ctxt</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s1">&#39;pv:name:add&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">;</span> <span class="mi">6</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt;</span>
+</pre></div>
+</div>
+<p>The provided value(s) will be automatically coerced to the target type.
+If this is not possible then an Exception is raised/returned.</p>
+<p>Unless the provided value is a dict, it is assumed to be a plain value
+and an attempt is made to store it in ‘.value’ field.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.thread.Context.providers">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">providers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/raw.html#Context.providers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Context.providers" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.thread.Context.disconnect">
+<span class="sig-name descname"><span class="pre">disconnect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/thread.html#Context.disconnect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Context.disconnect" title="Link to this definition">¶</a></dt>
+<dd><p>Clear internal Channel cache, allowing currently unused channels to be implictly closed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – None, to clear the entire cache, or a name string to clear only a certain entry.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.thread.Context.set_debug">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">set_debug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lvl</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/raw.html#Context.set_debug"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Context.set_debug" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.client.thread.Subscription">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.thread.</span></span><span class="sig-name descname"><span class="pre">Subscription</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ctxt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cb</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">notify_disconnect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/thread.html#Subscription"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Subscription" title="Link to this definition">¶</a></dt>
+<dd><p>An active subscription.</p>
+<p>Returned by <a class="reference internal" href="#p4p.client.thread.Context.monitor" title="p4p.client.thread.Context.monitor"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">Context.monitor</span></code></a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.thread.Subscription.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/thread.html#Subscription.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.thread.Subscription.close" title="Link to this definition">¶</a></dt>
+<dd><p>Close subscription.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.client.thread.Disconnected">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.thread.</span></span><span class="sig-name descname"><span class="pre">Disconnected</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p.client.thread.Disconnected" title="Link to this definition">¶</a></dt>
+<dd><p>Channel becomes disconected.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.client.thread.RemoteError">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.thread.</span></span><span class="sig-name descname"><span class="pre">RemoteError</span></span><a class="headerlink" href="#p4p.client.thread.RemoteError" title="Link to this definition">¶</a></dt>
+<dd><p>Thrown with an error message which has been sent by a server to its remote client</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.client.thread.Cancelled">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.thread.</span></span><span class="sig-name descname"><span class="pre">Cancelled</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p.client.thread.Cancelled" title="Link to this definition">¶</a></dt>
+<dd><p>Cancelled from client end.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.client.thread.Finished">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.thread.</span></span><span class="sig-name descname"><span class="pre">Finished</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p.client.thread.Finished" title="Link to this definition">¶</a></dt>
+<dd><p>Special case of Disconnected when a Subscription has received all updates it will ever receive.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.client.thread.TimeoutError">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.thread.</span></span><span class="sig-name descname"><span class="pre">TimeoutError</span></span><a class="headerlink" href="#p4p.client.thread.TimeoutError" title="Link to this definition">¶</a></dt>
+<dd><p>Timeout expired.</p>
+</dd></dl>
+
+</section>
+<section id="qt-client">
+<span id="qtclient"></span><h2>Qt Client<a class="headerlink" href="#qt-client" title="Link to this heading">¶</a></h2>
+<p><code class="xref any docutils literal notranslate"><span class="pre">p4p.client.Qt.Context</span></code> exists to bring the results of network operations into a Qt event loop.
+This is done through the native signals and slots mechanism.</p>
+<p>Use requires the optional dependency <a class="reference external" href="https://github.com/spyder-ide/qtpy">qtpy</a> package.</p>
+<p>This dependency is expressed as an extras_require= of “qt”.
+It may be depended upon accordingly as “p4p[qt]”.</p>
+<p><code class="xref any docutils literal notranslate"><span class="pre">p4p.client.Qt.Context</span></code> differs from the other Context classes in several respects.</p>
+<ul class="simple">
+<li><p>Each Context attempts to minimize the number of subscriptions to each named PV.
+Multiple calls to monitor() will attempt to share this subscription if possible (subject to request argument).</p></li>
+<li><p>All monitor() calls must express a desired maximum update rate limit through the limitHz argument.</p></li>
+<li><p>As a convienence, the objects returned by put() and monitor() do not have to be stored by the caller.
+The internal references kept by the Context may be cleared through the disconnect() method.
+This cache extends to a single put and a single monitor subscription per PV.
+So eg. initiating a put() to a PV will implicitly cancel a previous in-progress put().</p></li>
+</ul>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">P4P</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="starting.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Client API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-p4p.client.thread">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#qt-client">Qt Client</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nt.html">Common Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="values.html">Working with Value and Type</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rpc.html">RPC Server Helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="internal.html">Internal API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gw.html">PVA Gateway</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="building.html" title="previous chapter">Building</a></li>
+      <li>Next: <a href="nt.html" title="next chapter">Common Types</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Michael Davidsaver.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/client.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Common Types &#8212; P4P 4.2.2 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <script src="_static/documentation_options.js?v=432e6325"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Working with Value and Type" href="values.html" />
+    <link rel="prev" title="Client API" href="client.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="common-types">
+<span id="ntapi"></span><h1>Common Types<a class="headerlink" href="#common-types" title="Link to this heading">¶</a></h1>
+<p>Helpers for creating standardized <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code> instances.
+as defined by <a class="reference external" href="http://epics-pvdata.sourceforge.net/alpha/normativeTypes/normativeTypes.html">http://epics-pvdata.sourceforge.net/alpha/normativeTypes/normativeTypes.html</a>
+.</p>
+<section id="automatic-value-unwrapping">
+<span id="unwrap"></span><h2>Automatic Value unwrapping<a class="headerlink" href="#automatic-value-unwrapping" title="Link to this heading">¶</a></h2>
+<p>Automatic transformation can be performed. between <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Value</span></code></a> and more convenient types.</p>
+<p>Transformation may be performed at the following points:</p>
+<ul class="simple">
+<li><p>The result of <a class="reference internal" href="client.html#p4p.client.thread.Context.get" title="p4p.client.thread.Context.get"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.client.thread.Context.get()</span></code></a>,</p></li>
+<li><p>The argument the callable passed to <a class="reference internal" href="client.html#p4p.client.thread.Context.monitor" title="p4p.client.thread.Context.monitor"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.client.thread.Context.monitor()</span></code></a></p></li>
+<li><p>The argument of <a class="reference internal" href="client.html#p4p.client.thread.Context.put" title="p4p.client.thread.Context.put"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.client.thread.Context.put()</span></code></a></p></li>
+<li><p>The argument of <a class="reference internal" href="client.html#p4p.client.thread.Context.rpc" title="p4p.client.thread.Context.rpc"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.client.thread.Context.rpc()</span></code></a></p></li>
+<li><p>The argument of <a class="reference internal" href="server.html#p4p.server.thread.SharedPV.open" title="p4p.server.thread.SharedPV.open"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.server.thread.SharedPV.open()</span></code></a></p></li>
+<li><p>The argument of <a class="reference internal" href="server.html#p4p.server.thread.SharedPV.post" title="p4p.server.thread.SharedPV.post"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.server.thread.SharedPV.post()</span></code></a></p></li>
+<li><p>The result of <a class="reference internal" href="server.html#p4p.server.thread.SharedPV.current" title="p4p.server.thread.SharedPV.current"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.server.thread.SharedPV.current()</span></code></a></p></li>
+</ul>
+<section id="controlling-un-wrapping">
+<h3>Controlling (Un)wrapping<a class="headerlink" href="#controlling-un-wrapping" title="Link to this heading">¶</a></h3>
+<p>Client <a class="reference internal" href="client.html#p4p.client.thread.Context" title="p4p.client.thread.Context"><code class="xref any py py-class docutils literal notranslate"><span class="pre">p4p.client.thread.Context</span></code></a> accepts an argument nt= which may be
+<code class="docutils literal notranslate"><span class="pre">None</span></code> to sure some reasonable defaults.  <code class="docutils literal notranslate"><span class="pre">False</span></code> disables wrapping,
+and always works with <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Value</span></code></a>.  <em>nt=</em> may also be passed a dictionary
+keyed by top level structure IDs mapped to callables returning objects
+conforming to <a class="reference internal" href="#p4p.nt.WrapperInterface" title="p4p.nt.WrapperInterface"><code class="xref any py py-class docutils literal notranslate"><span class="pre">WrapperInterface</span></code></a>.</p>
+<p>The <em>unwrap</em> argument is legacy which functions like <em>nt=</em> but
+mapping to plain functions instead of wrapper objects.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">p4p.client.thread</span> <span class="kn">import</span> <span class="n">Context</span>
+<span class="n">ctxt</span><span class="o">=</span><span class="n">Context</span><span class="p">(</span><span class="s1">&#39;pva&#39;</span><span class="p">,</span> <span class="n">nt</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># disable (un)wrap.  All methods use Value</span>
+</pre></div>
+</div>
+<p>Server <a class="reference internal" href="server.html#p4p.server.thread.SharedPV" title="p4p.server.thread.SharedPV"><code class="xref any py py-class docutils literal notranslate"><span class="pre">p4p.server.thread.SharedPV</span></code></a> accepts an argument <em>nt=</em> which
+is an instance of an object conforming to <a class="reference internal" href="#p4p.nt.WrapperInterface" title="p4p.nt.WrapperInterface"><code class="xref any py py-class docutils literal notranslate"><span class="pre">WrapperInterface</span></code></a>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">p4p.server.thread</span> <span class="kn">import</span> <span class="n">SharedPV</span>
+<span class="kn">from</span> <span class="nn">p4p.nt</span> <span class="kn">import</span> <span class="n">NTScalar</span>
+<span class="n">pv1</span> <span class="o">=</span> <span class="n">SharedPV</span><span class="p">()</span> <span class="c1"># pv1.open() expects a plain Value</span>
+<span class="n">pv2</span> <span class="o">=</span> <span class="n">SharedPV</span><span class="p">(</span><span class="n">nt</span><span class="o">=</span><span class="n">NTScalar</span><span class="p">(</span><span class="s1">&#39;d&#39;</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+<span class="c1"># NTScalar automatically wraps this float into a Value</span>
+<span class="n">pv2</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="mf">4.2</span><span class="p">)</span>
+
+<span class="c1"># send change w/ system times</span>
+<span class="n">pv2</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="mf">3.3</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+
+<span class="c1"># explicitly wrap and set additional fields</span>
+<span class="n">V</span> <span class="o">=</span> <span class="n">pv2</span><span class="o">.</span><span class="n">wrap</span><span class="p">(</span><span class="mf">2.2</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+<span class="n">V</span><span class="p">[</span><span class="s1">&#39;display.description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;My special PV&quot;</span>
+<span class="n">pv2</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">V</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Conforming objects include <a class="reference internal" href="#p4p.nt.NTScalar" title="p4p.nt.NTScalar"><code class="xref any py py-class docutils literal notranslate"><span class="pre">NTScalar</span></code></a>, <a class="reference internal" href="#p4p.nt.NTNDArray" title="p4p.nt.NTNDArray"><code class="xref any py py-class docutils literal notranslate"><span class="pre">NTNDArray</span></code></a>, and others listed below.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="p4p.nt.defaultNT">
+<span class="sig-prename descclassname"><span class="pre">p4p.nt.</span></span><span class="sig-name descname"><span class="pre">defaultNT</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#defaultNT"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.defaultNT" title="Link to this definition">¶</a></dt>
+<dd><p>Returns a copy of the default NT helper mappings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Since<span class="colon">:</span></dt>
+<dd class="field-odd"><p>3.1.0</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="nt-wrap-unwrap-interface">
+<h3>NT wrap/unwrap interface<a class="headerlink" href="#nt-wrap-unwrap-interface" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.WrapperInterface">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.</span></span><span class="sig-name descname"><span class="pre">WrapperInterface</span></span><a class="headerlink" href="#p4p.nt.WrapperInterface" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Since<span class="colon">:</span></dt>
+<dd class="field-odd"><p>3.1.0</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.WrapperInterface.buildtype">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">buildtype</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#p4p.nt.WrapperInterface.buildtype" title="Link to this definition">¶</a></dt>
+<dd><p>Returns a <a class="reference internal" href="values.html#p4p.Type" title="p4p.Type"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Type</span></code></a> based on some helper specific conditions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="values.html#p4p.Type" title="p4p.Type"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Type</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.WrapperInterface.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#p4p.nt.WrapperInterface.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Each time the type ID of a Channel changes, a new wrapper will be instantiated if available.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.WrapperInterface.unwrap">
+<span class="sig-name descname"><span class="pre">unwrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Value</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">object</span></span></span><a class="headerlink" href="#p4p.nt.WrapperInterface.unwrap" title="Link to this definition">¶</a></dt>
+<dd><p>Called with a <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Value</span></code></a> and may return an arbitrary object.</p>
+<p>Called by both clients and servers.  eg. during <a class="reference internal" href="client.html#p4p.client.thread.Context.get" title="p4p.client.thread.Context.get"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.client.thread.Context.get()</span></code></a>
+and <a class="reference internal" href="server.html#p4p.server.thread.SharedPV.current" title="p4p.server.thread.SharedPV.current"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.server.thread.SharedPV.current()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.WrapperInterface.wrap">
+<span class="sig-name descname"><span class="pre">wrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><span class="pre">Value</span></a></span></span><a class="headerlink" href="#p4p.nt.WrapperInterface.wrap" title="Link to this definition">¶</a></dt>
+<dd><p>Called with an arbitrary object which it should try to translate into a <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Value</span></code></a>.</p>
+<p>Called by servers.  eg. during <a class="reference internal" href="server.html#p4p.server.thread.SharedPV.post" title="p4p.server.thread.SharedPV.post"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.server.thread.SharedPV.post()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.WrapperInterface.assign">
+<span class="sig-name descname"><span class="pre">assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">object</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p.nt.WrapperInterface.assign" title="Link to this definition">¶</a></dt>
+<dd><p>Called to update a <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Value</span></code></a> based on an arbitrary object.</p>
+<p>Called by clients.  eg. during <a class="reference internal" href="client.html#p4p.client.thread.Context.put" title="p4p.client.thread.Context.put"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">p4p.client.thread.Context.put()</span></code></a>, where
+the get= argument effects the state of the <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Value</span></code></a> passed in.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.NTScalar">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.</span></span><span class="sig-name descname"><span class="pre">NTScalar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">valtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'d'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/scalar.html#NTScalar"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTScalar" title="Link to this definition">¶</a></dt>
+<dd><p>Describes a single scalar or array of scalar values and associated meta-data</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">stype</span> <span class="o">=</span> <span class="n">NTScalar</span><span class="p">(</span><span class="s1">&#39;d&#39;</span><span class="p">)</span> <span class="c1"># scalar double</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">V</span> <span class="o">=</span> <span class="n">stype</span><span class="o">.</span><span class="n">wrap</span><span class="p">(</span><span class="mf">4.2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="n">Value</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">stype</span> <span class="o">=</span> <span class="n">NTScalar</span><span class="o">.</span><span class="n">buildType</span><span class="p">(</span><span class="s1">&#39;ad&#39;</span><span class="p">)</span> <span class="c1"># vector double</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">V</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="n">stype</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">4.2</span><span class="p">,</span> <span class="mf">4.3</span><span class="p">]})</span>
+</pre></div>
+</div>
+<p>The result of <a class="reference internal" href="#p4p.nt.NTScalar.wrap" title="p4p.nt.NTScalar.wrap"><code class="xref any py py-meth docutils literal notranslate"><span class="pre">wrap()</span></code></a> is an augmented value object combining
+<code class="xref any docutils literal notranslate"><span class="pre">ntwrappercommon</span></code> and a python value type (<code class="xref any docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref any docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref any docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref any docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>).</p>
+<p>Agumented values have some additional attributes including:</p>
+<ul class="simple">
+<li><p>.timestamp - The update timestamp is a float representing seconds since 1 jan 1970 UTC.</p></li>
+<li><p>.raw_stamp - A tuple of (seconds, nanoseconds)</p></li>
+<li><p>.severity - An integer in the range [0, 3]</p></li>
+<li><p>.raw - The complete underlying <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">Value</span></code></a></p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>valtype</strong> (<em>str</em>) – A type code to be used with the ‘value’ field.  See <a class="reference internal" href="values.html#valuecodes"><span class="std std-ref">Type definitions</span></a></p></li>
+<li><p><strong>extra</strong> (<em>list</em>) – A list of tuples describing additional non-standard fields</p></li>
+<li><p><strong>display</strong> (<em>bool</em>) – Include optional fields for display meta-data</p></li>
+<li><p><strong>control</strong> (<em>bool</em>) – Include optional fields for control meta-data</p></li>
+<li><p><strong>valueAlarm</strong> (<em>bool</em>) – Include optional fields for alarm level meta-data</p></li>
+<li><p><strong>form</strong> (<em>bool</em>) – Include <code class="docutils literal notranslate"><span class="pre">display.form</span></code> instead of the deprecated <code class="docutils literal notranslate"><span class="pre">display.format</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTScalar.buildType">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">buildType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">valtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/scalar.html#NTScalar.buildType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTScalar.buildType" title="Link to this definition">¶</a></dt>
+<dd><p>Build a Type</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>valtype</strong> (<em>str</em>) – A type code to be used with the ‘value’ field.  See <a class="reference internal" href="values.html#valuecodes"><span class="std std-ref">Type definitions</span></a></p></li>
+<li><p><strong>extra</strong> (<em>list</em>) – A list of tuples describing additional non-standard fields</p></li>
+<li><p><strong>display</strong> (<em>bool</em>) – Include optional fields for display meta-data</p></li>
+<li><p><strong>control</strong> (<em>bool</em>) – Include optional fields for control meta-data</p></li>
+<li><p><strong>valueAlarm</strong> (<em>bool</em>) – Include optional fields for alarm level meta-data</p></li>
+<li><p><strong>form</strong> (<em>bool</em>) – Include <code class="docutils literal notranslate"><span class="pre">display.form</span></code> instead of the deprecated <code class="docutils literal notranslate"><span class="pre">display.format</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTScalar.wrap">
+<span class="sig-name descname"><span class="pre">wrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/scalar.html#NTScalar.wrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTScalar.wrap" title="Link to this definition">¶</a></dt>
+<dd><p>Pack python value into Value</p>
+<p>Accepts dict to explicitly initialize fields by name.
+Any other type is assigned to the ‘value’ field.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTScalar.assign">
+<span class="sig-name descname"><span class="pre">assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">V</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">py</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/scalar.html#NTScalar.assign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTScalar.assign" title="Link to this definition">¶</a></dt>
+<dd><p>Store python value in Value</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTScalar.unwrap">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unwrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/scalar.html#NTScalar.unwrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTScalar.unwrap" title="Link to this definition">¶</a></dt>
+<dd><p>Unpack a Value into an augmented python type (selected from the ‘value’ field)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.NTNDArray">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.</span></span><span class="sig-name descname"><span class="pre">NTNDArray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/ndarray.html#NTNDArray"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTNDArray" title="Link to this definition">¶</a></dt>
+<dd><p>Representation of an N-dimensional array with meta-data</p>
+<p>Translates into <a class="reference internal" href="#p4p.nt.ndarray.ntndarray" title="p4p.nt.ndarray.ntndarray"><code class="xref any py py-class docutils literal notranslate"><span class="pre">ntndarray</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTNDArray.buildType">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">buildType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">extra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/ndarray.html#NTNDArray.buildType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTNDArray.buildType" title="Link to this definition">¶</a></dt>
+<dd><p>Build type</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTNDArray.wrap">
+<span class="sig-name descname"><span class="pre">wrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/ndarray.html#NTNDArray.wrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTNDArray.wrap" title="Link to this definition">¶</a></dt>
+<dd><p>Wrap numpy.ndarray as Value</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTNDArray.assign">
+<span class="sig-name descname"><span class="pre">assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">V</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">py</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/ndarray.html#NTNDArray.assign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTNDArray.assign" title="Link to this definition">¶</a></dt>
+<dd><p>Store python value in Value</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTNDArray.unwrap">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unwrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/ndarray.html#NTNDArray.unwrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTNDArray.unwrap" title="Link to this definition">¶</a></dt>
+<dd><p>Unwrap Value as NTNDArray</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.NTTable">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.</span></span><span class="sig-name descname"><span class="pre">NTTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#NTTable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTTable" title="Link to this definition">¶</a></dt>
+<dd><p>A generic table</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">table</span> <span class="o">=</span> <span class="n">NTTable</span><span class="o">.</span><span class="n">buildType</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span>
+<span class="go">    (&#39;columnA&#39;, &#39;ai&#39;),</span>
+<span class="go">    (&#39;columnB&#39;, &#39;as&#39;),</span>
+<span class="go">])</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTTable.buildType">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">buildType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#NTTable.buildType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTTable.buildType" title="Link to this definition">¶</a></dt>
+<dd><p>Build a table</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>columns</strong> (<em>list</em>) – List of column names and types. eg [(‘colA’, ‘d’)]</p></li>
+<li><p><strong>extra</strong> (<em>list</em>) – A list of tuples describing additional non-standard fields</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTTable.wrap">
+<span class="sig-name descname"><span class="pre">wrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#NTTable.wrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTTable.wrap" title="Link to this definition">¶</a></dt>
+<dd><p>Pack an iterable of dict into a Value</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">T</span><span class="o">=</span><span class="n">NTTable</span><span class="p">([(</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;ai&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;as&#39;</span><span class="p">)])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">V</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">wrap</span><span class="p">([</span>
+<span class="go">    {&#39;A&#39;:42, &#39;B&#39;:&#39;one&#39;},</span>
+<span class="go">    {&#39;A&#39;:43, &#39;B&#39;:&#39;two&#39;},</span>
+<span class="go">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTTable.unwrap">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unwrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#NTTable.unwrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTTable.unwrap" title="Link to this definition">¶</a></dt>
+<dd><p>Iterate an NTTable</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>An iterator yielding an OrderedDict for each column</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.NTURI">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.</span></span><span class="sig-name descname"><span class="pre">NTURI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#NTURI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTURI" title="Link to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTURI.buildType">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">buildType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#NTURI.buildType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTURI.buildType" title="Link to this definition">¶</a></dt>
+<dd><p>Build NTURI</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>args</strong> (<em>list</em>) – A list of tuples of query argument name and PVD type code.</p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">I</span> <span class="o">=</span> <span class="n">NTURI</span><span class="p">([</span>
+<span class="go">    (&#39;arg_a&#39;, &#39;I&#39;),</span>
+<span class="go">    (&#39;arg_two&#39;, &#39;s&#39;),</span>
+<span class="go">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTURI.wrap">
+<span class="sig-name descname"><span class="pre">wrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kws</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scheme</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">authority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#NTURI.wrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTURI.wrap" title="Link to this definition">¶</a></dt>
+<dd><p>Wrap argument values (tuple/list with optional dict) into Value</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – The PV name to which this call is made</p></li>
+<li><p><strong>args</strong> (<em>tuple</em>) – Ordered arguments</p></li>
+<li><p><strong>kws</strong> (<em>dict</em>) – Keyword arguments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="values.html#p4p.Value" title="p4p.Value">Value</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.NTMultiChannel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.</span></span><span class="sig-name descname"><span class="pre">NTMultiChannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#NTMultiChannel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTMultiChannel" title="Link to this definition">¶</a></dt>
+<dd><p>Describes a structure holding the equivalent of a number of NTScalar</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.nt.NTMultiChannel.buildType">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">buildType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">valtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt.html#NTMultiChannel.buildType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.NTMultiChannel.buildType" title="Link to this definition">¶</a></dt>
+<dd><p>Build a Type</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>valtype</strong> (<em>str</em>) – A type code to be used with the ‘value’ field.  Must be an array</p></li>
+<li><p><strong>extra</strong> (<em>list</em>) – A list of tuples describing additional non-standard fields</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.scalar.ntfloat">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.scalar.</span></span><span class="sig-name descname"><span class="pre">ntfloat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/scalar.html#ntfloat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.scalar.ntfloat" title="Link to this definition">¶</a></dt>
+<dd><p>Augmented float with additional attributes</p>
+<ul class="simple">
+<li><p>.severity</p></li>
+<li><p>.status</p></li>
+<li><p>.timestamp - Seconds since 1 Jan 1970 UTC as a float</p></li>
+<li><p>.raw_stamp - A tuple (seconds, nanoseconds)</p></li>
+<li><p>.raw - The underlying <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a>.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.scalar.ntint">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.scalar.</span></span><span class="sig-name descname"><span class="pre">ntint</span></span><a class="reference internal" href="_modules/p4p/nt/scalar.html#ntint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.scalar.ntint" title="Link to this definition">¶</a></dt>
+<dd><p>Augmented integer with additional attributes</p>
+<ul class="simple">
+<li><p>.severity</p></li>
+<li><p>.status</p></li>
+<li><p>.timestamp - Seconds since 1 Jan 1970 UTC as a float</p></li>
+<li><p>.raw_stamp - A tuple (seconds, nanoseconds)</p></li>
+<li><p>.raw - The underlying <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a>.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.scalar.ntstr">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.scalar.</span></span><span class="sig-name descname"><span class="pre">ntstr</span></span><a class="reference internal" href="_modules/p4p/nt/scalar.html#ntstr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.scalar.ntstr" title="Link to this definition">¶</a></dt>
+<dd><p>Augmented string with additional attributes</p>
+<ul class="simple">
+<li><p>.severity</p></li>
+<li><p>.status</p></li>
+<li><p>.timestamp - Seconds since 1 Jan 1970 UTC as a float</p></li>
+<li><p>.raw_stamp - A tuple (seconds, nanoseconds)</p></li>
+<li><p>.raw - The underlying <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a>.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.scalar.ntnumericarray">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.scalar.</span></span><span class="sig-name descname"><span class="pre">ntnumericarray</span></span><a class="reference internal" href="_modules/p4p/nt/scalar.html#ntnumericarray"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.scalar.ntnumericarray" title="Link to this definition">¶</a></dt>
+<dd><p>Augmented numpy.ndarray with additional attributes</p>
+<ul class="simple">
+<li><p>.severity</p></li>
+<li><p>.status</p></li>
+<li><p>.timestamp - Seconds since 1 Jan 1970 UTC as a float</p></li>
+<li><p>.raw_stamp - A tuple (seconds, nanoseconds)</p></li>
+<li><p>.raw - The underlying <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a>.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.scalar.ntstringarray">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.scalar.</span></span><span class="sig-name descname"><span class="pre">ntstringarray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/scalar.html#ntstringarray"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.scalar.ntstringarray" title="Link to this definition">¶</a></dt>
+<dd><p>Augmented list of strings with additional attributes</p>
+<ul class="simple">
+<li><p>.severity</p></li>
+<li><p>.status</p></li>
+<li><p>.timestamp - Seconds since 1 Jan 1970 UTC as a float</p></li>
+<li><p>.raw_stamp - A tuple (seconds, nanoseconds)</p></li>
+<li><p>.raw - The underlying <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a>.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.nt.ndarray.ntndarray">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.nt.ndarray.</span></span><span class="sig-name descname"><span class="pre">ntndarray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/nt/ndarray.html#ntndarray"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.nt.ndarray.ntndarray" title="Link to this definition">¶</a></dt>
+<dd><p>Augmented numpy.ndarray with additional attributes</p>
+<ul class="simple">
+<li><p>.attrib    - dictionary</p></li>
+<li><p>.severity</p></li>
+<li><p>.status</p></li>
+<li><p>.timestamp - Seconds since 1 Jan 1970 UTC as a float</p></li>
+<li><p>.raw_stamp - A tuple (seconds, nanoseconds)</p></li>
+<li><p>.raw - The underlying <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a>.</p></li>
+</ul>
+<p>Keys in the <code class="docutils literal notranslate"><span class="pre">attrib</span></code> dictionary may be any python which may be stored in a PVA field,
+including an arbitrary <code class="docutils literal notranslate"><span class="pre">Value</span></code>.
+However, special handling is attempted if the provided <code class="docutils literal notranslate"><span class="pre">Value</span></code> appears to be an NTScalar
+or similar, in which case the .value, .alarm and .timeStamp are unpacked to the NTAttribute
+and other fields are discarded.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">P4P</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="starting.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building</a></li>
+<li class="toctree-l1"><a class="reference internal" href="client.html">Client API</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Common Types</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#automatic-value-unwrapping">Automatic Value unwrapping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-reference">API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="values.html">Working with Value and Type</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rpc.html">RPC Server Helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="internal.html">Internal API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gw.html">PVA Gateway</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="client.html" title="previous chapter">Client API</a></li>
+      <li>Next: <a href="values.html" title="next chapter">Working with Value and Type</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Michael Davidsaver.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/nt.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

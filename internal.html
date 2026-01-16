@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Internal API &#8212; P4P 4.2.2 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <script src="_static/documentation_options.js?v=432e6325"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="PVA Gateway" href="gw.html" />
+    <link rel="prev" title="RPC Server Helpers" href="rpc.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="internal-api">
+<h1>Internal API<a class="headerlink" href="#internal-api" title="Link to this heading">¶</a></h1>
+<p>This section is intended to help P4P developers.
+The API described is <em>not</em> considered a public or stable API.
+It may change without notice.</p>
+<section id="ownership">
+<h2>Ownership<a class="headerlink" href="#ownership" title="Link to this heading">¶</a></h2>
+<p>The ownership relations between the various objects in the C++
+extensions are shown in the following diagrams.</p>
+<ul class="simple">
+<li><p>Python objects are blue ovals</p></li>
+<li><p>C++ objects are black boxes</p></li>
+<li><p>red lines are shared_ptr&lt;&gt;</p></li>
+<li><p>green lines are weak_ptr&lt;&gt;</p></li>
+<li><p>blue lines are python refs. (aka stored PyObject*)</p></li>
+<li><p>dashed lines are explicit breaks of a ref. loop</p></li>
+</ul>
+<section id="type-and-value">
+<h3>Type and Value<a class="headerlink" href="#type-and-value" title="Link to this heading">¶</a></h3>
+<div class="graphviz"><img src="_images/graphviz-019d1949f1c9a290f30e505fcdce056c16aeb472.png" alt="digraph values {
+Value [shape=oval, color=blue];
+Type [shape=oval, color=blue];
+Array [shape=oval, color=blue];
+ndarray [shape=oval, color=blue];
+PVStructure [shape=box];
+Structure [shape=box];
+shared_vector [shape=box];
+
+# wraps
+Value -&gt; PVStructure [color=red];
+Type -&gt; Structure [color=red];
+Array -&gt; shared_vector [color=red];
+# internal
+PVStructure -&gt; shared_vector [color=red];
+PVStructure -&gt; Structure [color=red];
+# pyrefs
+ndarray -&gt; Array [color=blue];
+}" class="graphviz" /></div>
+</section>
+</section>
+<section id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h2>
+<section id="module-p4p.client.raw">
+<span id="raw-client-api"></span><h3>Raw client API<a class="headerlink" href="#module-p4p.client.raw" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.client.raw.Context">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.raw.</span></span><span class="sig-name descname"><span class="pre">Context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pva'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">useenv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unwrap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/raw.html#Context"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.raw.Context" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>provider</strong> (<em>str</em>) – A Provider name.  Try “pva” or run <code class="xref py py-meth docutils literal notranslate"><span class="pre">Context.providers()</span></code> for a complete list.</p></li>
+<li><p><strong>dict</strong> (<em>conf</em>) – Configuration to pass to provider.  Depends on provider selected.</p></li>
+<li><p><strong>useenv</strong> (<em>bool</em>) – Allow the provider to use configuration from the process environment.</p></li>
+<li><p><strong>nt</strong> (<em>dict</em>) – Controls <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a>.  None uses defaults.  Set False to disable</p></li>
+<li><p><strong>unwrap</strong> (<em>dict</em>) – Legacy <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.raw.Context.disconnect">
+<span class="sig-name descname"><span class="pre">disconnect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/raw.html#Context.disconnect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.raw.Context.disconnect" title="Link to this definition">¶</a></dt>
+<dd><p>Clear internal Channel cache, allowing currently unused channels to be implictly closed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – None, to clear the entire cache, or a name string to clear only a certain entry.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.raw.Context.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/raw.html#Context.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.raw.Context.get" title="Link to this definition">¶</a></dt>
+<dd><p>Begin Fetch of current value of a PV</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – A single name string or list of name strings</p></li>
+<li><p><strong>request</strong> – A <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a> or string to qualify this request, or None to use a default.</p></li>
+<li><p><strong>handler</strong> (<em>callable</em>) – Completion notification.  Called with a Value, RemoteError, or Cancelled</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A object with a method cancel() which may be used to abort the operation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.raw.Context.monitor">
+<span class="sig-name descname"><span class="pre">monitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/raw.html#Context.monitor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.raw.Context.monitor" title="Link to this definition">¶</a></dt>
+<dd><p>Begin subscription to named PV</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – PV name string</p></li>
+<li><p><strong>handler</strong> (<em>callable</em>) – Completion notification.  Called with None (FIFO not empty), RemoteError, Cancelled, or Disconnected</p></li>
+<li><p><strong>request</strong> – A <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a> or string to qualify this request, or None to use a default.</p></li>
+<li><p><strong>notify_disconnect</strong> (<em>bool</em>) – Whether disconnect (and done) notifications are delivered to the callback (as None).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Subscription</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.raw.Context.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">builder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/raw.html#Context.put"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.raw.Context.put" title="Link to this definition">¶</a></dt>
+<dd><p>Write a new value to a PV.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – A single name string or list of name strings</p></li>
+<li><p><strong>handler</strong> (<em>callable</em>) – Completion notification.  Called with None (success), RemoteError, or Cancelled</p></li>
+<li><p><strong>builder</strong> (<em>callable</em>) – Called when the PV Put type is known.  A builder is responsible
+for filling in the Value to be sent.  builder(value)</p></li>
+<li><p><strong>request</strong> – A <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a> or string to qualify this request, or None to use a default.</p></li>
+<li><p><strong>get</strong> (<em>bool</em>) – Whether to do a Get before the Put.  If True then the value passed to the builder callable
+will be initialized with recent PV values.  eg. use this with NTEnum to find the enumeration list.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A object with a method cancel() which may be used to abort the operation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.client.raw.Context.rpc">
+<span class="sig-name descname"><span class="pre">rpc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/raw.html#Context.rpc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.raw.Context.rpc" title="Link to this definition">¶</a></dt>
+<dd><p>Perform RPC operation on PV</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – A single name string or list of name strings</p></li>
+<li><p><strong>handler</strong> (<em>callable</em>) – Completion notification.  Called with a Value, RemoteError, or Cancelled</p></li>
+<li><p><strong>request</strong> – A <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a> or string to qualify this request, or None to use a default.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A object with a method cancel() which may be used to abort the operation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="p4p.client.raw.RemoteError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.raw.</span></span><span class="sig-name descname"><span class="pre">RemoteError</span></span><a class="headerlink" href="#p4p.client.raw.RemoteError" title="Link to this definition">¶</a></dt>
+<dd><p>Thrown with an error message which has been sent by a server to its remote client</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.client.raw.Subscription">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.client.raw.</span></span><span class="sig-name descname"><span class="pre">Subscription</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nt</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/client/raw.html#Subscription"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.client.raw.Subscription" title="Link to this definition">¶</a></dt>
+<dd><p>Interface to monitor subscription FIFO</p>
+<p>Use method poll() to try to pop an item from the FIFO.
+None indicates the FIFO is empty, must wait for another Data event before
+calling poll() again.</p>
+<p>complete()==True after poll()==False indicates that no more updates will
+ever be forthcoming.  This is normal (not error) completion.</p>
+<p>cancel() aborts the subscription.</p>
+</dd></dl>
+
+</section>
+<section id="module-p4p.server.raw">
+<span id="raw-server-api"></span><h3>Raw server API<a class="headerlink" href="#module-p4p.server.raw" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.server.raw.Handler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.server.raw.</span></span><span class="sig-name descname"><span class="pre">Handler</span></span><a class="reference internal" href="_modules/p4p/server/raw.html#Handler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.server.raw.Handler" title="Link to this definition">¶</a></dt>
+<dd><p>Skeleton of SharedPV Handler</p>
+<p>Use of this as a base class is optional.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.server.raw.Handler.onFirstConnect">
+<span class="sig-name descname"><span class="pre">onFirstConnect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pv</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/server/raw.html#Handler.onFirstConnect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.server.raw.Handler.onFirstConnect" title="Link to this definition">¶</a></dt>
+<dd><p>Called when the first Client channel is created.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>pv</strong> (<a class="reference internal" href="#p4p.server.raw.SharedPV" title="p4p.server.raw.SharedPV"><em>SharedPV</em></a>) – The <a class="reference internal" href="#p4p.server.raw.SharedPV" title="p4p.server.raw.SharedPV"><code class="xref py py-class docutils literal notranslate"><span class="pre">SharedPV</span></code></a> which this Handler is associated with.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.server.raw.Handler.onLastDisconnect">
+<span class="sig-name descname"><span class="pre">onLastDisconnect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pv</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/server/raw.html#Handler.onLastDisconnect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.server.raw.Handler.onLastDisconnect" title="Link to this definition">¶</a></dt>
+<dd><p>Called when the last Client channel is closed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>pv</strong> (<a class="reference internal" href="#p4p.server.raw.SharedPV" title="p4p.server.raw.SharedPV"><em>SharedPV</em></a>) – The <a class="reference internal" href="#p4p.server.raw.SharedPV" title="p4p.server.raw.SharedPV"><code class="xref py py-class docutils literal notranslate"><span class="pre">SharedPV</span></code></a> which this Handler is associated with.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.server.raw.Handler.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/server/raw.html#Handler.put"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.server.raw.Handler.put" title="Link to this definition">¶</a></dt>
+<dd><p>Called each time a client issues a Put
+operation on this Channel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pv</strong> (<a class="reference internal" href="#p4p.server.raw.SharedPV" title="p4p.server.raw.SharedPV"><em>SharedPV</em></a>) – The <a class="reference internal" href="#p4p.server.raw.SharedPV" title="p4p.server.raw.SharedPV"><code class="xref py py-class docutils literal notranslate"><span class="pre">SharedPV</span></code></a> which this Handler is associated with.</p></li>
+<li><p><strong>op</strong> (<a class="reference internal" href="server.html#p4p.server.ServerOperation" title="p4p.server.ServerOperation"><em>ServerOperation</em></a>) – The operation being initiated.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.server.raw.Handler.rpc">
+<span class="sig-name descname"><span class="pre">rpc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/server/raw.html#Handler.rpc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.server.raw.Handler.rpc" title="Link to this definition">¶</a></dt>
+<dd><p>Called each time a client issues a Remote Procedure Call
+operation on this Channel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pv</strong> (<a class="reference internal" href="#p4p.server.raw.SharedPV" title="p4p.server.raw.SharedPV"><em>SharedPV</em></a>) – The <a class="reference internal" href="#p4p.server.raw.SharedPV" title="p4p.server.raw.SharedPV"><code class="xref py py-class docutils literal notranslate"><span class="pre">SharedPV</span></code></a> which this Handler is associated with.</p></li>
+<li><p><strong>op</strong> (<a class="reference internal" href="server.html#p4p.server.ServerOperation" title="p4p.server.ServerOperation"><em>ServerOperation</em></a>) – The operation being initiated.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.server.raw.SharedPV">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.server.raw.</span></span><span class="sig-name descname"><span class="pre">SharedPV</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unwrap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/server/raw.html#SharedPV"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.server.raw.SharedPV" title="Link to this definition">¶</a></dt>
+<dd><p>Shared state Process Variable.  Callback based implementation.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>if initial=None, the PV is initially <strong>closed</strong> and
+must be <a class="reference internal" href="#p4p.server.raw.SharedPV.open" title="p4p.server.raw.SharedPV.open"><code class="xref py py-meth docutils literal notranslate"><span class="pre">open()</span></code></a>’d before any access is possible.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>handler</strong> – A object which will receive callbacks when eg. a Put operation is requested.
+May be omitted if the decorator syntax is used.</p></li>
+<li><p><strong>initial</strong> (<a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><em>Value</em></a>) – An initial Value for this PV.  If omitted, :py:meth:<a href="#id1"><span class="problematic" id="id2">`</span></a>open()`s must be called before client access is possible.</p></li>
+<li><p><strong>nt</strong> – An object with methods wrap() and unwrap().  eg <a class="reference internal" href="nt.html#p4p.nt.NTScalar" title="p4p.nt.NTScalar"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.nt.NTScalar</span></code></a>.</p></li>
+<li><p><strong>wrap</strong> (<em>callable</em>) – As an alternative to providing ‘nt=’, A callable to transform Values passed to open() and post().</p></li>
+<li><p><strong>unwrap</strong> (<em>callable</em>) – As an alternative to providing ‘nt=’, A callable to transform Values returned Operations in Put/RPC handlers.</p></li>
+<li><p><strong>options</strong> (<em>dict</em>) – A dictionary of configuration options.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Creating a PV in the open state, with no handler for Put or RPC (attempts will error).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">p4p.nt</span> <span class="kn">import</span> <span class="n">NTScalar</span>
+<span class="n">pv</span> <span class="o">=</span> <span class="n">SharedPV</span><span class="p">(</span><span class="n">nt</span><span class="o">=</span><span class="n">NTScalar</span><span class="p">(</span><span class="s1">&#39;d&#39;</span><span class="p">),</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+<span class="c1"># ... later</span>
+<span class="n">pv</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The full form of a handler object is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyHandler</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pv</span><span class="p">,</span> <span class="n">op</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">def</span> <span class="nf">rpc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pv</span><span class="p">,</span> <span class="n">op</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">def</span> <span class="nf">onFirstConnect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="c1"># may be omitted</span>
+        <span class="k">pass</span>
+    <span class="k">def</span> <span class="nf">onLastDisconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="c1"># may be omitted</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+<p>pv = SharedPV(MyHandler())</p>
+<p>Alternatively, decorators may be used.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pv</span> <span class="o">=</span> <span class="n">SharedPV</span><span class="p">()</span>
+<span class="nd">@pv</span><span class="o">.</span><span class="n">put</span>
+<span class="k">def</span> <span class="nf">onPut</span><span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">op</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>The nt= or wrap= and unwrap= arguments can be used as a convience to allow
+the open(), post(), and associated Operation.value() to be automatically
+transform to/from <code class="xref py py-class docutils literal notranslate"><span class="pre">Value</span></code> and more convienent Python types.
+See <a class="reference internal" href="nt.html#unwrap"><span class="std std-ref">Automatic Value unwrapping</span></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.server.raw.SharedPV.open">
+<span class="sig-name descname"><span class="pre">open</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unwrap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/server/raw.html#SharedPV.open"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.server.raw.SharedPV.open" title="Link to this definition">¶</a></dt>
+<dd><p>Mark the PV as opened an provide its initial value.
+This initial value is later updated with post().</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>value</strong> – A Value, or appropriate object (see nt= and wrap= of the constructor).</p>
+</dd>
+</dl>
+<p>Any clients which have begun connecting which began connecting while
+this PV was in the close’d state will complete connecting.</p>
+<p>Only those fields of the value which are marked as changed will be stored.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.server.raw.SharedPV.post">
+<span class="sig-name descname"><span class="pre">post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/server/raw.html#SharedPV.post"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.server.raw.SharedPV.post" title="Link to this definition">¶</a></dt>
+<dd><p>Provide an update to the Value of this PV.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>value</strong> – A Value, or appropriate object (see nt= and wrap= of the constructor).</p>
+</dd>
+</dl>
+<p>Only those fields of the value which are marked as changed will be stored.</p>
+<p>Any keyword arguments are forwarded to the NT wrap() method (if applicable).
+Common arguments include: timestamp= , severity= , and message= .</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">P4P</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="starting.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building</a></li>
+<li class="toctree-l1"><a class="reference internal" href="client.html">Client API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nt.html">Common Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="values.html">Working with Value and Type</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rpc.html">RPC Server Helpers</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Internal API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#ownership">Ownership</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-reference">API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gw.html">PVA Gateway</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="rpc.html" title="previous chapter">RPC Server Helpers</a></li>
+      <li>Next: <a href="gw.html" title="next chapter">PVA Gateway</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Michael Davidsaver.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/internal.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>p4p.rpc &#8212; P4P 4.2.2 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <script src="../../_static/documentation_options.js?v=432e6325"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for p4p.rpc</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span><span class="p">,</span> <span class="n">partial</span>
+<span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">.wrapper</span> <span class="kn">import</span> <span class="n">Value</span><span class="p">,</span> <span class="n">Type</span>
+<span class="kn">from</span> <span class="nn">.nt</span> <span class="kn">import</span> <span class="n">NTURI</span>
+<span class="kn">from</span> <span class="nn">.client.raw</span> <span class="kn">import</span> <span class="n">RemoteError</span>
+<span class="kn">from</span> <span class="nn">.server</span> <span class="kn">import</span> <span class="n">DynamicProvider</span>
+<span class="kn">from</span> <span class="nn">.server.raw</span> <span class="kn">import</span> <span class="n">SharedPV</span>
+<span class="kn">from</span> <span class="nn">.util</span> <span class="kn">import</span> <span class="n">ThreadedWorkQueue</span><span class="p">,</span> <span class="n">WorkQueue</span><span class="p">,</span> <span class="n">Full</span><span class="p">,</span> <span class="n">Empty</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;rpc&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;rpccall&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;rpcproxy&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;RemoteError&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;WorkQueue&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;NTURIDispatcher&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="rpc">
+<a class="viewcode-back" href="../../rpc.html#p4p.rpc.rpc">[docs]</a>
+<span class="k">def</span> <span class="nf">rpc</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator marks a method for export.</span>
+
+<span class="sd">    :param type: Specifies which :py:class:`Type` this method will return.</span>
+
+<span class="sd">    The return type (rtype) must be one of:</span>
+
+<span class="sd">    - An instance of :py:class:`p4p.Type`</span>
+<span class="sd">    - None, in which case the method must return a :py:class:`p4p.Value`</span>
+<span class="sd">    - One of the NT helper classes (eg :py:class:`p4p.nt.NTScalar`).</span>
+<span class="sd">    - A list or tuple used to construct a :py:class:`p4p.Type`.</span>
+
+<span class="sd">    Exported methods raise an :py:class:`Exception` to indicate an error to the remote caller.</span>
+<span class="sd">    :py:class:`RemoteError` may be raised to send a specific message describing the error condition.</span>
+
+<span class="sd">    &gt;&gt;&gt; class Example(object):</span>
+<span class="sd">        @rpc(NTScalar.buildType(&#39;d&#39;))</span>
+<span class="sd">        def add(self, lhs, rhs):</span>
+<span class="sd">            return {&#39;value&#39;:float(lhs)+flost(rhs)}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">wrap</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">rtype</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rtype</span><span class="p">,</span> <span class="n">Type</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+        <span class="n">rtype</span> <span class="o">=</span> <span class="n">Type</span><span class="p">(</span><span class="n">rtype</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">rtype</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">):</span>  <span class="c1"># eg. one of the NT* helper classes</span>
+        <span class="n">wrap</span> <span class="o">=</span> <span class="n">rtype</span><span class="o">.</span><span class="n">wrap</span>
+        <span class="n">rtype</span> <span class="o">=</span> <span class="n">rtype</span><span class="o">.</span><span class="n">type</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Not supported&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">wrap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">orig</span> <span class="o">=</span> <span class="n">fn</span>
+
+            <span class="nd">@wraps</span><span class="p">(</span><span class="n">orig</span><span class="p">)</span>
+            <span class="k">def</span> <span class="nf">wrapper2</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">wrap</span><span class="p">(</span><span class="n">orig</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">))</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="n">wrapper2</span>
+
+        <span class="n">fn</span><span class="o">.</span><span class="n">_reply_Type</span> <span class="o">=</span> <span class="n">rtype</span>
+        <span class="k">return</span> <span class="n">fn</span>
+    <span class="k">return</span> <span class="n">wrapper</span></div>
+
+
+
+<div class="viewcode-block" id="rpccall">
+<a class="viewcode-back" href="../../rpc.html#p4p.rpc.rpccall">[docs]</a>
+<span class="k">def</span> <span class="nf">rpccall</span><span class="p">(</span><span class="n">pvname</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator marks a client proxy method.</span>
+
+<span class="sd">    :param str pvname: The PV name, which will be formated using the &#39;format&#39; argument of the proxy class constructor.</span>
+<span class="sd">    :param request: A pvRequest string or :py:class:`p4p.Value` passed to eg. :py:meth:`p4p.client.thread.Context.rpc`.</span>
+
+<span class="sd">    The method to be decorated must have all keyword arguments,</span>
+<span class="sd">    where the keywords are type code strings or :class:`~p4p.Type`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="n">fn</span><span class="o">.</span><span class="n">_call_PV</span> <span class="o">=</span> <span class="n">pvname</span>
+        <span class="n">fn</span><span class="o">.</span><span class="n">_call_Request</span> <span class="o">=</span> <span class="n">request</span>
+        <span class="n">fn</span><span class="o">.</span><span class="n">_reply_Type</span> <span class="o">=</span> <span class="n">rtype</span>
+        <span class="k">return</span> <span class="n">fn</span>
+    <span class="k">return</span> <span class="n">wrapper</span></div>
+
+
+
+<span class="k">class</span> <span class="nc">RPCDispatcherBase</span><span class="p">(</span><span class="n">DynamicProvider</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="nb">set</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">DynamicProvider</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>  <span class="c1"># we are our own Handler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span> <span class="o">=</span> <span class="n">queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__pv</span> <span class="o">=</span> <span class="n">SharedPV</span><span class="p">(</span>
+            <span class="n">handler</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>  <span class="c1"># no per-channel state, and only RPC used, so only need on PV</span>
+            <span class="n">initial</span><span class="o">=</span><span class="n">Value</span><span class="p">(</span><span class="n">Type</span><span class="p">([])),</span>  <span class="c1"># we don&#39;t support get/put/monitor, so use empty struct</span>
+        <span class="p">)</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">methods</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">mem</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">mem</span><span class="p">,</span> <span class="s1">&#39;_reply_Type&#39;</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">M</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">mem</span>
+
+    <span class="k">def</span> <span class="nf">getMethodNameArgs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Sub-class must implement getMethodName&quot;</span><span class="p">)</span>
+        <span class="c1"># sub-class needs to extract method name from request</span>
+        <span class="c1"># return &#39;name&#39;, {&#39;var&#39;:&#39;val&#39;}</span>
+
+    <span class="k">def</span> <span class="nf">testChannel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Test RPC channel </span><span class="si">%s</span><span class="s2"> = </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span>
+
+    <span class="k">def</span> <span class="nf">makeChannel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">src</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">testChannel</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+            <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Open RPC channel </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__pv</span>  <span class="c1"># no per-channel tracking needed</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Ignore RPC channel </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">rpc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pv</span><span class="p">,</span> <span class="n">op</span><span class="p">):</span>
+        <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;RPC call </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">op</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="n">op</span><span class="p">))</span>
+        <span class="k">except</span> <span class="n">Full</span><span class="p">:</span>
+            <span class="n">_log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;RPC call queue overflow&quot;</span><span class="p">)</span>
+            <span class="n">op</span><span class="o">.</span><span class="n">done</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="s2">&quot;Too many concurrent RPC calls&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">request</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">value</span><span class="p">()</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getMethodNameArgs</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">methods</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">rtype</span> <span class="o">=</span> <span class="n">fn</span><span class="o">.</span><span class="n">_reply_Type</span>
+
+            <span class="n">R</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="o">**</span><span class="n">args</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Value</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">R</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="n">rtype</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">_log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Error encoding </span><span class="si">%s</span><span class="s2"> as </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">rtype</span><span class="p">)</span>
+                    <span class="n">op</span><span class="o">.</span><span class="n">done</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="s2">&quot;Error encoding reply&quot;</span><span class="p">)</span>
+                    <span class="k">return</span>
+            <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;RPC reply </span><span class="si">%s</span><span class="s2"> -&gt; </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+            <span class="n">op</span><span class="o">.</span><span class="n">done</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="n">RemoteError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;RPC reply </span><span class="si">%s</span><span class="s2"> -&gt; error: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+            <span class="n">op</span><span class="o">.</span><span class="n">done</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">_log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Error handling RPC </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+            <span class="n">op</span><span class="o">.</span><span class="n">done</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="s2">&quot;Error handling RPC&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="NTURIDispatcher">
+<a class="viewcode-back" href="../../rpc.html#p4p.rpc.NTURIDispatcher">[docs]</a>
+<span class="k">class</span> <span class="nc">NTURIDispatcher</span><span class="p">(</span><span class="n">RPCDispatcherBase</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;RPC dispatcher using NTURI (a al. eget)</span>
+
+<span class="sd">    Method names are prefixed with a fixed string.</span>
+
+<span class="sd">    &gt;&gt;&gt; queue = WorkQueue()</span>
+<span class="sd">    &gt;&gt;&gt; class Summer(object):</span>
+<span class="sd">        @rpc([(&#39;result&#39;, &#39;i&#39;)])</span>
+<span class="sd">        def add(self, a=None, b=None):</span>
+<span class="sd">            return {&#39;result&#39;: int(a)+int(b)}</span>
+<span class="sd">    &gt;&gt;&gt; installProvider(&quot;arbitrary&quot;, NTURIDispatcher(queue, target=Summer(), prefix=&quot;pv:prefix:&quot;))</span>
+
+<span class="sd">    Making a call with the CLI &#39;eget&#39; utility::</span>
+
+<span class="sd">      $ eget -s pv:prefix:add -a a=1 -a b=2</span>
+<span class="sd">      ....</span>
+<span class="sd">      int result 3</span>
+
+<span class="sd">    :param queue WorkQueue: A WorkQueue to which RPC calls will be added</span>
+<span class="sd">    :param prefix str: PV name prefix used by RPC methods</span>
+<span class="sd">    :param target: The object which has the RPC calls</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="n">RPCDispatcherBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">methods</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">meth</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span> <span class="k">for</span> <span class="n">meth</span><span class="p">,</span> <span class="n">fn</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">methods</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channels</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">methods</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;NTURI methods: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">getMethodNameArgs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="c1"># {&#39;schema&#39;:&#39;pva&#39;, &#39;path&#39;:&#39;pvname&#39;, &#39;query&#39;:{&#39;var&#39;:&#39;val&#39;, ...}}</span>
+        <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">items</span><span class="p">())</span></div>
+
+
+<span class="c1"># legecy for MASAR only</span>
+<span class="c1"># do not use in new code</span>
+
+
+<span class="k">class</span> <span class="nc">MASARDispatcher</span><span class="p">(</span><span class="n">RPCDispatcherBase</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="n">RPCDispatcherBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queue</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+        <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;MASAR pv </span><span class="si">%s</span><span class="s2"> methods </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">methods</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getMethodNameArgs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="c1"># all through a single PV, method name in request</span>
+        <span class="c1"># {&#39;function&#39;:&#39;rpcname&#39;, &#39;name&#39;:[&#39;name&#39;, ...], &#39;value&#39;:[&#39;val&#39;, ...]}</span>
+        <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">function</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="p">[]),</span> <span class="n">request</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">,</span> <span class="p">[])))</span>
+
+
+<div class="viewcode-block" id="quickRPCServer">
+<a class="viewcode-back" href="../../rpc.html#p4p.rpc.quickRPCServer">[docs]</a>
+<span class="k">def</span> <span class="nf">quickRPCServer</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span>
+                   <span class="n">maxsize</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+                   <span class="n">workers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                   <span class="n">useenv</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">isolate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run an RPC server in the current thread</span>
+
+<span class="sd">    Calls are handled sequentially, and always in the current thread, if workers=1 (the default).</span>
+<span class="sd">    If workers&gt;1 then calls are handled concurrently by a pool of worker threads.</span>
+<span class="sd">    Requires NTURI style argument encoding.</span>
+
+<span class="sd">    :param str provider: A provider name.  Must be unique in this process.</span>
+<span class="sd">    :param str prefix: PV name prefix.  Along with method names, must be globally unique.</span>
+<span class="sd">    :param target: The object which is exporting methods.  (use the :func:`rpc` decorator)</span>
+<span class="sd">    :param int maxsize: Number of pending RPC calls to be queued.</span>
+<span class="sd">    :param int workers: Number of worker threads (default 1)</span>
+<span class="sd">    :param useenv: Passed to :class:`~p4p.server.Server`</span>
+<span class="sd">    :param conf: Passed to :class:`~p4p.server.Server`</span>
+<span class="sd">    :param isolate: Passed to :class:`~p4p.server.Server`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">p4p.server</span> <span class="kn">import</span> <span class="n">Server</span>
+    <span class="kn">import</span> <span class="nn">time</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="n">ThreadedWorkQueue</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="n">maxsize</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="n">workers</span><span class="p">)</span>
+    <span class="n">provider</span> <span class="o">=</span> <span class="n">NTURIDispatcher</span><span class="p">(</span><span class="n">queue</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">provider</span><span class="p">)</span>
+    <span class="n">threads</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="n">Server</span><span class="p">(</span><span class="n">providers</span><span class="o">=</span><span class="p">[</span><span class="n">provider</span><span class="p">],</span> <span class="n">useenv</span><span class="o">=</span><span class="n">useenv</span><span class="p">,</span> <span class="n">conf</span><span class="o">=</span><span class="n">conf</span><span class="p">,</span> <span class="n">isolate</span><span class="o">=</span><span class="n">isolate</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">server</span><span class="p">,</span> <span class="n">queue</span><span class="p">:</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">10.0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="RPCProxyBase">
+<a class="viewcode-back" href="../../rpc.html#p4p.rpc.RPCProxyBase">[docs]</a>
+<span class="k">class</span> <span class="nc">RPCProxyBase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for automatically generated proxy classes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="s2">&quot;The Context provided on construction&quot;</span>
+    <span class="nb">format</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="s2">&quot;The tuple/dict used to format (&#39;%&#39; operator) PV name strings.&quot;</span>
+    <span class="n">timeout</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="s2">&quot;Timeout of RPC calls in seconds&quot;</span>
+    <span class="n">authority</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="s2">&quot;Authority string sent with NTURI requests&quot;</span>
+    <span class="n">throw</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="s2">&quot;Whether call errors raise an exception, or return it&quot;</span>
+    <span class="n">scheme</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># set to override automatic</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_wrapMethod</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">meth</span><span class="p">):</span>
+    <span class="n">pv</span><span class="p">,</span> <span class="n">req</span> <span class="o">=</span> <span class="n">meth</span><span class="o">.</span><span class="n">_call_PV</span><span class="p">,</span> <span class="n">meth</span><span class="o">.</span><span class="n">_call_Request</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="n">S</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getfullargspec</span><span class="p">(</span><span class="n">meth</span><span class="p">)</span>
+        <span class="n">keywords</span> <span class="o">=</span> <span class="n">S</span><span class="o">.</span><span class="n">varkw</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">S</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getargspec</span><span class="p">(</span><span class="n">meth</span><span class="p">)</span>
+        <span class="n">keywords</span> <span class="o">=</span> <span class="n">S</span><span class="o">.</span><span class="n">keywords</span>
+    <span class="n">defaults</span> <span class="o">=</span> <span class="n">S</span><span class="o">.</span><span class="n">defaults</span> <span class="ow">or</span> <span class="p">[]</span> <span class="c1"># for getfullargspec().defaults can be None</span>
+
+    <span class="k">if</span> <span class="n">S</span><span class="o">.</span><span class="n">varargs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">keywords</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;vararg not supported for proxy method </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">args</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">defaults</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;proxy method </span><span class="si">%s</span><span class="s2"> must specify types for all arguments&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">NT</span> <span class="o">=</span> <span class="n">NTURI</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="n">defaults</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> : failed to build method from </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">S</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="n">defaults</span><span class="p">))</span>
+
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">meth</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">mcall</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="n">pvname</span> <span class="o">=</span> <span class="n">pv</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">uri</span> <span class="o">=</span> <span class="n">NT</span><span class="o">.</span><span class="n">wrap</span><span class="p">(</span><span class="n">pvname</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kws</span><span class="p">,</span> <span class="n">scheme</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scheme</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">authority</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">authority</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to wrap </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2"> as </span><span class="si">%s</span><span class="s2"> (</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">kws</span><span class="p">,</span> <span class="n">NT</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="n">pvname</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="n">req</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">,</span> <span class="n">throw</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">throw</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mcall</span>
+
+
+<div class="viewcode-block" id="rpcproxy">
+<a class="viewcode-back" href="../../rpc.html#p4p.rpc.rpcproxy">[docs]</a>
+<span class="k">def</span> <span class="nf">rpcproxy</span><span class="p">(</span><span class="n">spec</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator to enable this class to proxy RPC client calls</span>
+
+<span class="sd">    The decorated class constructor takes two additional arguments,</span>
+<span class="sd">    `context=` is required to be a :class:`~p4p.client.thread.Context`.</span>
+<span class="sd">    `format`= can be a string, tuple, or dictionary and is applied</span>
+<span class="sd">    to PV name strings given to :py:func:`rpcall`.</span>
+<span class="sd">    Other arguments are passed to the user class constructor. ::</span>
+
+<span class="sd">       @rpcproxy</span>
+<span class="sd">       class MyProxy(object):</span>
+<span class="sd">           @rpccall(&quot;%s:add&quot;)</span>
+<span class="sd">           def add(lhs=&#39;d&#39;, rhs=&#39;d&#39;):</span>
+<span class="sd">               pass</span>
+
+<span class="sd">       ctxt = Context(&#39;pva&#39;)</span>
+<span class="sd">       proxy = MyProxy(context=ctxt, format=&quot;tst:&quot;)  # evaluates &quot;%s:add&quot;%&quot;tst:&quot;</span>
+
+<span class="sd">    The decorated class will be a sub-class of the provided class and :class:`RPCProxyBase`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># inject our ctor first so we don&#39;t have to worry about super() non-sense.</span>
+
+    <span class="k">def</span> <span class="nf">_proxyinit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="p">{},</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">context</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span> <span class="o">=</span> <span class="nb">format</span>
+        <span class="n">spec</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;__init__&#39;</span><span class="p">:</span> <span class="n">_proxyinit</span><span class="p">}</span>
+
+    <span class="k">for</span> <span class="n">K</span><span class="p">,</span> <span class="n">V</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">M</span><span class="p">:</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="s1">&#39;_call_PV&#39;</span><span class="p">)):</span>
+        <span class="n">obj</span><span class="p">[</span><span class="n">K</span><span class="p">]</span> <span class="o">=</span> <span class="n">_wrapMethod</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="p">(</span><span class="n">RPCProxyBase</span><span class="p">,</span> <span class="n">spec</span><span class="p">),</span> <span class="n">obj</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">P4P</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../starting.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../building.html">Building</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../client.html">Client API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../nt.html">Common Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../values.html">Working with Value and Type</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../server.html">Server API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rpc.html">RPC Server Helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../internal.html">Internal API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../gw.html">PVA Gateway</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Michael Davidsaver.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

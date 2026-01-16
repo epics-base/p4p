@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>PVA Gateway &#8212; P4P 4.2.2 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <script src="_static/documentation_options.js?v=432e6325"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Internal API" href="internal.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="pva-gateway">
+<span id="gwpage"></span><h1>PVA Gateway<a class="headerlink" href="#pva-gateway" title="Link to this heading">¶</a></h1>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h2>
+<p>First install P4P (see the main <a class="reference internal" href="starting.html#starting"><span class="std std-ref">Quick Start</span></a>).</p>
+<p>The following commands will set up a gateway instance named <code class="docutils literal notranslate"><span class="pre">mygw</span></code> on a Linux system that uses <em>systemd</em>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>  <span class="c1"># generate a simple configuration file</span>
+<span class="n">sudo</span> <span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">p4p</span><span class="o">.</span><span class="n">gw</span> <span class="o">--</span><span class="n">example</span><span class="o">-</span><span class="n">config</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">pvagw</span><span class="o">/</span><span class="n">mygw</span><span class="o">.</span><span class="n">conf</span>
+  <span class="c1"># generate a systemd unit file template to support the gateway</span>
+<span class="n">sudo</span> <span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">p4p</span><span class="o">.</span><span class="n">gw</span> <span class="o">--</span><span class="n">example</span><span class="o">-</span><span class="n">systemd</span> \
+     <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">systemd</span><span class="o">/</span><span class="n">system</span><span class="o">/</span><span class="n">pvagw</span><span class="o">@.</span><span class="n">service</span>
+  <span class="c1"># start the gateway</span>
+<span class="n">sudo</span> <span class="n">systemctl</span> <span class="n">daemon</span><span class="o">-</span><span class="n">reload</span>
+<span class="n">sudo</span> <span class="n">systemctl</span> <span class="n">start</span> <span class="n">pvagw</span><span class="nd">@mygw</span><span class="o">.</span><span class="n">service</span>
+  <span class="c1"># check to see if the instance has started correctly</span>
+<span class="n">sudo</span> <span class="n">systemctl</span> <span class="n">status</span> <span class="n">pvagw</span><span class="nd">@mygw</span><span class="o">.</span><span class="n">service</span>
+  <span class="c1"># set the instance to start automatically on boot</span>
+<span class="n">sudo</span> <span class="n">systemctl</span> <span class="n">enable</span> <span class="n">pvagw</span><span class="nd">@mygw</span><span class="o">.</span><span class="n">service</span>
+</pre></div>
+</div>
+</section>
+<section id="background">
+<h2>Background<a class="headerlink" href="#background" title="Link to this heading">¶</a></h2>
+<p>The PVA Gateway provides a way for EPICS client software to access IOCs on an isolated network.</p>
+<p>In doing so, it reduces the resource load on the server-facing side,
+and provides access control restrictions to requests from the client facing side.
+The gateway is a specialized proxy for the PV Access (PVA) Protocol
+which sits between groups of PVA clients and servers.  (see <a class="reference internal" href="overview.html#overviewpva"><span class="std std-ref">What is PVAccess?</span></a>)</p>
+<figure class="align-default" id="id1">
+<div class="graphviz"><img src="_images/graphviz-4dcebfccd2ce68d5093108f3f5eab93483966240.png" alt="graph nogw {
+rankdir=&quot;RL&quot;;
+serv1 [shape=box,label=&quot;EPICS IOC&quot;];
+serv2 [shape=box,label=&quot;PVA server&quot;];
+serv3 [shape=box,label=&quot;EPICS IOC&quot;];
+cli1 [shape=box,label=&quot;pvget&quot;];
+cli2 [shape=box,label=&quot;PVA client&quot;];
+serv1 -- cli1
+serv2 -- cli1
+serv3 -- cli1
+serv1 -- cli2
+serv2 -- cli2
+serv3 -- cli2
+}" class="graphviz" /></div>
+<figcaption>
+<p><span class="caption-text">PVA Connections without a Gateway</span><a class="headerlink" href="#id1" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>Without a Gateway, <code class="docutils literal notranslate"><span class="pre">M</span></code> clients connect to <code class="docutils literal notranslate"><span class="pre">N</span></code> servers
+with <code class="docutils literal notranslate"><span class="pre">M*N</span></code> connections (TCP sockets).  If all clients are subscribed
+to the same set of PVs, then each server is sending the same data values
+<code class="docutils literal notranslate"><span class="pre">M</span></code> times.</p>
+<figure class="align-default" id="id2">
+<div class="graphviz"><img src="_images/graphviz-22af22e7c09fd95f8bc28d79fa6666749aacf8ce.png" alt="graph gwnames {
+rankdir=&quot;RL&quot;;
+serv1 [shape=box,label=&quot;EPICS IOC&quot;];
+serv2 [shape=box,label=&quot;PVA Server&quot;];
+serv3 [shape=box,label=&quot;EPICS IOC&quot;];
+subgraph clustergw {
+    label=&quot;Gateway\nProcess&quot;;
+    gwc [label=&quot;Gateway\nClient&quot;];
+    gws [label=&quot;Gateway\nServer&quot;];
+}
+cli1 [shape=box,label=&quot;pvget&quot;];
+cli2 [shape=box,label=&quot;PVA Client&quot;];
+
+serv1 -- gwc;
+serv2 -- gwc;
+serv3 -- gwc;
+gws -- cli1;
+gws -- cli2;
+}" class="graphviz" /></div>
+<figcaption>
+<p><span class="caption-text">PVA Connections through a Gateway</span><a class="headerlink" href="#id2" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>Adding a Gateway reduces the number of connections to <code class="docutils literal notranslate"><span class="pre">M+N</span></code>.
+With <code class="docutils literal notranslate"><span class="pre">M</span></code> clients connecting to a gateway server on one side, and one gateway client connecting to <code class="docutils literal notranslate"><span class="pre">N</span></code> servers on the other.
+Further, a Gateway de-duplicates subscription data updates
+so that each server sends only a single update to the Gateway,
+which then repeats it to each client.</p>
+<p>So the PVA servers and IOCs see only a single client,
+and are shielded from a potentially large number of clients on
+the other side of the gateway.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Each gateway process can define multiple internal Servers and Clients.
+This allows, for example, a single gateway process to connect to multiple IOC subnets,
+providing EPICS clients to access all IOCs.</p>
+</div>
+<section id="example">
+<h3>Example<a class="headerlink" href="#example" title="Link to this heading">¶</a></h3>
+<p>A common scenario is to have a gateway running on a host computer
+with two network interfaces (NICs) on different subnets,
+and thus two different broadcast domains.</p>
+<p>In this example, a server has two NICs with IP addresses
+192.168.1.5/24 and 10.1.1.4/24.</p>
+<figure class="align-default" id="id3">
+<div class="graphviz"><img src="_images/graphviz-b66706818f80f09045248e99cee994119fb0a213.png" alt="graph gwnet {
+rankdir=&quot;LR&quot;;
+serv [shape=box,label=&quot;PVA server\n192.168.1.23&quot;];
+cli  [shape=box,label=&quot;PVA client\n10.1.1.78&quot;];
+subgraph clustergw {
+    label=&quot;Gateway\nHost&quot;;
+    nic2 [shape=cds,label=&quot;NIC 10.1.1.4&quot;,orientation=180];
+    nic1 [shape=cds,label=&quot;NIC 192.168.1.5&quot;];
+}
+cli -- nic2;
+nic1 -- serv;
+}" class="graphviz" /></div>
+<figcaption>
+<p><span class="caption-text">Example: A Multi-homed Host for a Gateway</span><a class="headerlink" href="#id3" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>To support this host, the gateway can be set up with the
+following configuration file.
+The intent is that the gateway provides EPICS clients on
+the <code class="docutils literal notranslate"><span class="pre">10.1.1.0/24</span></code> subnet with access to IOCs or other PVA servers
+on the <code class="docutils literal notranslate"><span class="pre">192.168.1.0/24</span></code> subnet.</p>
+<p>Each of the statements in this configuration file are explained
+below</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/*</span> <span class="n">C</span><span class="o">-</span><span class="n">style</span> <span class="n">comments</span> <span class="n">are</span> <span class="n">supported</span> <span class="o">*/</span>
+<span class="p">{</span>
+    <span class="s2">&quot;version&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span>
+    <span class="s2">&quot;clients&quot;</span><span class="p">:[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;client192&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;addrlist&quot;</span><span class="p">:</span><span class="s2">&quot;192.168.1.255&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;autoaddrlist&quot;</span><span class="p">:</span><span class="n">false</span>
+        <span class="p">}</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;servers&quot;</span><span class="p">:[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;server10&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;clients&quot;</span><span class="p">:[</span><span class="s2">&quot;client192&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;interface&quot;</span><span class="p">:[</span><span class="s2">&quot;10.1.1.4&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;addrlist&quot;</span><span class="p">:</span><span class="s2">&quot;10.1.1.255&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;autoaddrlist&quot;</span><span class="p">:</span><span class="n">false</span><span class="p">,</span>
+            <span class="s2">&quot;statusprefix&quot;</span><span class="p">:</span><span class="s2">&quot;GW:STS:&quot;</span> <span class="o">/*</span> <span class="n">optional</span><span class="p">,</span> <span class="n">but</span> <span class="n">suggested</span> <span class="o">*/</span>
+        <span class="p">}</span>
+    <span class="o">/*</span> <span class="n">optional</span><span class="p">,</span> <span class="n">allows</span> <span class="n">server</span> <span class="n">side</span> <span class="n">access</span> <span class="n">to</span> <span class="n">Gateway</span> <span class="n">status</span> <span class="o">*/</span>
+        <span class="p">,{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;server192&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;clients&quot;</span><span class="p">:[],</span>
+            <span class="s2">&quot;interface&quot;</span><span class="p">:[</span><span class="s2">&quot;192.168.1.5&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;addrlist&quot;</span><span class="p">:</span><span class="s2">&quot;192.168.1.255&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;autoaddrlist&quot;</span><span class="p">:</span><span class="n">false</span><span class="p">,</span>
+            <span class="s2">&quot;statusprefix&quot;</span><span class="p">:</span><span class="s2">&quot;GW:STS:&quot;</span>
+        <span class="p">}</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <em>version</em> statement is described below.</p>
+<p>The <em>clients</em> section specifies the <em>name</em> of its only Client to be <code class="docutils literal notranslate"><span class="pre">client192</span></code> and is configured to search on the <code class="docutils literal notranslate"><span class="pre">192.168.1.0/24</span></code> subnet by
+providing the <code class="docutils literal notranslate"><span class="pre">192.168.1.255</span></code> broadcast address as the only member of the <em>addrlist</em>.
+This is the network to which an EPICS IOC is attached, so it will receive broadcast searches
+from this gateway acting as a client.</p>
+<p>The <em>servers</em> section specifies the <em>name</em> of its first Server to be <code class="docutils literal notranslate"><span class="pre">server10</span></code>, and indicates which <em>clients</em> can have access to it, in this case clients which are part of the <code class="docutils literal notranslate"><span class="pre">clients192</span></code> section.
+It is configured to listen on the <code class="docutils literal notranslate"><span class="pre">10.1.1.0/24</span></code> subnet by specifying the local <em>interface</em> address <code class="docutils literal notranslate"><span class="pre">10.1.1.4</span></code>.
+This is the network on which an EPICS client such as <em>pvget</em> or <em>pvput</em> is attached, and this gateway will act as a Server to receive their search messages.
+The interface broadcast address is also provided to enable sending of server beacon packets.
+This is an optimization to reduce connection time, and it is not required.</p>
+<p>The <em>statusprefix</em> value is set to <code class="docutils literal notranslate"><span class="pre">GW:STS:</span></code> in this example, allowing the gateway to share some internal PVs which provide status information.
+The <a class="reference internal" href="#gwstatuspvs"><span class="std std-ref">Status PVs</span></a> suffixes are described below, with the <em>statusprefix</em> prepended.
+Sites with multiple gateways on one subnet should give each a unique statusprefix.</p>
+<p>A second <em>servers</em> section is shown, with its <em>name</em> set to <code class="docutils literal notranslate"><span class="pre">server192</span></code>.  Its set of allowed <em>clients</em> is empty, but interfaces and address lists are specified.
+This allows the status PVs mentioned above to be accessed from the subnet hosting the IOCs and other EPICS servers.
+Without this section, those status PVs are only accessible from EPICS clients on the client subnets.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A single gateway will not connect to itself (no Gateway client will connect to a Gateway server in the same instance).
+However, this automatic loop avoidance is not possible in more complex situations involving multiple gateways.
+If such a setup is judged necessary, care should be taken to ensure that loops can not form.
+See also the <code class="docutils literal notranslate"><span class="pre">servers[].ignoreaddr</span></code> in <a class="reference internal" href="#gwconfigfile"><span class="std std-ref">Configuration File Keywords</span></a>.</p>
+</div>
+</section>
+</section>
+<section id="command-line-arguments">
+<h2>Command Line Arguments<a class="headerlink" href="#command-line-arguments" title="Link to this heading">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">pvagw</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">ban</span><span class="o">-</span><span class="n">local</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">logging</span> <span class="n">LOGGING</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">example</span><span class="o">-</span><span class="n">config</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">example</span><span class="o">-</span><span class="n">systemd</span><span class="p">]</span>
+             <span class="n">config</span>
+</pre></div>
+</div>
+<section id="p4p.gw-getargs-positional-arguments">
+<h3>Positional Arguments<a class="headerlink" href="#p4p.gw-getargs-positional-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>config</kbd></dt>
+<dd><p>Config file</p>
+</dd>
+</dl>
+</section>
+<section id="p4p.gw-getargs-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#p4p.gw-getargs-named-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--no-ban-local</kbd></dt>
+<dd><p>Legacy option.  Ignored</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>-v, --verbose</kbd></dt>
+<dd><p>Enable basic logging with DEBUG level</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">20</span></code></p>
+</dd>
+<dt><kbd>--logging</kbd></dt>
+<dd><p>Use logging config from file (JSON in dictConfig format)</p>
+</dd>
+<dt><kbd>--debug</kbd></dt>
+<dd><p>Enable extremely verbose low level PVA debugging</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>-T, --test-config</kbd></dt>
+<dd><p>Read and validate configuration files, then exit w/o starting a gateway.  Also prints the names of all configuration files read.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--example-config</kbd></dt>
+<dd><p>Write an example configuration file and exit.  “–example-config -” writes to stdout</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--example-systemd</kbd></dt>
+<dd><p>Write an example systemd unit file and exit  “–example-systemd -” writes to stdout</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="configuration-file">
+<span id="gwconfref"></span><h2>Configuration File<a class="headerlink" href="#configuration-file" title="Link to this heading">¶</a></h2>
+<p>Configuration is provided as a file using JSON syntax with C-style comments.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/*</span> <span class="n">C</span><span class="o">-</span><span class="n">style</span> <span class="n">comments</span> <span class="n">allowed</span> <span class="o">*/</span>
+<span class="p">{</span>
+    <span class="s2">&quot;version&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span>
+    <span class="s2">&quot;readOnly&quot;</span><span class="p">:</span><span class="n">false</span><span class="p">,</span>
+    <span class="s2">&quot;clients&quot;</span><span class="p">:[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;theclient&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;provider&quot;</span><span class="p">:</span><span class="s2">&quot;pva&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;addrlist&quot;</span><span class="p">:</span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;autoaddrlist&quot;</span><span class="p">:</span><span class="n">false</span><span class="p">,</span>
+            <span class="s2">&quot;bcastport&quot;</span><span class="p">:</span><span class="mi">5076</span>
+        <span class="p">}</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;servers&quot;</span><span class="p">:[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;theserver&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;clients&quot;</span><span class="p">:[</span><span class="s2">&quot;theclient&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;interface&quot;</span><span class="p">:[</span><span class="s2">&quot;...&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;addrlist&quot;</span><span class="p">:</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ignoreaddr&quot;</span><span class="p">:[</span><span class="s2">&quot;...&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;autoaddrlist&quot;</span><span class="p">:</span><span class="n">false</span><span class="p">,</span>
+            <span class="s2">&quot;serverport&quot;</span><span class="p">:</span><span class="mi">5075</span><span class="p">,</span>
+            <span class="s2">&quot;bcastport&quot;</span><span class="p">:</span><span class="mi">5076</span><span class="p">,</span>
+            <span class="s2">&quot;getholdoff&quot;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="s2">&quot;statusprefix&quot;</span><span class="p">:</span><span class="s2">&quot;PV:&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;access&quot;</span><span class="p">:</span><span class="s2">&quot;somefilename.acf&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pvlist&quot;</span><span class="p">:</span><span class="s2">&quot;somefilename.pvlist&quot;</span>
+        <span class="p">}</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>See also PVXS <a class="reference external" href="https://epics-base.github.io/pvxs/client.html#configuration">client</a> and <a class="reference external" href="https://epics-base.github.io/pvxs/server.html#configuration">server</a> configuration references.</p>
+<p>Run <code class="docutils literal notranslate"><span class="pre">pvagw</span> <span class="pre">--example-config</span> <span class="pre">-</span></code> to see another example configuration.</p>
+<section id="configuration-file-keywords">
+<span id="gwconfigfile"></span><h3>Configuration File Keywords<a class="headerlink" href="#configuration-file-keywords" title="Link to this heading">¶</a></h3>
+<p>Here is a full list of JSON keys available for the configuration file, version 2.</p>
+<dl>
+<dt><strong>version</strong></dt><dd><p>JSON Scheme version number.  2 is recommended for new files.  Valid values are 1 or 2.</p>
+</dd>
+<dt><strong>readOnly</strong> (default: false)</dt><dd><p>Boolean flag which, if set, acts as a global access control rule which rejects
+all PUT or RPC operations.  This takes precedence over any ACF file rules.</p>
+</dd>
+<dt><strong>clients</strong></dt><dd><p>List of Gateway Client configurations.</p>
+</dd>
+<dt><strong>clients[].name</strong></dt><dd><p>Unique name for this Client within this gateway process.</p>
+</dd>
+<dt><strong>clients[].provider</strong> (default: “pva”)</dt><dd><p>Selects a ChannelProvider.  Currently only “pva” is valid.</p>
+</dd>
+<dt><strong>clients[].addrlist</strong> (default: “”)</dt><dd><p>List of broadcast and unicast addresses to which search messages will be sent.</p>
+</dd>
+<dt><strong>clients[].autoaddrlist</strong> (default: true)</dt><dd><p>Whether to automatically populate <em>addrlist</em> with <strong>all</strong> local interface broadcast addresses.
+Use caution when setting <code class="docutils literal notranslate"><span class="pre">true</span></code>.</p>
+</dd>
+<dt><strong>clients[].bcastport</strong> (default: 5076)</dt><dd><p>UDP port to which searches are sent.</p>
+</dd>
+<dt><strong>cilents[].EPICS_PVA_*</strong></dt><dd><p>Keys beginning with <code class="docutils literal notranslate"><span class="pre">EPICS_PVA_</span></code> are passed through verbatim,
+and interpreted in the same manner as <code class="docutils literal notranslate"><span class="pre">$EPICS_PVA_*</span></code> environment variables.
+Effects only one client instance.</p>
+</dd>
+<dt><strong>servers</strong></dt><dd><p>List of gateway Server configurations.</p>
+</dd>
+<dt><strong>servers[].name</strong></dt><dd><p>Unique name of this Server within this gateway process.</p>
+</dd>
+<dt><strong>servers[].clients</strong></dt><dd><p>A list of zero or more gateway Client names.
+Search requests allowed through this server will be made through all listed clients.</p>
+</dd>
+<dt><strong>servers[].interface</strong> (default: [“0.0.0.0”])</dt><dd><p>A list of local interface addresses to which this gateway Server will bind.</p>
+</dd>
+<dt><strong>servers[].addrlist</strong> (default: “”)</dt><dd><p>List of broadcast and unicast addresses to which beacon messages will be sent</p>
+</dd>
+<dt><strong>servers[].ignoreaddr</strong> (default: “”)</dt><dd><p>List of address to add into the banned list to explicit ignore hosts.</p>
+</dd>
+<dt><strong>servers[].autoaddrlist</strong> (default: true)</dt><dd><p>Whether to automatically populate <em>addrlist</em> with <strong>all</strong> local interface broadcast addresses.
+Use caution when setting <code class="docutils literal notranslate"><span class="pre">true</span></code>.</p>
+</dd>
+<dt><strong>servers[].serverport</strong> (default: 5075)</dt><dd><p>Default TCP port to bind.  If not possible, a random port will be used.</p>
+</dd>
+<dt><strong>servers[].bcastport</strong> (default: 5076)</dt><dd><p>UDP port bound to receive search requests, as well as the port to which beacons are sent.</p>
+</dd>
+<dt><strong>servers[].getholdoff</strong> (default: 0)</dt><dd><p>A value greater than zero enables rate limiting of Get operations.
+<code class="docutils literal notranslate"><span class="pre">getholdoff</span></code> defines a hold-off time after a GET on a PV completes, before the another will be issued.
+Another GET for the same PV made before the hold-off expires will be delayed until expiration.
+Concurrent GET operations may be combined.</p>
+<p>This activity is per PV.</p>
+</dd>
+<dt><strong>servers[].statusprefix</strong> (default: “”)</dt><dd><p>The text used by this gateway as a prefix to construct names for PVs which communicate status information.
+The PVs report overall status for the gateway process, regardless of the number of internal Clients or Servers.
+Each of the status PVs are defined in <a class="reference internal" href="#gwstatuspvs"><span class="std std-ref">Status PVs</span></a>.
+Note that the prefix will typically end with the delimiter used in your PV naming convention, such as <code class="docutils literal notranslate"><span class="pre">:</span></code>.</p>
+</dd>
+<dt><strong>servers[].access</strong> (default: “”)</dt><dd><p>Name an ACF file to use for access control decisions for requests made through this server.
+See <a class="reference internal" href="#gwacf"><span class="std std-ref">ACF Rules File</span></a>.
+Relative file names are interpreted in relation to the directory containing the config file.</p>
+</dd>
+<dt><strong>servers[].pvlist</strong> (default: “”)</dt><dd><p>Name of PVList file used to restrict access to certain PVs through this Server.
+See <a class="reference internal" href="#gwpvlist"><span class="std std-ref">PVList File</span></a>.
+Relative file names are interpreted in relation to the directory containing the config file.</p>
+</dd>
+<dt><strong>servers[].acf_client</strong></dt><dd><p>Needed only if <code class="docutils literal notranslate"><span class="pre">access</span></code> key is provided, and <code class="docutils literal notranslate"><span class="pre">clients</span></code> list has more than one entry.
+Unambiguously selects which client is used to connect <code class="docutils literal notranslate"><span class="pre">INP</span></code> PVs for use by conditional ACF rules.
+If not provided, then the first client in the list is used.</p>
+</dd>
+<dt><strong>servers[].EPICS_PVA*</strong></dt><dd><p>Keys beginning with <code class="docutils literal notranslate"><span class="pre">EPICS_PVA</span></code> are interpreted in the same manner as <code class="docutils literal notranslate"><span class="pre">$EPICS_PVA*</span></code> environment variables.
+Effects only one server instance.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="status-pvs">
+<span id="gwstatuspvs"></span><h2>Status PVs<a class="headerlink" href="#status-pvs" title="Link to this heading">¶</a></h2>
+<p>Servers with the <code class="docutils literal notranslate"><span class="pre">statusprefix</span></code> key set will provide access to the following PVs.
+These values are aggregated from all defined internal gateway Servers and Clients.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The PV names resulting from the <code class="docutils literal notranslate"><span class="pre">statusprefix</span></code> and the PV suffixes shown below must be unique across your site.
+Each gateway instance must have a unique <code class="docutils literal notranslate"><span class="pre">statusprefix</span></code> value.</p>
+</div>
+<dl>
+<dt><strong>&lt;statusprefix&gt;asTest</strong></dt><dd><p>An RPC only PV which allows testing of PVList and ACF rules.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pvcall &lt;statusprefix&gt;asTest pv=some:name
+</pre></div>
+</div>
+<p>Other arguments include <code class="docutils literal notranslate"><span class="pre">user=&quot;xx&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">peer=&quot;1.1.1.1:12345</span></code>, and <code class="docutils literal notranslate"><span class="pre">roles=[&quot;yy&quot;]</span></code>.
+If omitted, the credentials of the requesting client are used.</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;clients</strong></dt><dd><p>A list of client’s names connected to the GW server</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;cache</strong></dt><dd><p>A list of channels to which the GW Client is connected</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;refs</strong></dt><dd><p>Table of object type names and instance counts.
+May be useful for detecting resource leaks while troubleshooting.</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;threads</strong></dt><dd><p>Available when running with python &gt;= 3.5.
+An RPC call which returns a text description of all python threads.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The following PVs provide data bandwidth information for the overall gateway.</p>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">ds</span></code> in the names refer to <em>downstream</em> requests from EPICS clients to the gateway, or responses from the gateway to EPICS clients.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">us</span></code> in the names refer to <em>upstream</em> requests from the gateway to IOCs, or responses from an IOC to the gateway.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">bypv</span></code> or <code class="docutils literal notranslate"><span class="pre">byhost</span></code> in the names refer to status relating to the involved PVs or host machines, respectively.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">rx</span></code> and <code class="docutils literal notranslate"><span class="pre">tx</span></code> in the names refer to receiving or transmitting data from the gateway’s perspective.</p></li>
+</ul>
+</div>
+<dl class="simple">
+<dt><strong>&lt;statusprefix&gt;ds:bypv:rx</strong></dt><dd><p>A table containing bandwidth usage of requests for each PV sent from PVA clients such as <strong>pvget</strong> or <strong>pvput</strong> to this gateway.  This can be a relatively low number since the requests are often small in size.
+The table is sorted from highest bandwidth PVs to lowest.</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;us:bypv:tx</strong></dt><dd><p>A table containing bandwidth usage of requests for each PV sent from this gateway to PVA Servers such as IOCs.  This can be a relatively low number since the requests are often small in size.
+The table is sorted from highest bandwidth PVs to lowest.</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;us:bypv:rx</strong></dt><dd><p>A table containing bandwidth usage of responses from each PV sent from PVA Servers such as IOCs to this gateway.
+The table is sorted from highest bandwidth PVs to lowest.</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;ds:bypv:tx</strong></dt><dd><p>A table containing bandwidth usage of responses from each PV sent from this gateway to EPICS clients that made the original requests.
+The table is sorted from highest bandwidth PVs to lowest.</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;ds:byhost:rx</strong></dt><dd><p>A table containing bandwidth usage of each host sending requests from PVA clients such as <strong>pvget</strong> or <strong>pvput</strong> to this gateway.  This can be a relatively low number since the requests are often small in size.
+The table is sorted by host machine with the highest bandwidth usage to lowest.</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;us:byhost:tx</strong></dt><dd><p>A table containing bandwidth usage of requests sent from this gateway to each host containing PVA Servers such as IOCs.  This can be a relatively low number since the requests are often small in size.
+The table is sorted by host machine with the highest bandwidth usage to lowest.</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;us:byhost:rx</strong></dt><dd><p>A table containing bandwidth usage of each host providing responses from PVA Servers such as IOCs to this gateway.
+The table is sorted by host machine with the highest bandwidth usage to lowest.</p>
+</dd>
+<dt><strong>&lt;statusprefix&gt;ds:byhost:tx</strong></dt><dd><p>A table containing bandwidth usage of each client’s host accepting responses from this gateway.
+The table is sorted by host machine with the highest bandwidth usage to lowest.</p>
+</dd>
+</dl>
+</section>
+<section id="log-file-configuration">
+<span id="gwlogconfig"></span><h2>Log File Configuration<a class="headerlink" href="#log-file-configuration" title="Link to this heading">¶</a></h2>
+<p>The gateway is able to record messages associated with important events to one or more destinations as it runs,
+including log files or a console device.
+The messages can be debugging aids for developers,
+or errors encountered as the gateway is working.
+It also records the time at which the gateway starts or stops, and when starting,
+lists the configuration details for the internal clients and servers, and lists each status PV that the gateway will make available.</p>
+<p>A python <a class="reference external" href="https://docs.python.org/3/library/logging.config.html#logging-config-dictschema">dictConfig</a>
+logging configuration file in JSON format can be passed to <code class="docutils literal notranslate"><span class="pre">--logging</span></code>
+to provide control of formating of the logged messages.</p>
+<p>One logger name of special interest is <code class="docutils literal notranslate"><span class="pre">p4p.gw.audit</span></code> which is used for messages arising from <a class="reference internal" href="#trapwrite"><span class="std std-ref">TRAPWRITE and Put logging</span></a>.</p>
+<p>The following is an example of a log configuration file which records <code class="docutils literal notranslate"><span class="pre">INFO</span></code> messages or worse to a log file,
+but also records <code class="docutils literal notranslate"><span class="pre">WARNING</span></code> messages or worse to the computer console.
+It specifies different formats for console-bound messages versus log file messages,
+and instructs the system to maintain daily log files (and audit files, if enabled),
+in a subdirectory called <code class="docutils literal notranslate"><span class="pre">BL3-LOGS</span></code>.
+It will create new, empty log files each midnight while keeping previous log files for 14 days.</p>
+<p>Note that fixed-width columns are specified for some fields using sequences like <code class="docutils literal notranslate"><span class="pre">15s</span></code>, <code class="docutils literal notranslate"><span class="pre">-4d</span></code> or <code class="docutils literal notranslate"><span class="pre">4.4s</span></code>,
+similar to <code class="docutils literal notranslate"><span class="pre">printf</span></code> style format specifiers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;disable_existing_loggers&quot;</span><span class="p">:</span> <span class="n">false</span><span class="p">,</span>
+    <span class="s2">&quot;formatters&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;fileFormat&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> | </span><span class="si">%(name)15s</span><span class="s2"> line </span><span class="si">%(lineno)-4d</span><span class="s2"> [</span><span class="si">%(levelname)4.4s</span><span class="s2">] </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;consoleFormat&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> | </span><span class="si">%(name)s</span><span class="s2">: </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;handlers&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;fileMessages&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;logging.handlers.TimedRotatingFileHandler&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;formatter&quot;</span><span class="p">:</span> <span class="s2">&quot;fileFormat&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="s2">&quot;BL3-LOGS/gateway-BL3-DMZ.log&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;when&quot;</span><span class="p">:</span> <span class="s2">&quot;midnight&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;interval&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&quot;backupCount&quot;</span><span class="p">:</span> <span class="mi">14</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;consoleMessages&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;WARNING&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="s2">&quot;logging.StreamHandler&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;formatter&quot;</span><span class="p">:</span> <span class="s2">&quot;consoleFormat&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;stream&quot;</span><span class="p">:</span> <span class="s2">&quot;ext://sys.stdout&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;loggers&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;handlers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;fileMessages&quot;</span><span class="p">,</span><span class="s2">&quot;consoleMessages&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;propagate&quot;</span><span class="p">:</span> <span class="n">true</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="access-control-model">
+<span id="gwsec"></span><h2>Access Control Model<a class="headerlink" href="#access-control-model" title="Link to this heading">¶</a></h2>
+<p>A gateway may apply access control restrictions in addition to any restrictions
+applied by individual IOCs, or other PVA servers, to which it connects.
+By default a gateway apply <strong>no restrictions</strong>.
+A gateway without a <a class="reference internal" href="#gwpvlist"><span class="std std-ref">PVList File</span></a> or <a class="reference internal" href="#gwacf"><span class="std std-ref">ACF Rules File</span></a> will allow all clients to attempt any operation on any PV.</p>
+<p>One or more of the <code class="docutils literal notranslate"><span class="pre">readOnly</span></code>, <code class="docutils literal notranslate"><span class="pre">access</span></code>, and/or <code class="docutils literal notranslate"><span class="pre">pvlist</span></code> configuration file keys enable
+restrictions within a gateway.</p>
+<p>The <strong>simplest and most direct restriction is the readOnly</strong> configuration file key,
+which applies to all logical Servers within a gateway.
+If set, no PUT or RPC operations are allowed.
+Both MONITOR and GET operations are allowed, so <code class="docutils literal notranslate"><span class="pre">readOnly</span></code> applies a simple one-way policy
+to allow clients to receive data without being permitted to change any PV settings.</p>
+<p>A more granular policy is often desired,
+which can be expressed with a <a class="reference internal" href="#gwpvlist"><span class="std std-ref">PVList File</span></a> and/or <a class="reference internal" href="#gwacf"><span class="std std-ref">ACF Rules File</span></a>.</p>
+<p>Access decisions are made as follows:</p>
+<ol class="arabic simple">
+<li><p>PV name and client IP address are looked up in a PVList.
+If DENY, then client searches are ignored.</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">readOnly</span></code> is set, then any PUT or RPC operation is rejected.  GET/MONITOR proceed.</p></li>
+<li><p>The PV name and peer IP address are looked up in a PVList.
+If DENY, then the operation is rejected.
+If ALLOW/ALIAS then an ASG name and level (0 or 1) is found.</p></li>
+<li><p>The ASG name and level are look up in a ACF file.
+GET/MONITOR operations are always allowed (no write only PVs).
+PUT or RPC operations are allowed if appropriate WRITE/PUT/RPC permission is granted.</p></li>
+</ol>
+</section>
+<section id="pvlist-file">
+<span id="gwpvlist"></span><h2>PVList File<a class="headerlink" href="#pvlist-file" title="Link to this heading">¶</a></h2>
+<p>The purpose of the PVList file is to specify which PVs are allowed or denied,
+and to associate those PVs with access security groups (ASG) and security levels (ASL) in the access file.
+Supported PVList file syntax is mostly compatible with that of the Channel Access <a class="reference external" href="https://epics.anl.gov/EpicsDocumentation/ExtensionsManuals/Gateway/Gateway.html">Gateway</a>.</p>
+<p>If not provided, the default PVList file used is <code class="docutils literal notranslate"><span class="pre">.*</span> <span class="pre">ALLOW</span></code>.</p>
+<p>While allows all PV names from all clients.</p>
+<p>PVList files are line based, with lines consisting of the following.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Matching is <em>not</em> in strict lexical order.  See below.</p>
+</div>
+<ol class="arabic">
+<li><p>Blank lines and <code class="docutils literal notranslate"><span class="pre">#</span></code> comments are allowed.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># comment line</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Evaluation order statement</strong>, primarily to maintain backward compatibility with CA Gateway.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># (default if omitted)</span>
+<span class="n">EVALUATION</span> <span class="n">ORDER</span> <span class="n">ALLOW</span><span class="p">,</span> <span class="n">DENY</span>
+
+<span class="c1"># Not currently supported</span>
+<span class="c1">#EVALUATION ORDER DENY, ALLOW</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>A DENY statement</strong> which specifies that certain PVs are denied access from certain EPICS clients.
+It can specify an optional host from which clients will be denied access.
+<code class="docutils literal notranslate"><span class="pre">&lt;PV</span> <span class="pre">name</span> <span class="pre">regexp&gt;</span></code> is a <a class="reference external" href="https://docs.python.org/3/library/re.html#regular-expression-syntax">regular expression</a> to match PV names.
+This statement is of the forms</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">PV</span> <span class="n">name</span> <span class="n">regexp</span><span class="o">&gt;</span> <span class="n">DENY</span>
+<span class="o">&lt;</span><span class="n">PV</span> <span class="n">name</span> <span class="n">regexp</span><span class="o">&gt;</span> <span class="n">DENY</span> <span class="n">FROM</span> <span class="o">&lt;</span><span class="n">hostname_or_IP</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<ol class="arabic">
+<li><p><strong>An ALLOW statement</strong> which specifies that certain PVs are allowed to be accessed from EPICS clients.
+It can specify an optional <em>Access Security Group</em> (ASG),
+with an accompanying but optional <em>Access Security Level</em> (<code class="docutils literal notranslate"><span class="pre">0</span></code> or <code class="docutils literal notranslate"><span class="pre">1</span></code>),
+both of which used when evaluating an <strong>ACF</strong> file.
+This statement is of the forms</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">PV</span> <span class="n">name</span> <span class="n">regexp</span><span class="o">&gt;</span> <span class="n">ALLOW</span>
+<span class="o">&lt;</span><span class="n">PV</span> <span class="n">name</span> <span class="n">regexp</span><span class="o">&gt;</span> <span class="n">ALLOW</span> <span class="o">&lt;</span><span class="n">ASG</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="n">PV</span> <span class="n">name</span> <span class="n">regexp</span><span class="o">&gt;</span> <span class="n">ALLOW</span> <span class="o">&lt;</span><span class="n">ASG</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">ASL_0_or_1</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p>If not provided, <code class="docutils literal notranslate"><span class="pre">ASG</span></code> is <code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code>, and <code class="docutils literal notranslate"><span class="pre">ASL</span></code> is <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
+<ol class="arabic">
+<li><p><strong>An Alias statement</strong> which provides a way to specify a specific PV name based on a more general pattern.
+This is equivalent to a <strong>ALLOW</strong> statement with an additional name translation.
+This statement is of the forms</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">PV</span> <span class="n">name</span> <span class="n">regexp</span><span class="o">&gt;</span> <span class="n">ALIAS</span> <span class="o">&lt;</span><span class="n">real</span> <span class="n">PV</span> <span class="n">name</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="n">PV</span> <span class="n">name</span> <span class="n">regexp</span><span class="o">&gt;</span> <span class="n">ALIAS</span> <span class="o">&lt;</span><span class="n">real</span> <span class="n">PV</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">ASG</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="n">PV</span> <span class="n">name</span> <span class="n">regexp</span><span class="o">&gt;</span> <span class="n">ALIAS</span> <span class="o">&lt;</span><span class="n">real</span> <span class="n">PV</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">ASG</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">ASL_0_or_1</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p>When a gateway Server receives a request from a client to access a PV,
+the PV name is compared to each pattern in the list.</p>
+<p>The order in which regular expressions are matched is that all DENY statements are considered
+before any ALLOW/ALIAS statements (regardless of the order of lines).
+PV names which do not match any statement are DENYed.</p>
+<p>When a PV name matches more than one ALLOW/ALIAS statements,
+the order of lines is used.
+The last match will have effect.</p>
+<p>Considering the following PVList file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ACCL</span><span class="p">:</span><span class="n">CRYO</span><span class="p">:</span><span class="o">.*</span> <span class="n">DENY</span>
+<span class="n">ACCL</span><span class="p">:</span><span class="o">.*</span>      <span class="n">ALLOW</span> <span class="n">MISCONFIG</span>
+<span class="n">ACCL</span><span class="p">:</span><span class="o">.*</span>      <span class="n">ALLOW</span>
+<span class="n">ACCL</span><span class="p">:</span><span class="n">RF</span><span class="o">.*</span>    <span class="n">ALLOW</span> <span class="n">RF</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">ACCL:CRYO:ESTOP</span></code> would match the <code class="docutils literal notranslate"><span class="pre">DENY</span></code> rule, so a gateway will not allow any access.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ACCL:RF:FPWR</span></code> would match the <code class="docutils literal notranslate"><span class="pre">ALLOW</span> <span class="pre">RF</span></code> rule, and be allowed subject to rules for <code class="docutils literal notranslate"><span class="pre">ASG(RF)</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ACCL:ARC:CNT</span></code> would match the last <code class="docutils literal notranslate"><span class="pre">ALLOW</span></code> rule, and be allowed subject to <code class="docutils literal notranslate"><span class="pre">ASG(DEFAULT)</span></code>.</p>
+<p>Because both the <code class="docutils literal notranslate"><span class="pre">ALLOW</span> <span class="pre">MISCONFIG</span></code> and <code class="docutils literal notranslate"><span class="pre">ALLOW</span></code> rules have identical patterns,
+the <code class="docutils literal notranslate"><span class="pre">ALLOW</span></code> will always be used and <code class="docutils literal notranslate"><span class="pre">ALLOW</span> <span class="pre">MISCONFIG</span></code> will never be used.</p>
+<p>Note that because <code class="docutils literal notranslate"><span class="pre">DENY</span></code> rules are always considered before <code class="docutils literal notranslate"><span class="pre">ALLOW</span></code> or <code class="docutils literal notranslate"><span class="pre">ALIAS</span></code> rules,
+the preceding file is functionally identical to the following as moving the <code class="docutils literal notranslate"><span class="pre">DENY</span></code>
+relative to <code class="docutils literal notranslate"><span class="pre">ALLOW</span></code> does not change the evaluation order.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ACCL</span><span class="p">:</span><span class="o">.*</span>      <span class="n">ALLOW</span> <span class="n">MISCONFIG</span>
+<span class="n">ACCL</span><span class="p">:</span><span class="o">.*</span>      <span class="n">ALLOW</span>
+<span class="n">ACCL</span><span class="p">:</span><span class="n">RF</span><span class="o">.*</span>    <span class="n">ALLOW</span> <span class="n">RF</span>
+<span class="n">ACCL</span><span class="p">:</span><span class="n">CRYO</span><span class="p">:</span><span class="o">.*</span> <span class="n">DENY</span>
+</pre></div>
+</div>
+<p>When building a PVList file containing <code class="docutils literal notranslate"><span class="pre">ALLOW</span></code> or <code class="docutils literal notranslate"><span class="pre">ALIAS</span></code> rules with overlapping patterns,
+it is therefore necessary to put the more general patterns before the more specific patterns.
+eg.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ACCL</span><span class="p">:</span><span class="n">RF</span><span class="o">.*</span>    <span class="n">ALLOW</span> <span class="n">RF</span>
+<span class="n">ACCL</span><span class="p">:</span><span class="o">.*</span>      <span class="n">ALLOW</span>
+</pre></div>
+</div>
+<p>In this example the <code class="docutils literal notranslate"><span class="pre">ALLOW</span> <span class="pre">RF</span></code> rule is effectively hidden, and will never be matched.</p>
+</section>
+<section id="acf-rules-file">
+<span id="gwacf"></span><h2>ACF Rules File<a class="headerlink" href="#acf-rules-file" title="Link to this heading">¶</a></h2>
+<p>An Access Security File (ACF) is a list of access control rules to be applied
+to requests based on which Access Security Group (<code class="docutils literal notranslate"><span class="pre">ASG</span></code>) was selected by a PVList file, or <code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code>
+if no PVList file is used.  The <code class="docutils literal notranslate"><span class="pre">ASG</span></code> name selects which a group of rules.</p>
+<p>Unknown <code class="docutils literal notranslate"><span class="pre">ASG</span></code> names use the <code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code> rules.
+If no <code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code> group is defined, then no privileges are granted.</p>
+<p>Each ACF file may define zero or more Host Access Groups (<code class="docutils literal notranslate"><span class="pre">HAG</span></code> s) and/or
+User Access Groups (<code class="docutils literal notranslate"><span class="pre">UAG</span></code> s).
+Also, one or more list of rules (<code class="docutils literal notranslate"><span class="pre">ASG</span></code> s).
+The HAG is a list of host names, and the UAG a list of user names.</p>
+<p>eg. PVs in ASG <code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code> only permit PUT or RPC requests originating from
+hosts <code class="docutils literal notranslate"><span class="pre">incontrol</span></code> or <code class="docutils literal notranslate"><span class="pre">physics</span></code>.
+PUT requests from <code class="docutils literal notranslate"><span class="pre">physics</span></code> will be logged.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HAG</span><span class="p">(</span><span class="n">MCF</span><span class="p">)</span> <span class="p">{</span> <span class="s2">&quot;incontrol&quot;</span> <span class="p">}</span>
+<span class="n">HAG</span><span class="p">(</span><span class="n">OTHER</span><span class="p">)</span> <span class="p">{</span> <span class="s2">&quot;physics&quot;</span> <span class="p">}</span>
+<span class="n">ASG</span><span class="p">(</span><span class="n">DEFAULT</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">RULE</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">WRITE</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">HAG</span><span class="p">(</span><span class="n">MCF</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">RULE</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">WRITE</span><span class="p">,</span> <span class="n">TRAPWRITE</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">HAG</span><span class="p">(</span><span class="n">OTHER</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<section id="privileges">
+<h3>Privileges<a class="headerlink" href="#privileges" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">RULE</span></code> s may grant one of the following privileges.</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">WRITE</span></code></dt><dd><p>Shorthand to grant both <code class="docutils literal notranslate"><span class="pre">PUT</span></code> and <code class="docutils literal notranslate"><span class="pre">RPC</span></code> requests.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">PUT</span></code></dt><dd><p>Allow PUT operation on all fields.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">RPC</span></code></dt><dd><p>Allow RPC operations.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">UNCACHED</span></code></dt><dd><p>Special privilege which allows a client to bypass deduplication/sharing of subscription data.
+A client would make use of this privilege by including a pvRequest option <code class="docutils literal notranslate"><span class="pre">record._options.cache</span></code>
+with a boolean false value.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">READ</span></code></dt><dd><p>Accepted for compatibility.
+PVA Gateway always allows read access for any PV which is allowed by the PVList file.
+Use a <code class="docutils literal notranslate"><span class="pre">DENY</span></code> in a PVList file to prevent clients from reading or subscribing to certain PVs.</p>
+</dd>
+</dl>
+</section>
+<section id="hag-hostnames-and-ips">
+<h3>HAG Hostnames and IPs<a class="headerlink" href="#hag-hostnames-and-ips" title="Link to this heading">¶</a></h3>
+<p>Entries in a <code class="docutils literal notranslate"><span class="pre">HAG()</span></code> may be either host names, or numeric IP addresses.
+Host names are resolved once on Gateway startup.
+Therefore, changes in the hostname to IP mapping will not be visible
+until a Gateway is restarted.</p>
+</section>
+<section id="uag-and-credentials">
+<span id="gwpvcred"></span><h3>UAG and Credentials<a class="headerlink" href="#uag-and-credentials" title="Link to this heading">¶</a></h3>
+<p>PV Access protocol provides a weakly authenticated means of identification based on a remotely provided user name.
+This is combined with a set of “role”s taken by looking up system groups of which the username is a member.
+(See <code class="docutils literal notranslate"><span class="pre">/etc/nsswitch.conf</span></code> on Linux).</p>
+<p>Both user and role names may appear in <code class="docutils literal notranslate"><span class="pre">UAG</span></code> lists. eg.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">UAG</span><span class="p">(</span><span class="n">SPECIAL</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">root</span><span class="p">,</span>
+    <span class="s2">&quot;role/admin&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>And a rule:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ASG</span><span class="p">(</span><span class="n">DEFAULT</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">RULE</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">WRITE</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">UAG</span><span class="p">(</span><span class="n">SPECIAL</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>In this case, the <code class="docutils literal notranslate"><span class="pre">RULE</span></code> will be match if a client identifies itself with username <code class="docutils literal notranslate"><span class="pre">root</span></code>
+or if the (remotely provided) username is a member of the (locally tested) <code class="docutils literal notranslate"><span class="pre">admin</span></code> role (eg. unix group).</p>
+<p>In this case, such a match will grant the <code class="docutils literal notranslate"><span class="pre">WRITE</span></code> privilege for PVs in the <code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code> ASG.</p>
+<p>Role/group membership can be tested with the <code class="docutils literal notranslate"><span class="pre">&lt;statusprefix&gt;asTest</span></code> status PV.</p>
+</section>
+<section id="trapwrite-and-put-logging">
+<span id="trapwrite"></span><h3>TRAPWRITE and Put logging<a class="headerlink" href="#trapwrite-and-put-logging" title="Link to this heading">¶</a></h3>
+<p>If a <code class="docutils literal notranslate"><span class="pre">RULE</span></code> includes the <code class="docutils literal notranslate"><span class="pre">TRAPWRITE</span></code> modifier, then a <code class="docutils literal notranslate"><span class="pre">PUT</span></code> operation it allows
+will be logged.
+Refer to the <a class="reference internal" href="#gwlogconfig"><span class="std std-ref">Log File Configuration</span></a> section for more information.</p>
+<p>Messages are logged through the <code class="docutils literal notranslate"><span class="pre">p4p.gw.audit</span></code> python logger.</p>
+</section>
+<section id="acf-syntax">
+<h3>ACF Syntax<a class="headerlink" href="#acf-syntax" title="Link to this heading">¶</a></h3>
+<pre>
+<strong id="grammar-token-acf-acf">acf      </strong> ::=  | item acf
+<strong id="grammar-token-acf-item">item     </strong> ::=  uag | hag | asg
+<strong id="grammar-token-acf-uag">uag      </strong> ::=  UAG ( &quot;NAME&quot; ) { users }
+<strong id="grammar-token-acf-hag">hag      </strong> ::=  HAG ( &quot;NAME&quot; ) { hosts }
+<strong id="grammar-token-acf-asg">asg      </strong> ::=  ASG ( &quot;NAME&quot; ) { asitems }
+<strong id="grammar-token-acf-users">users    </strong> ::=  &quot;HOSTNAME&quot;
+              &quot;HOSTNAME&quot; , users
+<strong id="grammar-token-acf-hosts">hosts    </strong> ::=  &quot;USERNAME&quot;
+               &quot;USERNAME&quot; , hosts
+<strong id="grammar-token-acf-asitems">asitems  </strong> ::=  | asitem asitems
+<strong id="grammar-token-acf-asitem">asitem   </strong> ::=  INP[A-Z] ( &quot;PVNAME&quot; )
+               RULE ( ASL#, priv) rule_cond
+               RULE ( ASL#, priv, trap) rule_cond
+<strong id="grammar-token-acf-priv">priv     </strong> ::=  READ | WRITE | PUT | RPC | UNCACHED
+<strong id="grammar-token-acf-trap">trap     </strong> ::=  TRAPWRITE | NOTRAPWRITE
+<strong id="grammar-token-acf-rule_cond">rule_cond</strong> ::=  | { conds }
+<strong id="grammar-token-acf-conds">conds    </strong> ::=  | cond conds
+<strong id="grammar-token-acf-cond">cond     </strong> ::=  UAG ( &quot;NAME&quot; )
+               HAG ( &quot;NAME&quot; )
+               CALC ( &quot;EXPR&quot; )
+</pre>
+</section>
+</section>
+<section id="application-notes">
+<h2>Application Notes<a class="headerlink" href="#application-notes" title="Link to this heading">¶</a></h2>
+<p>The process of configuring a Gateway begins by looking at the
+physical and/or logical topology of the networks in question.</p>
+<p>A Gateway is typically placed at the boundary between one or more networks (subnets).</p>
+<p>While a simple Gateway configuration will have a single GW Server connected to a single GW Client,
+more complicated configurations are possible, with many GW Servers and one GW Client,
+or one GW Server and many GW Clients, or a many to many configuration.</p>
+<p>It is valid for a GW Client and GW Server to be associated with the same host interface and port
+provided that they are not associated with each other.
+Pairs of such GW Client and GW Server may be cross linked to form a bi-directional Gateway.</p>
+<p>It is meaningful to configure a GW Server with no GW Clients ( <code class="docutils literal notranslate"><span class="pre">&quot;clients&quot;:[]</span></code> )
+provided that the <code class="docutils literal notranslate"><span class="pre">&quot;statusprefix&quot;</span></code> key is set.
+This server will only provide the status PVs.
+This can be used to eg. provide GW status monitoring from both sides of a one-way Gateway.</p>
+<section id="differences-from-ca-gateway">
+<h3>Differences from CA gateway<a class="headerlink" href="#differences-from-ca-gateway" title="Link to this heading">¶</a></h3>
+<p>Summary of known differences from CA gateway.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">EVALUATION</span> <span class="pre">ORDER</span> <span class="pre">DENY,</span> <span class="pre">ALLOW</span></code> is not supported.</p></li>
+<li><p>Permission <code class="docutils literal notranslate"><span class="pre">READ</span></code> is implied.  Write-only PVs are not possible.</p></li>
+</ul>
+</section>
+</section>
+<section id="implementation-details">
+<h2>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading">¶</a></h2>
+<p>Gateway is implemented as a hybrid of Python and C++.
+In the interest of performance, Python code is only in the “slow” path
+for the PV search/connection decision.
+After a PV is connected; permissions changes, auditing, and monitoring are communicated
+externally from Python code.</p>
+<p>The APIs described below are not currently considered stable or public for use by external modules.
+They are documentation here for the purposes of internal development and debugging.</p>
+<section id="negative-results-cache">
+<h3>Negative Results Cache<a class="headerlink" href="#negative-results-cache" title="Link to this heading">¶</a></h3>
+<p>In order to shield the Python testChannel() handler from repeated reconnect attempts
+for denied PVs, a list of blocked PVs, IPs, and pairs of PV and IP
+is maintained in C++ code.  Search requests matching one of these three criteria
+will be ignored without calling testChannel().</p>
+</section>
+<section id="p4p-gw-frontend">
+<h3>p4p.gw Frontend<a class="headerlink" href="#p4p-gw-frontend" title="Link to this heading">¶</a></h3>
+<p>This module utilizes the related C++ extension to setup and manage a Gateway
+which is configured in a manner similar to the <a class="reference external" href="https://epics-base.github.io/pva2pva/">pva2pva gateway</a>
+with an access control policy defined in a manner similar to <a class="reference external" href="https://epics.anl.gov/extensions/gateway/">cagateway</a>.
+Other means of configuration and policy definition could be implemented.</p>
+</section>
+<section id="c-extension">
+<h3>C++ Extension<a class="headerlink" href="#c-extension" title="Link to this heading">¶</a></h3>
+<p>Setup execution flow for use of the C++ extension is:</p>
+<ol class="arabic simple">
+<li><p>Create a <cite>ClientProvider</cite></p></li>
+<li><p>Create a <cite>Provider</cite> using this client</p></li>
+<li><p>Create a <cite>p4p.server.Server</cite> referencing the provider name.</p></li>
+</ol>
+<p>More than one <cite>Provider</cite> may reference to the same <cite>ClientProvider</cite>.
+A <cite>p4p.server.Server</cite> may reference more than one <cite>Provider</cite>,
+and a <cite>Provider</cite> may be referenced by more than one <cite>p4p.server.Server</cite>.
+Many <cite>p4p.server.Server</cite> s may be created.</p>
+<p>After server startup, the handler object associated with a <cite>Provider</cite>
+will be called according to the <cite>_gw.ProviderHandler</cite> interface.</p>
+<p>The C++ extension deals only with IP addresses in string form,
+possibly with port number (eg. “1.2.3.4:5076)”, and never host names.</p>
+<dl class="py class" id="module-p4p._gw">
+<dt class="sig sig-object py" id="p4p._gw.Provider">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p._gw.</span></span><span class="sig-name descname"><span class="pre">Provider</span></span><a class="headerlink" href="#p4p._gw.Provider" title="Link to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.Provider.Claim">
+<span class="sig-name descname"><span class="pre">Claim</span></span><a class="headerlink" href="#p4p._gw.Provider.Claim" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.Provider.Ignore">
+<span class="sig-name descname"><span class="pre">Ignore</span></span><a class="headerlink" href="#p4p._gw.Provider.Ignore" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.Provider.BanHost">
+<span class="sig-name descname"><span class="pre">BanHost</span></span><a class="headerlink" href="#p4p._gw.Provider.BanHost" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.Provider.BanPV">
+<span class="sig-name descname"><span class="pre">BanPV</span></span><a class="headerlink" href="#p4p._gw.Provider.BanPV" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.Provider.BanHostPV">
+<span class="sig-name descname"><span class="pre">BanHostPV</span></span><a class="headerlink" href="#p4p._gw.Provider.BanHostPV" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.Provider.testChannel">
+<span class="sig-name descname"><span class="pre">testChannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">usname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.Provider.testChannel" title="Link to this definition">¶</a></dt>
+<dd><p>Add the upstream name to the channel cache and begin trying to connect.
+Returns Claim if the channel is connected, and Ignore if it is not.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>usname</strong> (<em>bytes</em>) – Upstream (Server side) PV name</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Claim or Ignore</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.Provider.sweep">
+<span class="sig-name descname"><span class="pre">sweep</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.Provider.sweep" title="Link to this definition">¶</a></dt>
+<dd><p>Call periodically to remove unused <cite>Channel</cite> from channel cache.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.Provider.forceBan">
+<span class="sig-name descname"><span class="pre">forceBan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">usname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.Provider.forceBan" title="Link to this definition">¶</a></dt>
+<dd><p>Preemptively Add an entry to the negative result cache.
+Either host or usname must be not None</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>host</strong> (<em>bytes</em>) – None or a host name</p></li>
+<li><p><strong>usname</strong> (<em>bytes</em>) – None or a upstream (Server side) PV name</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.Provider.clearBan">
+<span class="sig-name descname"><span class="pre">clearBan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.Provider.clearBan" title="Link to this definition">¶</a></dt>
+<dd><p>Clear the negative results cache</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.Provider.cachePeek">
+<span class="sig-name descname"><span class="pre">cachePeek</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.Provider.cachePeek" title="Link to this definition">¶</a></dt>
+<dd><p>Returns PV names in channel cache</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a set of strings</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.Provider.stats">
+<span class="sig-name descname"><span class="pre">stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.Provider.stats" title="Link to this definition">¶</a></dt>
+<dd><p>Return statistics of various internal caches</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.Provider.report">
+<span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.Provider.report" title="Link to this definition">¶</a></dt>
+<dd><p>Run Client/Upstream bandwidth usage report</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of tuple</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>[(usname, opTx, opRx, peer, trTx, trRx)]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p._gw.InfoBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p._gw.</span></span><span class="sig-name descname"><span class="pre">InfoBase</span></span><a class="headerlink" href="#p4p._gw.InfoBase" title="Link to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.InfoBase.account">
+<span class="sig-name descname"><span class="pre">account</span></span><a class="headerlink" href="#p4p._gw.InfoBase.account" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.InfoBase.peer">
+<span class="sig-name descname"><span class="pre">peer</span></span><a class="headerlink" href="#p4p._gw.InfoBase.peer" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.InfoBase.roles">
+<span class="sig-name descname"><span class="pre">roles</span></span><a class="headerlink" href="#p4p._gw.InfoBase.roles" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p._gw.CreateOp">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p._gw.</span></span><span class="sig-name descname"><span class="pre">CreateOp</span></span><a class="headerlink" href="#p4p._gw.CreateOp" title="Link to this definition">¶</a></dt>
+<dd><p>Handle for in-progress Channel creation request</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.CreateOp.create">
+<span class="sig-name descname"><span class="pre">create</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.CreateOp.create" title="Link to this definition">¶</a></dt>
+<dd><p>Create a Channel with a given upstream (server-side) name</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>bytes</em>) – Upstream name to use.  This is what the GW Client will search for.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <cite>Channel</cite></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.CreateOp.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#p4p._gw.CreateOp.name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p._gw.Channel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p._gw.</span></span><span class="sig-name descname"><span class="pre">Channel</span></span><a class="headerlink" href="#p4p._gw.Channel" title="Link to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.Channel.access">
+<span class="sig-name descname"><span class="pre">access</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">put</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rpc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncached</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">audit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">holdoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.Channel.access" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.Channel.expired">
+<span class="sig-name descname"><span class="pre">expired</span></span><a class="headerlink" href="#p4p._gw.Channel.expired" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p._gw.Channel.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#p4p._gw.Channel.name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="interfaces">
+<h3>Interfaces<a class="headerlink" href="#interfaces" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p._gw.ProviderHandler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p._gw.</span></span><span class="sig-name descname"><span class="pre">ProviderHandler</span></span><a class="headerlink" href="#p4p._gw.ProviderHandler" title="Link to this definition">¶</a></dt>
+<dd><p>A Handler object associated with a <cite>Provider</cite> should implement these methods</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.ProviderHandler.testChannel">
+<span class="sig-name descname"><span class="pre">testChannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pvname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.ProviderHandler.testChannel" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pvname</strong> (<em>str</em>) – PV name being searched (downstream)</p></li>
+<li><p><strong>peer</strong> (<em>str</em>) – IP address of client which is searching</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Claim, Ignore, BanHost, BanPV, or BanHostPV</p>
+</dd>
+</dl>
+<p>Hook into search phase.  Called each time a client searches for a pvname.
+If permitted, call and return the result of <cite>Provider.testChannel()</cite> with the desired upstream (server-side PV name).</p>
+<ul class="simple">
+<li><p>Returning Claim may result in a later call to <cite>makeChannel()</cite>.</p></li>
+<li><p>Returning Ignore may result in a repeated call to testChannel() in future.</p></li>
+<li><p>Returning BanHost adds this host to the negative results cache</p></li>
+<li><p>Returning BanPV adds this PV to the negative results cache.</p></li>
+<li><p>Returning BanHostPV adds this combination of host and PV to the negative results cache</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.ProviderHandler.makeChannel">
+<span class="sig-name descname"><span class="pre">makeChannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.ProviderHandler.makeChannel" title="Link to this definition">¶</a></dt>
+<dd><p>Hook info channel creation phase.  If permitted, call and return the result of <cite>CreateOp.create()</cite>.
+The <cite>Channel</cite> object may be stored by python code to track and effect active connections.
+eg. call <cite>Channel.access()</cite> to set/change privileges.
+Or <cite>Channel.close()</cite> to force disconnection.</p>
+<p>Due to the continuous nature of PVA client (re)connection process, inability to create
+a channel at this stage is treated as a hard failure to avoid a reset loop.
+If it is necessary to return None, then steps should be taken to ensure that a
+re-connection attempt would have a different result.  eg. through <cite>Provider.forceBan()</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>op</strong> (<a class="reference internal" href="#p4p._gw.CreateOp" title="p4p._gw.CreateOp"><em>CreateOp</em></a>) – Handle for ongoing operation</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <cite>Channel</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p._gw.ProviderHandler.audit">
+<span class="sig-name descname"><span class="pre">audit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">msg</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#p4p._gw.ProviderHandler.audit" title="Link to this definition">¶</a></dt>
+<dd><p>Hook info PUT logging process.  Called from a worker thread.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>msg</strong> (<em>str</em>) – Message string to be logged</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">P4P</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="starting.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building</a></li>
+<li class="toctree-l1"><a class="reference internal" href="client.html">Client API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nt.html">Common Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="values.html">Working with Value and Type</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rpc.html">RPC Server Helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="internal.html">Internal API</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">PVA Gateway</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#background">Background</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#command-line-arguments">Command Line Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-file">Configuration File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#status-pvs">Status PVs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#log-file-configuration">Log File Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#access-control-model">Access Control Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pvlist-file">PVList File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#acf-rules-file">ACF Rules File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#application-notes">Application Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#implementation-details">Implementation Details</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="internal.html" title="previous chapter">Internal API</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Michael Davidsaver.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/gw.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>RPC Server Helpers &#8212; P4P 4.2.2 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <script src="_static/documentation_options.js?v=432e6325"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Internal API" href="internal.html" />
+    <link rel="prev" title="Server API" href="server.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="rpc-server-helpers">
+<span id="rpcapi"></span><h1>RPC Server Helpers<a class="headerlink" href="#rpc-server-helpers" title="Link to this heading">¶</a></h1>
+<section id="server-example">
+<h2>Server Example<a class="headerlink" href="#server-example" title="Link to this heading">¶</a></h2>
+<p>Remote Procedure Calls are received by the methods of a “target” object.
+This is any class which has method decorated with <a class="reference internal" href="#p4p.rpc.rpc" title="p4p.rpc.rpc"><code class="xref py py-func docutils literal notranslate"><span class="pre">rpc()</span></code></a>.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">p4p.rpc</span> <span class="kn">import</span> <span class="n">rpc</span><span class="p">,</span> <span class="n">quickRPCServer</span>
+<span class="kn">from</span> <span class="nn">p4p.nt</span> <span class="kn">import</span> <span class="n">NTScalar</span>
+<span class="k">class</span> <span class="nc">Summer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nd">@rpc</span><span class="p">(</span><span class="n">NTScalar</span><span class="p">(</span><span class="s2">&quot;d&quot;</span><span class="p">))</span>
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lhs</span><span class="p">,</span> <span class="n">rhs</span><span class="p">):</span> <span class="c1"># &#39;lhs&#39; and &#39;rhs&#39; are arbitrary names.  The method name &#39;add&#39; will be part of the PV name</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">lhs</span><span class="p">)</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">rhs</span><span class="p">)</span>
+<span class="n">adder</span> <span class="o">=</span> <span class="n">Summer</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Turn on logging to see RPC related errors.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now run a server with <a class="reference internal" href="#p4p.rpc.quickRPCServer" title="p4p.rpc.quickRPCServer"><code class="xref py py-func docutils literal notranslate"><span class="pre">quickRPCServer()</span></code></a>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">quickRPCServer</span><span class="p">(</span><span class="n">provider</span><span class="o">=</span><span class="s2">&quot;Example&quot;</span><span class="p">,</span>
+               <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;pv:call:&quot;</span><span class="p">,</span>  <span class="c1"># A prefix for method PV names.</span>
+               <span class="n">target</span><span class="o">=</span><span class="n">adder</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>At this point the server is active.</p>
+<p>Beginning with EPICS 7.0.2 this can be tested using the “pvcall” utility</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pvcall<span class="w"> </span>pv:call:add<span class="w"> </span><span class="nv">lhs</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">rhs</span><span class="o">=</span><span class="m">1</span>
+<span class="m">2018</span>-10-30<span class="w"> </span><span class="m">19</span>:49:34.834<span class="w">  </span><span class="m">2</span>
+</pre></div>
+</div>
+<p>Previous to EPICS 7.0.2 this can be tested using the “eget” utility from the pvAccessCPP module.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>eget<span class="w"> </span>-s<span class="w"> </span>pv:call:add<span class="w"> </span>-a<span class="w"> </span><span class="nv">lhs</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">rhs</span><span class="o">=</span><span class="m">1</span>
+<span class="m">2</span>
+$<span class="w"> </span>eget<span class="w"> </span>-s<span class="w"> </span>pv:call:add<span class="w"> </span>-a<span class="w"> </span><span class="nv">lhs</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>-a<span class="w"> </span><span class="nv">rhs</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>-N<span class="w">  </span><span class="c1"># for more detail</span>
+epics:nt/NTScalar:1.0
+<span class="w">    </span>double<span class="w"> </span>value<span class="w"> </span><span class="m">2</span>
+<span class="w">    </span>alarm_t<span class="w"> </span>alarm<span class="w"> </span>NO_ALARM<span class="w"> </span>NO_STATUS<span class="w"> </span>&lt;no<span class="w"> </span>message&gt;
+<span class="w">    </span>time_t<span class="w"> </span>timeStamp<span class="w"> </span><span class="m">2017</span>-05-20T08:14:31.917<span class="w"> </span><span class="m">0</span>
+</pre></div>
+</div>
+</section>
+<section id="client-example">
+<h2>Client Example<a class="headerlink" href="#client-example" title="Link to this heading">¶</a></h2>
+<p>Remote procedure calls are made through the <a class="reference internal" href="client.html#p4p.client.thread.Context.rpc" title="p4p.client.thread.Context.rpc"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rpc()</span></code></a> method of a <a class="reference internal" href="client.html#p4p.client.thread.Context" title="p4p.client.thread.Context"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a>.
+To assist in encoding arguments, a proxy object can be created with the <a class="reference internal" href="#p4p.rpc.rpcproxy" title="p4p.rpc.rpcproxy"><code class="xref py py-func docutils literal notranslate"><span class="pre">rpcproxy()</span></code></a> decorator.
+A proxy for the preceding example would be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">p4p.rpc</span> <span class="kn">import</span> <span class="n">rpcproxy</span><span class="p">,</span> <span class="n">rpccall</span>
+<span class="nd">@rpcproxy</span>
+<span class="k">class</span> <span class="nc">MyProxy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nd">@rpccall</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">add&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">lhs</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">,</span> <span class="n">rhs</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">):</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+<p>This proxy must be associated with a Context.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">p4p.client.thread</span> <span class="kn">import</span> <span class="n">Context</span>
+<span class="n">ctxt</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="s1">&#39;pva&#39;</span><span class="p">)</span>
+<span class="n">proxy</span> <span class="o">=</span> <span class="n">MyProxy</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">ctxt</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;pv:call:&#39;</span><span class="p">)</span>
+<span class="nb">print</span> <span class="n">proxy</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A decorated proxy class has two additional contructor arguments.</p>
+<section id="using-low-level-client-api">
+<h3>Using Low Level Client API<a class="headerlink" href="#using-low-level-client-api" title="Link to this heading">¶</a></h3>
+<p>It may be helpful to illustrate what a proxy method call is actually doing.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">p4p</span> <span class="kn">import</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Value</span>
+<span class="n">V</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="n">Type</span><span class="p">([</span>
+    <span class="p">(</span><span class="s1">&#39;schema&#39;</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;query&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;lhs&#39;</span><span class="p">,</span> <span class="s1">&#39;d&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;rhs&#39;</span><span class="p">,</span> <span class="s1">&#39;d&#39;</span><span class="p">),</span>
+    <span class="p">])),</span>
+<span class="p">]),</span> <span class="p">{</span>
+    <span class="s1">&#39;schema&#39;</span><span class="p">:</span> <span class="s1">&#39;pva&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;path&#39;</span><span class="p">:</span> <span class="s1">&#39;pv:call:add&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;query&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;lhs&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s1">&#39;rhs&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">})</span>
+<span class="nb">print</span> <span class="n">ctxt</span><span class="o">.</span><span class="n">rpc</span><span class="p">(</span><span class="s1">&#39;pv:call:add&#39;</span><span class="p">,</span> <span class="n">V</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="p4p.rpc.rpc">
+<span class="sig-prename descclassname"><span class="pre">p4p.rpc.</span></span><span class="sig-name descname"><span class="pre">rpc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/rpc.html#rpc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.rpc.rpc" title="Link to this definition">¶</a></dt>
+<dd><p>Decorator marks a method for export.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>type</strong> – Specifies which <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code> this method will return.</p>
+</dd>
+</dl>
+<p>The return type (rtype) must be one of:</p>
+<ul class="simple">
+<li><p>An instance of <a class="reference internal" href="values.html#p4p.Type" title="p4p.Type"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Type</span></code></a></p></li>
+<li><p>None, in which case the method must return a <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a></p></li>
+<li><p>One of the NT helper classes (eg <a class="reference internal" href="nt.html#p4p.nt.NTScalar" title="p4p.nt.NTScalar"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.nt.NTScalar</span></code></a>).</p></li>
+<li><p>A list or tuple used to construct a <a class="reference internal" href="values.html#p4p.Type" title="p4p.Type"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Type</span></code></a>.</p></li>
+</ul>
+<p>Exported methods raise an <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code> to indicate an error to the remote caller.
+<a class="reference internal" href="#p4p.rpc.RemoteError" title="p4p.rpc.RemoteError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoteError</span></code></a> may be raised to send a specific message describing the error condition.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">Example</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="go">    @rpc(NTScalar.buildType(&#39;d&#39;))</span>
+<span class="go">    def add(self, lhs, rhs):</span>
+<span class="go">        return {&#39;value&#39;:float(lhs)+flost(rhs)}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="p4p.rpc.rpcproxy">
+<span class="sig-prename descclassname"><span class="pre">p4p.rpc.</span></span><span class="sig-name descname"><span class="pre">rpcproxy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/rpc.html#rpcproxy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.rpc.rpcproxy" title="Link to this definition">¶</a></dt>
+<dd><p>Decorator to enable this class to proxy RPC client calls</p>
+<p>The decorated class constructor takes two additional arguments,
+<code class="xref any docutils literal notranslate"><span class="pre">context=</span></code> is required to be a <a class="reference internal" href="client.html#p4p.client.thread.Context" title="p4p.client.thread.Context"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a>.
+<code class="xref any docutils literal notranslate"><span class="pre">format`=</span> <span class="pre">can</span> <span class="pre">be</span> <span class="pre">a</span> <span class="pre">string,</span> <span class="pre">tuple,</span> <span class="pre">or</span> <span class="pre">dictionary</span> <span class="pre">and</span> <span class="pre">is</span> <span class="pre">applied</span>
+<span class="pre">to</span> <span class="pre">PV</span> <span class="pre">name</span> <span class="pre">strings</span> <span class="pre">given</span> <span class="pre">to</span> <span class="pre">:py:func:`rpcall</span></code>.
+Other arguments are passed to the user class constructor.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@rpcproxy</span>
+<span class="k">class</span> <span class="nc">MyProxy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nd">@rpccall</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">:add&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">lhs</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">,</span> <span class="n">rhs</span><span class="o">=</span><span class="s1">&#39;d&#39;</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<span class="n">ctxt</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="s1">&#39;pva&#39;</span><span class="p">)</span>
+<span class="n">proxy</span> <span class="o">=</span> <span class="n">MyProxy</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">ctxt</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;tst:&quot;</span><span class="p">)</span>  <span class="c1"># evaluates &quot;%s:add&quot;%&quot;tst:&quot;</span>
+</pre></div>
+</div>
+<p>The decorated class will be a sub-class of the provided class and <a class="reference internal" href="#p4p.rpc.RPCProxyBase" title="p4p.rpc.RPCProxyBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">RPCProxyBase</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="p4p.rpc.rpccall">
+<span class="sig-prename descclassname"><span class="pre">p4p.rpc.</span></span><span class="sig-name descname"><span class="pre">rpccall</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pvname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/rpc.html#rpccall"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.rpc.rpccall" title="Link to this definition">¶</a></dt>
+<dd><p>Decorator marks a client proxy method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pvname</strong> (<em>str</em>) – The PV name, which will be formated using the ‘format’ argument of the proxy class constructor.</p></li>
+<li><p><strong>request</strong> – A pvRequest string or <a class="reference internal" href="values.html#p4p.Value" title="p4p.Value"><code class="xref py py-class docutils literal notranslate"><span class="pre">p4p.Value</span></code></a> passed to eg. <a class="reference internal" href="client.html#p4p.client.thread.Context.rpc" title="p4p.client.thread.Context.rpc"><code class="xref py py-meth docutils literal notranslate"><span class="pre">p4p.client.thread.Context.rpc()</span></code></a>.</p></li>
+</ul>
+</dd>
+</dl>
+<p>The method to be decorated must have all keyword arguments,
+where the keywords are type code strings or <a class="reference internal" href="values.html#p4p.Type" title="p4p.Type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="p4p.rpc.quickRPCServer">
+<span class="sig-prename descclassname"><span class="pre">p4p.rpc.</span></span><span class="sig-name descname"><span class="pre">quickRPCServer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">useenv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">isolate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/rpc.html#quickRPCServer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.rpc.quickRPCServer" title="Link to this definition">¶</a></dt>
+<dd><p>Run an RPC server in the current thread</p>
+<p>Calls are handled sequentially, and always in the current thread, if workers=1 (the default).
+If workers&gt;1 then calls are handled concurrently by a pool of worker threads.
+Requires NTURI style argument encoding.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>provider</strong> (<em>str</em>) – A provider name.  Must be unique in this process.</p></li>
+<li><p><strong>prefix</strong> (<em>str</em>) – PV name prefix.  Along with method names, must be globally unique.</p></li>
+<li><p><strong>target</strong> – The object which is exporting methods.  (use the <a class="reference internal" href="#p4p.rpc.rpc" title="p4p.rpc.rpc"><code class="xref py py-func docutils literal notranslate"><span class="pre">rpc()</span></code></a> decorator)</p></li>
+<li><p><strong>maxsize</strong> (<em>int</em>) – Number of pending RPC calls to be queued.</p></li>
+<li><p><strong>workers</strong> (<em>int</em>) – Number of worker threads (default 1)</p></li>
+<li><p><strong>useenv</strong> – Passed to <a class="reference internal" href="server.html#p4p.server.Server" title="p4p.server.Server"><code class="xref py py-class docutils literal notranslate"><span class="pre">Server</span></code></a></p></li>
+<li><p><strong>conf</strong> – Passed to <a class="reference internal" href="server.html#p4p.server.Server" title="p4p.server.Server"><code class="xref py py-class docutils literal notranslate"><span class="pre">Server</span></code></a></p></li>
+<li><p><strong>isolate</strong> – Passed to <a class="reference internal" href="server.html#p4p.server.Server" title="p4p.server.Server"><code class="xref py py-class docutils literal notranslate"><span class="pre">Server</span></code></a></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.rpc.RPCProxyBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.rpc.</span></span><span class="sig-name descname"><span class="pre">RPCProxyBase</span></span><a class="reference internal" href="_modules/p4p/rpc.html#RPCProxyBase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.rpc.RPCProxyBase" title="Link to this definition">¶</a></dt>
+<dd><p>Base class for automatically generated proxy classes</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>context</strong> (<a class="reference internal" href="client.html#p4p.client.thread.Context" title="p4p.client.thread.Context"><em>Context</em></a>) – The client <a class="reference internal" href="client.html#p4p.client.thread.Context" title="p4p.client.thread.Context"><code class="xref py py-class docutils literal notranslate"><span class="pre">Context</span></code></a> through which calls are made</p></li>
+<li><p><strong>format</strong> – A tuple or dict which is applied with the format ‘%’ operator to the name strings given to <a class="reference internal" href="#p4p.rpc.rpccall" title="p4p.rpc.rpccall"><code class="xref py py-func docutils literal notranslate"><span class="pre">rpccall()</span></code></a>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p.rpc.RPCProxyBase.context">
+<span class="sig-name descname"><span class="pre">context</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#p4p.rpc.RPCProxyBase.context" title="Link to this definition">¶</a></dt>
+<dd><p>The Context provided on construction</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p.rpc.RPCProxyBase.timeout">
+<span class="sig-name descname"><span class="pre">timeout</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3.0</span></em><a class="headerlink" href="#p4p.rpc.RPCProxyBase.timeout" title="Link to this definition">¶</a></dt>
+<dd><p>Timeout of RPC calls in seconds</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p.rpc.RPCProxyBase.authority">
+<span class="sig-name descname"><span class="pre">authority</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#p4p.rpc.RPCProxyBase.authority" title="Link to this definition">¶</a></dt>
+<dd><p>Authority string sent with NTURI requests</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="p4p.rpc.RPCProxyBase.throw">
+<span class="sig-name descname"><span class="pre">throw</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#p4p.rpc.RPCProxyBase.throw" title="Link to this definition">¶</a></dt>
+<dd><p>Whether call errors raise an exception, or return it</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.rpc.NTURIDispatcher">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.rpc.</span></span><span class="sig-name descname"><span class="pre">NTURIDispatcher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">queue</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kws</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/rpc.html#NTURIDispatcher"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.rpc.NTURIDispatcher" title="Link to this definition">¶</a></dt>
+<dd><p>RPC dispatcher using NTURI (a al. eget)</p>
+<p>Method names are prefixed with a fixed string.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">queue</span> <span class="o">=</span> <span class="n">WorkQueue</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">Summer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="go">    @rpc([(&#39;result&#39;, &#39;i&#39;)])</span>
+<span class="go">    def add(self, a=None, b=None):</span>
+<span class="go">        return {&#39;result&#39;: int(a)+int(b)}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">installProvider</span><span class="p">(</span><span class="s2">&quot;arbitrary&quot;</span><span class="p">,</span> <span class="n">NTURIDispatcher</span><span class="p">(</span><span class="n">queue</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">Summer</span><span class="p">(),</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;pv:prefix:&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Making a call with the CLI ‘eget’ utility:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ eget -s pv:prefix:add -a a=1 -a b=2
+....
+int result 3
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>WorkQueue</strong> (<em>queue</em>) – A WorkQueue to which RPC calls will be added</p></li>
+<li><p><strong>str</strong> (<em>prefix</em>) – PV name prefix used by RPC methods</p></li>
+<li><p><strong>target</strong> – The object which has the RPC calls</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.rpc.RemoteError">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.rpc.</span></span><span class="sig-name descname"><span class="pre">RemoteError</span></span><a class="headerlink" href="#p4p.rpc.RemoteError" title="Link to this definition">¶</a></dt>
+<dd><p>Thrown with an error message which has been sent by a server to its remote client</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="p4p.rpc.WorkQueue">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">p4p.rpc.</span></span><span class="sig-name descname"><span class="pre">WorkQueue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maxsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/util.html#WorkQueue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.rpc.WorkQueue" title="Link to this definition">¶</a></dt>
+<dd><p>A threaded work queue.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.rpc.WorkQueue.handle">
+<span class="sig-name descname"><span class="pre">handle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/util.html#WorkQueue.handle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.rpc.WorkQueue.handle" title="Link to this definition">¶</a></dt>
+<dd><p>Process queued work until interrupt() is called</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="p4p.rpc.WorkQueue.interrupt">
+<span class="sig-name descname"><span class="pre">interrupt</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/p4p/util.html#WorkQueue.interrupt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#p4p.rpc.WorkQueue.interrupt" title="Link to this definition">¶</a></dt>
+<dd><p>Break one call to handle()</p>
+<p>eg. Call N times to break N threads.</p>
+<p>This call blocks if the queue is full.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">P4P</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="starting.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building</a></li>
+<li class="toctree-l1"><a class="reference internal" href="client.html">Client API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nt.html">Common Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="values.html">Working with Value and Type</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server API</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">RPC Server Helpers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#server-example">Server Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#client-example">Client Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-reference">API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="internal.html">Internal API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gw.html">PVA Gateway</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="server.html" title="previous chapter">Server API</a></li>
+      <li>Next: <a href="internal.html" title="next chapter">Internal API</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Michael Davidsaver.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/rpc.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
