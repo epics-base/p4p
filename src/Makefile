@@ -137,7 +137,7 @@ nose.%:
 # bounce back down to the sphinx generated Makefile
 # aren't Makefiles fun...
 sphinx:
-	cd "$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" && $(MAKE) -C $(TOP)/documentation html
+	P4P_BUILD="python$(PY_LD_VER)/$(T_A)" $(MAKE) -C $(TOP)/documentation html
 
 sh:
 	echo "export PYTHONPATH=\$${PYTHONPATH}:$(abspath $(TOP))/python$(PY_LD_VER)/$(T_A)" $(if $(OUTPUT),> $(OUTPUT))
