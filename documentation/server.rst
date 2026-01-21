@@ -53,7 +53,7 @@ to see which fields are marked as changed with eg. `Value.changed()`.
 
 A client put operation can be failed with eg. 'op.done(error="oops")'.
 
-In the put handler function 'pv' is the `SharedPV` and 'op' is a `ServerOperation`.
+In the put handler function 'pv' is the `thread.SharedPV` (or `asyncio.SharedPV`) and 'op' is a `ServerOperation`.
 
 Server API
 ----------
@@ -112,7 +112,7 @@ A :py:class:`DynamicProvider` Handler class will define the following:
 ServerOperation
 ^^^^^^^^^^^^^^^
 
-This class is passed to SharedPV handler `Handler.put()` and `Handler.rpc()` methods.
+This class is passed to SharedPV handler `thread.Handler.put()` and `thread.Handler.rpc()` methods.
 
 .. autoclass:: ServerOperation
 
@@ -185,6 +185,7 @@ asyncio or cothread
 .. class:: SharedPV
 
     Same arguments as :py:class:`thread.SharedPV` except that ``queue=`` is removed.
+    Must be created within an asyncio event loop.
 
 .. currentmodule:: p4p.server.cothread
 
