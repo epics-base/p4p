@@ -95,8 +95,7 @@ class SharedPV(_SharedPV):
         """Close PV, disconnecting any clients.
 
         :param bool destroy: Indicate "permanent" closure.  Current clients will not see subsequent open().
-        :param bool sync: When block until any pending onLastDisconnect() is delivered (timeout applies).
-        :param float timeout: Applies only when sync=True.  None for no timeout, otherwise a non-negative floating point value.
+        :param bool sync: When True, return Future which completes after pending onLastDisconnect() delivered.
 
         close() with destory=True or sync=True will not prevent clients from re-connecting.
         New clients may prevent sync=True from succeeding.
