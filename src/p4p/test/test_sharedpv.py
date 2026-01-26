@@ -28,6 +28,15 @@ class TestGPM(RefTestCase):
     class Times2Handler(object):
 
         def put(self, pv, op):
+            # cover ServerOperation methods
+            assert op.name() in ('foo', 'bar')
+            assert isinstance(op.peer(), str)
+            assert isinstance(op.account(), str)
+            assert isinstance(op.pvRequest(), Value)
+            assert isinstance(op.roles(), set)
+            Rs = list(op.roles())
+            assert len(Rs)==0 or isinstance(Rs[0], str)
+
             V = op.value()
             if V.raw.changed('value'):
                 if V < 0:
