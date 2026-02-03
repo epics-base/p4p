@@ -142,6 +142,59 @@ ASG(NOTSIMPLE) {
             ]),
         ])
 
+    def test_parse_epics_7010_extensions(self):
+        inp = r'''
+        # Global AUTHORITY definitions (parsed/ignored by p4p)
+        AUTHORITY(ROOT, "CN=Root") {
+            AUTHORITY(LEAF, "CN=Leaf") {
+                AUTHORITY("CN=Only")
+            }
+        }
+
+        # Unknown top-level item (parsed/ignored)
+        FUTURETOP(x) { y(z) { a(b) } }
+
+        ASG(DEFAULT) {
+            INPU("pv:name")
+            FUTUREASG(x) { foo(bar) }
+
+            RULE(1,WRITE) {
+                METHOD(x509, password)
+                AUTHORITY(ROOT)
+                PROTOCOL(TLS)
+            }
+
+            RULE(1,READ) {
+                FUTUREPRED(x) { foo(bar) }
+            }
+        }
+        '''
+
+        ast = parse_acf(inp)
+
+        # Only the ASG should remain in the AST
+        self.assertEqual(len(ast), 1)
+        self.assertEqual(ast[0][0], 'ASG')
+        self.assertEqual(ast[0][1], 'DEFAULT')
+
+        items = ast[0][2]
+        self.assertIn(('INP', 'U', 'pv:name'), items)
+
+        # Find the WRITE rule and verify it contains the new predicates
+        write_rules = [it for it in items if it[0] == 'RULE' and it[2] == 'WRITE']
+        self.assertEqual(len(write_rules), 1)
+        write_rule = write_rules[0]
+        conds = write_rule[4]
+        self.assertIn(('METHOD', ['x509', 'password']), conds)
+        self.assertIn(('AUTHORITY', ['ROOT']), conds)
+        self.assertIn(('PROTOCOL', 'TLS'), conds)
+
+        # Unknown predicates in a RULE body must still parse
+        read_rules = [it for it in items if it[0] == 'RULE' and it[2] == 'READ']
+        self.assertEqual(len(read_rules), 1)
+        read_rule = read_rules[0]
+        self.assertIn(('UNKNOWN', 'FUTUREPRED'), read_rule[4])
+
 class TestACL(unittest.TestCase):
     class DummyChannel(object):
         def __init__(self):
@@ -167,6 +220,41 @@ class TestACL(unittest.TestCase):
         ch = self.DummyChannel()
         eng.create(ch, 'othergrp', 'someone', 'somewhere', 0)
         self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':True, 'audit': False})
+
+    def test_rule_unknown_predicate_fails_secure(self):
+        eng = DummyEngine("""
+ ASG(DEFAULT) {
+     RULE(1,READ)
+     RULE(1,WRITE) {
+         FUTUREPRED(x) { foo(bar) }
+     }
+ }
+ """)
+
+        ch = self.DummyChannel()
+        eng.create(ch, 'DEFAULT', 'someone', '1.2.3.4', 0)
+        self.assertDictEqual(ch.perm, {'put':False, 'rpc':False, 'uncached':False, 'audit': False})
+
+    def test_rule_method_authority_protocol(self):
+        eng = DummyEngine("""
+ ASG(DEFAULT) {
+     RULE(1,READ)
+     RULE(1,WRITE) {
+         METHOD(x509)
+         AUTHORITY(ROOT)
+         PROTOCOL(TLS)
+     }
+ }
+ """)
+
+        ch = self.DummyChannel()
+        eng.create(ch, 'DEFAULT', 'someone', '1.2.3.4', 0)
+        self.assertDictEqual(ch.perm, {'put':False, 'rpc':False, 'uncached':False, 'audit': False})
+
+        ch = self.DummyChannel()
+        eng.create(ch, 'DEFAULT', 'someone', '1.2.3.4', 0,
+                   method='x509', authority='ROOT', protocol='TLS')
+        self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':False, 'audit': False})
 
     def test_roles(self):
         eng = DummyEngine("""

@@ -1,4 +1,5 @@
 import logging
+import logging
 import warnings
 import socket
 import re
@@ -11,7 +12,8 @@ from weakref import WeakKeyDictionary
 from .yacc import parse, ACFError
 
 from .. import Value
-from ..client.thread import Context, Disconnected
+from ..client.thread import Context
+from ..client import raw as _raw
 
 _log = logging.getLogger(__name__)
 
@@ -85,13 +87,13 @@ class Engine(object):
             if node[0]=='UAG':
                 # ('UAG', name, [members...])
                 uags.add(node[1])
-                for member in node[2]:
+                for member in (node[2] or []):
                     uag[member].add(node[1])
 
             elif node[0]=='HAG':
                 # ('HAG', name, [members...])
                 hags.add(node[1])
-                for member in node[2]:
+                for member in (node[2] or []):
                     hag[member].add(node[1])
 
             elif node[0]=='ASG':
@@ -100,10 +102,10 @@ class Engine(object):
                 #        | ('RULE', 1, 'WRITE', trap, None | [])
 
                 rules, inputs = asg[node[1]] = [], {}
-                for anode in node[2]:
+                for anode in (node[2] or []):
                     if anode[0]=='RULE':
                         rule = []
-                        for rnode in anode[4] or []:
+                        for rnode in (anode[4] or []):
                             if rnode[0] in ('UAG', 'HAG'):
                                 # ('UAG', ['name'])
                                 # ('HAG', ['name'])
@@ -125,8 +127,22 @@ class Engine(object):
 
                                 rule.append((rnode[0], rnode[1], expr))
 
+                            elif rnode[0] in ('METHOD', 'AUTHORITY'):
+                                # ('METHOD', ['x509', ...])
+                                # ('AUTHORITY', ['AuthName', ...])
+                                rule.append((rnode[0], set(rnode[1] or [])))
+
+                            elif rnode[0]=='PROTOCOL':
+                                # ('PROTOCOL', 'TLS' | 'TCP' | ...)
+                                rule.append((rnode[0], (rnode[1] or '').upper()))
+
+                            elif rnode[0]=='UNKNOWN':
+                                # Any unknown predicate disables the RULE (fail-secure)
+                                rule.append((rnode[0], rnode[1]))
+
                             else:
                                 warnings.warn("Invalid RULE condition AST: %s"%(rnode,))
+                                rule.append(('UNKNOWN', rnode[0]))
 
                         try:
                             mask = actionmask[anode[2]]
@@ -182,7 +198,7 @@ class Engine(object):
     def _var_update(self, grps, value):
         # clear old value first
         val = None
-        if not isinstance(value, Disconnected):
+        if not isinstance(value, _raw.Disconnected):
             try:
                 val = float(value or 0.0)
             except:
@@ -233,12 +249,15 @@ class Engine(object):
 
         self._recompute()
 
-    def create(self, channel, group, user, host, level, roles=[]):
+    def create(self, channel, group, user, host, level, roles=None, method=None, authority=None, protocol=None):
         # Default to restrictive.  Used in case of error
         perm = 0
         _log.debug('(re)create %s, %s, %s, %s, %s', channel.name, group, user, host, level)
 
         with self._lock:
+
+            if roles is None:
+                roles = []
 
             uags = self._uag.get(user, set())
             for role in roles:
@@ -255,6 +274,14 @@ class Engine(object):
                             accept = len(cond[1].intersection(uags))
                         elif cond[0]=='HAG':
                             accept = len(cond[1].intersection(hags))
+                        elif cond[0]=='METHOD':
+                            accept = (method is not None) and (method in cond[1])
+                        elif cond[0]=='AUTHORITY':
+                            accept = (authority is not None) and (authority in cond[1])
+                        elif cond[0]=='PROTOCOL':
+                            accept = (protocol is not None) and (str(protocol).upper() == cond[1])
+                        elif cond[0]=='UNKNOWN':
+                            accept = False
                         elif cond[0]=='CALC':
                             try:
                                 accept = float(eval(cond[2], {}, inputs) or 0.0) >= 0.5 # horray for legacy... I mean compatibility

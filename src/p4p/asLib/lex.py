@@ -9,8 +9,12 @@ tokens = (
     'ASG',
     'RULE',
     'CALC',
+    'METHOD',
+    'AUTHORITY',
+    'PROTOCOL',
     'INP',
     'INTEGER',
+    'FLOAT',
     'STRING',
 )
 
@@ -23,23 +27,31 @@ def t_eol(t):
     t.lexer.lineno += len(t.value)
 
 def t_comment(t):
-    r'\#[^\n]*\n'
-    t.lexer.lineno += 1
+    r'\#[^\n]*'
+    # newline(s) consumed by t_eol
+    pass
 
 def t_KW(t):
-    r'UAG|HAG|ASG|RULE|CALC'
+    r'UAG|HAG|ASG|RULE|CALC|METHOD|AUTHORITY|PROTOCOL'
     t.type = t.value
     return t
 
 def t_INP(t):
-    r'INP[A-L]'
+    # EPICS Base allows INPA..INPU
+    r'INP[A-U]'
     t.type = 'INP'
     return t
 
 def t_INTEGER(t):
-    r'[0-9]+'
+    r'[-+]?[0-9]+'
     t.type = 'INTEGER'
     t.value = int(t.value)
+    return t
+
+def t_FLOAT(t):
+    r'[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?'
+    t.type = 'FLOAT'
+    t.value = float(t.value)
     return t
 
 def t_bare_STRING(t):
@@ -59,5 +71,5 @@ def t_error(t):
 if __name__=='__main__':
     import logging
     logging.basicConfig(level=logging.DEBUG)
-    lexer = lex.lex(debug=1, optimize=0, debuglog=logging.getLogger(__name__))
+    lexer = lex.lex(debuglog=logging.getLogger(__name__))
     lex.runmain(lexer=lexer)
