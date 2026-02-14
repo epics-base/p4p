@@ -73,6 +73,18 @@ class Engine(object):
     def parse(self, acf):
         ast = parse(acf)
 
+        auth_ids_by_cn = defaultdict(set)
+        auth_cn_by_id = {}
+
+        def _auth_walk(node):
+            _, aid, cn, kids = node
+            if aid is not None:
+                auth_cn_by_id[aid] = cn
+                auth_ids_by_cn[cn].add(aid)
+            for kid in kids or []:
+                if kid is not None:
+                    _auth_walk(kid)
+
         # map user or host to set of groups
         uag = defaultdict(set)
         hag = defaultdict(set)
@@ -84,6 +96,10 @@ class Engine(object):
         invars = defaultdict(list)
 
         for node in ast:
+            if node[0] == 'AUTHDEF':
+                _auth_walk(node)
+                continue
+
             if node[0]=='UAG':
                 # ('UAG', name, [members...])
                 uags.add(node[1])
@@ -130,7 +146,10 @@ class Engine(object):
                             elif rnode[0] in ('METHOD', 'AUTHORITY'):
                                 # ('METHOD', ['x509', ...])
                                 # ('AUTHORITY', ['AuthName', ...])
-                                rule.append((rnode[0], set(rnode[1] or [])))
+                                if rnode[0] == 'METHOD':
+                                    rule.append((rnode[0], set([(m or '').lower() for m in (rnode[1] or [])])))
+                                else:
+                                    rule.append((rnode[0], set(rnode[1] or [])))
 
                             elif rnode[0]=='PROTOCOL':
                                 # ('PROTOCOL', 'TLS' | 'TCP' | ...)
@@ -184,6 +203,8 @@ class Engine(object):
             self._asg = asg
             self._asg_DEFAULT = asg.get('DEFAULT', [])
             self._hag_addr = hag_addr
+            self._auth_ids_by_cn = dict(auth_ids_by_cn)
+            self._auth_cn_by_id = auth_cn_by_id
 
         self._recompute()
 
@@ -272,6 +293,21 @@ class Engine(object):
             if roles is None:
                 roles = []
 
+            authset = set()
+            if authority:
+                if isinstance(authority, (list, tuple, set)):
+                    for ent in authority:
+                        if ent:
+                            authset.add(ent)
+                else:
+                    for ent in str(authority).splitlines():
+                        ent = ent.strip()
+                        if ent:
+                            authset.add(ent)
+
+                for cn in list(authset):
+                    authset.update(self._auth_ids_by_cn.get(cn, ()))
+
             uags = self._uag.get(user, set())
             for role in roles:
                 uags |= self._uag.get('role/'+role, set())
@@ -288,9 +324,9 @@ class Engine(object):
                         elif cond[0]=='HAG':
                             accept = len(cond[1].intersection(hags))
                         elif cond[0]=='METHOD':
-                            accept = (method is not None) and (method in cond[1])
+                            accept = (method is not None) and (method.lower() in cond[1])
                         elif cond[0]=='AUTHORITY':
-                            accept = (authority is not None) and (authority in cond[1])
+                            accept = bool(authset.intersection(cond[1]))
                         elif cond[0]=='PROTOCOL':
                             accept = (protocol is not None) and (str(protocol).upper() == cond[1])
                         elif cond[0]=='UNKNOWN':

@@ -172,12 +172,11 @@ ASG(NOTSIMPLE) {
 
         ast = parse_acf(inp)
 
-        # Only the ASG should remain in the AST
-        self.assertEqual(len(ast), 1)
-        self.assertEqual(ast[0][0], 'ASG')
-        self.assertEqual(ast[0][1], 'DEFAULT')
+        asg_nodes = [n for n in ast if n[0] == 'ASG']
+        self.assertEqual(len(asg_nodes), 1)
+        self.assertEqual(asg_nodes[0][1], 'DEFAULT')
 
-        items = ast[0][2]
+        items = asg_nodes[0][2]
         self.assertIn(('INP', 'U', 'pv:name'), items)
 
         # Find the WRITE rule and verify it contains the new predicates
@@ -277,6 +276,32 @@ class TestACL(unittest.TestCase):
         ch = self.DummyChannel()
         eng.create(ch, 'DEFAULT', 'x509/alice', '1.2.3.4', 0, method='ca')
         self.assertDictEqual(ch.perm, {'put':False, 'rpc':False, 'uncached':False, 'audit': False})
+
+    def test_authority_def_mapping(self):
+        eng = DummyEngine(r'''
+ AUTHORITY(EPICS, "EPICS Root Certificate Authority")
+ ASG(DEFAULT) {
+     RULE(1,WRITE) {
+         METHOD(x509)
+         PROTOCOL(TLS)
+         AUTHORITY(EPICS)
+     }
+ }
+ ''')
+
+        ch = self.DummyChannel()
+        eng.create(ch, 'DEFAULT', 'operator', '1.2.3.4', 0,
+                   method='x509',
+                   protocol='TLS',
+                   authority='EPICS Root Certificate Authority')
+        self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':False, 'audit': False})
+
+        ch = self.DummyChannel()
+        eng.create(ch, 'DEFAULT', 'operator', '1.2.3.4', 0,
+                   method='x509',
+                   protocol='TLS',
+                   authority='EPICS Root Certificate Authority\nSome Intermediate CA')
+        self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':False, 'audit': False})
 
     def test_roles(self):
         eng = DummyEngine("""

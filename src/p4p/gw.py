@@ -424,14 +424,6 @@ class GWHandler(object):
                 if protocol in (None, u'') and method == 'x509':
                     protocol = 'TLS'
 
-                if authority in (None, u''):
-                    raw = getattr(op, 'raw', None)
-                    if raw is not None:
-                        try:
-                            authority = raw.get('authority', None)
-                        except Exception:
-                            authority = None
-
                 self.acf.create(chan, asg, user, peer, asl, op.roles,
                                 method=method or None,
                                 authority=authority or None,

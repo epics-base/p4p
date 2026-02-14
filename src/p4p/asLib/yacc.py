@@ -233,8 +233,8 @@ def p_protocol_ref(p):
 
 def p_authority_def(p):
     """authority_def : AUTHORITY auth_head auth_body_opt"""
-    # Parsed for forward compatibility; not currently used by p4p.
-    p[0] = None
+    aid, cn = p[2]
+    p[0] = ('AUTHDEF', aid, cn, p[3] or [])
 
 
 def p_auth_head(p):
@@ -274,8 +274,12 @@ def p_auth_body_item(p):
     """auth_body_item : AUTHORITY auth_head auth_body_opt
                       | AUTHORITY auth_head
     """
-    # Parsed for forward compatibility; not currently used by p4p.
-    p[0] = None
+    aid, cn = p[2]
+    if len(p) == 4:
+        kids = p[3] or []
+    else:
+        kids = []
+    p[0] = ('AUTHDEF', aid, cn, kids)
 
 
 # --- Generic / future-proof syntax (parsed then ignored) ---

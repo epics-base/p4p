@@ -3,6 +3,8 @@
 
 #include <stdexcept>
 #include <sstream>
+#include <type_traits>
+#include <utility>
 
 #include <epicsMutex.h>
 #include <epicsGuard.h>
@@ -49,6 +51,42 @@
 namespace p4p {
 
 using namespace pvxs;
+
+namespace detail {
+
+template<typename C>
+static inline auto credAuthorityImpl(const C& c, int) -> decltype(std::declval<const C&>().authority, std::string())
+{
+    return c.authority;
+}
+
+template<typename C>
+static inline std::string credAuthorityImpl(const C& c, long)
+{
+    try {
+        auto fld = c.raw["authority"];
+        if(fld.storageType()==StoreType::String)
+            return fld.template as<std::string>();
+    }catch(...){
+    }
+    return std::string();
+}
+
+template<typename C>
+static inline auto credProtocolImpl(const C& c, int) -> decltype(std::declval<const C&>().isTLS, std::string())
+{
+    return c.isTLS ? std::string("TLS") : std::string("TCP");
+}
+
+template<typename C>
+static inline std::string credProtocolImpl(const C& c, long)
+{
+    if(c.method=="x509")
+        return "TLS";
+    return "TCP";
+}
+
+}
 
 typedef epicsGuard<epicsMutex> Guard;
 typedef epicsGuardRelease<epicsMutex> UnGuard;
@@ -190,6 +228,16 @@ std::string assembleCred(const server::ClientCredentials& cred) {
     } else {
         return method + "/" + cred.account;
     }
+}
+
+inline
+std::string credAuthority(const server::ClientCredentials& cred) {
+    return detail::credAuthorityImpl(cred, 0);
+}
+
+inline
+std::string credProtocol(const server::ClientCredentials& cred) {
+    return detail::credProtocolImpl(cred, 0);
 }
 
 TypeDef startPrototype(const std::string& id, const Value& base);
