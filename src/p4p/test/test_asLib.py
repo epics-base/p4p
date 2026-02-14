@@ -256,6 +256,28 @@ class TestACL(unittest.TestCase):
                    method='x509', authority='ROOT', protocol='TLS')
         self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':False, 'audit': False})
 
+    def test_ca_method_strips_prefixes(self):
+        eng = DummyEngine("""
+ UAG(SPECIAL) { alice }
+ ASG(DEFAULT) {
+     RULE(1,WRITE) { UAG(SPECIAL) }
+ }
+ """)
+
+        ch = self.DummyChannel()
+        eng.create(ch, 'DEFAULT', 'x509/alice', '1.2.3.4', 0, method='ca')
+        self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':False, 'audit': False})
+
+        eng = DummyEngine("""
+ ASG(DEFAULT) {
+     RULE(1,WRITE) { METHOD(x509) }
+ }
+ """)
+
+        ch = self.DummyChannel()
+        eng.create(ch, 'DEFAULT', 'x509/alice', '1.2.3.4', 0, method='ca')
+        self.assertDictEqual(ch.perm, {'put':False, 'rpc':False, 'uncached':False, 'audit': False})
+
     def test_roles(self):
         eng = DummyEngine("""
 UAG(SPECIAL) {

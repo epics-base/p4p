@@ -17,11 +17,13 @@ from libcpp.vector cimport vector
 from .pvxs.client cimport Context, Report, ReportInfo
 from .pvxs.server cimport ServerGUID
 from .pvxs.source cimport Source, ChannelControl, OpBase, ClientCredentials
+from .pvxs cimport data
 from .pvxs cimport source
 from . cimport _p4p
 
 cdef extern from "<p4p.h>" namespace "p4p":
     string assembleCred(const source.ClientCredentials&) except+
+    object asPy(const data.Value& v, bool unpackstruct, bool unpackrecurse, object wrapper) except+
 
 cdef extern from "pvxs_gw.h" namespace "p4p" nogil:
     enum: GWSearchIgnore
@@ -86,6 +88,30 @@ cdef class InfoBase(object):
             return assembleCred(self.info.get()[0]).decode('UTF-8')
         else:
             return u''
+
+    @property
+    def accountname(self):
+        if <bool>self.info:
+            acct = self.info.get().account.decode('UTF-8', 'replace')
+            if self.info.get().method == b'ca' and '/' in acct:
+                acct = acct.rsplit('/', 1)[-1]
+            return acct
+        else:
+            return u''
+
+    @property
+    def method(self):
+        if <bool>self.info:
+            return self.info.get().method.decode('UTF-8', 'replace')
+        else:
+            return u''
+
+    @property
+    def raw(self):
+        if <bool>self.info:
+            return asPy(self.info.get().raw, False, False, None)
+        else:
+            return None
 
     @property
     def roles(self):

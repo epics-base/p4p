@@ -408,7 +408,34 @@ class GWHandler(object):
 
         try:
             if not self.readOnly: # default is RO
-                self.acf.create(chan, asg, op.account, peer, asl, op.roles)
+                user = getattr(op, 'accountname', None) or op.account
+                method = getattr(op, 'method', None)
+                authority = getattr(op, 'authority', None)
+                protocol = getattr(op, 'protocol', None)
+
+                if method in (None, u''):
+                    try:
+                        acct = op.account
+                        if '/' in acct:
+                            method, user = acct.split('/', 1)
+                    except Exception:
+                        pass
+
+                if protocol in (None, u'') and method == 'x509':
+                    protocol = 'TLS'
+
+                if authority in (None, u''):
+                    raw = getattr(op, 'raw', None)
+                    if raw is not None:
+                        try:
+                            authority = raw.get('authority', None)
+                        except Exception:
+                            authority = None
+
+                self.acf.create(chan, asg, user, peer, asl, op.roles,
+                                method=method or None,
+                                authority=authority or None,
+                                protocol=protocol or None)
             if self.getholdoff is not None:
                 chan.access(holdoff=self.getholdoff)
         except:
@@ -450,7 +477,15 @@ class GWHandler(object):
             raise RemoteError("Denied")
 
         chan=TestChannel('<asTest>')
-        self.acf.create(chan, asg, user, peer, asl, roles)
+
+        method = None
+        if '/' in user:
+            method, user = user.split('/', 1)
+        protocol = 'TLS' if method == 'x509' else None
+
+        self.acf.create(chan, asg, user, peer, asl, roles,
+                        method=method,
+                        protocol=protocol)
 
         return permissionsType({
             'pv':pv,

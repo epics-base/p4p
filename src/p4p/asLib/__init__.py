@@ -218,11 +218,21 @@ class Engine(object):
         _log.debug("Recompute %s", only or "all")
         anodes, self._anodes = self._anodes, WeakKeyDictionary()
 
-        for channel, (group, user, host, level) in anodes.items():
+        for channel, info in anodes.items():
+            group, user, host, level = info[:4]
+            roles = info[4] if len(info) > 4 else None
+            method = info[5] if len(info) > 5 else None
+            authority = info[6] if len(info) > 6 else None
+            protocol = info[7] if len(info) > 7 else None
+
             if only is None or group in only:
-                self.create(channel, group, user, host, level)
+                self.create(channel, group, user, host, level,
+                            roles=roles,
+                            method=method,
+                            authority=authority,
+                            protocol=protocol)
             else:
-                self._anodes[channel] = (group, user, host, level)
+                self._anodes[channel] = info
 
     @staticmethod
     def _gethostbyname(host):
@@ -255,6 +265,9 @@ class Engine(object):
         _log.debug('(re)create %s, %s, %s, %s, %s', channel.name, group, user, host, level)
 
         with self._lock:
+
+            if method == 'ca' and user is not None and '/' in user:
+                user = user.rsplit('/', 1)[-1]
 
             if roles is None:
                 roles = []
@@ -313,7 +326,8 @@ class Engine(object):
 
             channel.access(put=bool(put), rpc=bool(rpc), uncached=bool(uncached), audit=trapit)
 
-            self._anodes[channel] = (group, user, host, level)
+            self._anodes[channel] = (group, user, host, level,
+                                     list(roles), method, authority, protocol)
 
     def _check_host(self, hag, user, host):
         groups = self._hag_addr.get(host) or set()
