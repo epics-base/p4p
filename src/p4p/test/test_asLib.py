@@ -303,6 +303,27 @@ class TestACL(unittest.TestCase):
                    authority='EPICS Root Certificate Authority\nSome Intermediate CA')
         self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':False, 'audit': False})
 
+    def test_authority_def_chained(self):
+        eng = DummyEngine(r'''
+ AUTHORITY("EPICS Root Certificate Authority") {
+     AUTHORITY(CMS_AUTH, "intermediateCA")
+ }
+ ASG(DEFAULT) {
+     RULE(1,WRITE) {
+         METHOD(x509)
+         PROTOCOL(TLS)
+         AUTHORITY(CMS_AUTH)
+     }
+ }
+ ''')
+
+        ch = self.DummyChannel()
+        eng.create(ch, 'DEFAULT', 'operator', '1.2.3.4', 0,
+                   method='x509',
+                   protocol='TLS',
+                   authority='EPICS Root Certificate Authority\nintermediateCA')
+        self.assertDictEqual(ch.perm, {'put':True, 'rpc':True, 'uncached':False, 'audit': False})
+
     def test_roles(self):
         eng = DummyEngine("""
 UAG(SPECIAL) {
