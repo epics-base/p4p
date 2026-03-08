@@ -1,11 +1,13 @@
 """
 Demonstrate a Handler which uses open() and post() to apply control.limits
-to a pair of PVs. 
-Run the program and use 
- - `pvget demo:limit_open` to verify that although the initial value was set 
+to a pair of PVs.
+Run the program and use
+ - `pvget demo:limit_open` to verify that although the initial value was set
     to 14 the control.limitHigh means that it is set to 10.
  - `pvmonitor demo:limit_post` to see the behaviour of a PV with control limits
     set to restrict values to >=3 and <=7 as a post() sweeps it between 0 and 10.
+ - `pvput demo:limit_open control.limitHigh=5` to see that changing the control
+    limits is correctly supported.
 """
 
 import time
@@ -19,7 +21,7 @@ from p4p.server.thread import SharedPV
 
 class LimitsHandler(Handler):
     """
-    A handler which applies the control.limits to a PV. 
+    A handler which applies the control.limits to a PV.
     """
 
     def _eval_limits(self, value: Value):
@@ -31,35 +33,50 @@ class LimitsHandler(Handler):
         # value of 0, and we shouldn't use them to test the value.
 
         limit_high = value.get("control.limitHigh")
-        if limit_high is not None and value.changed("control.limitHigh") and value["value"] > limit_high:
-            #print(f"Value {value['value']} is above the high limit of {limit_high}, setting to {limit_high}")
+        if (
+            limit_high is not None
+            and value.changed("control.limitHigh")
+            and value["value"] > limit_high
+        ):
+            # print(f"Value {value['value']} is above the high limit of {limit_high}, setting to {limit_high}")
             value["value"] = limit_high
 
         limit_low = value.get("control.limitLow")
-        if limit_low is not None and value.changed("control.limitLow") and value["value"] < limit_low:
-            #print(f"Value {value['value']} is below the low limit of {limit_low}, setting to {limit_low}")
+        if (
+            limit_low is not None
+            and value.changed("control.limitLow")
+            and value["value"] < limit_low
+        ):
+            # print(f"Value {value['value']} is below the low limit of {limit_low}, setting to {limit_low}")
             value["value"] = limit_low
 
     def open(self, value: Value):
-        """ Check any initial value against the limits. """
+        """Check any initial value against the limits."""
         self._eval_limits(value)
 
     def post(self, pv: SharedPV, value: Value):
-        """ Check changes to the value against the limits."""
+        """Check changes to the value against the limits."""
 
-        # The value that we receive from the post operation probably only has its
-        # value.value set and not its control limits. In that case we copy in the
-        # current control limits to make the evaluation.
-        pv_value = pv.current().raw
-        if not value.changed("control.limitHigh") and pv_value.changed("control.limitHigh"):
-            value["control.limitHigh"] = pv_value["control.limitHigh"]
-        if not value.changed("control.limitLow") and pv_value.changed("control.limitLow"):
-            value["control.limitLow"] = pv_value["control.limitLow"]
+        # The value and control limits we need to evaluate are shared between
+        # the pv and the value. We need to check which fields are most current
+        # (value takes precedence) and set them in the value variable
+        # approppriately.
+        pv_value: Value = pv.current().raw
+        self._merge_field(value, pv_value, "value")
+        self._merge_field(value, pv_value, "control.limitHigh")
+        self._merge_field(value, pv_value, "control.limitLow")
 
         self._eval_limits(value)
 
+    def _merge_field(self, value: Value, pv_value: Value, field: str):
+        if not value.changed(field) and pv_value.changed(field):
+            value[field] = pv_value[field]
+
     def put(self, pv: SharedPV, op: ServerOperation):
-        """ Allow puts by simply forwarding to the post and invoking the associated handler. """
+        """Allow puts by simply forwarding to the post and invoking the associated handler."""
+
+        print(f"pv: {pv.current().raw}")
+        print(f"op.value(): {op.value().raw}")
 
         pv.post(op.value())
         op.done()
@@ -67,7 +84,7 @@ class LimitsHandler(Handler):
 
 def main():
     """
-    Create PVs with limits. 
+    Create a pvaServer with two PVs with limits.
     """
 
     # Construct a PV with a high limit of 10, but an initial value of 14.
@@ -106,7 +123,7 @@ def main():
             value = value + 1
             if value > 10:
                 value = 0
-            post_pv.post(value)
+            # post_pv.post(value)
     except KeyboardInterrupt:
         pass
     finally:
