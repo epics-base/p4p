@@ -125,7 +125,7 @@ cdef extern from "<pvxs/client.h>" namespace "pvxs::client" nogil:
 
     cdef cppclass Operation:
         bool cancel() except+
-
+        string& name()
 
     # really netcommon.h, but can't include this directly
     cdef cppclass ReportInfo "pvxs::client::ReportInfo":

@@ -42,7 +42,7 @@ cdef extern from "<p4p.h>" namespace "p4p":
     object tostr(const data.Value& v, size_t limit, bool showval) except+
 
     # pvxs_sharedpv.cpp
-    string toString(const server.Server& serv, int detail) nogil except+
+    string toString(const server.Server& serv, int detail) except+ nogil
     void attachHandler(sharedpv.SharedPV& pv, object handler) except+
     void detachHandler(sharedpv.SharedPV& pv) except+
     void attachCleanup(const shared_ptr[source.ExecOp]& op, object handler) except+
@@ -551,6 +551,13 @@ cdef class ClientOperation:
         if cancelled:
             self.handler(1, "", None)
 
+    @property
+    def name(self):
+        if <bool>self.op:
+            return self.op.get().name()
+        return "Dead ClientOperation"
+
+
 # can't tp_clear as we have no way to replace Subscription handler (cancel?)
 @cython.no_gc_clear
 cdef class ClientMonitor:
@@ -608,13 +615,15 @@ cdef class ClientProvider:
         cdef server.Config_defs_t defs
 
         if useenv:
-            cconf.applyEnv()
+            with nogil:
+                cconf.applyEnv()
 
         if conf is not None:
             for K,V in conf.items():
                 defs[K.encode()] = V.encode()
 
-            cconf.applyDefs(defs)
+            with nogil:
+                cconf.applyDefs(defs)
 
         with nogil:
             self.ctxt = cconf.build()

@@ -23,6 +23,15 @@ PROD_DEPLIB_DIRS += $(PY_LIBDIRS)
 
 INCLUDES += $(PY_INCDIRS:%=-I%)
 
+# pyconfig.h emits eg.
+#   pragma comment(lib,"python311.lib")
+# so no need to explicitly mention pythonX.Y.lib .
+# However, must emit /LIBPATH with correct directory
+ifeq ($(CMPLR_CLASS),msvc)
+# no used as of 7.0.10
+#LOADABLE_SHRLIB_LDFLAGS += /LIBPATH:$(PY_LIBDIRS)
+LIB_LDFLAGS += /LIBPATH:$(PY_LIBDIRS)
+endif
 #LIB_SYS_LIBS += python$(PY_LD_VER)
 #PROD_SYS_LIBS += python$(PY_LD_VER)
 

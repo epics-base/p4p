@@ -270,6 +270,11 @@ Here is a full list of JSON keys available for the configuration file, version 2
 **clients[].bcastport** (default: 5076)
     UDP port to which searches are sent.
 
+**cilents[].EPICS_PVA_\***
+    Keys beginning with ``EPICS_PVA_`` are passed through verbatim,
+    and interpreted in the same manner as ``$EPICS_PVA_*`` environment variables.
+    Effects only one client instance.
+
 **servers**
     List of gateway Server configurations.
 
@@ -327,6 +332,10 @@ Here is a full list of JSON keys available for the configuration file, version 2
     Needed only if ``access`` key is provided, and ``clients`` list has more than one entry.
     Unambiguously selects which client is used to connect ``INP`` PVs for use by conditional ACF rules.
     If not provided, then the first client in the list is used.
+
+**servers[].EPICS_PVA\***
+    Keys beginning with ``EPICS_PVA`` are interpreted in the same manner as ``$EPICS_PVA*`` environment variables.
+    Effects only one server instance.
 
 .. _gwstatuspvs:
 

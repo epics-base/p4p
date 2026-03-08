@@ -13,14 +13,14 @@
 #  RELEASE.Common.$(T_A)
 #  RELEASE.$(EPICS_HOST_ARCH).$(T_A)
 
-TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
+# Required dependency
+#PVXS = /path/to/pvxs
 
-# EPICS V4 Developers: Do not edit the locations in this file!
-#
-# To create a file RELEASE.local in this directory
-#     copy ExampleRELEASE.local to RELEASE.local
-#     edit RELEASE.local
-#     rebuild 
+# EPICS_BASE should appear last so earlier modules can override stuff:
+#EPICS_BASE = /path/to/epics-base
 
+# These lines allow developers to override these RELEASE settings
+# without having to modify this file directly.
 -include $(TOP)/configure/RELEASE.local
+-include $(TOP)/../RELEASE.$(EPICS_HOST_ARCH).local
 -include $(TOP)/../RELEASE.local
