@@ -75,9 +75,6 @@ class LimitsHandler(Handler):
     def put(self, pv: SharedPV, op: ServerOperation):
         """Allow puts by simply forwarding to the post and invoking the associated handler."""
 
-        print(f"pv: {pv.current().raw}")
-        print(f"op.value(): {op.value().raw}")
-
         pv.post(op.value())
         op.done()
 
