@@ -47,6 +47,7 @@ cdef extern from "<p4p.h>" namespace "p4p":
     void detachHandler(sharedpv.SharedPV& pv) except+
     void attachCleanup(const shared_ptr[source.ExecOp]& op, object handler) except+
     void detachCleanup(const shared_ptr[source.ExecOp]& op) except+
+    shared_ptr[server.Source] attachGetHandler(const string& name, sharedpv.SharedPV& pv, object handler) except+
 
     # pvxs_source.cpp
     shared_ptr[server.Source] createDynamic(object) except+
@@ -680,6 +681,7 @@ cdef class Server:
         cdef DynamicProvider dprov
         cdef Source src
         cdef int iorder
+        cdef int gi
 
         if useenv:
             sconf.applyEnv()
@@ -702,6 +704,9 @@ cdef class Server:
                 sprov = prov
                 with nogil:
                     self.serv.addSource(sprov.name, sprov.src.source(), iorder)
+                for gi in range(sprov._get_src_vec.size()):
+                    with nogil:
+                        self.serv.addSource(sprov._get_src_names[gi], sprov._get_src_vec[gi], iorder - 1)
 
             elif isinstance(prov, DynamicProvider):
                 dprov = prov
@@ -932,6 +937,8 @@ cdef class StaticProvider:
     cdef string name
     cdef sharedpv.StaticSource src
     cdef object shadow
+    cdef vector[shared_ptr[server.Source]] _get_src_vec
+    cdef vector[string] _get_src_names
     cdef object __weakref__
 
     def __init__(self, basestring name):
@@ -940,6 +947,7 @@ cdef class StaticProvider:
         self.shadow = {}
 
     def __dealloc__(self):
+        self._get_src_vec.clear()
         with nogil:
             self.src = sharedpv.StaticSource()
 
@@ -949,8 +957,14 @@ cdef class StaticProvider:
 
     def add(self, basestring name, SharedPV pv):
         cdef string cname = name.encode()
-        with nogil:
-            self.src.add(cname, pv.pv)
+        cdef shared_ptr[server.Source] get_src
+        if pv.handler is not None and hasattr(pv.handler, 'onGet'):
+            get_src = attachGetHandler(cname, pv.pv, pv.handler)
+            self._get_src_vec.push_back(get_src)
+            self._get_src_names.push_back(cname)
+        else:
+            with nogil:
+                self.src.add(cname, pv.pv)
         self.shadow[name] = pv
 
     def remove(self, name):

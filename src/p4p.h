@@ -192,6 +192,7 @@ void attachHandler(server::SharedPV& pv, PyObject *handler);
 void detachHandler(server::SharedPV& pv);
 void attachCleanup(const std::shared_ptr<server::ExecOp> &op, PyObject *handler);
 void detachCleanup(const std::shared_ptr<server::ExecOp> &op);
+std::shared_ptr<server::Source> attachGetHandler(const std::string& name, server::SharedPV& pv, PyObject *handler);
 
 std::shared_ptr<server::Source> createDynamic(PyObject* handler);
 void disconnectDynamic(const std::shared_ptr<server::Source>& src);

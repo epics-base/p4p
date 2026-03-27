@@ -40,6 +40,19 @@ class Handler(object):
     Use of this as a base class is optional.
     """
 
+    def onGet(self, pv, op):
+        """
+        Called each time a client issues a Get
+        operation on this Channel.
+
+        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
+        :param ServerOperation op: The operation being initiated.
+
+        Call op.done(value=...) to return a value to the client,
+        or op.done(error=...) to signal an error.
+        """
+        op.done(value=pv.current())
+
     def put(self, pv, op):
         """
         Called each time a client issues a Put
@@ -207,6 +220,11 @@ class SharedPV(_SharedPV):
         def __init__(self, pv, real):
             self._pv = pv  # this creates a reference cycle, which should be collectable since SharedPV supports GC
             self._real = real
+            if hasattr(real, 'onGet'):
+                def _onGet(op):
+                    _log.debug('GET %s %s', pv, op)
+                    pv._exec(op, real.onGet, pv, ServOpWrap(op, pv._wrap, pv._unwrap))
+                self.onGet = _onGet
 
         def onFirstConnect(self):
             self._pv._exec(None, self._pv._onFirstConnect, None)
