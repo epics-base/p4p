@@ -245,3 +245,32 @@ class TestFirstLast(RefTestCase):
 
                 _log.debug('CLOSED')
                 self.assertFalse(self.H.conn)
+
+
+class TestOnGet(RefTestCase):
+    timeout = 1.0
+
+    class Handler:
+        def onGet(self, pv, op):
+            cothread.Yield()  # prove we can yield in a cothread callback
+            op.done(value=pv.current())
+
+    def setUp(self):
+        super(TestOnGet, self).setUp()
+        self.pv = SharedPV(nt=NTScalar('d'), initial=42.0, handler=self.Handler())
+        self.provider = StaticProvider("testget_cothread")
+        self.provider.add('testget:coth', self.pv)
+
+    def tearDown(self):
+        del self.pv
+        del self.provider
+        _sync()
+        gc.collect()
+        self.assertSetEqual(set(srv_cothread._handlers), set())
+        super(TestOnGet, self).tearDown()
+
+    def test_onget_called(self):
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+                result = C.get('testget:coth', timeout=self.timeout)
+                self.assertAlmostEqual(float(result), 42.0)
