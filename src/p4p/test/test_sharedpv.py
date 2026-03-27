@@ -479,3 +479,16 @@ class TestOnGet(RefTestCase):
         with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
             result = ctxt.get('testget:nodummy', timeout=self.timeout)
             self.assertAlmostEqual(float(result), 42.0)
+
+    def test_onget_error(self):
+        class ErrorHandler(object):
+            def onGet(self, pv, op):
+                op.done(error='hardware read failed')
+
+        pv_err = SharedPV(handler=ErrorHandler(), nt=NTScalar('d'), initial=0.0)
+        sprov_err = StaticProvider("testget_err")
+        sprov_err.add('testget:err', pv_err)
+        with Server(providers=[sprov_err], isolate=True) as server_err:
+            with Context('pva', conf=server_err.conf(), useenv=False) as ctxt:
+                with self.assertRaises(RemoteError):
+                    ctxt.get('testget:err', timeout=self.timeout)
