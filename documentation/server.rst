@@ -37,6 +37,25 @@ A server with a single "mailbox" PV. ::
         'demo:pv:name':pv, # PV name only appears here
     }]) # runs until KeyboardInterrupt
 
+A handler that reads hardware on demand::
+
+    from p4p.nt import NTScalar
+    from p4p.server import Server
+    from p4p.server.thread import SharedPV
+
+    pv = SharedPV(nt=NTScalar('d'), initial=0.0)
+
+    @pv.get
+    def handle_get(pv, op):
+        # Called when a client issues cxt.get(); read hardware here.
+        # op.done() must be called exactly once.
+        value = read_hardware_register()  # application-defined function
+        op.done(value=value)
+
+    Server.forever(providers=[{
+        'demo:pv:name': pv,
+    }])
+
 This server can be tested using the included command line tools. eg. ::
 
     $ python -m p4p.client.cli get demo:pv:name
@@ -172,6 +191,8 @@ SharedPV Handler Interface
     .. automethod:: put
 
     .. automethod:: rpc
+
+    .. automethod:: onGet
 
     .. automethod:: onFirstConnect
 
