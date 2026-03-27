@@ -285,6 +285,13 @@ class SharedPV(_SharedPV):
             return fn
         return decorate
 
+    @property
+    def get(self):
+        def decorate(fn):
+            self._handler.onGet = fn
+            return fn
+        return decorate
+
     def __repr__(self):
         if self.isOpen():
             return '%s(value=%s)' % (self.__class__.__name__, repr(self.current()))
