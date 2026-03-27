@@ -13,13 +13,14 @@ from .utils import RefTestCase
 
 import asyncio
 
-from ..client.asyncio import Context, Disconnected, timesout
+from ..client.asyncio import Context, Disconnected, RemoteError, timesout
 from ..server.asyncio import SharedPV
 
 __all__ = (
     'TestGPM',
     'TestTimeout',
     'TestFirstLast',
+    'TestOnGet',
 )
 
 if sys.version_info < (3, 14):
@@ -273,3 +274,36 @@ class TestFirstLast(AsyncTest):
             finally:
                 sub.close()
                 await sub.wait_closed()
+
+
+class TestOnGet(AsyncTest):
+    timeout = 3.0
+
+    class Handler:
+        async def onGet(self, pv, op):
+            await asyncio.sleep(0)  # yield to prove async dispatch works
+            op.done(value=pv.current())
+
+    async def asyncSetUp(self):
+        await super(TestOnGet, self).asyncSetUp()
+        self.pv = SharedPV(nt=NTScalar('d'), initial=42.0, handler=self.Handler())
+        self.provider = StaticProvider("testget_async")
+        self.provider.add('testget:async', self.pv)
+
+    async def asyncTearDown(self):
+        del self.pv
+        del self.provider
+        await super(TestOnGet, self).asyncTearDown()
+
+    async def test_onget_called(self):
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+                result = await C.get('testget:async')
+                self.assertAlmostEqual(float(result), 42.0)
+
+    async def test_onget_async(self):
+        # async def onGet with await inside it must work — tests ASIO-02
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+                result = await C.get('testget:async')
+                self.assertAlmostEqual(float(result), 42.0)
