@@ -420,3 +420,62 @@ class TestFirstLast(RefTestCase):
 
                 _log.debug('CLOSE')
                 self.assertFalse(self.H.conn)
+
+
+class TestOnGet(RefTestCase):
+    maxDiff = 1000
+    timeout = 1.0
+
+    class OnGetHandler(object):
+        def __init__(self):
+            self.called = threading.Event()
+
+        def onGet(self, pv, op):
+            self.called.set()
+            op.done(value=pv.current())
+
+    class _DummyHandler(object):
+        pass
+
+    def setUp(self):
+        super(TestOnGet, self).setUp()
+
+        self.handler = self.OnGetHandler()
+        self.pv = SharedPV(handler=self.handler, nt=NTScalar('d'), initial=42.0)
+        self.pv_nodummy = SharedPV(handler=self._DummyHandler(), nt=NTScalar('d'), initial=42.0)
+        self.sprov = StaticProvider("testget")
+        self.sprov.add('testget:pv', self.pv)
+        self.sprov.add('testget:nodummy', self.pv_nodummy)
+        self.server = Server(providers=[self.sprov], isolate=True)
+        _log.debug('Server Conf: %s', self.server.conf())
+
+    def tearDown(self):
+        self.server.stop()
+        _defaultWorkQueue.sync()
+        R = [weakref.ref(r) for r in (self.server, self.sprov, self.pv, self.pv._whandler, self.pv._handler)]
+        r = None
+        del self.server
+        del self.sprov
+        del self.pv
+        del self.pv_nodummy
+        del self.handler
+        gc.collect()
+        R = [r() for r in R]
+        self.assertListEqual(R, [None] * len(R))
+        super(TestOnGet, self).tearDown()
+
+    def test_onget_called(self):
+        with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
+            result = ctxt.get('testget:pv', timeout=self.timeout)
+            self.assertTrue(self.handler.called.wait(timeout=self.timeout))
+
+    def test_onget_done_value(self):
+        with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
+            result = ctxt.get('testget:pv', timeout=self.timeout)
+            self.assertAlmostEqual(float(result), 42.0)
+
+    def test_onget_no_handler(self):
+        # handler has no onGet — should return current value without error (backward compat)
+        with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
+            result = ctxt.get('testget:nodummy', timeout=self.timeout)
+            self.assertAlmostEqual(float(result), 42.0)
