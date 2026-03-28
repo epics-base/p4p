@@ -1,4 +1,7 @@
 
+#include <algorithm>
+#include <mutex>
+#include <vector>
 #include <sstream>
 
 #include "p4p.h"
@@ -112,11 +115,18 @@ void detachCleanup(const std::shared_ptr<server::ExecOp> &op)
     op->onCancel(nullptr);
 }
 
-struct GetInterceptSource : public server::Source {
+struct GetInterceptSource : public server::Source,
+                             public std::enable_shared_from_this<GetInterceptSource> {
     std::string pvname;
     server::SharedPV pv;
     // handler is borrowed — caller (Cython StaticProvider) maintains lifetime
     PyObject* handler;
+
+    // Active channels, kept alive here so PVXS can dispatch callbacks.
+    // Removed via onClose when a client disconnects; all remaining are
+    // cleared when this source is destroyed (after server.stop()).
+    std::mutex channels_lock;
+    std::vector<std::shared_ptr<server::ChannelControl>> channels;
 
     GetInterceptSource(const std::string& name_, server::SharedPV& pv_, PyObject* handler_)
         : pvname(name_), pv(pv_), handler(handler_)
@@ -135,10 +145,28 @@ struct GetInterceptSource : public server::Source {
     }
 
     virtual void onCreate(std::unique_ptr<server::ChannelControl>&& op) override {
-        // Convert to shared_ptr so we can capture in lambdas
-        std::shared_ptr<server::ChannelControl> ctrl(std::move(op));
+        auto ctrl = std::shared_ptr<server::ChannelControl>(std::move(op));
 
-        ctrl->onOp([this, ctrl](std::unique_ptr<server::ConnectOp>&& connectop) {
+        // Use weak_ptr so the onClose callback doesn't extend our lifetime,
+        // and so it's a no-op if we're already being destroyed.
+        std::weak_ptr<GetInterceptSource> weak_self(shared_from_this());
+        server::ChannelControl* raw_ctrl = ctrl.get();
+
+        ctrl->onClose([weak_self, raw_ctrl](const std::string&) {
+            if(auto self = weak_self.lock()) {
+                std::lock_guard<std::mutex> lock(self->channels_lock);
+                auto& ch = self->channels;
+                ch.erase(
+                    std::remove_if(ch.begin(), ch.end(),
+                        [raw_ctrl](const std::shared_ptr<server::ChannelControl>& c) {
+                            return c.get() == raw_ctrl;
+                        }),
+                    ch.end()
+                );
+            }
+        });
+
+        ctrl->onOp([this](std::unique_ptr<server::ConnectOp>&& connectop) {
             auto cop = std::shared_ptr<server::ConnectOp>(std::move(connectop));
 
             // Tell client what data type this PV provides
@@ -229,6 +257,13 @@ struct GetInterceptSource : public server::Source {
             auto sub = mop->connect(proto);
             sub->post(proto);
         });
+
+        // Store ctrl to keep the ChannelControl alive while the channel is open.
+        // This avoids a self-referential shared_ptr cycle (ctrl captured in its own
+        // lambda) that prevents cleanup on some platforms.  Removed via onClose above,
+        // or flushed when this source is destroyed.
+        std::lock_guard<std::mutex> lock(channels_lock);
+        channels.push_back(std::move(ctrl));
     }
 };
 
