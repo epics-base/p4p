@@ -454,6 +454,8 @@ void storePy(Value& v, PyObject* py, bool forceCast)
 
             for(size_t i=0; i<arr.size(); i++) {
                 PyRef elem(PySequence_GetItem(py, i));
+                if(elem.obj==Py_None)
+                    continue;
 
                 arr[i] = v.allocMember();
 

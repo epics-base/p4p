@@ -473,18 +473,21 @@ class TestRawValue(RefTestCase):
         ]), {
             'a': [
                 {'b': 4},
+                None,
                 [('b', 5)],
             ],
         })
 
-        self.assertEqual(len(V.a), 2)
+        self.assertEqual(len(V.a), 3)
         self.assertEqual(V.a[0].b, 4)
-        self.assertEqual(V.a[1].b, 5)
+        self.assertIsNone(V.a[1])
+        self.assertEqual(V.a[2].b, 5)
 
-        V.a = [{'b': 1}]
+        V.a = [None, {'b': 1}]
 
-        self.assertEqual(len(V.a), 1)
-        self.assertEqual(V.a[0].b, 1)
+        self.assertEqual(len(V.a), 2)
+        self.assertIsNone(V.a[0])
+        self.assertEqual(V.a[1].b, 1)
 
     def testBitSet(self):
         A = Value(Type([
