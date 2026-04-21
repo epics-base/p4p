@@ -30,6 +30,8 @@ cdef extern from "<p4p.h>" namespace "p4p":
     # p4p.h redefines/overrides some definitions from Python.h (eg. PyMODINIT_FUNC)
     # it also (re)defines macros effecting numpy/arrayobject.h
 
+    string assembleCred(const source.ClientCredentials&) except+
+
     # pvxs_type.cpp
     data.TypeDef startPrototype(const string& id, const data.Value& base) except+
     void appendPrototype(data.TypeDef&, object spec) except+
@@ -866,7 +868,7 @@ cdef class ServerOperation:
         '''account() -> str
         Client identity
         '''
-        return self.op.get().credentials().get().account.decode()
+        return assembleCred(self.op.get().credentials().get()[0]).decode()
 
     def roles(self):
         '''roles() -> {str}

@@ -1,4 +1,5 @@
 import logging
+import logging
 import warnings
 import socket
 import re
@@ -11,7 +12,8 @@ from weakref import WeakKeyDictionary
 from .yacc import parse, ACFError
 
 from .. import Value
-from ..client.thread import Context, Disconnected
+from ..client.thread import Context
+from ..client import raw as _raw
 
 _log = logging.getLogger(__name__)
 
@@ -71,6 +73,18 @@ class Engine(object):
     def parse(self, acf):
         ast = parse(acf)
 
+        auth_ids_by_cn = defaultdict(set)
+        auth_cn_by_id = {}
+
+        def _auth_walk(node):
+            _, aid, cn, kids = node
+            if aid is not None:
+                auth_cn_by_id[aid] = cn
+                auth_ids_by_cn[cn].add(aid)
+            for kid in kids or []:
+                if kid is not None:
+                    _auth_walk(kid)
+
         # map user or host to set of groups
         uag = defaultdict(set)
         hag = defaultdict(set)
@@ -82,16 +96,20 @@ class Engine(object):
         invars = defaultdict(list)
 
         for node in ast:
+            if node[0] == 'AUTHDEF':
+                _auth_walk(node)
+                continue
+
             if node[0]=='UAG':
                 # ('UAG', name, [members...])
                 uags.add(node[1])
-                for member in node[2]:
+                for member in (node[2] or []):
                     uag[member].add(node[1])
 
             elif node[0]=='HAG':
                 # ('HAG', name, [members...])
                 hags.add(node[1])
-                for member in node[2]:
+                for member in (node[2] or []):
                     hag[member].add(node[1])
 
             elif node[0]=='ASG':
@@ -100,10 +118,10 @@ class Engine(object):
                 #        | ('RULE', 1, 'WRITE', trap, None | [])
 
                 rules, inputs = asg[node[1]] = [], {}
-                for anode in node[2]:
+                for anode in (node[2] or []):
                     if anode[0]=='RULE':
                         rule = []
-                        for rnode in anode[4] or []:
+                        for rnode in (anode[4] or []):
                             if rnode[0] in ('UAG', 'HAG'):
                                 # ('UAG', ['name'])
                                 # ('HAG', ['name'])
@@ -125,8 +143,25 @@ class Engine(object):
 
                                 rule.append((rnode[0], rnode[1], expr))
 
+                            elif rnode[0] in ('METHOD', 'AUTHORITY'):
+                                # ('METHOD', ['x509', ...])
+                                # ('AUTHORITY', ['AuthName', ...])
+                                if rnode[0] == 'METHOD':
+                                    rule.append((rnode[0], set([(m or '').lower() for m in (rnode[1] or [])])))
+                                else:
+                                    rule.append((rnode[0], set(rnode[1] or [])))
+
+                            elif rnode[0]=='PROTOCOL':
+                                # ('PROTOCOL', 'TLS' | 'TCP' | ...)
+                                rule.append((rnode[0], (rnode[1] or '').upper()))
+
+                            elif rnode[0]=='UNKNOWN':
+                                # Any unknown predicate disables the RULE (fail-secure)
+                                rule.append((rnode[0], rnode[1]))
+
                             else:
                                 warnings.warn("Invalid RULE condition AST: %s"%(rnode,))
+                                rule.append(('UNKNOWN', rnode[0]))
 
                         try:
                             mask = actionmask[anode[2]]
@@ -168,6 +203,8 @@ class Engine(object):
             self._asg = asg
             self._asg_DEFAULT = asg.get('DEFAULT', [])
             self._hag_addr = hag_addr
+            self._auth_ids_by_cn = dict(auth_ids_by_cn)
+            self._auth_cn_by_id = auth_cn_by_id
 
         self._recompute()
 
@@ -182,7 +219,7 @@ class Engine(object):
     def _var_update(self, grps, value):
         # clear old value first
         val = None
-        if not isinstance(value, Disconnected):
+        if not isinstance(value, _raw.Disconnected):
             try:
                 val = float(value or 0.0)
             except:
@@ -202,11 +239,21 @@ class Engine(object):
         _log.debug("Recompute %s", only or "all")
         anodes, self._anodes = self._anodes, WeakKeyDictionary()
 
-        for channel, (group, user, host, level) in anodes.items():
+        for channel, info in anodes.items():
+            group, user, host, level = info[:4]
+            roles = info[4] if len(info) > 4 else None
+            method = info[5] if len(info) > 5 else None
+            authority = info[6] if len(info) > 6 else None
+            protocol = info[7] if len(info) > 7 else None
+
             if only is None or group in only:
-                self.create(channel, group, user, host, level)
+                self.create(channel, group, user, host, level,
+                            roles=roles,
+                            method=method,
+                            authority=authority,
+                            protocol=protocol)
             else:
-                self._anodes[channel] = (group, user, host, level)
+                self._anodes[channel] = info
 
     @staticmethod
     def _gethostbyname(host):
@@ -233,12 +280,33 @@ class Engine(object):
 
         self._recompute()
 
-    def create(self, channel, group, user, host, level, roles=[]):
+    def create(self, channel, group, user, host, level, roles=None, method=None, authority=None, protocol=None):
         # Default to restrictive.  Used in case of error
         perm = 0
         _log.debug('(re)create %s, %s, %s, %s, %s', channel.name, group, user, host, level)
 
         with self._lock:
+
+            if method == 'ca' and user is not None and '/' in user:
+                user = user.rsplit('/', 1)[-1]
+
+            if roles is None:
+                roles = []
+
+            authset = set()
+            if authority:
+                if isinstance(authority, (list, tuple, set)):
+                    for ent in authority:
+                        if ent:
+                            authset.add(ent)
+                else:
+                    for ent in str(authority).splitlines():
+                        ent = ent.strip()
+                        if ent:
+                            authset.add(ent)
+
+                for cn in list(authset):
+                    authset.update(self._auth_ids_by_cn.get(cn, ()))
 
             uags = self._uag.get(user, set())
             for role in roles:
@@ -255,6 +323,14 @@ class Engine(object):
                             accept = len(cond[1].intersection(uags))
                         elif cond[0]=='HAG':
                             accept = len(cond[1].intersection(hags))
+                        elif cond[0]=='METHOD':
+                            accept = (method is not None) and (method.lower() in cond[1])
+                        elif cond[0]=='AUTHORITY':
+                            accept = bool(authset.intersection(cond[1]))
+                        elif cond[0]=='PROTOCOL':
+                            accept = (protocol is not None) and (str(protocol).upper() == cond[1])
+                        elif cond[0]=='UNKNOWN':
+                            accept = False
                         elif cond[0]=='CALC':
                             try:
                                 accept = float(eval(cond[2], {}, inputs) or 0.0) >= 0.5 # horray for legacy... I mean compatibility
@@ -286,7 +362,8 @@ class Engine(object):
 
             channel.access(put=bool(put), rpc=bool(rpc), uncached=bool(uncached), audit=trapit)
 
-            self._anodes[channel] = (group, user, host, level)
+            self._anodes[channel] = (group, user, host, level,
+                                     list(roles), method, authority, protocol)
 
     def _check_host(self, hag, user, host):
         groups = self._hag_addr.get(host) or set()
