@@ -750,6 +750,7 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
                     }
                     {
                         Guard G(pv->us->lock);
+                        sub->controls.reserve(sub->controls.size()+controls.size());
                         for(auto&& ctrl : controls)
                             sub->controls.push_back(std::move(ctrl));
                     }
