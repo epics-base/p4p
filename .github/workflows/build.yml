@@ -130,7 +130,7 @@ jobs:
 
       - name: Save wheels
         if: ${{ ! matrix.skip }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           retention-days: 1
           name: whl-${{ matrix.py }}-${{ matrix.ml }}
@@ -138,7 +138,7 @@ jobs:
 
       - name: Save source
         if: ${{ matrix.src }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           retention-days: 1
           name: whl-source
@@ -269,7 +269,7 @@ jobs:
 
       - name: Save wheels
         if: ${{ ! matrix.skip }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           retention-days: 1
           name: whl-${{ matrix.py }}-${{ matrix.os }}
@@ -280,7 +280,7 @@ jobs:
     needs: [manylinux, native]
     steps:
       - name: Download
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
             merge-multiple: true
 

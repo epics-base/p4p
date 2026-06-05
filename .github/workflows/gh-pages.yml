@@ -20,7 +20,7 @@ jobs:
       PVXS_LOG: pvxs.*=WARN
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: "0"
         submodules: true
@@ -43,7 +43,7 @@ jobs:
 
     - name: Upload gh-pages preview
       id: ghpages
-      uses: actions/upload-pages-artifact@v3
+      uses: actions/upload-pages-artifact@v5
       with:
         retention-days: 7
         path: documentation/_build/html/
@@ -67,4 +67,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
