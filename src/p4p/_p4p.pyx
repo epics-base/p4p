@@ -652,7 +652,7 @@ cdef class ClientProvider:
     def disconnect(self, basestring name=None):
         cdef string cname
         if name is not None:
-            cname = name
+            cname = name.encode()
         if <bool>self.ctxt:
             with nogil:
                 self.ctxt.cacheClear(cname, client.cacheAction.Disconnect)
