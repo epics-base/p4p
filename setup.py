@@ -5,7 +5,6 @@ from __future__ import print_function
 import os
 import sysconfig
 
-from setuptools import Command
 from setuptools_dso import Extension, setup, cythonize
 
 import numpy
@@ -34,7 +33,7 @@ if get_config_var('CMPLR_CLASS') in ('gcc', 'clang'):
 ldflags = []
 import sys
 import platform
-if sys.platform.startswith('linux') and not sysconfig.get_config_var('Py_DEBUG'):
+if sys.platform=='linux2' and not sysconfig.get_config_var('Py_DEBUG'):
     # c++ debug symbols size is huge.  ~20x code size.
     # So we choose to only emit debug symbols when building for an interpreter
     # with debugging enabled (aka 'python-dbg' on debian).
@@ -51,110 +50,6 @@ elif platform.system()=='Darwin':
 # are all c++, and MSVC doesn't allow extern "C" to
 # return c++ types.
 cppflags = get_config_var('CPPFLAGS') + [('__PYX_EXTERN_C','extern')]
-
-# Fully-qualified module names for which .pyi stubs are generated.
-# Must match the Extension name= values below.
-_STUB_MODULES = ['p4p._p4p', 'p4p._gw']
-
-
-class generate_stubs(Command):
-    """Generate .pyi stub files for compiled extensions using mypy stubgen.
-
-    Run after building the extensions::
-
-        python setup.py build_ext --inplace
-        python setup.py generate_stubs
-    """
-
-    description = 'generate .pyi stub files for compiled extensions'
-    user_options = []
-
-    def initialize_options(self): pass
-    def finalize_options(self): pass
-
-    def _find_stubgen(self):
-        """Locate the stubgen console script installed alongside this Python.
-
-        mypy.stubgen is a compiled extension (.so/.pyd) so 'python -m mypy.stubgen'
-        doesn't work; the console script is the correct entry point.
-        """
-        import shutil
-
-        stubgen = shutil.which('stubgen', path=sysconfig.get_path('scripts')) \
-            or shutil.which('stubgen')
-
-        if stubgen is None:
-            raise SystemExit(
-                "stubgen not found. "
-                "Install mypy with: pip install mypy"
-            )
-        return stubgen
-
-    def _make_env(self):
-        """Return a copy of os.environ with pvxslibs/epicscorelibs lib dirs
-        prepended to the platform DSO search path variable, so that stubgen
-        subprocesses can load the extensions even in an editable install where
-        $ORIGIN-based RUNPATH does not resolve correctly.
-        """
-        import pvxslibs as _pvxslibs
-        # pvxslibs exposes no public lib_path; derived by convention.
-        # The isdir filter below silently omits any path that doesn't exist.
-        lib_dirs = [d for d in [
-            os.path.join(os.path.dirname(_pvxslibs.__file__), 'lib'),
-            epicscorelibs.path.lib_path,
-        ] if os.path.isdir(d)]
-        env = os.environ.copy()
-        if sys.platform == 'win32':
-            path_var = 'PATH'
-        elif sys.platform == 'darwin':
-            path_var = 'DYLD_LIBRARY_PATH'
-        else:
-            path_var = 'LD_LIBRARY_PATH'
-        existing = env.get(path_var, '')
-        env[path_var] = os.pathsep.join(lib_dirs + ([existing] if existing else []))
-
-        return env
-
-    def run(self):
-        """Verify extensions are importable, then invoke stubgen to write .pyi files."""
-        import subprocess
-
-        stubgen = self._find_stubgen()
-        env = self._make_env()
-
-        # Verify extensions are importable under the same env stubgen will use.
-        # Done in a subprocess so the current process LD_LIBRARY_PATH (which
-        # may not include pvxslibs/lib for editable installs) is not a factor.
-        for mod in _STUB_MODULES:
-            check = subprocess.run(
-                [sys.executable, '-c', 'import %s' % mod],
-                env=env, capture_output=True,
-            )
-            if check.returncode:
-                raise SystemExit(
-                    "Extension %r not importable. Build it first with:\n"
-                    "  python setup.py build_ext --inplace" % mod
-                )
-
-        # Run stubgen in a fresh subprocess so that Windows multiprocessing
-        # (which stubgen uses internally to import extension modules safely)
-        # works without needing a 'if __name__ == "__main__":' guard here.
-        cmd = [stubgen, '--include-docstrings', '--output', 'src']
-        for mod in _STUB_MODULES:
-            cmd += ['-m', mod]
-
-        result = subprocess.run(cmd, env=env)
-        if result.returncode:
-            raise SystemExit("stubgen failed with code %s" % result.returncode)
-
-        missing = [
-            os.path.join('src', mod.replace('.', os.sep) + '.pyi')
-            for mod in _STUB_MODULES
-            if not os.path.isfile(os.path.join('src', mod.replace('.', os.sep) + '.pyi'))
-        ]
-        if missing:
-            raise SystemExit("expected stubs not found:\n" + '\n'.join(missing))
-
 
 exts = cythonize([
     Extension(
@@ -250,13 +145,11 @@ setup(
         'p4p.asLib',
     ],
     package_dir={'':'src'},
-    package_data={'p4p': ['*.conf', '*.service', '*.pyi']},
-    cmdclass={'generate_stubs': generate_stubs},
+    package_data={'p4p': ['*.conf', '*.service']},
     ext_modules = exts,
     install_requires = install_requires,
     extras_require={
         'qt': ['qtpy'],
-        'dev': ['mypy>=2.10.0; python_version>="3.8"'],
     },
     entry_points = {
         'console_scripts': ['pvagw=p4p.gw:main'],
