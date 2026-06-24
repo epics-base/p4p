@@ -256,6 +256,7 @@ setup(
     install_requires = install_requires,
     extras_require={
         'qt': ['qtpy'],
+        'dev': ['mypy>=2.10.0; python_version>="3.8"'],
     },
     entry_points = {
         'console_scripts': ['pvagw=p4p.gw:main'],
