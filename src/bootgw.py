@@ -23,7 +23,11 @@ def main(args):
 import sys
 import os
 
-mypath = os.path.dirname(os.path.abspath(__file__))
+mypath = os.path.dirname(
+    os.path.abspath(
+        os.path.realpath(__file__)
+    )
+)
 
 sys.path.append(os.path.join(mypath, '{pythonpath}'))
 

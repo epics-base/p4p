@@ -3,7 +3,7 @@
 
 import logging
 _log = logging.getLogger(__name__)
-
+import sys
 from functools import wraps
 
 from .. import Value
@@ -22,8 +22,9 @@ __all__ = (
     'TestFirstLast',
 )
 
-# we should never implicitly use the default loop.
-asyncio.get_event_loop().close()
+if sys.version_info < (3, 14):
+    # we should never implicitly use the default loop.
+    asyncio.get_event_loop().close()
 
 class AsyncMeta(type):
     """Automatically wrap and "async def test*():" methods for dispatch to self.loop

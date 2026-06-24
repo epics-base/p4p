@@ -555,7 +555,7 @@ class TestHighLevelChained(TestHighLevel):
         del self._main1
 
 class TestHighLevelGetHoldOff(TestHighLevel):
-    getholdoff = 0.5 # hopefully long enough for CI without exceeding my patience
+    getholdoff = 1 # hopefully long enough for CI without exceeding my patience
 
     def test_get_holdoff(self):
         N = 1 # shadow odometer counter

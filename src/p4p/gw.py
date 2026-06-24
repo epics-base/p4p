@@ -437,7 +437,7 @@ class GWHandler(object):
         if not user:
             user = op.account()
             if not roles:
-                roles = op.roles()
+                roles = list(op.roles())
         peer = peer or op.peer().split(':')[0]
         _log.debug("asTest %s %s %s", user, roles, peer)
 
@@ -556,6 +556,9 @@ class App(object):
                 client_conf['EPICS_PVA_BROADCAST_PORT'] = str(jcli['bcastport'])
             if 'serverport' in jcli:
                 client_conf['EPICS_PVA_SERVER_PORT'] = str(jcli['serverport'])
+            for k,v in jcli.items(): # pass through
+                if k.startswith('EPICS_PVA_'):
+                    client_conf[k] = v
 
             _log.info( "Client effective configuration for %s:", name)
             for confKeys, confVals in client_conf.items():
@@ -626,6 +629,9 @@ class App(object):
                 server_conf['EPICS_PVAS_BROADCAST_PORT'] = str(jsrv['bcastport'])
             if 'serverport' in jsrv:
                 server_conf['EPICS_PVAS_SERVER_PORT'] = str(jsrv['serverport'])
+            for k,v in jsrv.items(): # pass through
+                if k.startswith('EPICS_PVA'):
+                    server_conf[k] = v
 
             # pick client to use for ACF INP*
             aclient = jsrv.get('acf_client')

@@ -41,7 +41,7 @@ class CBEvent(QEvent):
         self.result = result
 
 class Operation(QObject):
-    _op = None
+    _op = None # _p4p.ClientOperation sub-class
     _result = None
     # receives a Value or an Exception
     result = Signal(object)
@@ -56,7 +56,7 @@ class Operation(QObject):
     @exceptionGuard
     def timerEvent(self, evt):
         if self._result is None:
-            self._result = TimeoutError()
+            self._result = TimeoutError(self._op.name if self._op else 'Timeout')
             self.result.emit(self._result)
 
     def _resultcb(self, value):
@@ -74,7 +74,7 @@ class Operation(QObject):
             self.result.emit(self._result)
 
 class MCache(QObject):
-    _op = None
+    _op = None # _p4p.ClientMonitor sub-class
     # receives a Value or an Exception
     update = Signal(object)
 

@@ -93,7 +93,7 @@ cdef extern from "<pvxs/data.h>" namespace "pvxs" nogil:
     cdef cppclass TypeDef:
         TypeDef()
         TypeDef(const TypeDef&)
-        TypeDef(TypeDef&&)
+#        TypeDef(TypeDef&&)
 
         TypeDef(const Value&) except+
 
@@ -108,7 +108,7 @@ cdef extern from "<pvxs/data.h>" namespace "pvxs" nogil:
     cdef cppclass Value:
         Value()
         Value(const Value&)
-        Value(Value&&)
+#        Value(Value&&)
 
         Value cloneEmpty() except+
         Value clone() except+

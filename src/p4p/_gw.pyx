@@ -348,7 +348,7 @@ cdef public:
         except:
             return GWSearchBanHost
 
-    shared_ptr[GWChan] GWProvider_makeChannel(GWSource* src, unique_ptr[ChannelControl]* op) with gil:
+    shared_ptr[GWChan] GWProvider_makeChannel(GWSource* src, unique_ptr[ChannelControl]* op) noexcept with gil:
         cdef shared_ptr[GWChan] ret
         cdef CreateOp create
         if not src.handler:
@@ -371,7 +371,7 @@ cdef public:
 
         return ret
 
-    void GWProvider_audit(GWSource* src, listxx[string]& cmsgs) with gil:
+    void GWProvider_audit(GWSource* src, listxx[string]& cmsgs) noexcept with gil:
         if src.handler:
             handler = <object>src.handler
             msgs = [msg.decode() for msg in cmsgs]

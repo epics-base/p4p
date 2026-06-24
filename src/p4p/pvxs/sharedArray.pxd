@@ -25,7 +25,7 @@ cdef extern from "<pvxs/sharedArray.h>" namespace "pvxs" nogil:
     cdef cppclass shared_array[T]:
         shared_array()
         shared_array(const shared_array&)
-        shared_array(shared_array&&)
+#        shared_array(shared_array&&)
 
         shared_array(size_t cnt) except+
         shared_array(T*, size_t)
