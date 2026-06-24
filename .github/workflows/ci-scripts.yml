@@ -28,12 +28,12 @@ jobs:
           base: "7.0"
           py: "3.x"
 
-        - os: windows-latest
+        - os: windows-2022
           cmp: vs2022
           base: "7.0"
           py: "3.8"
 
-        - os: windows-latest
+        - os: windows-2022
           cmp: vs2022
           base: "7.0"
           py: "3.x"
@@ -81,7 +81,7 @@ jobs:
 
       - name: "vcpkg cache"
         if: runner.os == 'Windows'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: c:/vcpkg-cache
           key: ${{ runner.os }}-vcpkg

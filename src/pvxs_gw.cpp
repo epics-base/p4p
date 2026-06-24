@@ -750,6 +750,7 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
                     }
                     {
                         Guard G(pv->us->lock);
+                        sub->controls.reserve(sub->controls.size()+controls.size());
                         for(auto&& ctrl : controls)
                             sub->controls.push_back(std::move(ctrl));
                     }
@@ -785,7 +786,7 @@ void GWChan::onSubscribe(const std::shared_ptr<GWChan>& pv, std::unique_ptr<serv
             // post()ing to server worker from server worker will recurse instead of blocking.
             auto ctrl(op->connect(sub->current));
             if(sub->state == GWSubscription::Running)
-                ctrl->post(sub->current); // post current as initial for new subscriber
+                ctrl->post(sub->current.clone()); // post current as initial for new subscriber
             sub->controls.emplace_back(std::move(ctrl));
             break;
         }

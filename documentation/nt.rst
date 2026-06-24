@@ -142,6 +142,16 @@ API Reference
 
     .. automethod:: buildType
 
+.. autoclass:: NTEnum
+
+    .. automethod:: buildType
+
+    .. automethod:: wrap
+
+    .. automethod:: assign
+
+    .. automethod:: unwrap
+
 .. currentmodule:: p4p.nt.scalar
 
 .. autoclass:: ntfloat
