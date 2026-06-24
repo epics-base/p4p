@@ -72,24 +72,69 @@ class generate_stubs(Command):
     def initialize_options(self): pass
     def finalize_options(self): pass
 
-    def run(self):
-        import shutil
-        import subprocess
+    def _find_stubgen(self):
+        """Locate the stubgen console script installed alongside this Python.
 
-        # Locate the stubgen console script installed alongside this Python.
-        # mypy.stubgen is a compiled .pyd so 'python -m mypy.stubgen' doesn't
-        # work; the console script is the correct entry point.
-        stubgen = shutil.which(
-            'stubgen',
-            path=os.path.join(os.path.dirname(sys.executable),
-                              'Scripts' if sys.platform == 'win32' else 'bin'),
-        ) or shutil.which('stubgen')
+        mypy.stubgen is a compiled extension (.so/.pyd) so 'python -m mypy.stubgen'
+        doesn't work; the console script is the correct entry point.
+        """
+        import shutil
+
+        stubgen = shutil.which('stubgen', path=sysconfig.get_path('scripts')) \
+            or shutil.which('stubgen')
 
         if stubgen is None:
             raise SystemExit(
                 "stubgen not found. "
                 "Install mypy with: pip install mypy"
             )
+        return stubgen
+
+    def _make_env(self):
+        """Return a copy of os.environ with pvxslibs/epicscorelibs lib dirs
+        prepended to the platform DSO search path variable, so that stubgen
+        subprocesses can load the extensions even in an editable install where
+        $ORIGIN-based RUNPATH does not resolve correctly.
+        """
+        import pvxslibs as _pvxslibs
+        # pvxslibs exposes no public lib_path; derived by convention.
+        # The isdir filter below silently omits any path that doesn't exist.
+        lib_dirs = [d for d in [
+            os.path.join(os.path.dirname(_pvxslibs.__file__), 'lib'),
+            epicscorelibs.path.lib_path,
+        ] if os.path.isdir(d)]
+        env = os.environ.copy()
+        if sys.platform == 'win32':
+            path_var = 'PATH'
+        elif sys.platform == 'darwin':
+            path_var = 'DYLD_LIBRARY_PATH'
+        else:
+            path_var = 'LD_LIBRARY_PATH'
+        existing = env.get(path_var, '')
+        env[path_var] = os.pathsep.join(lib_dirs + ([existing] if existing else []))
+
+        return env
+
+    def run(self):
+        """Verify extensions are importable, then invoke stubgen to write .pyi files."""
+        import subprocess
+
+        stubgen = self._find_stubgen()
+        env = self._make_env()
+
+        # Verify extensions are importable under the same env stubgen will use.
+        # Done in a subprocess so the current process LD_LIBRARY_PATH (which
+        # may not include pvxslibs/lib for editable installs) is not a factor.
+        for mod in _STUB_MODULES:
+            check = subprocess.run(
+                [sys.executable, '-c', 'import %s' % mod],
+                env=env, capture_output=True,
+            )
+            if check.returncode:
+                raise SystemExit(
+                    "Extension %r not importable. Build it first with:\n"
+                    "  python setup.py build_ext --inplace" % mod
+                )
 
         # Run stubgen in a fresh subprocess so that Windows multiprocessing
         # (which stubgen uses internally to import extension modules safely)
@@ -98,7 +143,7 @@ class generate_stubs(Command):
         for mod in _STUB_MODULES:
             cmd += ['-m', mod]
 
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, env=env)
         if result.returncode:
             raise SystemExit("stubgen failed with code %s" % result.returncode)
 
