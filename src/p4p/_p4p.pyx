@@ -1,6 +1,6 @@
 # distutils: language = c++
 #cython: language_level=2
-#cython: binding=True
+#cython: binding=True  # Default in Cython>=3.0
 
 cimport cython
 
