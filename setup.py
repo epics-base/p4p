@@ -3,10 +3,12 @@
 from __future__ import print_function
 
 import os
+import shutil
+import subprocess
 import sysconfig
 
 from setuptools import Command
-from setuptools_dso import Extension, setup, cythonize
+from setuptools_dso import Extension, setup, cythonize, build_ext as _build_ext
 
 import numpy
 
@@ -60,9 +62,9 @@ _STUB_MODULES = ['p4p._p4p', 'p4p._gw']
 class generate_stubs(Command):
     """Generate .pyi stub files for compiled extensions using mypy stubgen.
 
-    Run after building the extensions::
+    Invoked automatically by build_ext. To regenerate stubs without
+    rebuilding the extensions::
 
-        python setup.py build_ext --inplace
         python setup.py generate_stubs
     """
 
@@ -75,32 +77,31 @@ class generate_stubs(Command):
     def _find_stubgen(self):
         """Locate the stubgen console script installed alongside this Python.
 
-        mypy.stubgen is a compiled extension (.so/.pyd) so 'python -m mypy.stubgen'
-        doesn't work; the console script is the correct entry point.
+        The scripts directory is checked first so that the environment-local
+        stubgen is preferred over any system-wide installation.
         """
-        import shutil
-
         stubgen = shutil.which('stubgen', path=sysconfig.get_path('scripts')) \
             or shutil.which('stubgen')
 
         if stubgen is None:
-            raise SystemExit(
-                "stubgen not found. "
-                "Install mypy with: pip install mypy"
+            print(
+                "WARNING: stubgen not found; skipping stub generation. "
+                "Typing stub files (*.pyi) will not be generated",
+                file=sys.stderr,
             )
+            return None
+        
         return stubgen
 
     def _make_env(self):
         """Return a copy of os.environ with pvxslibs/epicscorelibs lib dirs
         prepended to the platform DSO search path variable, so that stubgen
-        subprocesses can load the extensions even in an editable install where
-        $ORIGIN-based RUNPATH does not resolve correctly.
+        subprocesses can load the extensions in editable installs where the
+        relative RUNPATH embedded in the .so/.pyd does not resolve correctly.
         """
-        import pvxslibs as _pvxslibs
-        # pvxslibs exposes no public lib_path; derived by convention.
-        # The isdir filter below silently omits any path that doesn't exist.
+        # pvxslibs exposes no public lib_path attribute; path derived by convention.
         lib_dirs = [d for d in [
-            os.path.join(os.path.dirname(_pvxslibs.__file__), 'lib'),
+            os.path.join(os.path.dirname(pvxslibs.__file__), 'lib'),
             epicscorelibs.path.lib_path,
         ] if os.path.isdir(d)]
         env = os.environ.copy()
@@ -117,24 +118,36 @@ class generate_stubs(Command):
 
     def run(self):
         """Verify extensions are importable, then invoke stubgen to write .pyi files."""
-        import subprocess
-
         stubgen = self._find_stubgen()
+        if stubgen is None:
+            return
         env = self._make_env()
 
+        # For non-inplace builds (e.g. wheel), extensions land in build_lib rather
+        # than the source tree, so add it to PYTHONPATH for the subprocesses.
+        build_ext_cmd = self.get_finalized_command('build_ext')
+        if not build_ext_cmd.inplace:
+            existing = env.get('PYTHONPATH', '')
+            env['PYTHONPATH'] = os.pathsep.join(
+                [build_ext_cmd.build_lib] + ([existing] if existing else [])
+            )
+
         # Verify extensions are importable under the same env stubgen will use.
-        # Done in a subprocess so the current process LD_LIBRARY_PATH (which
+        # Done in a subprocess so the current process's DSO search path (which
         # may not include pvxslibs/lib for editable installs) is not a factor.
         for mod in _STUB_MODULES:
             check = subprocess.run(
                 [sys.executable, '-c', 'import %s' % mod],
-                env=env, capture_output=True,
+                env=env, capture_output=True, check=False,
             )
             if check.returncode:
-                raise SystemExit(
-                    "Extension %r not importable. Build it first with:\n"
-                    "  python setup.py build_ext --inplace" % mod
+                print(
+                    "WARNING: extension %r not importable; skipping stub generation. "
+                    "Build it first with:\n"
+                    "  python setup.py build_ext --inplace" % mod,
+                    file=sys.stderr,
                 )
+                return
 
         # Run stubgen in a fresh subprocess so that Windows multiprocessing
         # (which stubgen uses internally to import extension modules safely)
@@ -143,9 +156,10 @@ class generate_stubs(Command):
         for mod in _STUB_MODULES:
             cmd += ['-m', mod]
 
-        result = subprocess.run(cmd, env=env)
+        result = subprocess.run(cmd, env=env, check=False)
         if result.returncode:
-            raise SystemExit("stubgen failed with code %s" % result.returncode)
+            print("WARNING: stubgen failed with code %s" % result.returncode, file=sys.stderr)
+            return
 
         missing = [
             os.path.join('src', mod.replace('.', os.sep) + '.pyi')
@@ -153,7 +167,16 @@ class generate_stubs(Command):
             if not os.path.isfile(os.path.join('src', mod.replace('.', os.sep) + '.pyi'))
         ]
         if missing:
-            raise SystemExit("expected stubs not found:\n" + '\n'.join(missing))
+            print(
+                "WARNING: expected stubs not found:\n" + '\n'.join(missing),
+                file=sys.stderr,
+            )
+
+
+class build_ext(_build_ext):
+    def run(self):
+        super().run()
+        self.run_command('generate_stubs')
 
 
 exts = cythonize([
@@ -251,12 +274,11 @@ setup(
     ],
     package_dir={'':'src'},
     package_data={'p4p': ['*.conf', '*.service', '*.pyi']},
-    cmdclass={'generate_stubs': generate_stubs},
+    cmdclass={'build_ext': build_ext, 'generate_stubs': generate_stubs},
     ext_modules = exts,
     install_requires = install_requires,
     extras_require={
         'qt': ['qtpy'],
-        'dev': ['mypy>=2.10.0; python_version>="3.8"'],
     },
     entry_points = {
         'console_scripts': ['pvagw=p4p.gw:main'],
