@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import shutil
 import subprocess
+import sys
 import sysconfig
 
 from setuptools import Command
@@ -34,15 +35,13 @@ cxxflags = []
 if get_config_var('CMPLR_CLASS') in ('gcc', 'clang'):
     cxxflags += ['-std=c++11']
 ldflags = []
-import sys
-import platform
 if sys.platform.startswith('linux') and not sysconfig.get_config_var('Py_DEBUG'):
     # c++ debug symbols size is huge.  ~20x code size.
     # So we choose to only emit debug symbols when building for an interpreter
     # with debugging enabled (aka 'python-dbg' on debian).
     cxxflags += ['-g0']
 
-elif platform.system()=='Darwin':
+elif sys.platform == 'darwin':
     # avoid later failure where install_name_tool may run out of space.
     #   install_name_tool: changing install names or rpaths can't be redone for:
     #   ... because larger updated load commands do not fit (the program must be relinked,
@@ -90,7 +89,7 @@ class generate_stubs(Command):
                 file=sys.stderr,
             )
             return None
-        
+
         return stubgen
 
     def _make_env(self):
@@ -115,6 +114,11 @@ class generate_stubs(Command):
         env[path_var] = os.pathsep.join(lib_dirs + ([existing] if existing else []))
 
         return env
+
+    @staticmethod
+    def _stub_src_path(mod):
+        """Return the source-tree path for a module's generated .pyi file."""
+        return os.path.join('src', mod.replace('.', os.sep) + '.pyi')
 
     def run(self):
         """Verify extensions are importable, then invoke stubgen to write .pyi files."""
@@ -149,9 +153,8 @@ class generate_stubs(Command):
                 )
                 return
 
-        # Run stubgen in a fresh subprocess so that Windows multiprocessing
-        # (which stubgen uses internally to import extension modules safely)
-        # works without needing a 'if __name__ == "__main__":' guard here.
+        # Run stubgen in a subprocess for DSO search path isolation — the same
+        # reason as the importability check above.
         cmd = [stubgen, '--include-docstrings', '--output', 'src']
         for mod in _STUB_MODULES:
             cmd += ['-m', mod]
@@ -162,9 +165,9 @@ class generate_stubs(Command):
             return
 
         missing = [
-            os.path.join('src', mod.replace('.', os.sep) + '.pyi')
-            for mod in _STUB_MODULES
-            if not os.path.isfile(os.path.join('src', mod.replace('.', os.sep) + '.pyi'))
+            path for path in
+            (self._stub_src_path(mod) for mod in _STUB_MODULES)
+            if not os.path.isfile(path)
         ]
         if missing:
             print(
@@ -177,7 +180,7 @@ class generate_stubs(Command):
         # yet present when package_data is copied into build_lib. Copy them now.
         if not build_ext_cmd.inplace:
             for mod in _STUB_MODULES:
-                stub_src = os.path.join('src', mod.replace('.', os.sep) + '.pyi')
+                stub_src = self._stub_src_path(mod)
                 if os.path.isfile(stub_src):
                     stub_dst = os.path.join(
                         build_ext_cmd.build_lib, mod.replace('.', os.sep) + '.pyi'
@@ -186,6 +189,8 @@ class generate_stubs(Command):
 
 
 class build_ext(_build_ext):
+    """Extends the standard build_ext to invoke generate_stubs after building."""
+
     def run(self):
         _build_ext.run(self)
         if sys.version_info >= (3, 0):
