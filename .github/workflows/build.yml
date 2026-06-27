@@ -95,6 +95,9 @@ jobs:
                 "${{ matrix.numpy || 'numpy' }}" \
                 setuptools_dso pvxslibs wheel ply nose2 \
                 cothread setuptools_scm
+            if python -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)"; then
+                pip download $PRE -d output mypy
+            fi
 
             # create source tar
             pip install $PRE --no-index -f ./output setuptools_dso numpy Cython pvxslibs
@@ -243,7 +246,7 @@ jobs:
                 --only-binary numpy,Cython \
                 "${{ matrix.cy || 'Cython' }}" \
                 "${{ matrix.numpy || 'numpy' }}" \
-                setuptools_dso pvxslibs wheel ply nose2
+                setuptools_dso pvxslibs wheel ply nose2 mypy
 
             export SETUPTOOLS_DSO_PLAT_NAME=${{ matrix.arch }}
 
