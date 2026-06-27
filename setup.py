@@ -175,7 +175,7 @@ class generate_stubs(Command):
 
 class build_ext(_build_ext):
     def run(self):
-        super().run()
+        super(build_ext, self).run()
         self.run_command('generate_stubs')
 
 
