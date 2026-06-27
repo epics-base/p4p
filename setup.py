@@ -176,7 +176,15 @@ class generate_stubs(Command):
 class build_ext(_build_ext):
     def run(self):
         _build_ext.run(self)
-        self.run_command('generate_stubs')
+        if sys.version_info >= (3, 0):
+            print("Generating .pyi stubs...", file=sys.stderr)
+            self.run_command('generate_stubs')
+        else:
+            print(
+                "WARNING: skipping .pyi stub generation; "
+                "Python 2 not supported.",
+                file=sys.stderr,
+            )
 
 
 exts = cythonize([
