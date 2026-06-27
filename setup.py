@@ -171,6 +171,18 @@ class generate_stubs(Command):
                 "WARNING: expected stubs not found:\n" + '\n'.join(missing),
                 file=sys.stderr,
             )
+            return
+
+        # build_py runs before build_ext, so *.pyi files generated above are not
+        # yet present when package_data is copied into build_lib. Copy them now.
+        if not build_ext_cmd.inplace:
+            for mod in _STUB_MODULES:
+                stub_src = os.path.join('src', mod.replace('.', os.sep) + '.pyi')
+                if os.path.isfile(stub_src):
+                    stub_dst = os.path.join(
+                        build_ext_cmd.build_lib, mod.replace('.', os.sep) + '.pyi'
+                    )
+                    shutil.copy2(stub_src, stub_dst)
 
 
 class build_ext(_build_ext):
