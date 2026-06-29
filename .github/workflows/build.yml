@@ -94,9 +94,7 @@ jobs:
                 "${{ matrix.cy || 'Cython' }}" \
                 "${{ matrix.numpy || 'numpy' }}" \
                 setuptools_dso pvxslibs wheel ply nose2 \
-                cothread setuptools_scm
-            if python -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)"; then
-                pip download $PRE -d output mypy
+                cothread setuptools_scm mypy
             fi
 
             # create source tar
