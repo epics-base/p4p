@@ -1,6 +1,7 @@
 
 import logging
 _log = logging.getLogger(__name__)
+import sys
 
 import asyncio
 import inspect
@@ -21,6 +22,12 @@ __all__ = [
     'RemoteError',
     'timesout',
 ]
+
+# https://github.com/python/cpython/issues/122858#issuecomment-2466239748
+if sys.version_info >= (3, 12):
+    iscoroutinefunction = inspect.iscoroutinefunction
+else:
+    iscoroutinefunction = asyncio.iscoroutinefunction
 
 if hasattr(asyncio, 'get_running_loop'): # py >=3.7
     from asyncio import get_running_loop, create_task, all_tasks
@@ -64,7 +71,7 @@ def timesout(deftimeout=5.0):
                 await dostuff(ctxt, timeout=5)
     """
     def decorate(fn):
-        assert inspect.iscoroutinefunction(fn), "Place @timesout before @coroutine"
+        assert iscoroutinefunction(fn), "Place @timesout before @coroutine"
 
         @wraps(fn)
         async def wrapper(*args, timeout=deftimeout, **kws):
@@ -292,7 +299,7 @@ class Context(raw.Context):
         * A p4p.Value (Subject to :py:ref:`unwrap`)
         * A sub-class of Exception (Disconnected , RemoteError, or Cancelled)
         """
-        assert inspect.iscoroutinefunction(cb), "monitor callback must be coroutine"
+        assert iscoroutinefunction(cb), "monitor callback must be coroutine"
         R = Subscription(name, cb, notify_disconnect=notify_disconnect)
         cb = partial(get_running_loop().call_soon_threadsafe, R._E.set)
 

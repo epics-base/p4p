@@ -23,6 +23,12 @@ __all__ = (
     'TestFirstLast',
 )
 
+# https://github.com/python/cpython/issues/122858#issuecomment-2466239748
+if sys.version_info >= (3, 12):
+    iscoroutinefunction = inspect.iscoroutinefunction
+else:
+    iscoroutinefunction = asyncio.iscoroutinefunction
+
 if sys.version_info < (3, 14):
     # we should never implicitly use the default loop.
     asyncio.get_event_loop().close()
@@ -32,7 +38,7 @@ class AsyncMeta(type):
     """
     def __new__(klass, name, bases, classdict):
         for name, mem in classdict.items():
-            if name.startswith('test') and inspect.iscoroutinefunction(mem):
+            if name.startswith('test') and iscoroutinefunction(mem):
                 @wraps(mem)
                 def wrapper(self, mem=mem):
                     self.loop.run_until_complete(asyncio.wait_for(mem(self), self.timeout))
