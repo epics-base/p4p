@@ -12,6 +12,7 @@ from ..server import Server, StaticProvider
 from .utils import RefTestCase
 
 import asyncio
+import inspect
 
 from ..client.asyncio import Context, Disconnected, timesout
 from ..server.asyncio import SharedPV
@@ -31,7 +32,7 @@ class AsyncMeta(type):
     """
     def __new__(klass, name, bases, classdict):
         for name, mem in classdict.items():
-            if name.startswith('test') and asyncio.iscoroutinefunction(mem):
+            if name.startswith('test') and inspect.iscoroutinefunction(mem):
                 @wraps(mem)
                 def wrapper(self, mem=mem):
                     self.loop.run_until_complete(asyncio.wait_for(mem(self), self.timeout))

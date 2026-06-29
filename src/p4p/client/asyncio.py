@@ -3,6 +3,7 @@ import logging
 _log = logging.getLogger(__name__)
 
 import asyncio
+import inspect
 
 from functools import partial, wraps
 
@@ -63,7 +64,7 @@ def timesout(deftimeout=5.0):
                 await dostuff(ctxt, timeout=5)
     """
     def decorate(fn):
-        assert asyncio.iscoroutinefunction(fn), "Place @timesout before @coroutine"
+        assert inspect.iscoroutinefunction(fn), "Place @timesout before @coroutine"
 
         @wraps(fn)
         async def wrapper(*args, timeout=deftimeout, **kws):
@@ -291,7 +292,7 @@ class Context(raw.Context):
         * A p4p.Value (Subject to :py:ref:`unwrap`)
         * A sub-class of Exception (Disconnected , RemoteError, or Cancelled)
         """
-        assert asyncio.iscoroutinefunction(cb), "monitor callback must be coroutine"
+        assert inspect.iscoroutinefunction(cb), "monitor callback must be coroutine"
         R = Subscription(name, cb, notify_disconnect=notify_disconnect)
         cb = partial(get_running_loop().call_soon_threadsafe, R._E.set)
 
