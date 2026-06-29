@@ -95,7 +95,6 @@ jobs:
                 "${{ matrix.numpy || 'numpy' }}" \
                 setuptools_dso pvxslibs wheel ply nose2 \
                 cothread setuptools_scm mypy
-            fi
 
             # create source tar
             pip install $PRE --no-index -f ./output setuptools_dso numpy Cython pvxslibs
