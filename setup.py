@@ -159,7 +159,7 @@ class GenerateStubs(Command):
                 )
                 return
 
-        # Run stubgen in a subprocess for DSO search path isolation —
+        # Run stubgen in a subprocess for DSO search path isolation --
         # the same reason as the importability check above.
         cmd = [stubgen, '--include-docstrings', '--output', 'src']
         for mod in _STUB_MODULES:
