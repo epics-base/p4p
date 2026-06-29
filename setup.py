@@ -73,25 +73,6 @@ class GenerateStubs(Command):
     def initialize_options(self): pass
     def finalize_options(self): pass
 
-    def _find_stubgen(self):
-        """Locate the stubgen console script installed alongside this Python.
-
-        The scripts directory is checked first so that the environment-local
-        stubgen is preferred over any system-wide installation.
-        """
-        stubgen = shutil.which('stubgen', path=sysconfig.get_path('scripts')) \
-            or shutil.which('stubgen')
-
-        if stubgen is None:
-            print(
-                "WARNING: stubgen not found; skipping stub generation. "
-                "Typing stub files (*.pyi) will not be generated",
-                file=sys.stderr,
-            )
-            return None
-
-        return stubgen
-
     def _make_env(self):
         """Return a copy of os.environ with pvxslibs/epicscorelibs lib dirs
         prepended to the platform DSO search path variable, so that stubgen
@@ -127,9 +108,6 @@ class GenerateStubs(Command):
         """Verify extensions are importable, then invoke stubgen to write
         .pyi files.
         """
-        stubgen = self._find_stubgen()
-        if stubgen is None:
-            return
         env = self._make_env()
 
         # For non-inplace builds (e.g. wheel), extensions land in
@@ -161,7 +139,7 @@ class GenerateStubs(Command):
 
         # Run stubgen in a subprocess for DSO search path isolation --
         # the same reason as the importability check above.
-        cmd = [stubgen, '--include-docstrings', '--output', 'src']
+        cmd = [sys.executable, '-m', 'mypy.stubgen', '--include-docstrings', '--output', 'src']
         for mod in _STUB_MODULES:
             cmd += ['-m', mod]
 
