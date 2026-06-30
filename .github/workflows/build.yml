@@ -94,10 +94,7 @@ jobs:
                 "${{ matrix.cy || 'Cython' }}" \
                 "${{ matrix.numpy || 'numpy' }}" \
                 setuptools_dso pvxslibs wheel ply nose2 \
-                cothread setuptools_scm
-            if python -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)"; then
-                pip download $PRE -d output mypy
-            fi
+                cothread setuptools_scm "mypy>=1.14.1; python_version>='3.8'"
 
             # create source tar
             pip install $PRE --no-index -f ./output setuptools_dso numpy Cython pvxslibs
