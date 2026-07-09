@@ -39,6 +39,13 @@ class Handler(object):
 
     Use of this as a base class is optional.
     """
+    def open(self, value):
+        """
+        Called each time an Open operation is performed on this Channel
+
+        :param value:  A Value, or appropriate object (see nt= and wrap= of the constructor).
+        """
+        pass
 
     def put(self, pv, op):
         """
@@ -49,6 +56,17 @@ class Handler(object):
         :param ServerOperation op: The operation being initiated.
         """
         op.done(error='Not supported')
+
+    def post(self, pv, value):
+        """
+        Called each time a client issues a post
+        operation on this Channel.
+
+        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
+        :param value:  A Value, or appropriate object (see nt= and wrap= of the constructor).        
+        :param dict options: A dictionary of configuration options.
+        """
+        pass
 
     def rpc(self, pv, op):
         """
@@ -76,6 +94,14 @@ class Handler(object):
         """
         pass
 
+
+    def close(self, pv):
+        """
+        Called when the Channel is closed.
+
+        :param SharedPV pv: The :py:class:`SharedPV` which this Handler is associated with.
+        """
+        pass
 
 class SharedPV(_SharedPV):
 
@@ -158,6 +184,16 @@ class SharedPV(_SharedPV):
             V = self._wrap(value, **kws)
         except: # py3 will chain automatically, py2 won't
             raise ValueError("Unable to wrap %r with %r and %r"%(value, self._wrap, kws))
+        
+        # Guard goes here because we can have handlers that don't inherit from 
+        # the Handler base class
+        try:
+            open_fn = self._handler.open
+        except AttributeError:
+            pass
+        else:
+            open_fn(V)
+
         _SharedPV.open(self, V)
 
     def post(self, value, **kws):
@@ -174,7 +210,36 @@ class SharedPV(_SharedPV):
             V = self._wrap(value, **kws)
         except: # py3 will chain automatically, py2 won't
             raise ValueError("Unable to wrap %r with %r and %r"%(value, self._wrap, kws))
+        
+        # Guard goes here because we can have handlers that don't inherit from 
+        # the Handler base class
+        try:
+            post_fn = self._handler.post
+        except AttributeError:
+            pass
+        else:
+            post_fn(self, V)
+
         _SharedPV.post(self, V)
+
+    def close(self, destroy=False):
+        """Close PV, disconnecting any clients.
+
+        :param bool destroy: Indicate "permanent" closure.  Current clients will not see subsequent open().
+
+        close() with destory=True or sync=True will not prevent clients from re-connecting.
+        New clients may prevent sync=True from succeeding.
+        Prevent reconnection by __first__ stopping the Server, removing with :py:meth:`StaticProvider.remove()`,
+        or preventing a :py:class:`DynamicProvider` from making new channels to this SharedPV.
+        """
+        try:
+            close_fn = self._handler.close
+        except AttributeError:
+            pass
+        else:
+            close_fn(self)
+
+        _SharedPV.close(self)
 
     def current(self):
         V = _SharedPV.current(self)
@@ -208,6 +273,13 @@ class SharedPV(_SharedPV):
             self._pv = pv  # this creates a reference cycle, which should be collectable since SharedPV supports GC
             self._real = real
 
+        def open(self, value):
+            _log.debug('OPEN %s %s', self._pv, value)
+            try:
+                self._pv._exec(None, self._real.open, value)
+            except AttributeError:
+                pass
+
         def onFirstConnect(self):
             self._pv._exec(None, self._pv._onFirstConnect, None)
             try:  # user handler may omit onFirstConnect()
@@ -239,6 +311,20 @@ class SharedPV(_SharedPV):
             except AttributeError:
                 op.done(error="RPC not supported")
 
+        def post(self, value):
+            _log.debug('POST %s %s', self._pv, value)
+            try:
+                self._pv._exec(None, self._real.post, self._pv, value)
+            except AttributeError:
+                pass
+
+        def close(self):
+            _log.debug('CLOSE %s', self._pv)
+            try:
+                self._pv._exec(None, self._real.close, self._pv)
+            except AttributeError:
+                pass
+
     @property
     def onFirstConnect(self):
         def decorate(fn):
@@ -250,6 +336,20 @@ class SharedPV(_SharedPV):
     def onLastDisconnect(self):
         def decorate(fn):
             self._handler.onLastDisconnect = fn
+            return fn
+        return decorate
+
+    @property
+    def on_open(self):
+        def decorate(fn):
+            self._handler.open = fn
+            return fn
+        return decorate     
+
+    @property
+    def on_post(self):
+        def decorate(fn):
+            self._handler.post = fn
             return fn
         return decorate
 
@@ -266,6 +366,13 @@ class SharedPV(_SharedPV):
             self._handler.rpc = fn
             return fn
         return decorate
+
+    @property
+    def on_close(self):
+        def decorate(fn):
+            self._handler.close = fn
+            return fn
+        return decorate  
 
     def __repr__(self):
         if self.isOpen():
