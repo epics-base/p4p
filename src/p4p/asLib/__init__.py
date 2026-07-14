@@ -240,7 +240,9 @@ class Engine(object):
 
         with self._lock:
 
-            uags = self._uag.get(user, set())
+            # copy the stored set; |= below is in-place and would otherwise
+            # permanently merge client-asserted roles into the shared UAG state
+            uags = set(self._uag.get(user, ()))
             for role in roles:
                 uags |= self._uag.get('role/'+role, set())
             hags = self._hag_addr.get(host, set())
