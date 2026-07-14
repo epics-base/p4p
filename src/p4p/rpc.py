@@ -45,7 +45,7 @@ def rpc(rtype=None):
     wrap = None
     if rtype is None or isinstance(rtype, Type):
         pass
-    elif isinstance(type, (list, tuple)):
+    elif isinstance(rtype, (list, tuple)):
         rtype = Type(rtype)
     elif hasattr(rtype, 'type'):  # eg. one of the NT* helper classes
         wrap = rtype.wrap
