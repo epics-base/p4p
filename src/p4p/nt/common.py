@@ -9,7 +9,7 @@ if hasattr(datetime, 'timestamp'):
 else: # py 2.x
     from calendar import timegm as _timegm
     def _dt2posix(dt):
-        return _timegm(dt.timetuple()) * dt.microsecond*1e-6
+        return _timegm(dt.timetuple()) + dt.microsecond*1e-6
 
 # common sub-structs
 timeStamp = Type(id='time_t', spec=[
