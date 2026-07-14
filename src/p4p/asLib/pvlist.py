@@ -105,6 +105,7 @@ class PVList(object):
                     asl = int(parts[1] if len(parts)>1 else '0')
 
                     allow[pattern] = (None, asg, asl)
+                    ngroups += C.groups # account for the pattern's own capture groups
 
                 else:
                     raise RuntimeError("Unknown command: %s"%cmd)
