@@ -166,7 +166,10 @@ class Engine(object):
             self._uag = uag
             self._hag = hag
             self._asg = asg
-            self._asg_DEFAULT = asg.get('DEFAULT', [])
+            # values of self._asg are (rules, inputs) 2-tuples; the fallback
+            # must be unpackable the same way (see create()), so an empty ruleset
+            # is ([], {}) rather than a bare list.
+            self._asg_DEFAULT = asg.get('DEFAULT', ([], {}))
             self._hag_addr = hag_addr
 
         self._recompute()
