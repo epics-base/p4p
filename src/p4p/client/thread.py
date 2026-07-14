@@ -259,15 +259,22 @@ class Context(raw.Context):
                 _log.debug('get %s w/ %s', N, req)
                 ops[i] = raw_get(N, cb, request=req)
 
+            pending = set(range(len(name)))
             for _n in range(len(name)):
                 try:
                     value, i = done.get(timeout=timeout)
                 except Empty:
-                    result[i] = TimeoutError(name[i])
+                    # 'done' is a shared queue, so we can't know which PV timed
+                    # out; mark every still-pending PV as timed out rather than
+                    # reusing the loop's stale 'i' (which points at the wrong PV).
+                    for j in pending:
+                        result[j] = TimeoutError(name[j])
                     if throw:
-                        _log.debug('timeout %s after %s', name[i], timeout)
-                        raise result[i]
+                        j = next(iter(pending))
+                        _log.debug('timeout %s after %s', name[j], timeout)
+                        raise result[j]
                     break
+                pending.discard(i)
                 _log.debug('got %s %r', name[i], value)
                 if throw and isinstance(value, Exception):
                     raise value
@@ -358,14 +365,20 @@ class Context(raw.Context):
 
                 ops[i] = raw_put(n, cb, builder=value, request=req, get=get)
 
+            pending = set(range(len(name)))
             for _n in range(len(name)):
                 try:
                     value, i = done.get(timeout=timeout)
                 except Empty:
-                    result[i] = TimeoutError(name[i])
+                    # 'done' is a shared queue, so we can't know which PV timed
+                    # out; mark every still-pending PV rather than reusing the
+                    # loop's stale 'i' (which points at the wrong PV).
+                    for j in pending:
+                        result[j] = TimeoutError(name[j])
                     if throw:
-                        raise result[i]
+                        raise result[next(iter(pending))]
                     break
+                pending.discard(i)
                 if throw and isinstance(value, Exception):
                     raise value
                 result[i] = value
