@@ -6,7 +6,7 @@ import sys
 import gc
 import inspect
 import time
-from glob import fnmatch
+from fnmatch import fnmatch
 try:
     from types import InstanceType
 except ImportError:  # py3
