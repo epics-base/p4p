@@ -401,6 +401,7 @@ class Subscription(object):
                         if self._notify_disconnect:
                             E = Finished()
                             await self._cb(E)
+                        break  # queue drained; do not loop back and pop() from None
 
 
         except asyncio.CancelledError:
