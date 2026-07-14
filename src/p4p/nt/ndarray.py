@@ -147,7 +147,9 @@ class NTNDArray(NTBase):
     def wrap(self, value, **kws):
         """Wrap numpy.ndarray as Value
         """
-        attrib = getattr(value, 'attrib', None) or kws.pop('attrib', None) or {}
+        # copy: the block below may inject 'ColorMode', and attrib may be the
+        # caller's own ntndarray.attrib dict (aliasing would mutate their object)
+        attrib = dict(getattr(value, 'attrib', None) or kws.pop('attrib', None) or {})
 
         value = numpy.asarray(value) # loses any special/augmented attributes
         dims = value.shape
