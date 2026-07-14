@@ -309,7 +309,7 @@ class GWStats(object):
         for handler in self.handlers:
             handler.sweep()
 
-    def update_stats(self, norm):
+    def update_stats(self, norm=1.0):
         T0 = time.time()
         self.refsPV.post(listRefs())
 
