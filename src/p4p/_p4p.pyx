@@ -53,10 +53,10 @@ cdef extern from "<p4p.h>" namespace "p4p":
     void disconnectDynamic(const shared_ptr[server.Source]& src) except+
 
     # pvxs_client.cpp
-    void opHandler[Builder](Builder& builder, object handler)
-    void opBuilder[Builder](Builder& builder, object handler)
-    void opEvent(client.MonitorBuilder& builder, object handler)
-    object monPop(const shared_ptr[client.Subscription]& mon) with gil
+    void opHandler[Builder](Builder& builder, object handler) except+
+    void opBuilder[Builder](Builder& builder, object handler) except+
+    void opEvent(client.MonitorBuilder& builder, object handler) except+
+    object monPop(const shared_ptr[client.Subscription]& mon) except+ with gil
 
 cimport numpy # must cimport after p4p.h is included
 
