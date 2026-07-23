@@ -2,6 +2,11 @@ name: Python
 
 on: [push, pull_request, workflow_dispatch]
 
+# Least privilege: no job needs to write back to the repo. Publishing to PyPI
+# uses TWINE_* secrets, not GITHUB_TOKEN, so read access is sufficient here.
+permissions:
+  contents: read
+
 defaults:
   run:
     shell: bash

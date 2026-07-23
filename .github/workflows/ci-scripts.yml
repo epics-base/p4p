@@ -2,6 +2,10 @@ name: Makefile
 
 on: [push, pull_request, workflow_dispatch]
 
+# Least privilege: this workflow only builds/tests, it never writes to the repo.
+permissions:
+  contents: read
+
 defaults:
   run:
     shell: bash
