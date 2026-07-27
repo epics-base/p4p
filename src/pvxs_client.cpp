@@ -94,7 +94,8 @@ std::function<Value (Value &&)> opBuilder(PyObject *handler)
             throw PyWrappedError(std::move(tup));
 
         } else if(Py_REFCNT(arg.obj)!=1) {
-            throw std::logic_error("put builders must be synchronous and can not save the input value");
+            val = val.clone();
+            (void)PyErr_WarnEx(PyExc_Warning, "PUT builders must be synchronous and must not save the input value", 1);
         }
 
         return val;
