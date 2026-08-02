@@ -228,12 +228,6 @@ class GWStats(object):
 
         self._pvs['stats'] = self.statsPV = SharedPV(initial=statsType())
 
-        self._pvs['poke'] = self.pokeStats = SharedPV(nt=NTScalar('i'), initial=0)
-        @self.pokeStats.put
-        def pokeStats(pv, op):
-            self.update_stats()
-            op.done()
-
         self._pvs['refs'] = self.refsPV = SharedPV(nt=RefAdapter(), initial={})
 
         self._pvs['StatsTime'] = self.statsTime = SharedPV(nt=NTScalar('d'), initial=0.0)
