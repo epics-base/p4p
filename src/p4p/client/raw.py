@@ -24,7 +24,7 @@ def unwrapHandler(handler, nt):
     """Wrap get/rpc handler to unwrap Value
     """
     def dounwrap(code, msg, val, handler=handler):
-        _log.debug("Handler (%s, %s, %r) -> %s", code, msg, val, handler)
+        _log.debug("Handler (%s, %r, %r) -> %s", code, msg, val, handler)
         try:
             if code == 0:
                 handler(RemoteError(msg))
