@@ -37,7 +37,6 @@ _gw_SRCS += pvxs_odometer.cpp
 _gw_LIBS += pvxs Com
 
 PY += p4p/__init__.py
-PY += p4p/disect.py
 PY += p4p/wrapper.py
 PY += p4p/rpc.py
 PY += p4p/util.py
