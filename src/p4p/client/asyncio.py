@@ -321,16 +321,6 @@ class Subscription(object):
             self._run = False
             self._E.set()
 
-    @property
-    def done(self):
-        'Has all data for this subscription been received?'
-        return self._S is None or self._S.done()
-
-    @property
-    def empty(self):
-        'Is data pending in event queue?'
-        return self._S is None or self._S.empty()
-
     async def wait_closed(self):
         """Wait until subscription is closed.
         """

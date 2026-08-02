@@ -57,16 +57,6 @@ class Subscription(object):
     def __exit__(self, A, B, C):
         self.close()
 
-    @property
-    def done(self):
-        'Has all data for this subscription been received?'
-        return self._S is None or self._S.done()
-
-    @property
-    def empty(self):
-        'Is data pending in event queue?'
-        return self._S is None or self._S.empty()
-
     def _event(self):
         try:
             assert self._S is not None, self._S
