@@ -240,7 +240,7 @@ class Engine(object):
 
         with self._lock:
 
-            uags = self._uag.get(user, set())
+            uags = self._uag.get(user, set()).copy()
             for role in roles:
                 uags |= self._uag.get('role/'+role, set())
             hags = self._hag_addr.get(host, set())
