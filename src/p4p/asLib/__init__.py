@@ -76,7 +76,7 @@ class Engine(object):
         hag = defaultdict(set)
         uags, hags = set(), set()
 
-        # {'name';([rules], {vars})}
+        # {'name';([rules], {'VAR':value})}
         asg = {}
         # {'pvname':[('name','VAR')]}
         invars = defaultdict(list)
@@ -166,7 +166,7 @@ class Engine(object):
             self._uag = uag
             self._hag = hag
             self._asg = asg
-            self._asg_DEFAULT = asg.get('DEFAULT', [])
+            self._asg_DEFAULT = asg.get('DEFAULT') or ([], {})
             self._hag_addr = hag_addr
 
         self._recompute()
@@ -244,7 +244,7 @@ class Engine(object):
             for role in roles:
                 uags |= self._uag.get('role/'+role, set())
             hags = self._hag_addr.get(host, set())
-            rules, inputs = self._asg.get(group, self._asg_DEFAULT)
+            rules, inputs = self._asg.get(group) or self._asg_DEFAULT
 
             trapit = False
             try:
