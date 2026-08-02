@@ -246,10 +246,16 @@ class Context(raw.Context):
                 try:
                     value, i = done.get(timeout=timeout)
                 except Empty:
-                    result[i] = TimeoutError(name[i])
+                    # mark all uncompleted
+                    firstTmo = None
+                    for i in range(len(result)):
+                        if result[i] is None:
+                            result[i] = firstTmo = TimeoutError(name[i])
+
                     if throw:
-                        _log.debug('timeout %s after %s', name[i], timeout)
-                        raise result[i]
+                        assert firstTmo is not None, result
+                        raise firstTmo
+
                     break
                 _log.debug('got %s %r', name[i], value)
                 if throw and isinstance(value, Exception):
@@ -345,9 +351,16 @@ class Context(raw.Context):
                 try:
                     value, i = done.get(timeout=timeout)
                 except Empty:
-                    result[i] = TimeoutError(name[i])
+                    # mark all uncompleted
+                    firstTmo = None
+                    for i in range(len(result)):
+                        if result[i] is None:
+                            result[i] = firstTmo = TimeoutError(name[i])
+
                     if throw:
-                        raise result[i]
+                        assert firstTmo is not None, result
+                        raise firstTmo
+
                     break
                 if throw and isinstance(value, Exception):
                     raise value
