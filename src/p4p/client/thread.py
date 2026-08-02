@@ -77,17 +77,16 @@ class Subscription(object):
                     break # monitor queue empty
 
                 elif isinstance(E, Exception):
-                    _log.debug('Subscription notify for %s with %s', self.name, E)
+                    _log.debug('Subscription notify for %r with %r', self.name, E)
                     if self._notify_disconnect:
                         self._cb(E)
-
-                    elif isinstance(E, RemoteError):
-                        _log.error("Subscription Error %s", E)
+                    else:
+                        _log.info("Subscription exception skipped %r: %r", self.name, E)
 
                     if isinstance(E, Finished):
-                        _log.debug('Subscription complete %s', self.name)
                         self._S = None
                         S.close()
+                        return # last event
 
                 else:
                     self._cb(E)

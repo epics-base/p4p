@@ -278,21 +278,16 @@ class Subscription(object):
                     if E is None:
                         break # queue empty
 
-                    elif isinstance(E, Disconnected):
-                        _log.debug('Subscription notify for %s with %s', self.name, E)
+                    elif isinstance(E, Exception):
+                        _log.debug('Subscription notify for %r with %r', self.name, E)
                         if self._notify_disconnect:
                             self._cb(E)
                         else:
-                            _log.info("Subscription disconnect %s", self.name)
-                        continue
+                            _log.info("Subscription exception skipped %r: %r", self.name, E)
 
-                    elif isinstance(E, RemoteError):
-                        _log.debug('Subscription notify for %s with %s', self.name, E)
-                        if self._notify_disconnect:
-                            self._cb(E)
-                        elif isinstance(E, RemoteError):
-                            _log.error("Subscription Error %s", E)
-                        return
+                        if isinstance(E, Finished):
+                            return # last event
+                        continue
 
                     else:
                         self._cb(E)
@@ -300,16 +295,9 @@ class Subscription(object):
                     i = (i + 1) % 4
                     if i == 0:
                         cothread.Yield()
-
-                    if S.done:
-                        _log.debug('Subscription complete %s', self.name)
-                        S.close()
-                        self._S = None
-                        if self._notify_disconnect:
-                            E = Finished()
-                            self._cb(E)
-                        break
         except:
             _log.exception("Error processing Subscription event: %r", E)
-            self._S.close()
+        finally:
+            if self._S is not None:
+                self._S.close()
             self._S = None
