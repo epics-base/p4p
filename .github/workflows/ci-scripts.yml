@@ -110,9 +110,11 @@ jobs:
         run: python .ci/cue.py prepare
 
       - name: Py Deps
+        shell: bash
         run: |
-          pip install -U pip
-          pip install Cython numpy ply nose2 qtpy PyQt5 ${{ matrix.cothread }}
+          set -x
+          python -m pip install -U pip
+          python -m pip install Cython numpy ply nose2 qtpy PyQt5 ${{ matrix.cothread }}
           python -c 'from qtpy.QtCore import QObject, QCoreApplication'
 
       - name: Build main module
