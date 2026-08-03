@@ -148,6 +148,7 @@ setup(
     install_requires = install_requires,
     extras_require={
         'qt': ['qtpy'],
+        'stubgen': ['mypy>=2.1.0; python_version>="3.8"'],
     },
     entry_points = {
         'console_scripts': ['pvagw=p4p.gw:main'],
