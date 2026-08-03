@@ -91,7 +91,8 @@ jobs:
                 "${{ matrix.cy || 'Cython' }}" \
                 "${{ matrix.numpy || 'numpy' }}" \
                 setuptools_dso pvxslibs wheel ply nose2 \
-                cothread setuptools_scm
+                cothread setuptools_scm \
+                "mypy>=1.14.1; python_version>='3.8'"
 
             # create source tar
             pip install $PRE --no-index -f ./output setuptools_dso numpy Cython pvxslibs
@@ -240,7 +241,7 @@ jobs:
                 --only-binary numpy,Cython \
                 "${{ matrix.cy || 'Cython' }}" \
                 "${{ matrix.numpy || 'numpy' }}" \
-                setuptools_dso pvxslibs wheel ply nose2
+                setuptools_dso pvxslibs wheel ply nose2 mypy
 
             export SETUPTOOLS_DSO_PLAT_NAME=${{ matrix.arch }}
 
