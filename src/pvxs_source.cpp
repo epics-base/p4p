@@ -111,11 +111,14 @@ public:
             PyErr_Print();
             PyErr_Clear();
 
+        } else if(ret.obj==Py_None) {
+            // This source will not provide.
+
         } else if(auto pv = SharedPV_unwrap(ret.obj)) {
             pv.attach(std::move(op));
 
         } else {
-            PyErr_Format(PyExc_TypeError, "makeChannel(\"%s\") must return SharedPV, not %s",
+            PyErr_Format(PyExc_TypeError, "makeChannel(\"%s\") must return SharedPV or None, not %s",
                          op->name().c_str(),
                          Py_TYPE(ret.obj)->tp_name);
             PyErr_Print();
