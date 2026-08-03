@@ -28,13 +28,13 @@ jobs:
           base: "7.0"
           py: "3.x"
 
-        - os: windows-2022
-          cmp: vs2022
+        - os: windows-latest
+          cmp: vs
           base: "7.0"
           py: "3.8"
 
-        - os: windows-2022
-          cmp: vs2022
+        - os: windows-latest
+          cmp: vs
           base: "7.0"
           py: "3.x"
 
