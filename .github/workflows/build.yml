@@ -130,6 +130,7 @@ jobs:
             # pre-download for later steps
             pip download $PRE -d output \
                 --only-binary numpy,Cython \
+                --only-binary epicscorelibs,pvxslibs \
                 "${{ matrix.cy || 'Cython' }}" \
                 "${{ matrix.numpy || 'numpy' }}" \
                 setuptools_dso pvxslibs wheel ply nose2 \
