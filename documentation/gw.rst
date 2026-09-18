@@ -312,7 +312,7 @@ Here is a full list of JSON keys available for the configuration file, version 2
 
     This activity is per PV.
 
-**servers[].statusprefix** (default: "")
+**servers[].statusprefix** (default: null)
     The text used by this gateway as a prefix to construct names for PVs which communicate status information.
     The PVs report overall status for the gateway process, regardless of the number of internal Clients or Servers.
     Each of the status PVs are defined in :ref:`gwstatuspvs`.

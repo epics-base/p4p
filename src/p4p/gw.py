@@ -540,9 +540,9 @@ class App(object):
                 'EPICS_PVA_ADDR_LIST':jcli.get('addrlist',''),
                 'EPICS_PVA_AUTO_ADDR_LIST':{True:'YES', False:'NO'}[jcli.get('autoaddrlist',True)],
             }
-            if 'bcastport' in jcli:
+            if jcli.get('bcastport') is not None:
                 client_conf['EPICS_PVA_BROADCAST_PORT'] = str(jcli['bcastport'])
-            if 'serverport' in jcli:
+            if jcli.get('serverport') is not None:
                 client_conf['EPICS_PVA_SERVER_PORT'] = str(jcli['serverport'])
             for k,v in jcli.items(): # pass through
                 if k.startswith('EPICS_PVA_'):
@@ -613,9 +613,9 @@ class App(object):
                 'EPICS_PVAS_AUTO_BEACON_ADDR_LIST':{True:'YES', False:'NO'}[jsrv.get('autoaddrlist',True)],
                 'EPICS_PVAS_IGNORE_ADDR_LIST':jsrv.get('ignoreaddr', ''),
             }
-            if 'bcastport' in jsrv:
+            if jsrv.get('bcastport') is not None:
                 server_conf['EPICS_PVAS_BROADCAST_PORT'] = str(jsrv['bcastport'])
-            if 'serverport' in jsrv:
+            if jsrv.get('serverport') is not None:
                 server_conf['EPICS_PVAS_SERVER_PORT'] = str(jsrv['serverport'])
             for k,v in jsrv.items(): # pass through
                 if k.startswith('EPICS_PVA'):
@@ -660,7 +660,7 @@ class App(object):
                     gwclients +=[handler.provider]
                     self.stats.handlers.append(handler)
 
-                if 'statusprefix' in jsrv:
+                if jsrv.get('statusprefix') is not None:
                     self.stats.bindto(statusp, jsrv['statusprefix'])
 
                     handler.asTestPV = SharedPV(nt=NTScalar('s'), initial="Only RPC supported.")
