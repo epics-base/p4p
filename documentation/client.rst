@@ -55,7 +55,7 @@ Instead it accepts a callback function which is called with each
 new :py:class:`Value`, or :py:class:`Exception`. ::
 
    def cb(V):
-          print 'New value', V
+          print('New value', V)
    sub = ctxt.monitor('pv:name', cb)
    time.sleep(10) # arbitrary wait
    sub.close()
