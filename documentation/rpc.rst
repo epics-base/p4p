@@ -72,7 +72,7 @@ This proxy must be associated with a Context. ::
     from p4p.client.thread import Context
     ctxt = Context('pva')
     proxy = MyProxy(context=ctxt, format='pv:call:')
-    print proxy.add(1, 1)
+    print(proxy.add(1, 1))
 
 
 A decorated proxy class has two additional contructor arguments.
@@ -98,7 +98,7 @@ It may be helpful to illustrate what a proxy method call is actually doing. ::
             'rhs': 1,
         },
     })
-    print ctxt.rpc('pv:call:add', V)
+    print(ctxt.rpc('pv:call:add', V))
 
 API Reference
 -------------
