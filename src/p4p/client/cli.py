@@ -34,7 +34,7 @@ def op_put(ctxt, args):
     names, values = [], []
     for pair in args.names:
         N, sep, V = pair.partition('=')
-        if sep is '':
+        if sep == '':
             print("Missing expected '=' after", pair)
             sys.exit(1)
         elif V[:1] in '{[':
@@ -47,7 +47,7 @@ def op_put(ctxt, args):
     results = ctxt.put(names, values, requests, timeout=args.timeout, throw=False)
 
     ret = 0
-    for name, val in izip(args.names, results):
+    for name, val in zip(args.names, results):
         if isinstance(val, Exception):
             ret = 1
             print(name, 'Error:', val)
@@ -64,6 +64,7 @@ def op_monitor(ctxt, args):
 
     for name in args.names:
         def show(val, name=name):
+            nonlocal ret
             if val is None:
                 print(name, "Disconnect")
             elif isinstance(val, Exception):
