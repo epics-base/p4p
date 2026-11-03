@@ -155,6 +155,43 @@ class TestGPM(RefTestCase):
         gc.collect()
         self.assertIsNone(C())
 
+    def testConnect(self):
+        with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
+
+            self.pv.open(1.0)
+
+            Q = Queue(maxsize=4)
+            with ctxt.connect('foo', Q.put) as conn:
+                self.assertEqual(conn.name, 'foo')
+
+                # initial state
+                self.assertIs(Q.get(timeout=self.timeout), False)
+                self.assertIs(Q.get(timeout=self.timeout), True)
+                self.assertTrue(conn.connected())
+
+                # shares the channel with operations
+                self.assertEqual(ctxt.get('foo'), 1.0)
+                self.assertTrue(conn.connected())
+
+                self.server.stop()
+
+                self.assertIs(Q.get(timeout=self.timeout), False)
+                self.assertFalse(conn.connected())
+
+            self.assertFalse(conn.connected())
+
+        C = weakref.ref(ctxt)
+        del ctxt
+        del conn
+        del Q
+        gc.collect()
+        self.assertIsNone(C())
+
+    def testConnectNoServer(self):
+        with Context('pva', conf=self.server.conf(), useenv=False) as ctxt:
+            with ctxt.connect('nonexistent') as conn:
+                self.assertFalse(conn.connected())
+
 class TestRPC(RefTestCase):
     maxDiff = 1000
     timeout = 1.0

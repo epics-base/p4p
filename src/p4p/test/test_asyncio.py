@@ -113,6 +113,22 @@ class TestGPM(AsyncTest):
                     sub.close()
                     await sub.wait_closed()
 
+    async def test_connect(self):
+        with Server(providers=[self.provider], isolate=True) as S:
+            with Context('pva', conf=S.conf(), useenv=False) as C:
+
+                Q = asyncio.Queue()
+
+                with C.connect('foo', Q.put_nowait) as conn:
+                    self.assertIs((await Q.get()), False)  # initial state
+                    self.assertIs((await Q.get()), True)
+                    self.assertTrue(conn.connected())
+
+                    S.stop()
+
+                    self.assertIs((await Q.get()), False)
+                    self.assertFalse(conn.connected())
+
     async def test_put_noconvert(self):
         with Server(providers=[self.provider], isolate=True) as S:
             with Context('pva', conf=S.conf(), useenv=False) as C:
