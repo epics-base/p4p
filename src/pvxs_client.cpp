@@ -118,6 +118,23 @@ void opEvent(client::MonitorBuilder& builder, PyObject *handler)
     });
 }
 
+// caller responsible for maintaining handler ref
+void connEvent(client::ConnectBuilder& builder, PyObject *handler)
+{
+    auto notify = [handler](bool connected) {
+        PyLock L;
+
+        auto ret(PyRef::allownull(PyObject_CallFunction(handler, "O", connected ? Py_True : Py_False)));
+        if(!ret.obj) {
+            PySys_WriteStderr("Unhandled Exception %s:%d\n", __FILE__, __LINE__);
+            PyErr_Print();
+            PyErr_Clear();
+        }
+    };
+    builder.onConnect([notify]() { notify(true); })
+           .onDisconnect([notify]() { notify(false); });
+}
+
 PyObject* monPop(const std::shared_ptr<client::Subscription>& mon)
 {
     PyObject* klass;
