@@ -9,7 +9,7 @@ import threading
 from queue import Queue, Empty
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled, Finished
+from .raw import Connection, Disconnected, RemoteError, Cancelled, Finished
 from ..util import _defaultWorkQueue
 from ..wrapper import Value, Type
 from ..rpc import WorkQueue
@@ -421,3 +421,20 @@ class Context(raw.Context):
 
         R._S = super(Context, self).monitor(name, R._event, request)
         return R
+
+    def connect(self, name, cb=None, queue=None) -> Connection:
+        """Track connection state of a PV.
+
+        :param str name: PV name string
+        :param callable cb: Called with True on connect, and False on disconnect.
+        :param WorkQueue queue: A work queue through which callbacks are dispatched.
+        :returns: a :py:class:`Connection` with methods connected() and close()
+
+        Shares the channel used by other operations on the same PV, so adds no network traffic.
+        """
+        if cb is not None:
+            Q = queue or self._Q or _defaultWorkQueue()
+            def handler(connected, cb=cb):
+                Q.push(partial(cb, connected))
+            cb = handler
+        return super(Context, self).connect(name, cb)

@@ -9,7 +9,7 @@ import inspect
 from functools import partial, wraps
 
 from . import raw
-from .raw import Disconnected, RemoteError, Cancelled, Finished
+from .raw import Disconnected, Connection, RemoteError, Cancelled, Finished
 from ..wrapper import Value, Type
 from .._p4p import (logLevelAll, logLevelTrace, logLevelDebug,
                     logLevelInfo, logLevelWarn, logLevelError,
@@ -289,6 +289,19 @@ class Context(raw.Context):
 
         R._S = super(Context, self).monitor(name, cb, request)
         return R
+
+    def connect(self, name, cb=None) -> Connection:
+        """Track connection state of a PV.
+
+        :param str name: PV name string
+        :param callable cb: Called in the running event loop with True on connect, and False on disconnect.
+        :returns: a :py:class:`Connection` with methods connected() and close()
+
+        Shares the channel used by other operations on the same PV, so adds no network traffic.
+        """
+        if cb is not None:
+            cb = partial(get_running_loop().call_soon_threadsafe, cb)
+        return super(Context, self).connect(name, cb)
 
 
 class Subscription(object):
