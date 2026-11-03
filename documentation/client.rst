@@ -75,6 +75,22 @@ In all cases it is safe for a callback to block/yield.
 Subsequent updates for a `Subscription` will not be delivered until the current callback has completed.
 However, updates for other Subscriptions may be delivered.
 
+Connection State
+^^^^^^^^^^^^^^^^
+
+The :py:meth:`Context.connect` method tracks whether a PV is currently connected.
+It shares the channel used by get/put/rpc/monitor on the same PV name,
+so it adds no network traffic. ::
+
+   def cb(connected):
+          print('Connected' if connected else 'Disconnected')
+   conn = ctxt.connect('pv:name', cb)
+   print(conn.connected())
+   conn.close()
+
+The callback is optional, and is called once with the initial state,
+then on each change.  It is dispatched in the same way as monitor callbacks.
+
 RPC
 ^^^
 
@@ -97,6 +113,8 @@ API Reference
 
     .. automethod:: monitor
 
+    .. automethod:: connect
+
     .. automethod:: rpc
 
     .. automethod:: providers
@@ -106,6 +124,12 @@ API Reference
     .. automethod:: set_debug
 
 .. autoclass:: Subscription
+
+    .. automethod:: close
+
+.. autoclass:: Connection
+
+    .. automethod:: connected
 
     .. automethod:: close
 
@@ -141,6 +165,8 @@ with the get, put, rpc methods become async.
     .. automethod:: put
 
     .. automethod:: monitor
+
+    .. automethod:: connect
 
     .. automethod:: rpc
 

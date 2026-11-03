@@ -53,6 +53,7 @@ cdef extern from "<pvxs/client.h>" namespace "pvxs::client" nogil:
         RPCBuilder rpc(const string& pvname) except+
         RPCBuilder rpc(const string& pvname, const Value&) except+
         MonitorBuilder monitor(const string& pvname) except+
+        ConnectBuilder connect(const string& pvname) except+
 
         @staticmethod
         RequestBuilder request() except+
@@ -106,6 +107,19 @@ cdef extern from "<pvxs/client.h>" namespace "pvxs::client" nogil:
         MonitorBuilder& maskDisconnected(bool m)
 
         shared_ptr[Subscription] exec_ "exec"() except+
+
+    cdef cppclass ConnectBuilder:
+        #ConnectBuilder& onConnect(function[void()]&& cb)
+        #ConnectBuilder& onDisconnect(function[void()]&& cb)
+        ConnectBuilder& syncCancel(bool b)
+        ConnectBuilder& server(const string& s) except+
+
+        # Renamed exec to exec_ because it is a python keyword
+        shared_ptr[Connect] exec_ "exec"() except+
+
+    cdef cppclass Connect:
+        const string& name()
+        bool connected() except+
 
     cdef cppclass RequestBuilder:
         RequestBuilder& field(const string& fld) except+

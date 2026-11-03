@@ -12,6 +12,7 @@ from ..nt import buildNT
 
 __all__ = (
     'Subscription',
+    'Connection',
     'Context',
     'RemoteError',
     'Disconnected',
@@ -50,6 +51,16 @@ def monHandler(handler):
             handler()
         except:
             _log.exception("Exception in Monitor handler")
+    return cb
+
+
+def connHandler(handler):
+    def cb(connected, handler=handler):
+        _log.debug("Connection %s %s", connected, handler)
+        try:
+            handler(connected)
+        except:
+            _log.exception("Exception in Connection handler")
     return cb
 
 
@@ -109,6 +120,25 @@ class Subscription(_p4p.ClientMonitor):
 
     def complete(self):
         return self.done
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, A, B, C):
+        self.close()
+
+    def __del__(self):
+        self.close()
+
+class Connection(_p4p.ClientConnect):
+
+    """Tracks the connection state of a channel.
+
+    Shares the channel used by get/put/rpc/monitor operations on the same name,
+    so adds no network traffic of its own.
+
+    connected() returns the current state.  close() stops tracking.
+    """
 
     def __enter__(self):
         return self
@@ -238,6 +268,18 @@ class Context(object):
                             nt=self._nt,
                             handler=monHandler(handler), pvRequest=wrapRequest(request),
                             **kws)
+
+    def connect(self, name, handler=None):
+        """Begin tracking connection state of named PV
+
+        :param str name: PV name string
+        :param callable handler: Called with True on connect, and False on disconnect.  Called from a PVXS worker thread.
+                                 Also called once with the initial state.
+
+        :returns: A Connection
+        """
+        return Connection(self._ctxt, name,
+                          handler=None if handler is None else connHandler(handler))
 
     @staticmethod
     def providers():

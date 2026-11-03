@@ -196,6 +196,7 @@ void opBuilder(Builder& builder, PyObject *handler) {
     builder.build(opBuilder(handler));
 }
 void opEvent(client::MonitorBuilder& builder, PyObject *handler);
+void connEvent(client::ConnectBuilder& builder, PyObject *handler);
 
 PyObject* monPop(const std::shared_ptr<client::Subscription>& mon);
 

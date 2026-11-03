@@ -18,3 +18,5 @@ O.*/
 *.so
 *.pyc
 *.local
+build/
+*.egg-info/
