@@ -56,6 +56,7 @@ cdef extern from "<p4p.h>" namespace "p4p":
     void opHandler[Builder](Builder& builder, object handler) except+
     void opBuilder[Builder](Builder& builder, object handler) except+
     void opEvent(client.MonitorBuilder& builder, object handler) except+
+    void connEvent(client.ConnectBuilder& builder, object handler) except+
     object monPop(const shared_ptr[client.Subscription]& mon) except+ with gil
 
 cimport numpy # must cimport after p4p.h is included
@@ -600,6 +601,57 @@ cdef class ClientMonitor:
         cdef shared_ptr[client.Subscription] sub = self.sub # local copy to guard against concurrent _close()
         if <bool>sub:
             return monPop(sub) # will unlock/relock GIL
+
+# can't tp_clear as we have no way to replace Connect handler (cancel?)
+@cython.no_gc_clear
+cdef class ClientConnect:
+    cdef shared_ptr[client.Connect] conn
+    cdef readonly object handler
+    cdef object __weakref__
+
+    def __init__(self, ClientProvider ctxt, basestring name, handler=None):
+        cdef string pvname = name.encode()
+        cdef client.ConnectBuilder builder
+
+        if not <bool>ctxt.ctxt:
+            raise RuntimeError("Context closed")
+
+        self.handler = handler
+
+        builder = ctxt.ctxt.connect(pvname)
+        if handler is not None:
+            connEvent(builder, handler)
+        with nogil:
+            self.conn = builder.exec_()
+
+    def __dealloc__(self):
+        self._close()
+
+    def close(self):
+        self._close()
+
+    cdef _close(self):
+        cdef shared_ptr[client.Connect] trash
+        self.conn.swap(trash)
+        if <bool>trash:
+            # dtor waits for in-progress callbacks, which need the GIL
+            with nogil:
+                trash.reset()
+
+    def connected(self):
+        cdef shared_ptr[client.Connect] conn = self.conn # local copy to guard against concurrent _close()
+        cdef bool ret = False
+        if <bool>conn:
+            with nogil:
+                ret = conn.get().connected()
+                conn.reset()
+        return ret
+
+    @property
+    def name(self):
+        if <bool>self.conn:
+            return self.conn.get().name().decode()
+        return "Dead ClientConnect"
 
 all_providers = WeakSet()
 
