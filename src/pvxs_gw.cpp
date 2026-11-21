@@ -621,7 +621,7 @@ void onSubEvent(const std::shared_ptr<GWSubscription>& sub, const std::shared_pt
             sub->state = GWSubscription::Running;
 
             for(auto& ctrl : sub->controls)
-                ctrl->post(val); // dispatch() under lock is safe
+                ctrl->post(val.clone()); // dispatch() under lock is safe
 
          } catch(client::Finished&) {
             log_debug_printf(_logmon, "'%s' MONITOR finish\n", cli->name().c_str());
