@@ -3,9 +3,13 @@
 from __future__ import print_function
 
 import os
+import shutil
+import subprocess
+import sys
 import sysconfig
 
-from setuptools_dso import Extension, setup, cythonize
+from setuptools import Command
+from setuptools_dso import Extension, setup, cythonize, build_ext as _build_ext
 
 import numpy
 
@@ -31,15 +35,13 @@ cxxflags = []
 if get_config_var('CMPLR_CLASS') in ('gcc', 'clang'):
     cxxflags += ['-std=c++11']
 ldflags = []
-import sys
-import platform
-if sys.platform=='linux2' and not sysconfig.get_config_var('Py_DEBUG'):
+if sys.platform.startswith('linux') and not sysconfig.get_config_var('Py_DEBUG'):
     # c++ debug symbols size is huge.  ~20x code size.
     # So we choose to only emit debug symbols when building for an interpreter
     # with debugging enabled (aka 'python-dbg' on debian).
     cxxflags += ['-g0']
 
-elif platform.system()=='Darwin':
+elif sys.platform == 'darwin':
     # avoid later failure where install_name_tool may run out of space.
     #   install_name_tool: changing install names or rpaths can't be redone for:
     #   ... because larger updated load commands do not fit (the program must be relinked,
@@ -50,6 +52,148 @@ elif platform.system()=='Darwin':
 # are all c++, and MSVC doesn't allow extern "C" to
 # return c++ types.
 cppflags = get_config_var('CPPFLAGS') + [('__PYX_EXTERN_C','extern')]
+
+# Fully-qualified module names for which .pyi stubs are generated.
+# Must match the Extension name= values below.
+_STUB_MODULES = ['p4p._p4p', 'p4p._gw']
+
+
+class GenerateStubs(Command):
+    """Generate .pyi stub files for compiled extensions using mypy stubgen.
+
+    Invoked automatically by build_ext. To regenerate stubs without
+    rebuilding the extensions::
+
+        python setup.py generate_stubs
+    """
+
+    description = 'generate .pyi stub files for compiled extensions'
+    user_options = []
+
+    def initialize_options(self): pass
+    def finalize_options(self): pass
+
+    def _make_env(self):
+        """Return a copy of os.environ with pvxslibs/epicscorelibs lib dirs
+        prepended to the platform DSO search path variable, so that stubgen
+        subprocesses can load the extensions in editable installs where the
+        relative RUNPATH embedded in the .so/.pyd does not resolve correctly.
+        """
+        # pvxslibs exposes no public lib_path attribute;
+        # path derived by convention.
+        lib_dirs = [d for d in [
+            os.path.join(os.path.dirname(pvxslibs.__file__), 'lib'),
+            epicscorelibs.path.lib_path,
+        ] if os.path.isdir(d)]
+        env = os.environ.copy()
+        if sys.platform == 'win32':
+            path_var = 'PATH'
+        elif sys.platform == 'darwin':
+            path_var = 'DYLD_LIBRARY_PATH'
+        else:
+            path_var = 'LD_LIBRARY_PATH'
+        existing = env.get(path_var, '')
+        env[path_var] = os.pathsep.join(
+            lib_dirs + ([existing] if existing else [])
+        )
+
+        return env
+
+    @staticmethod
+    def _stub_src_path(mod):
+        """Return the source-tree path for a module's generated .pyi file."""
+        return os.path.join('src', mod.replace('.', os.sep) + '.pyi')
+
+    def run(self):
+        """Verify extensions are importable, then invoke stubgen to write
+        .pyi files.
+        """
+        env = self._make_env()
+
+        # For non-inplace builds (e.g. wheel), extensions land in
+        # build_lib rather than the source tree, so add it to PYTHONPATH
+        # for the subprocesses.
+        build_ext_cmd = self.get_finalized_command('build_ext')
+        if not build_ext_cmd.inplace:
+            existing = env.get('PYTHONPATH', '')
+            env['PYTHONPATH'] = os.pathsep.join(
+                [build_ext_cmd.build_lib] + ([existing] if existing else [])
+            )
+
+        # Verify extensions are importable under the same env stubgen will use.
+        # Done in a subprocess so the current process's DSO search path (which
+        # may not include pvxslibs/lib for editable installs) is not a factor.
+        for mod in _STUB_MODULES:
+            check = subprocess.run(
+                [sys.executable, '-c', 'import %s' % mod],
+                env=env, capture_output=True, check=False,
+            )
+            if check.returncode:
+                print(
+                    "WARNING: extension %r not importable; "
+                    "skipping stub generation. Build it first with:\n"
+                    "  python setup.py build_ext --inplace" % mod,
+                    file=sys.stderr,
+                )
+                return
+
+        # Run stubgen in a subprocess for DSO search path isolation --
+        # the same reason as the importability check above.
+        cmd = [sys.executable, '-m', 'mypy.stubgen', '--include-docstrings', '--output', 'src']
+        for mod in _STUB_MODULES:
+            cmd += ['-m', mod]
+
+        result = subprocess.run(cmd, env=env, check=False)
+        if result.returncode:
+            print(
+                "WARNING: stubgen failed with code %s" % result.returncode,
+                file=sys.stderr,
+            )
+            return
+
+        missing = [
+            path for path in
+            (self._stub_src_path(mod) for mod in _STUB_MODULES)
+            if not os.path.isfile(path)
+        ]
+        if missing:
+            print(
+                "WARNING: expected stubs not found:\n" + '\n'.join(missing),
+                file=sys.stderr,
+            )
+            return
+
+        # build_py runs before build_ext, so *.pyi files generated above
+        # are not yet present when package_data is copied into build_lib.
+        # Copy them now.
+        if not build_ext_cmd.inplace:
+            for mod in _STUB_MODULES:
+                stub_src = self._stub_src_path(mod)
+                if os.path.isfile(stub_src):
+                    stub_dst = os.path.join(
+                        build_ext_cmd.build_lib,
+                        mod.replace('.', os.sep) + '.pyi',
+                    )
+                    shutil.copy2(stub_src, stub_dst)
+
+
+class BuildExt(_build_ext):
+    """Extends the standard build_ext to invoke generate_stubs
+    after building.
+    """
+
+    def run(self):
+        _build_ext.run(self)
+        if sys.version_info >= (3, 0):
+            print("Generating .pyi stubs...", file=sys.stderr)
+            self.run_command('generate_stubs')
+        else:
+            print(
+                "WARNING: skipping .pyi stub generation; "
+                "Python 2 not supported.",
+                file=sys.stderr,
+            )
+
 
 exts = cythonize([
     Extension(
@@ -143,7 +287,8 @@ setup(
         'p4p.asLib',
     ],
     package_dir={'':'src'},
-    package_data={'p4p': ['*.conf', '*.service']},
+    package_data={'p4p': ['*.conf', '*.service', '*.pyi']},
+    cmdclass={'build_ext': BuildExt, 'generate_stubs': GenerateStubs},
     ext_modules = exts,
     install_requires = install_requires,
     extras_require={
