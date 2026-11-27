@@ -9,6 +9,10 @@ Python bindings for the PVAccess network client and server.
     python -m pip install p4p
     python -m nose2 p4p
 
+The tests must be run from outside the p4p source tree.
+In a git clone, `src/p4p` is found before the installed package and the
+tests fail with `ImportError: cannot import name '_p4p'`.
+
 See documentation
 
 https://epics-base.github.io/p4p/

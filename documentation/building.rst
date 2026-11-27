@@ -61,6 +61,11 @@ and to rebuild p4p from source in a virtualenv. ::
      nose2 p4p
     python -m nose2 p4p   # Optional: runs automatic tests
 
+.. note:: The tests must be run from outside the p4p source tree.
+   In a git clone, ``src/p4p`` is found before the installed package.
+   It has no compiled ``_p4p`` module, so the tests fail with
+   ``ImportError: cannot import name '_p4p'``.
+
 Site where the installation environment does not have access to pypi.org may wish
 to investigate ``pip download -h``.
 
@@ -147,9 +152,12 @@ If the necessary EPICS modules are not present, then they may be built from sour
 CLI and unittests
 ~~~~~~~~~~~~~~~~~
 
-To run the unittests: ::
+To run the unittests of an EPICS module build: ::
 
    make nose
+
+This sets ``PYTHONPATH`` to the build output.
+For a pip install, see the note under `Local (re)build as Python package`_.
 
 For testing purposes several simple command line client tools are provided.
 For further information run: ::
